@@ -1,0 +1,1 @@
+gDriveOOo is a Google Drive implementation for LibreOffice / OpenOffice.

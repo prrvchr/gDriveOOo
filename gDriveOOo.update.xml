@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<description
+  xmlns="http://openoffice.org/extensions/update/2006"
+  xmlns:xlink="http://www.w3.org/1999/xlink">
+        <identifier value="com.gmail.prrvchr.extensions.gDriveOOo" />
+        <version value="0.0.1" /> 
+        <update-download>
+                <src xlink:href="https://github.com/prrvchr/gDriveOOo/releases/download/v0.0.1/gDriveOOo.oxt" />
+        </update-download>
+</description>
