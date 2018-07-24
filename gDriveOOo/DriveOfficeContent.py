@@ -94,10 +94,11 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, PyComponent, PyInitializa
 
     # XChild
     def getParent(self):
-        print("DriveOfficeContent.getParent()")
+        print("DriveOfficeContent.getParent() ***********************************************")
         id = self._getParentId()
         return gdrive.queryContent(self.ctx, self.Scheme, self.UserName, id)
     def setParent(self):
+        print("DriveOfficeContent.setParent() ***********************************************")
         raise NoSupportException('ParentsId can not be set', self)
 
     # XContent

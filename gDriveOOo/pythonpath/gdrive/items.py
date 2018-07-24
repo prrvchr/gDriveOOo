@@ -143,7 +143,7 @@ def _getSelectQueryFields(scheme):
     fields.append('I."Updated" AS "Updated"')
     fields.append('I."TimeStamp" AS "TimeStamp"')
     fields.append('FALSE AS "IsVersionable"')
-    fields.append('I."FileId" AS "TitleOnServer"')
+    fields.append('CONCAT(\'%s://\', CONCAT(U."UserName", CONCAT(\'/\', I."FileId"))) AS "TitleOnServer"' % scheme)
     fields.append('CONCAT(\'%s://\', CONCAT(U."UserName", CONCAT(\'/\', I."FileId"))) AS "BaseURI"' % scheme)
     fields.append('CONCAT(\'%s://\', CONCAT(U."UserName", CONCAT(\'/\', I."FileId"))) AS "TargetURL"' % scheme)
     fields.append('CONCAT(\'%s://\', CONCAT(U."UserName", CONCAT(\'/\', I."FileId"))) AS "CasePreservingURL"' % scheme)

@@ -40,21 +40,12 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentProvider):
     def queryContent(self, identifier):
         try:
             print("ContentProvider.queryContent() 1: %s" % identifier.getContentIdentifier())
-            uri = gdrive.getUri(self.ctx, identifier.getContentIdentifier())
-            if not uri.hasAuthority():
-                raise IllegalIdentifierException('Identifier has no Authority: %s' % identifier.getContentIdentifier(), self)
-            id = self._getFileId(uri)
-            if not self._checkFileId(id):
-                raise IllegalIdentifierException('Identifier is no valid: %s' % identifier.getContentIdentifier(), self)
-            print("ContentProvider.queryContent() 2")
-            self.Item.UserName = uri.getAuthority()
-            print("ContentProvider.queryContent() 3")
-            content, id = self.Item.get(id).execute()
+            content, id = self.Item.get(identifier).execute()
             if content is None:
                 raise IllegalIdentifierException('ContentType is unknown: %s' % identifier.getContentIdentifier(), self)
-            print("ContentProvider.queryContent() 4")
+            print("ContentProvider.queryContent() 2")
             service = self._queryContent(content, id)
-            print("ContentProvider.queryContent() 5")
+            print("ContentProvider.queryContent() 3")
             return service
         except Exception as e:
             print("ContentProvider.queryContent().Error: %s - %s" % (e, traceback.print_exc()))
@@ -62,10 +53,8 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentProvider):
     def compareContentIds(self, identifier1, identifier2):
         uri1 = gdrive.getUri(identifier1.getContentIdentifier())
         uri2 = gdrive.getUri(identifier2.getContentIdentifier())
-        id1 = self._getFileId(uri1)
-        id2 = self._getFileId(uri2)
         print("ContentProvider.compareContentIds(): %s - %s" % (id1, id2))
-        if id1 == id2:
+        if uri1 == uri2:
             print("ContentProvider.compareContentIds() ************")
             return 0
         if uri1.getScheme() != uri2.getScheme() or uri1.getAuthority() != uri2.getAuthority():
@@ -100,27 +89,6 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentProvider):
             return service
         except Exception as e:
             print("ContentProvider._queryContent().Error: %s" % e)
-
-    def _getFileId(self, uri):
-        id = None
-        if uri.getPathSegmentCount() > 0:
-            path = uri.getPathSegment(uri.getPathSegmentCount() -1)
-            if path == '' or path == 'root' or path == '.':
-                id = 'root'
-            else:
-                id = path
-        else:
-            id = 'root'
-        return id
-
-    def _checkFileId(self, id):
-        if id is None:
-            return False
-        elif id == 'root':
-            return True
-        elif '.' not in id and ' ' not in id and len(id) > 18 and len(id) < 34:
-            return True
-        return False
 
     # XServiceInfo
     def supportsService(self, service):

@@ -1,11 +1,14 @@
 #!
 # -*- coding: utf_8 -*-
 
-from .oauth2lib import OAuth2Ooo
 
+from com.sun.star.ucb import IllegalIdentifierException
+
+from .oauth2lib import OAuth2Ooo
 from .items import getItemInsertStatement, getItemSelectStatement, executeItemInsertStatement
 from .google import getItem
 from .users import getUserInsertStatement, getUserSelectStatement, executeUserInsertStatement
+from .contenttools import getUri
 
 
 class Item(object):
@@ -33,10 +36,16 @@ class Item(object):
             elif self._getRootId(username) is not None:
                 self.authentication.UserName = username
                 executeUserInsertStatement(self.userInsert, username, self.RootId)
+            else:
+                raise IllegalIdentifierException('Identifier has no Authority: %s' % username, self)
+            self.itemSelect.setString(1, username)
 
-    def get(self, id):
-        if id == 'root':
-            id = self.RootId
+    def get(self, identifier):
+        uri = getUri(self.ctx, identifier.getContentIdentifier())
+        if not uri.hasAuthority():
+            raise IllegalIdentifierException('Identifier has no Authority: %s' % identifier.getContentIdentifier(), self)
+        self.UserName = uri.getAuthority()
+        id = self._getItemId(uri)
         self.itemSelect.setString(2, id)
         return GetItem(self.authentication, self.itemInsert, self.itemSelect, id)
 
@@ -49,6 +58,14 @@ class Item(object):
         else:
             self.RootId = None
         return self.RootId
+
+    def _getItemId(self, uri):
+        id = self.RootId
+        if uri.getPathSegmentCount() > 0:
+            path = uri.getPathSegment(uri.getPathSegmentCount() -1)
+            if path not in ('', '.', 'root'):
+                id = path
+        return id
 
 
 class GetItem():
