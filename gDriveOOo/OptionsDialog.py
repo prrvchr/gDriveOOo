@@ -51,28 +51,8 @@ class OptionsDialog(unohelper.Base, XServiceInfo, XContainerWindowEventHandler):
 
     def _doConnect(self, dialog):
         try:
-#           vnd.google-apps://prrvchr@gmail.com/0AAtPs2F6BEgRUk9PVA
-#           vnd.google-apps://prrvchr@gmail.com/root
-#           vnd.google-apps://lesgeantsdusud@gmail.com/15HyYbehzPMCVFnjqcGRIGr5DjrjWzsTI
-#           vnd.google-apps://prrvchr@gmail.com/1brCJfoSt8DraCKpInyCj37bK5dkUhozE
             print("PyOptionsDialog._doConnect() 1")
-#            mri = self.ctx.ServiceManager.createInstance('mytools.Mri')
-            #handler = self.ctx.ServiceManager.createInstance("com.sun.star.sdb.InteractionHandler")
-            #db.IsPasswordRequired = True
-            #mri.inspect(db)
-            #authentication = gdrive.OAuth2Ooo(self.ctx, 'vnd.google-apps', 'prrvchr@gmail.com')
-            #url = gdrive.getResourceLocation(self.ctx, 'CachedContent.odb')
-            #db = self.ctx.ServiceManager.createInstance("com.sun.star.sdb.DatabaseContext").getByName(url)
-            #connection = db.getConnection('', '')
-            #statement = connection.prepareStatement('SELECT * FROM "Item1"')
-            #scheme = authentication.Scheme
-            #user = authentication.UserName
-            name = 'com.gmail.prrvchr.extensions.OAuth2OOo.OAuth2Service'
-            service = self.ctx.ServiceManager.createInstanceWithContext(name, self.ctx)
-            service.ResourceUrl = 'vnd.google-apps'
-            service.UserName = 'prrvchr@gmail.com'
-            token = service.Token
-#            mri.inspect(service)
+            #Need upload file here
             print("PyOptionsDialog._doConnect() 2")
         except Exception as e:
             print("PyOptionsDialog._doConnect().Error: %s - %s" % (e, traceback.print_exc()))
