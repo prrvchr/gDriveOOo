@@ -4,14 +4,19 @@
 import uno
 import unohelper
 
-from com.sun.star.lang import XServiceInfo
+from com.sun.star.lang import XServiceInfo, NoSupportException
 from com.sun.star.ucb import XContent, XCommandProcessor2, IllegalIdentifierException
 from com.sun.star.container import XChild
-from com.sun.star.lang import NoSupportException
+from com.sun.star.beans import UnknownPropertyException
+from com.sun.star.uno import Exception
 
-import gdrive
-from gdrive import PyComponent, PyInitialization, PyPropertyContainer, PyDynamicResultSet
-from gdrive import PyPropertiesChangeNotifier, PyPropertySetInfoChangeNotifier, PyCommandInfoChangeNotifier
+
+from gdrive import Component, Initialization, PropertiesChangeNotifier
+from gdrive import CommandInfo, PropertySetInfo, Row, InputStream, createService
+from gdrive import getItemUpdate, getResourceLocation, updateItem
+from gdrive import queryContent, queryContentIdentifier, getSimpleFile, getCommandInfo, getProperty
+from gdrive import getPropertyChangeEvent
+#from gdrive import PyPropertiesChangeNotifier, PyPropertySetInfoChangeNotifier, PyCommandInfoChangeNotifier, PyPropertyContainer
 import requests
 import traceback
 
@@ -20,16 +25,29 @@ g_ImplementationHelper = unohelper.ImplementationHelper()
 g_ImplementationName = 'com.gmail.prrvchr.extensions.gDriveOOo.DriveOfficeContent'
 
 
-class DriveOfficeContent(unohelper.Base, XServiceInfo, PyComponent, PyInitialization,
-                         PyPropertyContainer, XContent, XCommandProcessor2, XChild,
-                         PyPropertiesChangeNotifier, PyPropertySetInfoChangeNotifier, PyCommandInfoChangeNotifier):
+class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization, PropertiesChangeNotifier,
+                         XContent, XCommandProcessor2, XChild):
+#                         PyPropertyContainer, PyPropertiesChangeNotifier, PyPropertySetInfoChangeNotifier, PyCommandInfoChangeNotifier):
     def __init__(self, ctx, *namedvalues):
         try:
             self.ctx = ctx
             self.Scheme = None
             self.UserName = None
-            self.Connection = None
-            self.FileId = None
+            self.Id = None
+            self.ParentId = None
+            
+            self.ContentType = 'application/vnd.oasis.opendocument'
+            self.IsFolder = False
+            self.IsDocument = True
+            self._Title = 'Sans Nom'
+            
+            self.MediaType = None
+            self.Size = 0
+            self.DateModified = None
+            self.DateCreated = None
+            
+            self.IsReadOnly = False
+            self.BaseURI = None
             
             self.listeners = []
             self.contentListeners = []
@@ -39,71 +57,51 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, PyComponent, PyInitializa
             self.propertyInfoListeners = []
             #XCommandInfoChangeNotifier listeners
             self.commandInfoListeners = []
-            self.properties = self._getPropertySetInfo()
-            self.commands = self._getCommandInfo()
             #self.cmisProperties = self._getCmisProperties()
             self.Author = 'Pierre Vacher'
             self.Keywords = 'clefs de recherche'
             self.Subject = 'Test de GoogleDriveFileContent'
             #self.CmisProperties = gdrive.PyXCmisDocument(self.cmisProperties)
             
-            self._TempFile = None
-            self._Location = None
-            self.chunk = 262144
-            
             self.initialize(namedvalues)
+
+            #url = getResourceLocation(self.ctx, '%s.odb' % self.Scheme)
+            #db = self.ctx.ServiceManager.createInstance("com.sun.star.sdb.DatabaseContext").getByName(url)
+            #connection = db.getConnection('', '')
+            #query = uno.getConstantByName('com.sun.star.sdb.CommandType.QUERY')
+            #self.ItemSelect = connection.prepareCommand('getItem', query)
+            #self.itemSelect.setString(1, self.UserName)
+            #self.ItemUpdate = getItemUpdateStatement(connection, self.Id)
             
-            self.ItemSelect = gdrive.getItemSelectStatement(self.Connection, self.Scheme, self.UserName, self.FileId)
-            self.ItemUpdate = gdrive.getItemUpdateStatement(self.Connection, self.FileId)
-            
-            self.uri = gdrive.getResourceLocation(self.ctx, '%s/%s' % (self.Scheme, self.FileId))
-            self.authentication = gdrive.OAuth2Ooo(self.ctx, self.Scheme, self.UserName)
+            #self._setParentId()
             print("DriveOfficeContent.__init__()")
         except Exception as e:
             print("DriveOfficeContent.__init__().Error: %s - %e" % (e, traceback.print_exc()))
 
     @property
-    def Location(self):
-        return self._Location
-    @Location.setter
-    def Location(self, location):
-        print("DriveOfficeContent.Location.setter()")
-        sink = gdrive.PyActiveDataSink(self.auth, location, self.Size, self.MediaType, self.chunk)
-        sink.setInputStream(self.TempFile.getInputStream())
-        sink.addListener(gdrive.PyStreamListener())
-        sink.start()
-        self._Location = location
-
-    @property
-    def TempFile(self):
-        sf = gdrive.getSimpleFile(self.ctx)
-        uri = self._getTmpUri()
-        return sf.openFileReadWrite(uri)
-    @TempFile.setter
-    def TempFile(self, uri):
-        tmp = gdrive.getTempFile(self.ctx)
-        sf = gdrive.getSimpleFile(self.ctx)
-#        pump = gdrive.getPump(self.ctx)
-#        pump.setInputStream(sf.openFileRead(uri))
-#        pump.setOutputStream(tmp.getOutputStream())
-#        pump.addListener(gdrive.PyStreamListener())
-#        pump.start()
-        sf.writeFile(tmp.Uri, sf.openFileRead(uri))
-        self.Size = sf.getSize(tmp.Uri)
-        self._TempFile = tmp
+    def Title(self):
+        return self._Title
+    @Title.setter
+    def Title(self, title):
+        if 'Title' in self.propertiesListener:
+            events = (getPropertyChangeEvent(self, 'Title', self._Title, title), )
+            for listener in self.propertiesListener['Title']:
+                listener.propertiesChange(events)
+        self._Title = title
 
     # XChild
     def getParent(self):
         print("DriveOfficeContent.getParent() ***********************************************")
-        id = self._getParentId()
-        return gdrive.queryContent(self.ctx, self.Scheme, self.UserName, id)
-    def setParent(self):
+        identifier = '%s://%s/%s' % (self.Scheme, self.UserName, self.ParentId)
+        return queryContent(self.ctx, identifier)
+    def setParent(self, parent):
         print("DriveOfficeContent.setParent() ***********************************************")
-        raise NoSupportException('ParentsId can not be set', self)
+        raise NoSupportException('Parent can not be set', self)
 
     # XContent
     def getIdentifier(self):
-        return gdrive.queryContentIdentifier(self.ctx, self.Scheme, self.UserName, self.FileId)
+        identifier = '%s://%s/%s' % (self.Scheme, self.UserName, self.Id)
+        return queryContentIdentifier(self.ctx, identifier)
     def getContentType(self):
         return 'application/vnd.oasis.opendocument'
     def addContentEventListener(self, listener):
@@ -122,31 +120,32 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, PyComponent, PyInitializa
         try:
             print("DriveOfficeContent.execute(): %s" % command.Name)
             if command.Name == 'getCommandInfo':
-                return gdrive.PyCommandInfo(self.commands)
+                return CommandInfo(self._getCommandInfo())
             elif command.Name == 'getPropertySetInfo':
-                return gdrive.PyPropertySetInfo(self.properties)
+                return PropertySetInfo(self._getPropertySetInfo())
             elif command.Name == 'getPropertyValues':
-                return gdrive.Row(self.ItemSelect, command.Argument)
+                values = self._getPropertyValues(command.Argument)
+                return Row(values)
             elif command.Name == 'setPropertyValues':
-                result = []
-                arguments = {}
+                results = []
                 for property in command.Argument:
+                    result = Exception('SetProperty Exception', self)
                     if hasattr(property, 'Name') and hasattr(property, 'Value'):
-                        arguments[property.Name] = property.Value
-                    result.append(None)
-                self._setItem(arguments)
-                return result
+                        if hasattr(self, property.Name):
+                            setattr(self, property.Name, property.Value)
+                            result = None
+                        else:
+                            result = UnknownPropertyException('UnknownProperty: %s' % property.Name, self)
+                    results.append(result)
+                return tuple(results)
             elif command.Name == 'open':
-                print ("DriveOfficeContent.insert(): %s" % command.Argument.Mode)
+                print ("DriveOfficeContent.open(): %s" % command.Argument.Mode)
                 sink = command.Argument.Sink
-                readonly = self._getIsReadOnly()
-                if readonly and sink.queryInterface(uno.getTypeByName('com.sun.star.io.XActiveDataSink')):
-                    sink.setInputStream(self._getInputStream())
-                elif not readonly and sink.queryInterface(uno.getTypeByName('com.sun.star.io.XActiveDataStreamer')):
+                if self.IsReadOnly and sink.queryInterface(uno.getTypeByName('com.sun.star.io.XActiveDataSink')):
+                    sink.setInputStream(self._getStream().getInputStream())
+                elif not self.IsReadOnly and sink.queryInterface(uno.getTypeByName('com.sun.star.io.XActiveDataStreamer')):
                     sink.setStream(self._getStream())
                 return None
-            elif command.Name == 'insert':
-                print("DriveOfficeContent.insert():")
             elif command.Name == 'addProperty':
                 print("DriveOfficeContent.addProperty():")
             elif command.Name == 'removeProperty':
@@ -160,102 +159,69 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, PyComponent, PyInitializa
     def releaseCommandIdentifier(self, id):
         pass
 
-    def _setItem(self, values={}, id=None):
-        id = self.FileId if id is None else id
-        return gdrive.updateItem(self.ItemUpdate, self.ItemSelect, id, values)
-
-    def _getParentId(self):
-        result = self.ItemSelect.executeQuery()
-        result.next()
-        return result.getColumns().getByName('ParentId').getString()
-
-    def _getSize(self):
-        result = self.ItemSelect.executeQuery()
-        result.next()
-        return result.getColumns().getByName('Size').getLong()
-
-    def _getIsReadOnly(self):
-        result = self.ItemSelect.executeQuery()
-        result.next()
-        return result.getColumns().getByName('IsReadOnly').getBoolean()
+    def _getPropertyValues(self, properties):
+        values = []
+        for property in properties:
+            value = None
+            if hasattr(property, 'Name') and hasattr(self, property.Name):
+                value = getattr(self, property.Name)
+            else:
+                print("DriveOfficeContent._getPropertyValues().Error: %s " % (property.Name, ))
+            values.append(uno.createUnoStruct('com.sun.star.beans.NamedValue', property.Name, value))
+        return tuple(values)
 
     def _getStream(self):
-        sf = gdrive.getSimpleFile(self.ctx)
-        if not sf.exists(self.uri):
-            sf.writeFile(self.uri, gdrive.InputStream(self.authentication, self.FileId, self._getSize()))
-        return sf.openFileReadWrite(self.uri)
-
-    def _getInputStream(self):
-        sf = gdrive.getSimpleFile(self.ctx)
-        if not sf.exists(self.uri):
-            sf.writeFile(self.uri, gdrive.InputStream(self.authentication, self.FileId, self._getSize()))
-        return sf.openFileRead(self.uri)
-
-    def _getTempFiles(self, sink):
-        tmp = gdrive.getTempFile(self.ctx)
-        #source = gdrive.PyRemoteFileReader(self.auth, self.FileId, self.Size, self.chunk)
-        #sink = gdrive.PyTempFileWriter(temp, self.chunk)
-        #pipe = gdrive.getPipe(self.ctx)
-        pump = gdrive.getPump(self.ctx)
-        input = gdrive.PyInputStream(self.auth, self.FileId, self.Size)
-        #sink.setInputStream(pipe)
-        #source.setOutputStream(pipe)
-        pump.setInputStream(input)
-        pump.setOutputStream(tmp.getOutputStream())
-        listener = gdrive.PyStreamListener(sink, tmp)
-        pump.addListener(listener)
-        print("DriveOfficeContent._getPipe(): 1")
-        pump.start()
-        #sink.start()
-        #source.setOutputStream(temp.getOutputStream())
-        #source.start()
-        print("DriveOfficeContent._getPipe(): 2")
-        return tmp
-
-    def _getCmisProperties(self):
-        cmisProperties = {}
-        cmisProperties['name'] = gdrive.getCmisProperty('name', 'Title', self.Title, 'string')
-        return cmisProperties
+        sf = getSimpleFile(self.ctx)
+        uri = getResourceLocation(self.ctx, '%s/%s' % (self.Scheme, self.Id))
+        if not sf.exists(uri):
+            input = InputStream(self.ctx, self.Scheme, self.UserName, self.Id, self.Size)
+            sf.writeFile(uri, input)
+            input.closeInput()
+        stream = createService('com.sun.star.io.TempFile')
+        stream.RemoveFile = False
+        input = sf.openFileRead(uri)
+        sf.writeFile(stream.Uri, input)
+        input.closeInput()
+        return stream
 
     def _getCommandInfo(self):
         commands = {}
-        commands['getCommandInfo'] = gdrive.getCommand('getCommandInfo')
-        commands['getPropertySetInfo'] = gdrive.getCommand('getPropertySetInfo')
-        commands['getPropertyValues'] = gdrive.getCommand('getPropertyValues', '[]com.sun.star.beans.Property')
-        commands['setPropertyValues'] = gdrive.getCommand('setPropertyValues', '[]com.sun.star.beans.Property')
-        commands['addProperty'] = gdrive.getCommand('addProperty', 'com.sun.star.ucb.PropertyCommandArgument')
-        commands['removeProperty'] = gdrive.getCommand('removeProperty', 'string')
-        commands['open'] = gdrive.getCommand('open', 'com.sun.star.ucb.OpenCommandArgument2')
-#        commands['createNewContent'] = gdrive.getCommand('createNewContent', 'com.sun.star.ucb.ContentInfo')
-        commands['insert'] = gdrive.getCommand('insert', 'com.sun.star.ucb.InsertCommandArgument')
-        commands['close'] = gdrive.getCommand('close')
+        commands['getCommandInfo'] = getCommandInfo('getCommandInfo')
+        commands['getPropertySetInfo'] = getCommandInfo('getPropertySetInfo')
+        commands['getPropertyValues'] = getCommandInfo('getPropertyValues', '[]com.sun.star.beans.Property')
+        commands['setPropertyValues'] = getCommandInfo('setPropertyValues', '[]com.sun.star.beans.Property')
+        commands['addProperty'] = getCommandInfo('addProperty', 'com.sun.star.ucb.PropertyCommandArgument')
+        commands['removeProperty'] = getCommandInfo('removeProperty', 'string')
+        commands['open'] = getCommandInfo('open', 'com.sun.star.ucb.OpenCommandArgument2')
+#        commands['createNewContent'] = getCommandInfo('createNewContent', 'com.sun.star.ucb.ContentInfo')
+#        commands['insert'] = getCommandInfo('insert', 'com.sun.star.ucb.InsertCommandArgument')
+        commands['close'] = getCommandInfo('close')
         return commands
 
     def _getPropertySetInfo(self):
         properties = {}
         readonly = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.READONLY')
         transient = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.TRANSIENT')
-        properties['FileId'] = gdrive.getProperty('FileId', 'string', readonly)
-#        properties['ParentsId'] = gdrive.getProperty('ParentsId', '[]string', readonly)
-        properties['ContentType'] = gdrive.getProperty('ContentType', 'string', readonly)
-        properties['MediaType'] = gdrive.getProperty('MediaType', 'string', readonly)
-        properties['IsDocument'] = gdrive.getProperty('IsDocument', 'boolean', readonly)
-        properties['IsFolder'] = gdrive.getProperty('IsFolder', 'boolean', readonly)
-        properties['Title'] = gdrive.getProperty('Title', 'string', transient)
-        properties['Size'] = gdrive.getProperty('Size', 'long', readonly)
-        properties['DateModified'] = gdrive.getProperty('DateModified', 'com.sun.star.util.DateTime', readonly)
-        properties['DateCreated'] = gdrive.getProperty('DateCreated', 'com.sun.star.util.DateTime', readonly)
-        properties['IsReadOnly'] = gdrive.getProperty('IsReadOnly', 'boolean', readonly)
-        properties['BaseURI'] = gdrive.getProperty('BaseURI', 'string', readonly)
-        properties['TargetURL'] = gdrive.getProperty('TargetURL', 'string', readonly)
-        properties['TitleOnServer'] = gdrive.getProperty('TitleOnServer', 'string', readonly)
-        properties['IsVersionable'] = gdrive.getProperty('IsVersionable', 'boolean', readonly)
-        properties['CasePreservingURL'] = gdrive.getProperty('CasePreservingURL', 'string', readonly)
-#        properties['CreatableContentsInfo'] = gdrive.getProperty('CreatableContentsInfo', '[]com.sun.star.ucb.ContentInfo', readonly)
-#        properties['CmisProperties'] = gdrive.getProperty('CmisProperties', '[]com.sun.star.beans.PropertyValue', readonly)
-#        properties['Author'] = gdrive.getProperty('Author', 'string', transient)
-#        properties['Keywords'] = gdrive.getProperty('Keywords', 'string', transient)
-#        properties['Subject'] = gdrive.getProperty('Subject', 'string', transient)
+        properties['Id'] = getProperty('Id', 'string', readonly)
+        properties['ContentType'] = getProperty('ContentType', 'string', readonly)
+        properties['MediaType'] = getProperty('MediaType', 'string', readonly)
+        properties['IsDocument'] = getProperty('IsDocument', 'boolean', readonly)
+        properties['IsFolder'] = getProperty('IsFolder', 'boolean', readonly)
+        properties['Title'] = getProperty('Title', 'string', transient)
+        properties['Size'] = getProperty('Size', 'long', readonly)
+        properties['DateModified'] = getProperty('DateModified', 'com.sun.star.util.DateTime', readonly)
+        properties['DateCreated'] = getProperty('DateCreated', 'com.sun.star.util.DateTime', readonly)
+        properties['IsReadOnly'] = getProperty('IsReadOnly', 'boolean', readonly)
+        properties['BaseURI'] = getProperty('BaseURI', 'string', readonly)
+        properties['TargetURL'] = getProperty('TargetURL', 'string', readonly)
+        properties['TitleOnServer'] = getProperty('TitleOnServer', 'string', readonly)
+        properties['IsVersionable'] = getProperty('IsVersionable', 'boolean', readonly)
+        properties['CasePreservingURL'] = getProperty('CasePreservingURL', 'string', readonly)
+#        properties['CreatableContentsInfo'] = getProperty('CreatableContentsInfo', '[]com.sun.star.ucb.ContentInfo', readonly)
+#        properties['CmisProperties'] = getProperty('CmisProperties', '[]com.sun.star.beans.PropertyValue', readonly)
+#        properties['Author'] = getProperty('Author', 'string', transient)
+#        properties['Keywords'] = getProperty('Keywords', 'string', transient)
+#        properties['Subject'] = getProperty('Subject', 'string', transient)
         return properties
 
     def getCreatableContentsInfo(self):
@@ -263,7 +229,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, PyComponent, PyInitializa
         document = uno.getConstantByName('com.sun.star.ucb.ContentInfoAttribute.KIND_DOCUMENT')
         folder = uno.getConstantByName('com.sun.star.ucb.ContentInfoAttribute.KIND_FOLDER')
         ctype = 'application/vnd.google-apps.folder'
-        properties = (gdrive.getProperty('Title', 'string', transient), )
+        properties = (getProperty('Title', 'string', transient), )
         content = ()
         return content
 

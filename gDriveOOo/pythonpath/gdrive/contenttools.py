@@ -9,6 +9,17 @@ import requests
 import traceback
 
 
+def getPropertyChangeEvent(source, name, oldvalue, newvalue, further=False, handle=-1):
+    event = uno.createUnoStruct('com.sun.star.beans.PropertyChangeEvent')
+    event.Source = source
+    event.PropertyName = name
+    event.Further = further
+    event.PropertyHandle = handle
+    event.OldValue = oldvalue
+    event.NewValue = newvalue
+    print("contenttools.getPropertyChangeEvent")
+    return event
+    
 def getSimpleFile(ctx):
     return ctx.ServiceManager.createInstance('com.sun.star.ucb.SimpleFileAccess')
 
@@ -93,19 +104,12 @@ def createIdentifier(auth, url, title):
                 print("contenttools.createIdentifier(): %s" % id)
     return id
 
-def queryContentIdentifierString(scheme, username, id):
-    return '%s://%s/%s' % (scheme, username, id)
+def queryContentIdentifier(ctx, identifier):
+    return getUcb(ctx).createContentIdentifier(identifier)
 
-def queryContentIdentifier(ctx, scheme, username, id):
+def queryContent(ctx, identifier):
     ucb = getUcb(ctx)
-    identifier = queryContentIdentifierString(scheme, username, id)
-    return ucb.createContentIdentifier(identifier)
-
-def queryContent(ctx, scheme, username, id):
-    ucb = getUcb(ctx)
-    identifier = queryContentIdentifierString(scheme, username, id)
-    contentid = ucb.createContentIdentifier(identifier)
-    return ucb.queryContent(contentid)
+    return ucb.queryContent(ucb.createContentIdentifier(identifier))
 
 def getCmisProperty(id, name, value, typename, updatable=True, required=True, multivalued=False, openchoice=True, choices=None):
     property = uno.createUnoStruct('com.sun.star.document.CmisProperty')
@@ -158,7 +162,14 @@ def getDateTime(microsecond=0, second=0, minute=0, hour=0, day=1, month=1, year=
         t.IsUTC = utc
     return t
 
-def getCommand(name, typename=None, handle=-1):
+def getCommand(name, argument, handle=-1):
+    command = uno.createUnoStruct('com.sun.star.ucb.Command')
+    command.Name = name
+    command.Handle = handle
+    command.Argument = argument
+    return command
+
+def getCommandInfo(name, typename=None, handle=-1):
     command = uno.createUnoStruct('com.sun.star.ucb.CommandInfo')
     command.Name = name
     command.Handle = handle

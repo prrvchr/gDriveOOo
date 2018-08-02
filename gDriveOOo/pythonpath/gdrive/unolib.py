@@ -10,24 +10,28 @@ from com.sun.star.task import XInteractionHandler
 from com.sun.star.ucb import XCommandInfo, UnsupportedCommandException
 
 
-class PyComponent(XComponent):
+class Component(XComponent):
     def __init__(self):
         self.listeners = []
 
     # XComponent
     def dispose(self):
+        print("unolib.Component.dispose() 1")
         event = uno.createUnoStruct('com.sun.star.lang.EventObject', self)
         for listener in self.listeners:
             listener.disposing(event)
+        print("unolib.Component.dispose() 2 ********************************************************")
     def addEventListener(self, listener):
+        print("unolib.Component.addEventListener() *************************************************")
         if listener not in self.listeners:
             self.listeners.append(listener)
     def removeEventListener(self, listener):
+        print("unolib.Component.removeEventListener() **********************************************")
         if listener in self.listeners:
             self.listeners.remove(listener)
 
 
-class PyInitialization(XInitialization):
+class Initialization(XInitialization):
     # XInitialization
     def initialize(self, namedvalues=()):
         for namedvalue in namedvalues:
@@ -35,33 +39,13 @@ class PyInitialization(XInitialization):
                 setattr(self, namedvalue.Name, namedvalue.Value)
 
 
-class PyInteractionHandler(unohelper.Base, XInteractionHandler):
+class InteractionHandler(unohelper.Base, XInteractionHandler):
     # XInteractionHandler
     def handle(self, requester):
         pass
 
 
-class PyPropertySetInfo(unohelper.Base, XPropertySetInfo):
-    def __init__(self, properties={}):
-        self.properties = properties
-
-    # XPropertySetInfo
-    def getProperties(self):
-        print("PyPropertySetInfo.getProperties()")
-        return tuple(self.properties.values())
-    def getPropertyByName(self, name):
-        print("PyPropertySetInfo.getPropertyByName(): %s" % name)
-        if name in self.properties:
-            return self.properties[name]
-        print("PyPropertySetInfo.getPropertyByName() Error: %s" % name)
-        message = 'Cant getPropertyByName, UnknownProperty: %s' % name
-        raise UnknownPropertyException(message, self)
-    def hasPropertyByName(self, name):
-        print("PyPropertySetInfo.hasPropertyByName(): %s" % name)
-        return name in self.properties
-
-
-class PyCommandInfo(unohelper.Base, XCommandInfo):
+class CommandInfo(unohelper.Base, XCommandInfo):
     def __init__(self, commands={}):
         self.commands = commands
 
@@ -95,21 +79,23 @@ class PyCommandInfo(unohelper.Base, XCommandInfo):
         return False
 
 
-class PyPropertySet(XPropertySet):
-    def __init__(self, properties={}):
-        self.properties = properties
+class PropertySet(XPropertySet):
+    def _getPropertySetInfo(self):
+        raise NotImplementedError
 
     # XPropertySet
     def getPropertySetInfo(self):
-        return PyPropertySetInfo(self.properties)
+        properties = self._getPropertySetInfo()
+        return PropertySetInfo(properties)
     def setPropertyValue(self, name, value):
-        if name in self.properties and hasattr(self, name):
+        properties = self._getPropertySetInfo()
+        if name in properties and hasattr(self, name):
             setattr(self, name, value)
         else:
             message = 'Cant setPropertyValue, UnknownProperty: %s - %s' % (name, value)
             raise UnknownPropertyException(message, self)
     def getPropertyValue(self, name):
-        if name in self.properties and hasattr(self, name):
+        if name in self._getPropertySetInfo() and hasattr(self, name):
             return getattr(self, name)
         else:
             message = 'Cant getPropertyValue, UnknownProperty: %s' % name
@@ -124,17 +110,21 @@ class PyPropertySet(XPropertySet):
         pass
 
 
-class PyPropertyContainer(XPropertyContainer):
-    def __init__(self, properties={}):
+class PropertySetInfo(unohelper.Base, XPropertySetInfo):
+    def __init__(self, properties):
         self.properties = properties
 
-    # XPropertyContainer
-    def addProperty(self, name, attributes, defaultvalue):
-        typename = defaultvalue.getType().getTypeName()
-        self.properties[name] = getProperty(name, typename, attributes)
-        setattr(self, name, defaultvalue.getObject())
-    def removeProperty(self, name):
+    # XPropertySetInfo
+    def getProperties(self):
+        print("PyPropertySetInfo.getProperties()")
+        return tuple(self.properties.values())
+    def getPropertyByName(self, name):
+        print("PyPropertySetInfo.getPropertyByName(): %s" % name)
         if name in self.properties:
-            del self.properties[name]
-        if hasattr(self, name):
-            delattr(self, name)
+            return self.properties[name]
+        print("PyPropertySetInfo.getPropertyByName() Error: %s" % name)
+        message = 'Cant getPropertyByName, UnknownProperty: %s' % name
+        raise UnknownPropertyException(message, self)
+    def hasPropertyByName(self, name):
+        print("PyPropertySetInfo.hasPropertyByName(): %s" % name)
+        return name in self.properties

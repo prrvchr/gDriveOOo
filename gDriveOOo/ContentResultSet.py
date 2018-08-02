@@ -48,17 +48,17 @@ class ContentResultSet(unohelper.Base, XServiceInfo, XInitialization, XRow, XPro
         print("ContentResultSet.queryContentIdentifierString()")
         scheme = self.ResultSet.getColumns().getByName('Scheme').getString()
         username = self.ResultSet.getColumns().getByName('UserName').getString()
-        id = self.ResultSet.getColumns().getByName('FileId').getString()
+        id = self.ResultSet.getColumns().getByName('Id').getString()
         return gdrive.queryContentIdentifierString(scheme, username, id)
     def queryContentIdentifier(self):
         scheme = self.ResultSet.getColumns().getByName('Scheme').getString()
         username = self.ResultSet.getColumns().getByName('UserName').getString()
-        id = self.ResultSet.getColumns().getByName('FileId').getString()
+        id = self.ResultSet.getColumns().getByName('Id').getString()
         return gdrive.queryContentIdentifier(self.ctx, scheme, username, id)
     def queryContent(self):
         scheme = self.ResultSet.getColumns().getByName('Scheme').getString()
         username = self.ResultSet.getColumns().getByName('UserName').getString()
-        id = self.ResultSet.getColumns().getByName('FileId').getString()
+        id = self.ResultSet.getColumns().getByName('Id').getString()
         return gdrive.queryContent(self.ctx, scheme, username, id)
 
     # XInitialization

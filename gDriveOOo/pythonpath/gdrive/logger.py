@@ -3,7 +3,7 @@
 
 import uno
 
-from . import unotools
+from .unotools import getConfiguration
 
 
 def getLogger(ctx, logger='org.openoffice.logging.DefaultLogger'):
@@ -65,12 +65,12 @@ def _getLogLevels():
 
 def _getLoggerConfiguration(ctx, logger='org.openoffice.logging.DefaultLogger'):
     nodepath = '/org.openoffice.Office.Logging/Settings'
-    configuration = unotools.getConfiguration(ctx, nodepath, True)
+    configuration = getConfiguration(ctx, nodepath, True)
     if not configuration.hasByName(logger):
         configuration.insertByName(logger, configuration.createInstance())
         configuration.commitChanges()
     nodepath += '/%s' % logger
-    return unotools.getConfiguration(ctx, nodepath, True)
+    return getConfiguration(ctx, nodepath, True)
 
 def _logToConsole(ctx, threshold=None, logger='org.openoffice.logging.DefaultLogger'):
     configuration = _getLoggerConfiguration(ctx, logger)

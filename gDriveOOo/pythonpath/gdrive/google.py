@@ -9,6 +9,7 @@ from com.sun.star.io import XActiveDataSource, XActiveDataSink, XActiveDataContr
 import requests
 import sys
 
+
 if sys.version_info[0] < 3:
     requests.packages.urllib3.disable_warnings()
 
@@ -17,28 +18,84 @@ g_itemfields = 'id,parents,name,mimeType,size,createdTime,modifiedTime,capabilit
 g_childfields = 'kind,nextPageToken,files(%s)' % g_itemfields
 g_chunk = 262144
 g_pages = 100
+g_count = 10
+g_timeout = 15
 
 
-def getItem(authentication, id):
+class OAuth2Ooo(object):
+    def __init__(self, ctx, scheme=None, username=None):
+        name = 'com.gmail.prrvchr.extensions.OAuth2OOo.OAuth2Service'
+        self.service = ctx.ServiceManager.createInstanceWithContext(name, ctx)
+        if scheme is not None:
+            self.service.ResourceUrl = scheme
+        if username is not None:
+            self.service.UserName = username
+    
+    @property
+    def UserName(self):
+        return self.service.UserName
+    @UserName.setter
+    def UserName(self, username):
+        self.service.UserName = username
+    @property
+    def Scheme(self):
+        return self.service.ResourceUrl
+    @Scheme.setter
+    def Scheme(self, url):
+        self.service.ResourceUrl = url
+
+    def __call__(self, request):
+        request.headers['Authorization'] = 'Bearer %s' % self.service.Token
+        return request
+
+
+def getItem(ctx, scheme, username, id):
+    authentication = OAuth2Ooo(ctx, scheme, username)
     result = {}
-    timeout = 10
     url = '%s/%s' % (g_url, id)
     params = {}
     params['fields'] = g_itemfields
-    with requests.get(url, params=params, timeout=timeout, auth=authentication) as r:
+    with requests.get(url, params=params, timeout=g_timeout, auth=authentication) as r:
         print("google.getItem(): %s" % r.json())
         if r.status_code == requests.codes.ok:
             result = r.json()
     return result
 
 
+class IdGenerator():
+    def __init__(self, ctx, scheme, username, space='drive'):
+        print("google.IdGenerator.__init__()")
+        self.authentication = OAuth2Ooo(ctx, scheme, username)
+        self.params = {'count': g_count, 'space': space}
+        print("google.IdGenerator.__init__()")
+    def __iter__(self):
+        self.session = requests.Session()
+        self.ids = self._getIds()
+        return self
+    def __next__(self):
+        if self.ids:
+            return self.ids.pop(0)
+        raise StopIteration
+    def next(self):
+        return self.__next__()
+    def _getIds(self):
+        ids = []
+        url = '%s/generateIds' % g_url
+        with self.session.get(url, params=self.params, timeout=g_timeout, auth=self.authentication) as r:
+            print("google.IdGenerator(): %s" % r.json())
+            if r.status_code == requests.codes.ok:
+                result = r.json()
+                if 'ids' in result:
+                    ids = result['ids']
+        return ids
+
+
 class ChildGenerator():
-    def __init__(self, authentication, id, timeout=15):
+    def __init__(self, ctx, scheme, username, id):
         print("google.ChildGenerator.__init__()")
-        self.authentication = authentication
+        self.authentication = OAuth2Ooo(ctx, scheme, username)
         self.params = {'fields': g_childfields, 'pageSize': g_pages}
         self.params['q'] = "'%s' in parents" % id
-        self.timeout = timeout
         print("google.ChildGenerator.__init__()")
     def __iter__(self):
         self.session = requests.Session()
@@ -57,7 +114,7 @@ class ChildGenerator():
         self.params['pageToken'] = token
         rows = []
         token = None
-        with self.session.get(g_url, params=self.params, timeout=self.timeout, auth=self.authentication) as r:
+        with self.session.get(g_url, params=self.params, timeout=g_timeout, auth=self.authentication) as r:
             print("google.ChildGenerator(): %s" % r.json())
             if r.status_code == requests.codes.ok:
                 result = r.json()
@@ -69,12 +126,11 @@ class ChildGenerator():
 
 
 class InputStream(unohelper.Base, XInputStream):
-    def __init__(self, auth, id, size, timeout=15):
-        self.auth = auth
+    def __init__(self, ctx, scheme, username, id, size):
+        self.authentication = OAuth2Ooo(ctx, scheme, username)
         self.url = '%s/%s' % (g_url, id)
         self.size = size
         self.start = 0
-        self.timeout = timeout
         self.session = requests.Session()
 
     #XInputStream
@@ -88,7 +144,7 @@ class InputStream(unohelper.Base, XInputStream):
         headers['Range'] = 'bytes=%s-%s' % (self.start, self.start + chunk -1)
         length, sequence = 0, uno.ByteSequence(b'')
         print("google.InputStream.start() 2: %s" % (headers['Range'], ))
-        with self.session.get(self.url, headers=headers, params=params, timeout=self.timeout, auth=self.auth) as r:
+        with self.session.get(self.url, headers=headers, params=params, timeout=g_timeout, auth=self.authentication) as r:
             print("google.InputStream.start() 3: %s - %s" % (r.status_code, r.headers))
             if r.status_code == requests.codes.partial_content or \
                r.status_code == requests.codes.ok:
@@ -106,6 +162,7 @@ class InputStream(unohelper.Base, XInputStream):
     def available(self):
         return self.size - self.start
     def closeInput(self):
+        self.session.close()
         self.start = 0
 
 
@@ -145,7 +202,7 @@ class ActiveDataSource(unohelper.Base, XActiveDataSource, XActiveDataControl):
             end = min(start + chunk -1, self.size -1)
             headers['Range'] = 'bytes=%s-%s' % (start, end)
             print("google.ActiveDataSource.start()2: %s" % (headers['Range'], ))
-            with session.get(self.url, headers=headers, params=params, auth=self.auth) as r:
+            with session.get(self.url, headers=headers, params=params, timeout=g_timeout, auth=self.auth) as r:
                 print("google.ActiveDataSource.start()3: %s - %s" % (r.status_code, r.headers))
                 if r.status_code == requests.codes.partial_content or \
                    r.status_code == requests.codes.ok:
@@ -199,7 +256,7 @@ class ActiveDataSink(unohelper.Base, XActiveDataSink, XActiveDataControl):
         session = requests.Session()
         headers = {}
         headers['Content-Range'] = 'bytes */%s' % self.size
-        with session.put(self.location, headers=headers, auth=self.auth) as r:
+        with session.put(self.location, headers=headers, timeout=g_timeout, auth=self.auth) as r:
             if r.status_code == requests.codes.ok:
                 if 'Range' in r.headers:
                     start = int(r.headers['Range'].split('-')[-1]) +1

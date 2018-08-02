@@ -15,13 +15,7 @@
     <manifest:file-entry manifest:media-type="application/vnd.sun.star.uno-component;type=Python"
         manifest:full-path="DriveFolderContent.py"/>
     <manifest:file-entry manifest:media-type="application/vnd.sun.star.uno-component;type=Python"
-        manifest:full-path="DriveFileContent.py"/>
-    <manifest:file-entry manifest:media-type="application/vnd.sun.star.uno-component;type=Python"
         manifest:full-path="DriveOfficeContent.py"/>
-    <manifest:file-entry manifest:media-type="application/vnd.sun.star.uno-component;type=Python"
-        manifest:full-path="DriveDocumentContent.py"/>
-    <manifest:file-entry manifest:media-type="application/vnd.sun.star.uno-component;type=Python"
-        manifest:full-path="DriveLinkContent.py"/>
     <manifest:file-entry manifest:media-type="application/vnd.sun.star.uno-component;type=Python"
         manifest:full-path="ContentResultSet.py"/>
     <manifest:file-entry manifest:media-type="application/vnd.sun.star.configuration-data"

@@ -3,10 +3,9 @@
 
 import uno
 
+from .unolib import InteractionHandler
+
 import binascii
-
-from . import unolib
-
 
 def getOfficeProductName(ctx):
     return getConfiguration(ctx, '/org.openoffice.Setup/Product').getByName('ooName')
@@ -73,7 +72,7 @@ def getStringResource(ctx, locale=None, filename='DialogStrings'):
     location = getResourceLocation(ctx)
     if locale is None:
         locale = getCurrentLocale(ctx)
-    arguments = (location, True, locale, filename, '', unolib.PyInteractionHandler())
+    arguments = (location, True, locale, filename, '', InteractionHandler())
     return ctx.ServiceManager.createInstanceWithArgumentsAndContext(service, arguments, ctx)
 
 def generateUuid():

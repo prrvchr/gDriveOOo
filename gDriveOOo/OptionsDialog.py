@@ -7,7 +7,8 @@ import unohelper
 from com.sun.star.lang import XServiceInfo
 from com.sun.star.awt import XContainerWindowEventHandler
 
-import gdrive
+from gdrive import getStringResource, getFileSequence, createService
+from gdrive import getLoggerUrl, getLoggerSetting, setLoggerSetting
 import traceback
 
 # pythonloader looks for a static g_ImplementationHelper variable
@@ -19,7 +20,7 @@ class OptionsDialog(unohelper.Base, XServiceInfo, XContainerWindowEventHandler):
     def __init__(self, ctx):
         try:
             self.ctx = ctx
-            self.stringResource = gdrive.getStringResource(self.ctx, None, 'OptionsDialog')
+            self.stringResource = getStringResource(self.ctx, None, 'OptionsDialog')
         except Exception as e:
             print("PyOptionsDialog.__init__().Error: %s - %s" % (e, traceback.print_exc()))
 
@@ -71,18 +72,21 @@ class OptionsDialog(unohelper.Base, XServiceInfo, XContainerWindowEventHandler):
         dialog.getControl('CommandButton1').Model.Enabled = enabled
 
     def _doView(self, window):
-        url = gdrive.getLoggerUrl(self.ctx)
-        length, sequence = gdrive.getFileSequence(self.ctx, url)
+        url = getLoggerUrl(self.ctx)
+        length, sequence = getFileSequence(self.ctx, url)
         text = sequence.value.decode('utf-8')
-        url = 'vnd.sun.star.script:gDriveOOo.LogDialog?location=application'
-        dialog = gdrive.createService('com.sun.star.awt.DialogProvider', self.ctx).createDialog(url)
+        dialog = self._getLogDialog()
         dialog.Title = url
         dialog.getControl('TextField1').Text = text
         dialog.execute()
         dialog.dispose()
 
+    def _getLogDialog(self):
+        url = 'vnd.sun.star.script:gDriveOOo.LogDialog?location=application'
+        return createService('com.sun.star.awt.DialogProvider', self.ctx).createDialog(url)
+
     def _loadLoggerSetting(self, dialog):
-        enabled, index, handler = gdrive.getLoggerSetting(self.ctx)
+        enabled, index, handler = getLoggerSetting(self.ctx)
         dialog.getControl('CheckBox1').State = int(enabled)
         self._setLoggerLevel(dialog.getControl('ComboBox1'), index)
         dialog.getControl('OptionButton%s' % handler).State = 1
@@ -105,7 +109,8 @@ class OptionsDialog(unohelper.Base, XServiceInfo, XContainerWindowEventHandler):
         enabled = bool(dialog.getControl('CheckBox1').State)
         index = self._getLoggerLevel(dialog.getControl('ComboBox1'))
         handler = dialog.getControl('OptionButton1').State
-        gdrive.setLoggerSetting(self.ctx, enabled, index, handler)
+        setLoggerSetting(self.ctx, enabled, index, handler)
+        setLoggerSetting(self.ctx, enabled, index, handler)
 
     # XServiceInfo
     def supportsService(self, service):
