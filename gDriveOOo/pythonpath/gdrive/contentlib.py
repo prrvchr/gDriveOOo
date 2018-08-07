@@ -86,17 +86,13 @@ class Row(unohelper.Base, XRow):
         
 
 class DynamicResultSet(unohelper.Base, XDynamicResultSet):
-    def __init__(self, ctx, connection, scheme, username, id, arguments):
+    def __init__(self, ctx, select):
         self.ctx = ctx
-        self.connection = connection
-        self.scheme = scheme
-        self.username = username
-        self.id = id
-        self.properties = arguments.Properties
+        self.select = select
 
     # XDynamicResultSet
     def getStaticResultSet(self):
-        return ContentResultSet(self.ctx, self.connection, self.scheme, self.username, self.id, self.properties)
+        return ContentResultSet(self.ctx, self.select,)
     def setListener(self, listener):
         print("DynamicResultSet.setListener():")
         pass
@@ -110,9 +106,8 @@ class DynamicResultSet(unohelper.Base, XDynamicResultSet):
 
 class ContentResultSet(unohelper.Base, PropertySet, XComponent, XRow, XResultSet, XResultSetMetaDataSupplier,
                        XCloseable, XContentAccess):
-    def __init__(self, ctx, connection, scheme, username, id, properties):
+    def __init__(self, ctx, select):
         self.ctx = ctx
-        select = getChildSelect(connection, username, id, properties)
         self.resultset = select.executeQuery()
         self.resultset.last()
         self.RowCount = self.resultset.Row

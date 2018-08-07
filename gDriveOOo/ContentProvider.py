@@ -35,6 +35,8 @@ class ContentProvider(unohelper.Base, Component, XServiceInfo, XContentProvider,
             self.ctx = ctx
             self.UserName = None
             self.Root = {}
+            self.Logger = getLogger(self.ctx)
+            #self.Connection = getDbConnection(self.ctx, g_Scheme, True)
             #mri = self.ctx.ServiceManager.createInstance('mytools.Mri')
             #mri.inspect(self.connection)
             print("ContentProvider.__init__()")
@@ -64,7 +66,7 @@ class ContentProvider(unohelper.Base, Component, XServiceInfo, XContentProvider,
                     event.Content.addPropertiesChangeListener(('IsInCache', 'Title', 'Size'), self)
                     parent = self.queryContent(event.Id)
                     parent.notify(event)
-            #connection.close()
+            connection.close()
 
     # XPropertiesChangeListener
     def propertiesChange(self, events):
@@ -72,20 +74,20 @@ class ContentProvider(unohelper.Base, Component, XServiceInfo, XContentProvider,
         for event in events:
             level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
             id = getContentProperties(event.Source, ('Id', )).getString(1)
-            getLogger().logp(level, "ContentProvider", "propertiesChange()", "Id: %s Property saved: %s ..." % (id, event.PropertyName))
+            self.Logger.logp(level, "ContentProvider", "propertiesChange()", "Id: %s Property saved: %s ..." % (id, event.PropertyName))
             if updateItem(connection, id, event.PropertyName, event.NewValue):
-                getLogger().logp(level, "ContentProvider", "propertiesChange()", "Id: %s Property saved: %s ... Done" % (id, event.PropertyName))
+                self.Logger.logp(level, "ContentProvider", "propertiesChange()", "Id: %s Property saved: %s ... Done" % (id, event.PropertyName))
             else:
                 level = uno.getConstantByName("com.sun.star.logging.LogLevel.SEVERE")
-                getLogger().logp(level, "ContentProvider", "propertiesChange()", "Id: %s Can't save Property: %s" % (id, event.PropertyName))
-        #connection.close()
+                self.Logger.logp(level, "ContentProvider", "propertiesChange()", "Id: %s Can't save Property: %s" % (id, event.PropertyName))
+        connection.close()
     def disposing(self, source):
         print("ContentProvider.disposing() %s" % (source, ))
 
     # XContentIdentifierFactory
     def createContentIdentifier(self, identifier):
         level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
-        getLogger().logp(level, "ContentProvider", "createContentIdentifier()", "Identifier: %s ..." % identifier)
+        self.Logger.logp(level, "ContentProvider", "createContentIdentifier()", "Identifier: %s ..." % identifier)
         uri = getUri(self.ctx, identifier)
         if uri.hasAuthority() and self.UserName != uri.getAuthority():
             self._setUserName(uri.getAuthority())
@@ -95,10 +97,10 @@ class ContentProvider(unohelper.Base, Component, XServiceInfo, XContentProvider,
         if id == 'new':
             connection = getDbConnection(self.ctx, g_Scheme)
             id = getNewId(self.ctx, g_Scheme, self.UserName, connection)
-            #connection.close()
-            getLogger().logp(level, "ContentProvider", "createContentIdentifier()", "New Identifier: %s ..." % id)
+            connection.close()
+            self.Logger.logp(level, "ContentProvider", "createContentIdentifier()", "New Identifier: %s ..." % id)
         identifier = '%s://%s/%s' % (g_Scheme, self.UserName, id)
-        getLogger().logp(level, "ContentProvider", "createContentIdentifier()", "Identifier: %s ... Done" % identifier)
+        self.Logger.logp(level, "ContentProvider", "createContentIdentifier()", "Identifier: %s ... Done" % identifier)
         return ContentIdentifier(g_Scheme, identifier)
 
     # XParameterizedContentProvider
@@ -110,7 +112,7 @@ class ContentProvider(unohelper.Base, Component, XServiceInfo, XContentProvider,
     # XContentProvider
     def queryContent(self, identifier):
         level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
-        getLogger().logp(level, "ContentProvider", "queryContent()", "Identifier: %s..." % identifier.getContentIdentifier())
+        self.Logger.logp(level, "ContentProvider", "queryContent()", "Identifier: %s..." % identifier.getContentIdentifier())
         media = 'application/vnd.google-apps.folder'
         arguments = self.Root
         connection = getDbConnection(self.ctx, g_Scheme)
@@ -132,7 +134,7 @@ class ContentProvider(unohelper.Base, Component, XServiceInfo, XContentProvider,
                     media, arguments = self._getMediaTypeFromResult(result)
             else:
                 raise IllegalIdentifierException('Invalid Identifier: %s' % identifier.getContentIdentifier(), self)
-        #connection.close()
+        connection.close()
         name = 'com.gmail.prrvchr.extensions.gDriveOOo.'
         if media == 'application/vnd.google-apps.folder':
             name += 'DriveFolderContent' if id != self.Root['Id'] else 'DriveRootContent'
@@ -142,7 +144,7 @@ class ContentProvider(unohelper.Base, Component, XServiceInfo, XContentProvider,
             raise IllegalIdentifierException('ContentType is unknown: %s' % media, self)
         service = createService(name, self.ctx, **arguments)
         service.addPropertiesChangeListener(('IsInCache', 'Title', 'Size'), self)
-        getLogger().logp(level, "ContentProvider", "queryContent()", "Identifier: %s... Done" % identifier.getContentIdentifier())
+        self.Logger.logp(level, "ContentProvider", "queryContent()", "Identifier: %s... Done" % identifier.getContentIdentifier())
         return service
 
     def compareContentIds(self, identifier1, identifier2):
@@ -160,13 +162,13 @@ class ContentProvider(unohelper.Base, Component, XServiceInfo, XContentProvider,
 
     def _setUserName(self, username):
         level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
-        getLogger().logp(level, "ContentProvider", "UserName.setter()", "UserName: %s..." % username)
+        self.Logger.logp(level, "ContentProvider", "UserName.setter()", "UserName: %s..." % username)
         if self._getRoot(username):
             self.UserName = username
-            getLogger().logp(level, "ContentProvider", "UserName.setter()", "UserName: %s... Done" % username)
+            self.Logger.logp(level, "ContentProvider", "UserName.setter()", "UserName: %s... Done" % username)
         else:
             level = uno.getConstantByName("com.sun.star.logging.LogLevel.SEVERE")
-            getLogger().logp(level, "ContentProvider", "UserName.setter()", "UserName: %s... ERROR" % username)
+            self.Logger.logp(level, "ContentProvider", "UserName.setter()", "UserName: %s... ERROR" % username)
             raise IllegalIdentifierException('Identifier has no Authority: %s' % username, self)
 
     def _getRoot(self, username):
@@ -184,6 +186,7 @@ class ContentProvider(unohelper.Base, Component, XServiceInfo, XContentProvider,
                 if result.next():
                     self.Root = self._getArgumentsFromResult(result, username)
                     retrived = True
+        connection.close()
         return retrived
 
     def _getMediaTypeFromResult(self, result):
@@ -191,9 +194,8 @@ class ContentProvider(unohelper.Base, Component, XServiceInfo, XContentProvider,
         return arguments['MediaType'], arguments
 
     def _getArgumentsFromResult(self, result, username):
-        arguments = {'Scheme': g_Scheme, 'UserName': username}
-        for i in range(result.MetaData.ColumnCount):
-            index = i + 1
+        arguments = {'Scheme': g_Scheme, 'UserName': username, 'Logger': self.Logger}
+        for index in range(1, result.MetaData.ColumnCount +1):
             dbtype = result.MetaData.getColumnTypeName(index)
             if dbtype == 'VARCHAR':
                 value = result.getString(index)

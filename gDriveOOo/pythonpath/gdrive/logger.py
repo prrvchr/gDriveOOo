@@ -6,8 +6,10 @@ import uno
 from .unotools import getConfiguration
 
 
-def getLogger(logger='org.openoffice.logging.DefaultLogger'):
-    return uno.getComponentContext().getValueByName('/singletons/com.sun.star.logging.LoggerPool').getNamedLogger(logger)
+def getLogger(ctx=None, logger='org.openoffice.logging.DefaultLogger'):
+    if ctx is None:
+        ctx = uno.getComponentContext()
+    return ctx.getValueByName('/singletons/com.sun.star.logging.LoggerPool').getNamedLogger(logger)
 
 def getLoggerSetting(ctx, logger='org.openoffice.logging.DefaultLogger'):
     enabled, index = _getLogIndex(ctx, logger)

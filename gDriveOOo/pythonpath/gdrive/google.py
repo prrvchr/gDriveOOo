@@ -19,7 +19,7 @@ g_childfields = 'kind,nextPageToken,files(%s)' % g_itemfields
 g_chunk = 262144
 g_pages = 100
 g_count = 10
-g_timeout = 15
+g_timeout = (15, 60)
 
 
 class OAuth2Ooo(object):

@@ -8,7 +8,7 @@ from com.sun.star.lang import XServiceInfo
 from com.sun.star.awt import XContainerWindowEventHandler
 
 from gdrive import getStringResource, getFileSequence, createService
-from gdrive import getLoggerUrl, getLoggerSetting, setLoggerSetting
+from gdrive import getLoggerUrl, getLoggerSetting, setLoggerSetting, getLogger
 
 from gdrive import getItem, getDbConnection, executeUserInsert, executeUpdateInsertItem
 import traceback
@@ -56,9 +56,9 @@ class OptionsDialog(unohelper.Base, XServiceInfo, XContainerWindowEventHandler):
         try:
             print("PyOptionsDialog._doConnect() 1")
             #Need upload file here
+            level = uno.getConstantByName("com.sun.star.logging.LogLevel.SEVERE")
+            getLogger().logp(level, "OptionsDialog", "_doConnect()", "Test:")
             print("PyOptionsDialog._doConnect() 7")
-        except com.sun.star.uno.Exception as e:
-            print("PyOptionsDialog._doConnect().Error: %s - %s" % (e.Message, traceback.print_exc()))
         except Exception as e:
             print("PyOptionsDialog._doConnect().Error: %s - %s" % (e, traceback.print_exc()))
 

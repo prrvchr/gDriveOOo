@@ -24,7 +24,7 @@ def updateChildren(ctx, connection, scheme, username, id):
 
 # LibreOffice Column: ['Title', 'Size', 'DateModified', 'DateCreated', 'IsFolder', 'TargetURL', 'IsHidden', 'IsVolume', 'IsRemote', 'IsRemoveable', 'IsFloppy', 'IsCompactDisc']
 # OpenOffice Columns: ['Title', 'Size', 'DateModified', 'DateCreated', 'IsFolder', 'TargetURL', 'IsHidden', 'IsVolume', 'IsRemote', 'IsRemoveable', 'IsFloppy', 'IsCompactDisc']
-def _getChildSelectColumns(username, properties):
+def _getChildSelectColumns(username, properties, logger):
     columns = []
     fields = {}
     fields['Title'] = '"I"."Title"'
@@ -44,11 +44,11 @@ def _getChildSelectColumns(username, properties):
             columns.append('%s "%s"' % (fields[property.Name], property.Name))
         else:
             level = uno.getConstantByName("com.sun.star.logging.LogLevel.SEVERE")
-            getLogger().logp(level, "children", "_getChildSelectColumns()", "Column not found: %s... ERROR" % property.Name)
+            logger.logp(level, "children", "_getChildSelectColumns()", "Column not found: %s... ERROR" % property.Name)
     return columns
 
-def getChildSelect(connection, username, id, properties):
-    columns = ', '.join(_getChildSelectColumns(username, properties))
+def getChildSelect(connection, username, id, properties, logger):
+    columns = ', '.join(_getChildSelectColumns(username, properties, logger))
     query = 'SELECT %s FROM "Items" AS "I" JOIN "Children" AS "C" ON "I"."Id" = "C"."Id" WHERE "C"."ParentId" = ?' % columns
     select = connection.prepareStatement(query)
     select.ResultSetType = uno.getConstantByName('com.sun.star.sdbc.ResultSetType.SCROLL_SENSITIVE')

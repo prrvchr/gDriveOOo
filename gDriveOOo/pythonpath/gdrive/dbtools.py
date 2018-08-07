@@ -7,15 +7,18 @@ from .unotools import getResourceLocation, getPropertyValue
 import datetime
 
 g_url = 'jdbc:hsqldb:%s/%s%s'
-g_options = ';default_schema=true;shutdown=true;hsqldb.default_table_type=cached;get_column_name=false'
+#g_options = ';default_schema=true;shutdown=true;hsqldb.default_table_type=cached;get_column_name=false'
+g_options = ';default_schema=true;hsqldb.default_table_type=cached;get_column_name=false;ifexists=true'
 g_class = 'org.hsqldb.jdbc.JDBCDriver'
 g_path = '%s/hsqldb.jar'
 
 
-def getDbConnection(ctx, scheme, url=None):
+def getDbConnection(ctx, scheme, shutdown=False, url=None):
     location = getResourceLocation(ctx, 'hsqldb') if url is None else url
     pool = ctx.ServiceManager.createInstance('com.sun.star.sdbc.ConnectionPool')
     url = g_url % (location, scheme, g_options)
+    if shutdown:
+        url += ';shutdown=true'
     args = (getPropertyValue('JavaDriverClass', g_class), 
             getPropertyValue('JavaDriverClassPath', g_path % location))
     return pool.getConnectionWithInfo(url, args)

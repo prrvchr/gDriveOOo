@@ -7,7 +7,7 @@ from .users import getRootSelect, executeUserInsert
 from .items import getItemSelect, executeItemInsert, getItemInsert, getItemUpdate
 from .items import executeUpdateInsertItem, updateItem
 
-from .children import updateChildren, insertParent
+from .children import updateChildren, getChildSelect, insertParent
 
 from .ids import getNewId
 

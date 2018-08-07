@@ -4,12 +4,10 @@
 import uno
 import unohelper
 
+from com.sun.star.beans import XPropertyContainer
+from com.sun.star.container import XChild
 from com.sun.star.lang import XServiceInfo, NoSupportException
 from com.sun.star.ucb import XContent, XCommandProcessor2, IllegalIdentifierException
-from com.sun.star.container import XChild
-from com.sun.star.beans import UnknownPropertyException
-from com.sun.star.uno import Exception as UnoException
-
 
 from gdrive import Component, Initialization, PropertiesChangeNotifier, getPropertiesValues
 from gdrive import CommandInfo, PropertySetInfo, Row, InputStream, createService
@@ -26,7 +24,7 @@ g_ImplementationName = 'com.gmail.prrvchr.extensions.gDriveOOo.DriveOfficeConten
 
 
 class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization, PropertiesChangeNotifier,
-                         XContent, XCommandProcessor2, XChild):
+                         XContent, XCommandProcessor2, XChild, XPropertyContainer):
 #                         PyPropertyContainer, PyPropertiesChangeNotifier, PyPropertySetInfoChangeNotifier, PyCommandInfoChangeNotifier):
     def __init__(self, ctx, *namedvalues):
         try:
@@ -65,9 +63,14 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
             self.Subject = 'Test de GoogleDriveFileContent'
             #self.CmisProperties = gdrive.PyXCmisDocument(self.cmisProperties)
             
+            self.Logger = None
             self.initialize(namedvalues)
             
-            self.TitleOnServer = self.Id
+            level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
+            self.Logger.logp(level, "DriveOfficeContent", "__init__()", "OfficeContent of ContentType: %s... loading Done" % self.ContentType)
+            
+            self.TitleOnServer = '%s://%s/%s' % (self.Scheme, self.UserName, self.Id)
+            self.BaseURI = '%s://%s/%s' % (self.Scheme, self.UserName, self.Id)
 
             #url = getResourceLocation(self.ctx, '%s.odb' % self.Scheme)
             #db = self.ctx.ServiceManager.createInstance("com.sun.star.sdb.DatabaseContext").getByName(url)
@@ -89,6 +92,12 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
     def Title(self, title):
         propertyChange(self, 'Title', self._Title, title)
         self._Title = title
+
+    # XPropertyContainer
+    def addProperty(self, name, attribute, default):
+        print("DriveOfficeContent.addProperty()")
+    def removeProperty(self, name):
+        print("DriveOfficeContent.removeProperty()")
 
      # XChild
     def getParent(self):
@@ -125,10 +134,10 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
             elif command.Name == 'getPropertySetInfo':
                 return PropertySetInfo(self._getPropertySetInfo())
             elif command.Name == 'getPropertyValues':
-                namedvalues = getPropertiesValues(self, command.Argument)
+                namedvalues = getPropertiesValues(self, command.Argument, self.Logger)
                 return Row(namedvalues)
             elif command.Name == 'setPropertyValues':
-                return setPropertiesValues(self, command.Argument)
+                return setPropertiesValues(self, command.Argument, self.Logger)
             elif command.Name == 'open':
                 print ("DriveOfficeContent.open(): %s" % command.Argument.Mode)
                 sink = command.Argument.Sink

@@ -18,18 +18,21 @@ def propertyChange(source, name, oldvalue, newvalue):
         for listener in source.propertiesListener[name]:
             listener.propertiesChange(events)
 
-def getPropertiesValues(source, properties):
+def getPropertiesValues(source, properties, logger):
     namedvalues = []
     for property in properties:
         value = None
         if hasattr(property, 'Name') and hasattr(source, property.Name):
             value = getattr(source, property.Name)
+            level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
+            logger.logp(level, source.__class__.__name__, "getPropertiesValues()", "Get property: %s value: %s" % (property.Name, value))
         else:
-            print("DriveRootContent._getPropertyValues().Error: %s " % (property.Name, ))
+            level = uno.getConstantByName("com.sun.star.logging.LogLevel.SEVERE")
+            logger.logp(level, source.__class__.__name__, "getPropertiesValues()", "ERROR: Requested property: %s is not available" % property.Name)
         namedvalues.append(uno.createUnoStruct('com.sun.star.beans.NamedValue', property.Name, value))
     return tuple(namedvalues)
 
-def setPropertiesValues(source, properties):
+def setPropertiesValues(source, properties, logger):
     results = []
     for property in properties:
         result = UnoException('SetProperty Exception', source)
@@ -37,8 +40,12 @@ def setPropertiesValues(source, properties):
             if hasattr(source, property.Name):
                 setattr(source, property.Name, property.Value)
                 result = None
+                level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
+                logger.logp(level, source.__class__.__name__, "setPropertiesValues()", "Set property: %s value: %s" % (property.Name, value))
             else:
                 result = UnknownPropertyException('UnknownProperty: %s' % property.Name, source)
+                level = uno.getConstantByName("com.sun.star.logging.LogLevel.SEVERE")
+                logger.logp(level, source.__class__.__name__, "setPropertiesValues()", "ERROR: Requested property: %s is not available" % property.Name)
         results.append(result)
     return tuple(results)
 

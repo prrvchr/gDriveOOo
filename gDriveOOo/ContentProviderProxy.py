@@ -4,6 +4,7 @@
 import uno
 import unohelper
 
+from com.sun.star.uno import XInterface
 from com.sun.star.lang import XServiceInfo
 from com.sun.star.ucb import XContentProvider, XContentProviderSupplier, XParameterizedContentProvider
 
@@ -20,6 +21,14 @@ class ContentProviderProxy(unohelper.Base, XServiceInfo, XContentProvider,
         self.ctx = ctx
         self.provider = None
         print("ContentProviderProxy.__init__()")
+
+    # XInterface
+    def queryInterface(self, atype):
+        print("ContentProviderProxy.queryInterface()")
+    def acquire(self):
+        print("ContentProviderProxy.acquire()")
+    def release(self):
+        print("ContentProviderProxy.release()")
 
     # XContentProviderSupplier
     def getContentProvider(self):

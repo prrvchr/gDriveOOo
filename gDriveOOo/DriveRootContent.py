@@ -4,12 +4,13 @@
 import uno
 import unohelper
 
-from com.sun.star.lang import XServiceInfo, XComponent
 from com.sun.star.awt import XCallback
+from com.sun.star.beans import XPropertyContainer
+from com.sun.star.lang import XServiceInfo, XComponent
 from com.sun.star.ucb import XContent, XCommandProcessor2, XContentCreator, IllegalIdentifierException
 
 from gdrive import Initialization, CommandInfo, PropertySetInfo, Row, DynamicResultSet, PropertiesChangeNotifier
-from gdrive import getItemUpdate, parseDateTime, getDbConnection
+from gdrive import getItemUpdate, parseDateTime, getDbConnection, getChildSelect
 from gdrive import updateChildren, createService, getSimpleFile, getResourceLocation
 from gdrive import getUcb, queryContentIdentifier, getCommandInfo, getProperty, getContentInfo
 from gdrive import propertyChange, getUri, getId, getPropertiesValues, setPropertiesValues
@@ -24,7 +25,7 @@ g_ImplementationName = 'com.gmail.prrvchr.extensions.gDriveOOo.DriveRootContent'
 
 
 class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization, PropertiesChangeNotifier,
-                       XContent, XCommandProcessor2, XContentCreator, XCallback):
+                       XContent, XCommandProcessor2, XContentCreator, XCallback, XPropertyContainer):
     def __init__(self, ctx, *namedvalues):
         try:
             self.ctx = ctx
@@ -54,7 +55,11 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
             self.commandInfoListeners = []
 #            self.commands = self._getCommandInfo()
             
+            self.Logger = None
             self.initialize(namedvalues)
+            level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
+            self.Logger.logp(level, "DriveRootContent", "__init__()", "RootContent of ContentType: %s... loading Done" % self.ContentType)
+
             print("DriveRootContent.__init__()")
         except Exception as e:
             print("DriveRootContent.__init__().Error: %s - %s" % (e, traceback.print_exc()))
@@ -73,6 +78,12 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
     def Title(self, title):
         propertyChange(self, 'Title', self._Title, title)
         self._Title = title
+
+    # XPropertyContainer
+    def addProperty(self, name, attribute, default):
+        print("DriveRootContent.addProperty()")
+    def removeProperty(self, name):
+        print("DriveRootContent.removeProperty()")
 
     # XComponent
     def dispose(self):
@@ -129,10 +140,10 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
             elif command.Name == 'getPropertySetInfo':
                 return PropertySetInfo(self._getPropertySetInfo())
             elif command.Name == 'getPropertyValues':
-                namedvalues = getPropertiesValues(self, command.Argument)
+                namedvalues = getPropertiesValues(self, command.Argument, self.Logger)
                 return Row(namedvalues)
             elif command.Name == 'setPropertyValues':
-                return setPropertiesValues(self, command.Argument)
+                return setPropertiesValues(self, command.Argument, self.Logger)
             elif command.Name == 'open':
                 print("DriveRootContent.execute() open 1")
                 connection = getDbConnection(self.ctx, self.Scheme)
@@ -141,7 +152,8 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
                     print("DriveRootContent.execute() open 2")
                     self.IsInCache = True
                     print("DriveRootContent.execute() open 3")
-                return DynamicResultSet(self.ctx, connection, self.Scheme, self.UserName, self.Id, command.Argument)
+                select = getChildSelect(connection, self.UserName, self.Id, command.Argument.Properties, self.Logger)
+                return DynamicResultSet(self.ctx, select)
             elif command.Name == 'createNewContent':
                 if command.Argument.Type == 'application/vnd.google-apps.folder':
                     print("DriveRootContent.execute(): createNewContent %s" % command.Argument)

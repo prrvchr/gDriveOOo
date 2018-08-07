@@ -4,16 +4,15 @@
 import uno
 import unohelper
 
-from com.sun.star.lang import XServiceInfo, NoSupportException
 from com.sun.star.awt import XCallback
-from com.sun.star.ucb import XContent, XCommandProcessor2, XContentCreator, IllegalIdentifierException
+from com.sun.star.beans import XPropertyContainer
 from com.sun.star.container import XChild
-from com.sun.star.beans import UnknownPropertyException
-from com.sun.star.uno import Exception as UnoException
+from com.sun.star.lang import XServiceInfo, NoSupportException
+from com.sun.star.ucb import XContent, XCommandProcessor2, XContentCreator, IllegalIdentifierException
 
 from gdrive import Component, Initialization, CommandInfo, PropertySetInfo, Row, DynamicResultSet, PropertiesChangeNotifier
 from gdrive import getItemUpdate, parseDateTime, getPropertiesValues, getPropertiesValues
-from gdrive import propertyChange, getDbConnection
+from gdrive import propertyChange, getDbConnection, getChildSelect
 
 from gdrive import updateChildren, createService, getSimpleFile, getResourceLocation
 from gdrive import getUcb, getUcp, getCommandInfo, getProperty, getContentInfo
@@ -28,7 +27,7 @@ g_ImplementationName = 'com.gmail.prrvchr.extensions.gDriveOOo.DriveFolderConten
 
 
 class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization, PropertiesChangeNotifier,
-                         XContent, XCommandProcessor2, XContentCreator, XChild, XCallback):
+                         XContent, XCommandProcessor2, XContentCreator, XChild, XCallback, XPropertyContainer):
     def __init__(self, ctx, *namedvalues):
         try:
             self.ctx = ctx
@@ -58,8 +57,10 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
             #XCommandInfoChangeNotifier listeners
             self.commandInfoListeners = []
             
+            self.Logger = None
             self.initialize(namedvalues)
-
+            level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
+            self.Logger.logp(level, "DriveFolderContent", "__init__()", "FolderContent of ContentType: %s... loading Done" % self.ContentType)
             print("DriveFolderContent.__init__()")
         except Exception as e:
             print("DriveFolderContent.__init__().Error: %s - %e" % (e, traceback.print_exc()))
@@ -78,6 +79,12 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
     def Title(self, title):
         propertyChange(self, 'Title', self._Title, title)
         self._Title = title
+
+    # XPropertyContainer
+    def addProperty(self, name, attribute, default):
+        print("DriveFolderContent.addProperty()")
+    def removeProperty(self, name):
+        print("DriveFolderContent.removeProperty()")
 
     # XCallback
     def notify(self, data):
@@ -125,16 +132,17 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
             elif command.Name == 'getPropertySetInfo':
                 return PropertySetInfo(self._getPropertySetInfo())
             elif command.Name == 'getPropertyValues':
-                namedvalues = getPropertiesValues(self, command.Argument)
+                namedvalues = getPropertiesValues(self, command.Argument,self.Logger)
                 return Row(namedvalues)
             elif command.Name == 'setPropertyValues':
-                return setPropertiesValues(self, command.Argument)
+                return setPropertiesValues(self, command.Argument, self.Logger)
             elif command.Name == 'open':
                 connection = getDbConnection(self.ctx, self.Scheme)
                 if not self.IsInCache:
                     updateChildren(self.ctx, connection, self.Scheme, self.UserName, self.Id)
                     self.IsInCache = True
-                return DynamicResultSet(self.ctx, connection, self.Scheme, self.UserName, self.Id, command.Argument)
+                select = getChildSelect(connection, self.UserName, self.Id, command.Argument.Properties, self.Logger)
+                return DynamicResultSet(self.ctx, select)
             elif command.Name == 'createNewContent':
                 if command.Argument.Type == 'application/vnd.google-apps.folder':
                     print("DriveFolderContent.execute(): createNewContent %s" % command.Argument)
