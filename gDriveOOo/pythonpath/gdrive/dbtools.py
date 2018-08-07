@@ -3,8 +3,22 @@
 
 import uno
 
+from .unotools import getResourceLocation, getPropertyValue
 import datetime
 
+g_url = 'jdbc:hsqldb:%s/%s%s'
+g_options = ';default_schema=true;shutdown=true;hsqldb.default_table_type=cached;get_column_name=false'
+g_class = 'org.hsqldb.jdbc.JDBCDriver'
+g_path = '%s/hsqldb.jar'
+
+
+def getDbConnection(ctx, scheme, url=None):
+    location = getResourceLocation(ctx, 'hsqldb') if url is None else url
+    pool = ctx.ServiceManager.createInstance('com.sun.star.sdbc.ConnectionPool')
+    url = g_url % (location, scheme, g_options)
+    args = (getPropertyValue('JavaDriverClass', g_class), 
+            getPropertyValue('JavaDriverClassPath', g_path % location))
+    return pool.getConnectionWithInfo(url, args)
 
 def getMarks(fields):
     marks = []

@@ -50,16 +50,19 @@ class OAuth2Ooo(object):
 
 
 def getItem(ctx, scheme, username, id):
+    status = False
+    item = {}
     authentication = OAuth2Ooo(ctx, scheme, username)
-    result = {}
     url = '%s/%s' % (g_url, id)
     params = {}
     params['fields'] = g_itemfields
-    with requests.get(url, params=params, timeout=g_timeout, auth=authentication) as r:
+    session = requests.Session()
+    with session.get(url, params=params, timeout=g_timeout, auth=authentication) as r:
         print("google.getItem(): %s" % r.json())
         if r.status_code == requests.codes.ok:
-            result = r.json()
-    return result
+            status = True
+            item = r.json()
+    return status, item
 
 
 class IdGenerator():

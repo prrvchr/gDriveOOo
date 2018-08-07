@@ -4,7 +4,8 @@
 import uno
 import unohelper
 
-from com.sun.star.ucb import XContentAccess, XDynamicResultSet, XCommandEnvironment
+from com.sun.star.lang import XComponent
+from com.sun.star.ucb import XContentIdentifier, XContentAccess, XDynamicResultSet
 from com.sun.star.sdbc import XRow, XResultSet, XResultSetMetaDataSupplier, XCloseable
 from com.sun.star.beans import XPropertiesChangeNotifier
 #from com.sun.star.document import XCmisDocument
@@ -12,23 +13,26 @@ from com.sun.star.beans import XPropertiesChangeNotifier
 from .unolib import Component, PropertySet
 from .unotools import createService, getProperty, getResourceLocation
 from .contenttools import queryContentIdentifier, queryContent
+from .dbtools import getDbConnection
+from .children import getChildSelect
 
-import traceback
 
+class ContentIdentifier(unohelper.Base, XContentIdentifier):
+    def __init__(self, scheme, identifier):
+        self.scheme = scheme
+        self.identifier = identifier
 
-class CommandEnvironment(unohelper.Base, XCommandEnvironment):
-    def getInteractionHandler(self):
-        pass
-    def getProgressHandler(self):
-        pass
+    # XContentIdentifier
+    def getContentIdentifier(self):
+        return self.identifier
+    def getContentProviderScheme(self):
+        return self.scheme
 
 
 class Row(unohelper.Base, XRow):
-    def __init__(self, values):
-        print("Row.__init__()")
-        self.values = values
+    def __init__(self, namedvalues):
+        self.namedvalues = namedvalues
         self.isNull = False
-        print("Row.__init__(): %s" % (self.values, ))
 
     # XRow
     def wasNull(self):
@@ -62,9 +66,7 @@ class Row(unohelper.Base, XRow):
     def getCharacterStream(self, index):
         return self._getValue(index -1)
     def getObject(self, index, map):
-        value = self._getValue(index -1)
-        print("Row.getObject(): %s - %s" % (self.values[index -1].Name, value))
-        return value
+        return self._getValue(index -1)
     def getRef(self, index):
         return self._getValue(index -1)
     def getBlob(self, index):
@@ -77,34 +79,24 @@ class Row(unohelper.Base, XRow):
     def _getValue(self, index):
         value  = None
         self.isNull = True
-        if index in range(len(self.values)):
-            value = self.values[index].Value
+        if index in range(len(self.namedvalues)):
+            value = self.namedvalues[index].Value
             self.isNull = value is None
         return value
         
 
 class DynamicResultSet(unohelper.Base, XDynamicResultSet):
-    def __init__(self, ctx, scheme, username, id, arguments):
+    def __init__(self, ctx, connection, scheme, username, id, arguments):
         self.ctx = ctx
+        self.connection = connection
         self.scheme = scheme
         self.username = username
         self.id = id
-        self.columns = []
-        for property in arguments.Properties:
-            if hasattr(property, 'Name'):
-                self.columns.append(property.Name)
-        print("DynamicResultSet.__init__(): %s" % (self.columns, ))
+        self.properties = arguments.Properties
 
     # XDynamicResultSet
     def getStaticResultSet(self):
-        try:
-            print("DynamicResultSet.getStaticResultSet():")
-            #name = 'com.gmail.prrvchr.extensions.gDriveOOo.ContentResultSet'
-            #return createService(name, self.ctx, Statement=self.statement, Columns=tuple(self.columns))
-            return ContentResultSet(self.ctx, self.scheme, self.username, self.id, self.columns)
-        except Exception as e:
-            print("DynamicResultSet.getStaticResultSet().Error: %s - %s" % (e, traceback.print_exc()))
-
+        return ContentResultSet(self.ctx, self.connection, self.scheme, self.username, self.id, self.properties)
     def setListener(self, listener):
         print("DynamicResultSet.setListener():")
         pass
@@ -116,34 +108,17 @@ class DynamicResultSet(unohelper.Base, XDynamicResultSet):
         return uno.getConstantByName('com.sun.star.ucb.ContentResultSetCapability.SORTED')
 
 
-class ContentResultSet(unohelper.Base, Component, PropertySet, XRow, XResultSet, XResultSetMetaDataSupplier,
+class ContentResultSet(unohelper.Base, PropertySet, XComponent, XRow, XResultSet, XResultSetMetaDataSupplier,
                        XCloseable, XContentAccess):
-    def __init__(self, ctx, scheme, username, id, columns):
-        try:
-# LibreOffice Column: ['Title', 'Size', 'DateModified', 'DateCreated', 'IsFolder', 'TargetURL', 'IsHidden', 'IsVolume', 'IsRemote', 'IsRemoveable', 'IsFloppy', 'IsCompactDisc']
-# OpenOffice Columns: ['Title', 'Size', 'DateModified', 'DateCreated', 'IsFolder', 'TargetURL', 'IsHidden', 'IsVolume', 'IsRemote', 'IsRemoveable', 'IsFloppy', 'IsCompactDisc']
-            self.ctx = ctx
-            self.scheme = scheme
-            self.username = username
-            url = getResourceLocation(self.ctx, '%s.odb' % scheme)
-            db = createService('com.sun.star.sdb.DatabaseContext').getByName(url)
-            connection = db.getConnection('', '')
-            query = uno.getConstantByName('com.sun.star.sdb.CommandType.QUERY')
-            statement = connection.prepareCommand('getChildren', query)
-            statement.ResultSetType = uno.getConstantByName('com.sun.star.sdbc.ResultSetType.SCROLL_SENSITIVE')
-            statement.ResultSetConcurrency = uno.getConstantByName('com.sun.star.sdbc.ResultSetConcurrency.UPDATABLE')
-            statement.setString(1, username)
-            statement.setString(2, id)
-            self.resultset = statement.executeQuery()
-            self.columns = columns
-            self.resultset.last()
-            self.RowCount = self.resultset.getRow()
-            self.IsRowCountFinal = True
-            self.resultset.beforeFirst()
-            self.listeners = []
-            print("ContentResultSet.__init__() %s" % self.RowCount)
-        except Exception as e:
-            print("ContentResultSet.__init__().Error: %s" % e)
+    def __init__(self, ctx, connection, scheme, username, id, properties):
+        self.ctx = ctx
+        select = getChildSelect(connection, username, id, properties)
+        self.resultset = select.executeQuery()
+        self.resultset.last()
+        self.RowCount = self.resultset.Row
+        self.IsRowCountFinal = not select.MoreResults
+        self.resultset.beforeFirst()
+        self.listeners = []
 
     def _getPropertySetInfo(self):
         properties = {}
@@ -151,6 +126,23 @@ class ContentResultSet(unohelper.Base, Component, PropertySet, XRow, XResultSet,
         properties['RowCount'] = getProperty('RowCount', 'long', readonly)
         properties['IsRowCountFinal'] = getProperty('IsRowCountFinal', 'boolean', readonly)
         return properties
+
+    # XComponent
+    def dispose(self):
+        print("contentlib.ContentResultSet.dispose() 1")
+        #if not self.connection.isClosed():
+        #    self.connection.close()
+        event = uno.createUnoStruct('com.sun.star.lang.EventObject', self)
+        for listener in self.listeners:
+            listener.disposing(event)
+        print("contentlib.ContentResultSet.dispose() 2 ********************************************************")
+    def addEventListener(self, listener):
+        print("contentlib.ContentResultSet.addEventListener() *************************************************")
+        self.listeners.append(listener)
+    def removeEventListener(self, listener):
+        print("contentlib.ContentResultSet.removeEventListener() **********************************************")
+        if listener in self.listeners:
+            self.listeners.remove(listener)
 
     # XResultSet
     def next(self):
@@ -192,21 +184,16 @@ class ContentResultSet(unohelper.Base, Component, PropertySet, XRow, XResultSet,
 
     # XContentAccess
     def queryContentIdentifierString(self):
-        identifier = self.resultset.getColumns().getByName('TargetURL').getString()
-        print("ContentResultSet.queryContentIdentifierString() %s" % identifier)
-        return identifier
+        return self.resultset.getString(self.resultset.findColumn('TargetURL'))
     def queryContentIdentifier(self):
         identifier = self.queryContentIdentifierString()
-        print("ContentResultSet.queryContentIdentifier() %s" % identifier)
         return queryContentIdentifier(self.ctx, identifier)
     def queryContent(self):
         identifier = self.queryContentIdentifierString()
-        print("ContentResultSet.queryContent() %s" % identifier)
         return queryContent(self.ctx, identifier)
 
     # XResultSetMetaDataSupplier
     def getMetaData(self):
-        print("ContentResultSet.getMetaData()")
         return self.resultset.getMetaData()
 
     # XCloseable
@@ -216,87 +203,45 @@ class ContentResultSet(unohelper.Base, Component, PropertySet, XRow, XResultSet,
 
     # XRow
     def wasNull(self):
-        wasnull = self.resultset.wasNull()
-        return wasnull
+        return self.resultset.wasNull()
     def getString(self, index):
-        column = self._getColumn(index)
-        value = None if column is None else self.resultset.getColumns().getByName(column).getString()
-        print("contentlib.Row().getString() %s - %s" % (column, value))
-        return value
+        return self.resultset.getString(index)
     def getBoolean(self, index):
-        column = self._getColumn(index)
-        value = None if column is None else self.resultset.getColumns().getByName(column).getBoolean()
-        return value
+        return self.resultset.getBoolean(index)
     def getByte(self, index):
-        column = self._getColumn(index)
-        return None if column is None else self.resultset.getColumns().getByName(column).getByte()
+        return self.resultset.getByte(index)
     def getShort(self, index):
-        column = self._getColumn(index)
-        value = None if column is None else self.resultset.getColumns().getByName(column).getShort()
-        return value
+        return self.resultset.getShort(index)
     def getInt(self, index):
-        column = self._getColumn(index)
-        value = None if column is None else self.resultset.getColumns().getByName(column).getInt()
-        return value
+        return self.resultset.getInt(index)
     def getLong(self, index):
-        column = self._getColumn(index)
-        value = None if column is None else self.resultset.getColumns().getByName(column).getLong()
-        return value
+        return self.resultset.getLong(index)
     def getFloat(self, index):
-        column = self._getColumn(index)
-        value = None if column is None else self.resultset.getColumns().getByName(column).getFloat()
-        return value
+        return self.resultset.getFloat(index)
     def getDouble(self, index):
-        column = self._getColumn(index)
-        value = None if column is None else self.resultset.getColumns().getByName(column).getDouble()
-        return value
+        return self.resultset.getDouble(index)
     def getBytes(self, index):
-        column = self._getColumn(index)
-        return None if column is None else self.resultset.getColumns().getByName(column).getBytes()
+        return self.resultset.getBytes(index)
     def getDate(self, index):
-        column = self._getColumn(index)
-        return None if column is None else self.resultset.getColumns().getByName(column).getDate()
+        return self.resultset.getDate(index)
     def getTime(self, index):
-        column = self._getColumn(index)
-        return None if column is None else self.resultset.getColumns().getByName(column).getTime()
+        return self.resultset.getTime(index)
     def getTimestamp(self, index):
-        column = self._getColumn(index)
-        value = None if column is None else self.resultset.getColumns().getByName(column).getTimestamp()
-        return value
+        return self.resultset.getTimestamp(index)
     def getBinaryStream(self, index):
-        column = self._getColumn(index)
-        return None if column is None else self.resultset.getColumns().getByName(column).getBinaryStream()
+        return self.resultset.getBinaryStream(index)
     def getCharacterStream(self, index):
-        column = self._getColumn(index)
-        return None if column is None else self.resultset.getColumns().getByName(column).getCharacterStream()
+        return self.resultset.getCharacterStream(index)
     def getObject(self, index, map):
-        column = self._getColumn(index)
-        value = None if column is None else self.resultset.getColumns().getByName(column).getObject(map)
-        print("contentlib.Row().getObject() %s - %s" % (column, value))
-        return value
+        return self.resultset.getObject(index, map)
     def getRef(self, index):
-        column = self._getColumn(index)
-        return None if column is None else self.resultset.getColumns().getByName(column).getRef()
+        return self.resultset.getRef(index)
     def getBlob(self, index):
-        column = self._getColumn(index)
-        return None if column is None else self.resultset.getColumns().getByName(column).getBlob()
+        return self.resultset.getBlob(index)
     def getClob(self, index):
-        column = self._getColumn(index)
-        return None if column is None else self.resultset.getColumns().getByName(column).getClob()
+        return self.resultset.getClob(index)
     def getArray(self, index):
-        column = self._getColumn(index)
-        return None if column is None else self.resultset.getColumns().getByName(column).getArray()
-
-    def _getColumn(self, index):
-        name  = None
-        column = None
-        if index > 0 and index <= len(self.columns):
-            name = self.columns[index -1]
-            if self.resultset.getColumns().hasByName(name):
-                column = name
-        if column is None:
-            print("Row._getColumn(): %s - %s *************************************" % (index, name))
-        return column
+        return self.resultset.getArray(index)
 
 
 class PropertiesChangeNotifier(XPropertiesChangeNotifier):

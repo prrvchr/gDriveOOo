@@ -35,12 +35,13 @@ def getProperty(name, typename=None, attributes=None, handle=-1):
         property.Attributes = attributes
     return property
 
-def getPropertyValue(name, value, state, handle=-1):
-    return uno.createUnoStruct('com.sun.star.beans.PropertyValue',
-                               name,
-                               handle,
-                               value,
-                               state)
+def getPropertyValue(name, value, state=None, handle=-1):
+    property = uno.createUnoStruct('com.sun.star.beans.PropertyValue')
+    property.Name = name
+    property.Handle = handle
+    property.Value = value
+    property.State = uno.Enum('com.sun.star.beans.PropertyState', 'DIRECT_VALUE') if state is None else state
+    return property
 
 def getResourceLocation(ctx, path='gDriveOOo'):
     identifier = 'com.gmail.prrvchr.extensions.gDriveOOo'

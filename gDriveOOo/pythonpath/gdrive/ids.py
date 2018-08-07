@@ -1,28 +1,26 @@
 #!
 # -*- coding: utf_8 -*-
 
+import uno
 
-from .dbtools import getMarks, parseDateTime
+from .dbtools import getMarks
 from .google import IdGenerator
 
 
-def getIdSelectStatement(connection, username):
-    query = _getSelectQuery()
-    statement = connection.prepareStatement(query)
-    statement.setString(1, username)
-    return statement
-
-def getNewId(authentication, statement, username):
-    result = statement.executeQuery()
+def getNewId(ctx, scheme, username, connection):
+    query = uno.getConstantByName('com.sun.star.sdb.CommandType.QUERY')
+    select = connection.prepareCommand('getId', query)
+    select.setString(1, username)
+    result = select.executeQuery()
     if result.next():
         id = result.getColumns().getByName('Id').getString()
     else:
-        id = _insertNewId(authentication, statement.getConnection(), username)
+        id = _insertNewId(ctx, scheme, username, connection)
     return id
 
-def _insertNewId(authentication, connection, username):
+def _insertNewId(ctx, scheme, username, connection):
     insert = _getInsertStatement(connection, username)
-    for id in IdGenerator(authentication):
+    for id in IdGenerator(ctx, scheme, username):
         insert.setString(2, id)
         insert.executeUpdate()
     return id
@@ -38,18 +36,14 @@ def _getDeleteStatement(connection):
     return connection.prepareStatement(query)
 
 def _getInsertQueryFields():
-    fields = ['"UserName"']
-    fields.append('"Id"')
+    fields = ('"UserName"',
+              '"Id"')
     return fields
 
 def _getInsertQuery():
     fields = _getInsertQueryFields()
     marks = getMarks(fields)
     query = 'INSERT INTO "Id" (%s, "TimeStamp") VALUES (%s, NOW())' % (', '.join(fields), ', '.join(marks))
-    return query
-
-def _getSelectQuery():
-    query = 'SELECT "Id" FROM "Id" WHERE "UserName" = ?'
     return query
 
 def _getDeleteQuery():

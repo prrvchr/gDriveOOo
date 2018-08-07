@@ -5,16 +5,20 @@ import uno
 import unohelper
 
 from com.sun.star.lang import XServiceInfo
-from com.sun.star.ucb import XContentProvider, IllegalIdentifierException
+from com.sun.star.ucb import XContentProvider, XContentIdentifierFactory, IllegalIdentifierException
 from com.sun.star.beans import XPropertiesChangeListener
+from com.sun.star.awt import XCallback
 
 import traceback
 
-from gdrive import Component
-from gdrive import getResourceLocation, createService, getItem, getUri, getCommand, getProperty
-from gdrive import getUserInsert, executeUserInsert
-from gdrive import getItemInsert, getItemUpdate, executeItemInsert, executeItemUpdate
-from gdrive import CommandEnvironment, getLogger
+from gdrive import Component, ContentIdentifier
+from gdrive import getDbConnection, getRootSelect, executeUserInsert, executeUpdateInsertItem
+from gdrive import getItemSelect, getItemInsert, updateItem, getContentProperties
+from gdrive import insertParent, getItemUpdate, executeItemInsert
+
+from gdrive import getResourceLocation, createService, getItem, getUri, getProperty
+from gdrive import getLogger, queryContentIdentifier
+from gdrive import getNewId, getId
 
 # pythonloader looks for a static g_ImplementationHelper variable
 g_ImplementationHelper = unohelper.ImplementationHelper()
@@ -23,56 +27,79 @@ g_ImplementationName = 'com.gmail.prrvchr.extensions.gDriveOOo.ContentProvider'
 g_Scheme = 'vnd.google-apps'
 
 
-class ContentProvider(unohelper.Base, Component, XServiceInfo, XContentProvider, XPropertiesChangeListener):
+class ContentProvider(unohelper.Base, Component, XServiceInfo, XContentProvider,
+                      XContentIdentifierFactory, XPropertiesChangeListener, XCallback):
     def __init__(self, ctx):
         try:
             print("ContentProvider.__init__()")
             self.ctx = ctx
-            self._UserName = None
-            
-            url = getResourceLocation(self.ctx, '%s.odb' % g_Scheme)
-            db = createService('com.sun.star.sdb.DatabaseContext').getByName(url)
-            connection = db.getConnection('', '')
-            
-            self.userInsert = getUserInsert(connection)
-            self.itemInsert = getItemInsert(connection)
-            self.itemUpdate = getItemUpdate(connection)
-            query = uno.getConstantByName('com.sun.star.sdb.CommandType.QUERY')
-            self.userSelect = connection.prepareCommand('getRoot', query)
-            self.itemSelect = connection.prepareCommand('getItem', query)
-            scroll = uno.getConstantByName('com.sun.star.sdbc.ResultSetType.SCROLL_SENSITIVE')
-            self.itemSelect.ResultSetType = scroll
-            concurrency = uno.getConstantByName('com.sun.star.sdbc.ResultSetConcurrency.UPDATABLE')
-            self.itemSelect.ResultSetConcurrency = concurrency
+            self.UserName = None
             self.Root = {}
-            
-            self.cachedContent = {}
-            self.Logger = getLogger(self.ctx)
+            #mri = self.ctx.ServiceManager.createInstance('mytools.Mri')
+            #mri.inspect(self.connection)
             print("ContentProvider.__init__()")
         except Exception as e:
             print("ContentProvider.__init__().Error: %s" % e)
 
-    @property
-    def UserName(self):
-        return self._UserName
-    @UserName.setter
-    def UserName(self, username):
-        if self._UserName != username:
-            if not self._getRoot(username):
-                raise IllegalIdentifierException('Identifier has no Authority: %s' % username, self)
-            self.itemSelect.setString(1, username)
+    # XCallback
+    def notify(self, event):
+        if event.Action == uno.getConstantByName('com.sun.star.ucb.ContentAction.INSERTED'):
+            properties = ('Id', 'Title', 'DateCreated', 'DateModified', 'MediaType', 'ParentId')
+            row = getContentProperties(event.Content, properties)
+            id = row.getString(1)
+            connection = getDbConnection(self.ctx, g_Scheme)
+            insert = getItemInsert(connection)
+            insert.setString(1, id)
+            insert.setString(2, row.getString(2))
+            insert.setTimestamp(3, row.getTimestamp(3))
+            insert.setTimestamp(4, row.getTimestamp(4))
+            insert.setString(5, row.getString(5))
+            insert.setBoolean(6, False)
+            insert.setBoolean(7, True)
+            insert.setBoolean(8, True)
+            insert.setDouble(9, 0)
+            if insert.executeUpdate():
+                if insertParent(connection, {'Id': id, 'ParentId': row.getString(6)}):
+                    print("ContentProvider.notify(): %s" % id)
+                    event.Content.addPropertiesChangeListener(('IsInCache', 'Title', 'Size'), self)
+                    parent = self.queryContent(event.Id)
+                    parent.notify(event)
+            #connection.close()
 
     # XPropertiesChangeListener
     def propertiesChange(self, events):
+        connection = getDbConnection(self.ctx, g_Scheme)
         for event in events:
-            if self._updateItem(event):
-                level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
-                self.Logger.logp(level, "ContentProvider", "propertiesChange()", "Property saved: %s" % event.PropertyName)
+            level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
+            id = getContentProperties(event.Source, ('Id', )).getString(1)
+            getLogger().logp(level, "ContentProvider", "propertiesChange()", "Id: %s Property saved: %s ..." % (id, event.PropertyName))
+            if updateItem(connection, id, event.PropertyName, event.NewValue):
+                getLogger().logp(level, "ContentProvider", "propertiesChange()", "Id: %s Property saved: %s ... Done" % (id, event.PropertyName))
             else:
                 level = uno.getConstantByName("com.sun.star.logging.LogLevel.SEVERE")
-                self.Logger.logp(level, "ContentProvider", "propertiesChange()", "Can't save Property: %s" % event.PropertyName)                
+                getLogger().logp(level, "ContentProvider", "propertiesChange()", "Id: %s Can't save Property: %s" % (id, event.PropertyName))
+        #connection.close()
     def disposing(self, source):
         print("ContentProvider.disposing() %s" % (source, ))
+
+    # XContentIdentifierFactory
+    def createContentIdentifier(self, identifier):
+        level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
+        getLogger().logp(level, "ContentProvider", "createContentIdentifier()", "Identifier: %s ..." % identifier)
+        uri = getUri(self.ctx, identifier)
+        if uri.hasAuthority() and self.UserName != uri.getAuthority():
+            self._setUserName(uri.getAuthority())
+        elif self.UserName is None:
+            raise IllegalIdentifierException('Identifier has no Authority: %s' % identifier, self)
+        id = getId(uri, self.Root['Id'])
+        if id == 'new':
+            connection = getDbConnection(self.ctx, g_Scheme)
+            id = getNewId(self.ctx, g_Scheme, self.UserName, connection)
+            #connection.close()
+            getLogger().logp(level, "ContentProvider", "createContentIdentifier()", "New Identifier: %s ..." % id)
+        identifier = '%s://%s/%s' % (g_Scheme, self.UserName, id)
+        getLogger().logp(level, "ContentProvider", "createContentIdentifier()", "Identifier: %s ... Done" % identifier)
+        return ContentIdentifier(g_Scheme, identifier)
 
     # XParameterizedContentProvider
     def registerInstance(self, template, argument, replace):
@@ -82,40 +109,41 @@ class ContentProvider(unohelper.Base, Component, XServiceInfo, XContentProvider,
 
     # XContentProvider
     def queryContent(self, identifier):
-        try:
-            uri = getUri(self.ctx, identifier.getContentIdentifier())
-            if not uri.hasAuthority():
-                raise IllegalIdentifierException('Identifier has no Authority: %s' % identifier.getContentIdentifier(), self)
-            self.UserName = uri.getAuthority()
-            id = self._getItemId(uri)
-            if id not in self.cachedContent:
-                self.itemSelect.setString(2, id)
-                media = 'application/octet-stream'
-                arguments = self.Root
-                result = self.itemSelect.executeQuery()
+        level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
+        getLogger().logp(level, "ContentProvider", "queryContent()", "Identifier: %s..." % identifier.getContentIdentifier())
+        media = 'application/vnd.google-apps.folder'
+        arguments = self.Root
+        connection = getDbConnection(self.ctx, g_Scheme)
+        uri = getUri(self.ctx, identifier.getContentIdentifier())
+        if uri.hasAuthority() and self.UserName != uri.getAuthority():
+            self._setUserName(uri.getAuthority())
+        elif self.UserName is None:
+            raise IllegalIdentifierException('Identifier has no Authority: %s' % identifier.getContentIdentifier(), self)
+        id = getId(uri)
+        select = getItemSelect(connection, id)
+        result = select.executeQuery()
+        if result.next():
+            media, arguments = self._getMediaTypeFromResult(result)
+        else:
+            status, item = getItem(self.ctx, g_Scheme, self.UserName, id)
+            if status and executeItemInsert(connection, item):
+                result = select.executeQuery()
                 if result.next():
                     media, arguments = self._getMediaTypeFromResult(result)
-                else:
-                    json = getItem(self.ctx, g_Scheme, self.UserName, id)
-                    if executeItemInsert(self.itemInsert, json):
-                        result = self.itemSelect.executeQuery()
-                        if result.next():
-                            media, arguments = self._getMediaTypeFromResult(result)
-                name = 'com.gmail.prrvchr.extensions.gDriveOOo.'
-                if media == 'application/vnd.google-apps.folder':
-                    name += 'DriveFolderContent' if id != self.Root['Id'] else 'DriveRootContent'
-                elif media.startswith('application/vnd.oasis.opendocument'):
-                    name += 'DriveOfficeContent'
-                else:
-                    raise IllegalIdentifierException('ContentType is unknown: %s' % media, self)
-                print("ContentProvider.queryContent() 2: %s" % name)
-                service = createService(name, self.ctx, **arguments)
-                service.addPropertiesChangeListener(('IsInCache', 'Title'), self)
-                self.cachedContent[id] = service
-                print("ContentProvider.queryContent() 3:")
-            return self.cachedContent[id]
-        except Exception as e:
-            print("ContentProvider.queryContent().Error: %s - %s" % (e, traceback.print_exc()))
+            else:
+                raise IllegalIdentifierException('Invalid Identifier: %s' % identifier.getContentIdentifier(), self)
+        #connection.close()
+        name = 'com.gmail.prrvchr.extensions.gDriveOOo.'
+        if media == 'application/vnd.google-apps.folder':
+            name += 'DriveFolderContent' if id != self.Root['Id'] else 'DriveRootContent'
+        elif media.startswith('application/vnd.oasis.opendocument'):
+            name += 'DriveOfficeContent'
+        else:
+            raise IllegalIdentifierException('ContentType is unknown: %s' % media, self)
+        service = createService(name, self.ctx, **arguments)
+        service.addPropertiesChangeListener(('IsInCache', 'Title', 'Size'), self)
+        getLogger().logp(level, "ContentProvider", "queryContent()", "Identifier: %s... Done" % identifier.getContentIdentifier())
+        return service
 
     def compareContentIds(self, identifier1, identifier2):
         uri1 = getUri(identifier1.getContentIdentifier())
@@ -130,77 +158,52 @@ class ContentProvider(unohelper.Base, Component, XServiceInfo, XContentProvider,
         print("ContentProvider.compareContentIds() ------------")
         return 1
 
-    def _updateItem(self, event):
-        query = 'UPDATE "Item" SET "%s" = ?, "TimeStamp" = NOW() WHERE "Id" = ?' % event.PropertyName
-        update = getItemUpdate(self.itemUpdate.getConnection(), query)
-        id = self._getContentProperties(event.Source, ('Id', )).getString(1)
-        update.setString(2, id)
-        if event.PropertyName == 'IsInCache':
-            update.setBoolean(1, event.NewValue)
-        elif event.PropertyName == 'Title':
-            update.setString(1, event.NewValue)
-        return update.executeUpdate()
-
-    def _getContentProperties(self, content, names):
-        properties = []
-        for name in names:
-            properties.append(getProperty(name))
-        command = getCommand('getPropertyValues', tuple(properties))
-        row = content.execute(command, 0, CommandEnvironment())
-        return row
-
-    def _getItemId(self, uri):
-        id = self.Root['Id']
-        if uri.getPathSegmentCount() > 0:
-            path = uri.getPathSegment(uri.getPathSegmentCount() -1)
-            if path not in ('', '.', 'root'):
-                id = path
-        return id
+    def _setUserName(self, username):
+        level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
+        getLogger().logp(level, "ContentProvider", "UserName.setter()", "UserName: %s..." % username)
+        if self._getRoot(username):
+            self.UserName = username
+            getLogger().logp(level, "ContentProvider", "UserName.setter()", "UserName: %s... Done" % username)
+        else:
+            level = uno.getConstantByName("com.sun.star.logging.LogLevel.SEVERE")
+            getLogger().logp(level, "ContentProvider", "UserName.setter()", "UserName: %s... ERROR" % username)
+            raise IllegalIdentifierException('Identifier has no Authority: %s' % username, self)
 
     def _getRoot(self, username):
-        self.userSelect.setString(1, username)
-        result = self.userSelect.executeQuery()
+        retrived = False
+        connection = getDbConnection(self.ctx, g_Scheme)
+        select = getRootSelect(connection, username)
+        result = select.executeQuery()
         if result.next():
-            self.Root = self._getArgumentsFromResult(result)
-            return True
+            self.Root = self._getArgumentsFromResult(result, username)
+            retrived = True
         else:
-            json = getItem(self.ctx, g_Scheme, username, 'root')
-            if 'id' in json:
-                executeUserInsert(self.userInsert, username, json['id'])
-                executeItemUpdate(self.itemInsert, self.itemUpdate, json)
-                result = self.userSelect.executeQuery()
+            status, item = getItem(self.ctx, g_Scheme, username, 'root')
+            if status and executeUserInsert(connection, username, item['id']) and executeUpdateInsertItem(connection, item):
+                result = select.executeQuery()
                 if result.next():
-                    self.Root = self._getArgumentsFromResult(result)
-                    return True
-        return False
+                    self.Root = self._getArgumentsFromResult(result, username)
+                    retrived = True
+        return retrived
 
     def _getMediaTypeFromResult(self, result):
-        arguments = self._getArgumentsFromResult(result)
+        arguments = self._getArgumentsFromResult(result, self.UserName)
         return arguments['MediaType'], arguments
 
-    def _getArgumentsFromResult(self, result):
-        arguments = {}
-        arguments['Scheme'] = result.getColumns().getByName('Scheme').getString()
-        arguments['UserName'] = result.getColumns().getByName('UserName').getString()
-        arguments['Id'] = result.getColumns().getByName('Id').getString()
-        if result.getColumns().hasByName('ParentId'):
-            arguments['ParentId'] = result.getColumns().getByName('ParentId').getString()
-        else:
-            arguments['ParentId'] = None
-        arguments['Title'] = result.getColumns().getByName('Title').getString()
-        arguments['MediaType'] = result.getColumns().getByName('MediaType').getString()
-        arguments['DateCreated'] = result.getColumns().getByName('DateCreated').getTimestamp()
-        arguments['DateModified'] = result.getColumns().getByName('DateModified').getTimestamp()
-        arguments['Size'] = result.getColumns().getByName('Size').getLong()
-        arguments['IsReadOnly'] = result.getColumns().getByName('IsReadOnly').getBoolean()
-        arguments['CanRename'] = result.getColumns().getByName('CanRename').getBoolean()
-        arguments['CanAddChild'] = result.getColumns().getByName('CanAddChild').getBoolean()
-        arguments['IsInCache'] = result.getColumns().getByName('IsInCache').getBoolean()
-        arguments['IsVersionable'] = result.getColumns().getByName('IsVersionable').getBoolean()
-        arguments['BaseURI'] = result.getColumns().getByName('BaseURI').getString()
-        arguments['TargetURL'] = result.getColumns().getByName('TargetURL').getString()
-        arguments['TitleOnServer'] = result.getColumns().getByName('TitleOnServer').getString()
-        arguments['CasePreservingURL'] = result.getColumns().getByName('CasePreservingURL').getString()
+    def _getArgumentsFromResult(self, result, username):
+        arguments = {'Scheme': g_Scheme, 'UserName': username}
+        for i in range(result.MetaData.ColumnCount):
+            index = i + 1
+            dbtype = result.MetaData.getColumnTypeName(index)
+            if dbtype == 'VARCHAR':
+                value = result.getString(index)
+            elif dbtype == 'TIMESTAMP':
+                value = result.getTimestamp(index)
+            elif dbtype == 'BOOLEAN':
+                value = result.getBoolean(index)
+            elif dbtype == 'BIGINT':
+                value = result.getLong(index)
+            arguments[result.MetaData.getColumnName(index)] = value
         return arguments
 
     # XServiceInfo

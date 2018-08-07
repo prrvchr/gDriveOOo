@@ -3,13 +3,60 @@
 
 import uno
 from com.sun.star.beans import UnknownPropertyException, IllegalTypeException
+from com.sun.star.uno import Exception as UnoException
+
+from .unotools import getProperty
 
 import datetime
 import requests
 import traceback
 
 
-def getPropertyChangeEvent(source, name, oldvalue, newvalue, further=False, handle=-1):
+def propertyChange(source, name, oldvalue, newvalue):
+    if name in source.propertiesListener:
+        events = (_getPropertyChangeEvent(source, name, oldvalue, newvalue), )
+        for listener in source.propertiesListener[name]:
+            listener.propertiesChange(events)
+
+def getPropertiesValues(source, properties):
+    namedvalues = []
+    for property in properties:
+        value = None
+        if hasattr(property, 'Name') and hasattr(source, property.Name):
+            value = getattr(source, property.Name)
+        else:
+            print("DriveRootContent._getPropertyValues().Error: %s " % (property.Name, ))
+        namedvalues.append(uno.createUnoStruct('com.sun.star.beans.NamedValue', property.Name, value))
+    return tuple(namedvalues)
+
+def setPropertiesValues(source, properties):
+    results = []
+    for property in properties:
+        result = UnoException('SetProperty Exception', source)
+        if hasattr(property, 'Name') and hasattr(property, 'Value'):
+            if hasattr(source, property.Name):
+                setattr(source, property.Name, property.Value)
+                result = None
+            else:
+                result = UnknownPropertyException('UnknownProperty: %s' % property.Name, source)
+        results.append(result)
+    return tuple(results)
+
+def getContentProperties(content, names):
+    properties = []
+    for name in names:
+        properties.append(getProperty(name))
+    command = getCommand('getPropertyValues', tuple(properties))
+    return content.execute(command, 0, None)
+
+def getId(uri, id=None):
+    if uri.getPathSegmentCount() > 0:
+        path = uri.getPathSegment(uri.getPathSegmentCount() -1)
+        if path not in ('', '.', 'root'):
+            id = path
+    return id
+
+def _getPropertyChangeEvent(source, name, oldvalue, newvalue, further=False, handle=-1):
     event = uno.createUnoStruct('com.sun.star.beans.PropertyChangeEvent')
     event.Source = source
     event.PropertyName = name
@@ -17,7 +64,6 @@ def getPropertyChangeEvent(source, name, oldvalue, newvalue, further=False, hand
     event.PropertyHandle = handle
     event.OldValue = oldvalue
     event.NewValue = newvalue
-    print("contenttools.getPropertyChangeEvent")
     return event
     
 def getSimpleFile(ctx):
@@ -194,61 +240,9 @@ def getUcb(ctx, arguments=None):
     name = 'com.sun.star.ucb.UniversalContentBroker'
     return ctx.ServiceManager.createInstanceWithArguments(name, (arguments, ))
 
-def getPropertiesValues(self, properties):
-    values = []
-    for property in properties:
-        value = None
-        if hasattr(property, 'Name'):
-            if property.Name == 'CasePreservingURL':
-                id = createIdentifier(self.auth, self.url, self.Title)
-                value = queryContentIdentifierString(self.Scheme, self.UserName, id)
-            elif hasattr(self, property.Name):
-                value = getattr(self, property.Name)
-        values.append(value)
-        print("contenttools.getPropertiesValues(): %s - %s" % (property.Name, value))
-    return tuple(values)
-
-def setPropertiesValues(self, properties):
-    result = []
-    for property in properties:
-        if hasattr(property, 'Name') and hasattr(property, 'Value'):
-            if hasattr(self, property.Name):
-                setattr(self, property.Name, property.Value)
-                result.append(None)
-                print("contenttools.setPropertiesValues(): %s - %s" % (property.Name, property.Value))
-            else:
-                result.append(UnknownPropertyException)
-        else:
-            result.append(IllegalTypeException)
-    return tuple(result)
-
-def getArgumentColumns(argument):
-    columns = []
-    for property in argument.Properties:
-        if hasattr(property, 'Name'):
-            columns.append(property.Name)
-    return columns
-
-def getContentValues(content, properties):
-    arguments = []
-    for property in properties:
-        arguments.append(getProperty(property))
-    command = uno.createUnoStruct('com.sun.star.ucb.Command', 'getPropertyValues', -1, tuple(arguments))
-    rows = content.execute(command, 0, None)
-    return _getResultFromRows(rows, properties)
-
-def _getResultFromRows(rows, properties):
-    i = 1
-    result = {}
-    for property in properties.values():
-        value = rows.getObject(i, None)
-        if property == 'modifiedTime':
-            value = unparseDateTime(value)
-        elif property == 'parents':
-            value = list(value)
-        result[property] = value
-        i += 1
-    return result
+def getUcp(ctx, identifier):
+    ucb = getUcb(ctx)
+    return ucb.queryContentProvider(identifier)
 
 def getUploadLocation(auth, id, name, parent, size, mimetype):
     location = None

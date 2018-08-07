@@ -1,26 +1,32 @@
 #!
 # -*- coding: utf_8 -*-
 
+import uno
 
-from .dbtools import getMarks, parseDateTime
 
+def getRootSelect(connection, username):
+    columns = ', '.join(_getUserSelectColumns())
+    query = 'SELECT %s FROM "Users" AS "U" JOIN "Items" AS "I" ON "U"."RootId" = "I"."Id" WHERE "U"."UserName" = ?' % columns
+    select = connection.prepareStatement(query)
+    select.setString(1, username)
+    return select
 
-def getUserInsert(connection):
-    query = _getInsertQuery()
-    return connection.prepareStatement(query)
-
-def executeUserInsert(insert, username, id):
+def executeUserInsert(connection, username, id):
+    query = 'INSERT INTO "Users" ("UserName", "RootId", "TimeStamp") VALUES (?, ?, NOW())'
+    insert = connection.prepareStatement(query)
     insert.setString(1, username)
     insert.setString(2, id)
     return insert.executeUpdate()
 
-def _getInsertQueryFields():
-    fields = ['"UserName"']
-    fields.append('"RootId"')
-    return fields
-
-def _getInsertQuery():
-    fields = _getInsertQueryFields()
-    marks = getMarks(fields)
-    query = 'INSERT INTO "User" (%s, "TimeStamp") VALUES (%s, NOW())' % (', '.join(fields), ', '.join(marks))
-    return query
+def _getUserSelectColumns():
+    columns = ('"I"."Id" "Id"',
+               '"I"."Title" "Title"',
+               '"I"."DateCreated" "DateCreated"',
+               '"I"."DateModified" "DateModified"',
+               '"I"."MediaType" "MediaType"',
+               '"I"."IsReadOnly" "IsReadOnly"',
+               '"I"."CanRename" "CanRename"',
+               '"I"."CanAddChild" "CanAddChild"',
+               '"I"."Size" "Size"',
+               '"I"."IsInCache" "IsInCache"')
+    return columns

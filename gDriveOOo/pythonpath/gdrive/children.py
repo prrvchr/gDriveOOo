@@ -3,30 +3,61 @@
 
 import uno
 
-from .dbtools import getMarks, parseDateTime
-from .items import getItemInsert, getItemUpdate, executeItemUpdate
+from .dbtools import getDbConnection, getMarks, parseDateTime
+from .items import getItemInsert, getItemUpdate, doUpdateInsertItem
 from .google import ChildGenerator
 from .unotools import getResourceLocation, createService
+from .logger import getLogger
 
 
-
-def updateChildren(ctx, scheme, username, id):
-    url = getResourceLocation(ctx, '%s.odb' % scheme)
-    db = createService('com.sun.star.sdb.DatabaseContext').getByName(url)
-    connection = db.getConnection('', '')
+def updateChildren(ctx, connection, scheme, username, id):
     timestamp = parseDateTime()
     iteminsert = getItemInsert(connection)
     itemupdate = getItemUpdate(connection)
     childdelete = _getChildDelete(connection)
     childinsert = _getChildInsert(connection)
-    for result in ChildGenerator(ctx, scheme, username, id):
-        if 'id' in result:
-            executeItemUpdate(iteminsert, itemupdate, result, False, timestamp)
-            _updateParent(childdelete, childinsert, result, timestamp)
-    connection.close()
+    for item in ChildGenerator(ctx, scheme, username, id):
+        doUpdateInsertItem(iteminsert, itemupdate, item, False, timestamp)
+        _updateParent(childdelete, childinsert, item, timestamp)
+    print("children.updateChildren() 1")
+
+
+# LibreOffice Column: ['Title', 'Size', 'DateModified', 'DateCreated', 'IsFolder', 'TargetURL', 'IsHidden', 'IsVolume', 'IsRemote', 'IsRemoveable', 'IsFloppy', 'IsCompactDisc']
+# OpenOffice Columns: ['Title', 'Size', 'DateModified', 'DateCreated', 'IsFolder', 'TargetURL', 'IsHidden', 'IsVolume', 'IsRemote', 'IsRemoveable', 'IsFloppy', 'IsCompactDisc']
+def _getChildSelectColumns(username, properties):
+    columns = []
+    fields = {}
+    fields['Title'] = '"I"."Title"'
+    fields['Size'] = '"I"."Size"'
+    fields['DateModified'] = '"I"."DateModified"'
+    fields['DateCreated'] = '"I"."DateCreated"'
+    fields['IsFolder'] = '"I"."CanAddChild"'
+    fields['TargetURL'] = 'CONCAT(\'vnd.google-apps://%s/\', "I"."Id")' % username
+    fields['IsHidden'] = 'FALSE'
+    fields['IsVolume'] = 'FALSE'
+    fields['IsRemote'] = 'FALSE'
+    fields['IsRemoveable'] = 'FALSE'
+    fields['IsFloppy'] = 'FALSE'
+    fields['IsCompactDisc'] = 'FALSE'
+    for property in properties:
+        if hasattr(property, 'Name') and property.Name in fields:
+            columns.append('%s "%s"' % (fields[property.Name], property.Name))
+        else:
+            level = uno.getConstantByName("com.sun.star.logging.LogLevel.SEVERE")
+            getLogger().logp(level, "children", "_getChildSelectColumns()", "Column not found: %s... ERROR" % property.Name)
+    return columns
+
+def getChildSelect(connection, username, id, properties):
+    columns = ', '.join(_getChildSelectColumns(username, properties))
+    query = 'SELECT %s FROM "Items" AS "I" JOIN "Children" AS "C" ON "I"."Id" = "C"."Id" WHERE "C"."ParentId" = ?' % columns
+    select = connection.prepareStatement(query)
+    select.ResultSetType = uno.getConstantByName('com.sun.star.sdbc.ResultSetType.SCROLL_SENSITIVE')
+    #select.ResultSetConcurrency = uno.getConstantByName('com.sun.star.sdbc.ResultSetConcurrency.UPDATABLE')
+    select.setString(1, id)
+    return select
 
 def _getChildDelete(connection):
-    query = _getDeleteQuery()
+    query = 'DELETE FROM "Children" WHERE "Id" = ?'
     return connection.prepareStatement(query)
 
 def _getChildInsert(connection):
@@ -38,24 +69,10 @@ def insertParent(connection, arguments):
     insert = connection.prepareStatement(query)
     insert.setString(1, arguments['Id'])
     insert.setString(2, arguments['ParentId'])
-    insert.setTimestamp(3, parseDateTime())
-    insert.executeUpdate()
-
-def _getInsertQueryFields():
-    fields = []
-    fields.append('"Id"')
-    fields.append('"ParentId"')
-    fields.append('"TimeStamp"')
-    return fields
+    return insert.executeUpdate()
 
 def _getInsertQuery():
-    fields = _getInsertQueryFields()
-    marks = getMarks(fields)
-    query = 'INSERT INTO "Parent" (%s) VALUES (%s)' % (', '.join(fields), ', '.join(marks))
-    return query
-
-def _getDeleteQuery():
-    query = 'DELETE FROM "Parent" WHERE "Id" = ?'
+    query = 'INSERT INTO "Children" ("Id", "ParentId", "TimeStamp") VALUES (?, ?, NOW())'
     return query
 
 def _updateParent(delete, insert, result, timestamp):
@@ -66,5 +83,4 @@ def _updateParent(delete, insert, result, timestamp):
         for parent in result['parents']:
             insert.setString(1, id)
             insert.setString(2, parent)
-            insert.setTimestamp(3, timestamp)
             insert.executeUpdate()

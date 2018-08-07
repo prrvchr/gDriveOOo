@@ -8,14 +8,14 @@ from com.sun.star.lang import XServiceInfo, NoSupportException
 from com.sun.star.ucb import XContent, XCommandProcessor2, IllegalIdentifierException
 from com.sun.star.container import XChild
 from com.sun.star.beans import UnknownPropertyException
-from com.sun.star.uno import Exception
+from com.sun.star.uno import Exception as UnoException
 
 
-from gdrive import Component, Initialization, PropertiesChangeNotifier
+from gdrive import Component, Initialization, PropertiesChangeNotifier, getPropertiesValues
 from gdrive import CommandInfo, PropertySetInfo, Row, InputStream, createService
-from gdrive import getItemUpdate, getResourceLocation, updateItem
+from gdrive import getItemUpdate, getResourceLocation, parseDateTime
 from gdrive import queryContent, queryContentIdentifier, getSimpleFile, getCommandInfo, getProperty
-from gdrive import getPropertyChangeEvent
+from gdrive import propertyChange, setPropertiesValues
 #from gdrive import PyPropertiesChangeNotifier, PyPropertySetInfoChangeNotifier, PyCommandInfoChangeNotifier, PyPropertyContainer
 import requests
 import traceback
@@ -43,11 +43,13 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
             
             self.MediaType = None
             self.Size = 0
-            self.DateModified = None
-            self.DateCreated = None
+            self.DateModified = parseDateTime()
+            self.DateCreated = parseDateTime()
             
             self.IsReadOnly = False
             self.BaseURI = None
+            self.IsVersionable = False
+            
             
             self.listeners = []
             self.contentListeners = []
@@ -64,6 +66,8 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
             #self.CmisProperties = gdrive.PyXCmisDocument(self.cmisProperties)
             
             self.initialize(namedvalues)
+            
+            self.TitleOnServer = self.Id
 
             #url = getResourceLocation(self.ctx, '%s.odb' % self.Scheme)
             #db = self.ctx.ServiceManager.createInstance("com.sun.star.sdb.DatabaseContext").getByName(url)
@@ -83,13 +87,10 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
         return self._Title
     @Title.setter
     def Title(self, title):
-        if 'Title' in self.propertiesListener:
-            events = (getPropertyChangeEvent(self, 'Title', self._Title, title), )
-            for listener in self.propertiesListener['Title']:
-                listener.propertiesChange(events)
+        propertyChange(self, 'Title', self._Title, title)
         self._Title = title
 
-    # XChild
+     # XChild
     def getParent(self):
         print("DriveOfficeContent.getParent() ***********************************************")
         identifier = '%s://%s/%s' % (self.Scheme, self.UserName, self.ParentId)
@@ -124,20 +125,10 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
             elif command.Name == 'getPropertySetInfo':
                 return PropertySetInfo(self._getPropertySetInfo())
             elif command.Name == 'getPropertyValues':
-                values = self._getPropertyValues(command.Argument)
-                return Row(values)
+                namedvalues = getPropertiesValues(self, command.Argument)
+                return Row(namedvalues)
             elif command.Name == 'setPropertyValues':
-                results = []
-                for property in command.Argument:
-                    result = Exception('SetProperty Exception', self)
-                    if hasattr(property, 'Name') and hasattr(property, 'Value'):
-                        if hasattr(self, property.Name):
-                            setattr(self, property.Name, property.Value)
-                            result = None
-                        else:
-                            result = UnknownPropertyException('UnknownProperty: %s' % property.Name, self)
-                    results.append(result)
-                return tuple(results)
+                return setPropertiesValues(self, command.Argument)
             elif command.Name == 'open':
                 print ("DriveOfficeContent.open(): %s" % command.Argument.Mode)
                 sink = command.Argument.Sink
@@ -158,17 +149,6 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
         pass
     def releaseCommandIdentifier(self, id):
         pass
-
-    def _getPropertyValues(self, properties):
-        values = []
-        for property in properties:
-            value = None
-            if hasattr(property, 'Name') and hasattr(self, property.Name):
-                value = getattr(self, property.Name)
-            else:
-                print("DriveOfficeContent._getPropertyValues().Error: %s " % (property.Name, ))
-            values.append(uno.createUnoStruct('com.sun.star.beans.NamedValue', property.Name, value))
-        return tuple(values)
 
     def _getStream(self):
         sf = getSimpleFile(self.ctx)
