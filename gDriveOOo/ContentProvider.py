@@ -36,12 +36,29 @@ class ContentProvider(unohelper.Base, Component, XServiceInfo, XContentProvider,
             self.UserName = None
             self.Root = {}
             self.Logger = getLogger(self.ctx)
+            self.listener = []
             #self.Connection = getDbConnection(self.ctx, g_Scheme, True)
             #mri = self.ctx.ServiceManager.createInstance('mytools.Mri')
             #mri.inspect(self.connection)
             print("ContentProvider.__init__()")
         except Exception as e:
             print("ContentProvider.__init__().Error: %s" % e)
+
+    # XComponent
+    def dispose(self):
+        print("ContentProvider.dispose() 1")
+        event = uno.createUnoStruct('com.sun.star.lang.EventObject', self)
+        for listener in self.listeners:
+            listener.disposing(event)
+        print("ContentProvider.dispose() 2 ********************************************************")
+    def addEventListener(self, listener):
+        print("ContentProvider.addEventListener() *************************************************")
+        if listener not in self.listeners:
+            self.listeners.append(listener)
+    def removeEventListener(self, listener):
+        print("ContentProvider.removeEventListener() **********************************************")
+        if listener in self.listeners:
+            self.listeners.remove(listener)
 
     # XCallback
     def notify(self, event):
