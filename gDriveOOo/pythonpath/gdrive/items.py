@@ -7,103 +7,112 @@ from .dbtools import getMarks, getFieldMarks, parseDateTime
 
 
 def _getItemSelectColumns():
-    columns = ('"I"."Id" "Id"',
-               '"I"."Title" "Title"',
-               '"I"."DateCreated" "DateCreated"',
-               '"I"."DateModified" "DateModified"',
-               '"I"."MediaType" "MediaType"',
-               '"I"."IsReadOnly" "IsReadOnly"',
-               '"I"."CanRename" "CanRename"',
-               '"I"."CanAddChild" "CanAddChild"',
-               '"I"."Size" "Size"',
-               '"I"."IsInCache" "IsInCache"',
-               '"C"."ParentId" "ParentId"')
+    columns = ('"Id"',
+               '"Title"',
+               '"DateCreated"',
+               '"DateModified"',
+               '"MediaType"',
+               '"IsReadOnly"',
+               '"CanRename"',
+               '"CanAddChild"',
+               '"Size"',
+               '"IsInCache"')
     return columns
 
-def getItemSelect(connection, id):
+def getItemSelect(connection):
     columns = ', '.join(_getItemSelectColumns())
-    query = 'SELECT %s FROM "Items" AS "I" LEFT JOIN "Children" AS "C" ON "I"."Id" = "C"."Id" WHERE "I"."Id" = ?' % columns
-    select = connection.prepareStatement(query)
-    select.setString(1, id)
-    return select
+    query = 'SELECT %s FROM "Items" WHERE "Id" = ?;' % columns
+    return connection.prepareStatement(query)
     
-def executeUpdateInsertItem(connection, item):
-    update = getItemUpdate(connection)
-    insert = getItemInsert(connection)
-    return doUpdateInsertItem(insert, update, item)
+def executeUpdateInsertItem(update, insert, json, timestamp=None):
+    timestamp = parseDateTime() if timestamp is None else timestamp
+    _setUpdateParameters(update, json, timestamp)
+    result = update.executeUpdate()
+    if not result:
+        _setInsertParameters(insert, json, timestamp)
+        result = insert.executeUpdate()
+    return result
 
 def getItemInsert(connection):
     fields = _getInsertColumns()
     columns = ', '.join(fields)
     marks = ', '.join(getMarks(fields))
-    query = 'INSERT INTO "Items" (%s, "TimeStamp") VALUES (%s, NOW())' % (columns, marks)
+    query = 'INSERT INTO "Items" (%s, "TimeStamp") VALUES (%s, CURRENT_TIMESTAMP(3));' % (columns, marks)
     return connection.prepareStatement(query)
 
-def getItemUpdate(connection, query=None):
-    if query is None:
-        columns = ', '.join(getFieldMarks(_getUpdateColumns()))
-        query = 'UPDATE "Items" SET %s, "TimeStamp" = NOW() WHERE "Id" = ?' % columns
+def getItemUpdate(connection):
+    columns = ', '.join(getFieldMarks(_getUpdateColumns()))
+    query = 'UPDATE "Items" SET %s, "TimeStamp" = CURRENT_TIMESTAMP(3) WHERE "Id" = ?;' % columns
     return connection.prepareStatement(query)
 
-def doUpdateInsertItem(insert, update, item, incache=False, timestamp=None):
-    timestamp = parseDateTime() if timestamp is None else timestamp
-    _setItemUpdateParameters(update, item, incache, timestamp)
-    result = update.executeUpdate()
-    if not result:
-        _setItemInsertParameters(insert, item, timestamp)
-        result = insert.executeUpdate()
-    print("items.doUpdateInsertItem() %s" % result)
-    return result
-
-def executeItemInsert(connection, item):
+def executeItemInsert(insert, json):
     timestamp = parseDateTime()
-    insert = getItemInsert(connection)
-    _setItemInsertParameters(insert, item, timestamp)
+    _setInsertParameters(insert, json, timestamp)
     return insert.executeUpdate()
 
-def updateItem(connection, id, name, value):
-    updated = 0
-    query = 'UPDATE "Items" SET "%s" = ?, "TimeStamp" = NOW() WHERE "Id" = ?' % name
-    update = getItemUpdate(connection, query)
+def updateItem(event, statement, id):
+    query = 'UPDATE "Items" SET "%s" = ?, "TimeStamp" = CURRENT_TIMESTAMP(3) WHERE "Id" = ?;' % event.PropertyName
+    update = statement.getConnection().prepareStatement(query)
     update.setString(2, id)
-    if name == 'IsInCache':
-        update.setBoolean(1, value)
-    elif name == 'Title':
-        update.setString(1, value)
-    elif name == 'Size':
-        update.setLong(1, value)
+    if event.PropertyName == 'IsInCache':
+        update.setBoolean(1, event.NewValue)
+    elif event.PropertyName == 'Title':
+        update.setString(1, event.NewValue)
+    elif event.PropertyName == 'Size':
+        update.setLong(1, event.NewValue)
     return update.executeUpdate()
 
-def _setItemInsertParameters(statement, item, timestamp):
-    statement.setString(1, item['id'])
-    _setItemInsertUpdateParameters(statement, item, timestamp, 2)
+def insertItem(insert, id, row):
+    insert.setString(1, id)
+    insert.setString(2, row.getString(2))
+    insert.setTimestamp(3, row.getTimestamp(3))
+    insert.setTimestamp(4, row.getTimestamp(4))
+    insert.setString(5, row.getString(5))
+    insert.setBoolean(6, False)
+    insert.setBoolean(7, True)
+    insert.setBoolean(8, True)
+    insert.setLong(9, 0)
+    insert.setBoolean(10, True)
+    return insert.executeUpdate()
 
-def _setItemUpdateParameters(statement, item, incache, timestamp):
-    _setItemInsertUpdateParameters(statement, item, timestamp, 1)
-    statement.setBoolean(9, incache)
-    statement.setBoolean(10, True)
-    statement.setString(11, item['id'])
+def _setInsertParameters(insert, json, timestamp, incache=False):
+    insert.setString(1, json['id'])
+    index = _setInsertUpdateParameters(insert, json, timestamp, 2)
+    insert.setBoolean(index, incache)
 
-def _setItemInsertUpdateParameters(statement, item, timestamp, index):
-    statement.setString(index, item['name'] if 'name' in item else 'sans nom')
-    created = parseDateTime(item['createdTime']) if 'createdTime' in item else timestamp
-    statement.setTimestamp(index +1, created)
-    modified = parseDateTime(item['modifiedTime']) if 'modifiedTime' in item else timestamp
-    statement.setTimestamp(index +2, modified)
-    statement.setString(index +3, item['mimeType'])
+def _setUpdateParameters(update, json, timestamp):
+    index = _setInsertUpdateParameters(update, json, timestamp, 1)
+    update.setString(index, json['id'])
+
+def _setInsertUpdateParameters(statement, json, timestamp, index):
+    statement.setString(index, json['name'] if 'name' in json else 'sans nom')
+    index += 1
+    created = parseDateTime(json['createdTime']) if 'createdTime' in json else timestamp
+    statement.setTimestamp(index, created)
+    index += 1
+    modified = parseDateTime(json['modifiedTime']) if 'modifiedTime' in json else timestamp
+    statement.setTimestamp(index, modified)
+    index += 1
+    statement.setString(index, json['mimeType'])
+    index += 1
     readonly, canrename, addchild = True, False, False
-    if 'capabilities' in item:
-        capabilities = item['capabilities']
+    if 'capabilities' in json:
+        capabilities = json['capabilities']
         if 'canEdit' in capabilities:
             readonly = not capabilities['canEdit']
         if 'canRename' in capabilities:
             canrename = capabilities['canRename']
         if 'canAddChildren' in capabilities:
             addchild = capabilities['canAddChildren']
-    statement.setBoolean(index +4, readonly)
-    statement.setBoolean(index +5, canrename)
-    statement.setBoolean(index +6, addchild)
-    statement.setDouble(index +7, item['size'] if 'size' in item else 0)
+    statement.setBoolean(index, readonly)
+    index += 1
+    statement.setBoolean(index, canrename)
+    index += 1
+    statement.setBoolean(index, addchild)
+    index += 1
+    statement.setLong(index, int(json['size']) if 'size' in json else 0)
+    index += 1
+    return index
 
 def _getInsertColumns():
     columns = ('"Id"',
@@ -114,7 +123,8 @@ def _getInsertColumns():
                '"IsReadOnly"',
                '"CanRename"',
                '"CanAddChild"',
-               '"Size"')
+               '"Size"',
+               '"IsInCache"')
     return columns
 
 def _getUpdateColumns():
@@ -125,7 +135,5 @@ def _getUpdateColumns():
                '"IsReadOnly"', 
                '"CanRename"', 
                '"CanAddChild"', 
-               '"Size"', 
-               '"IsInCache"', 
-               '"Updated"')
+               '"Size"')
     return columns

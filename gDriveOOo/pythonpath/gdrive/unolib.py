@@ -58,16 +58,16 @@ class CommandInfo(unohelper.Base, XCommandInfo):
         if name in self.commands:
             return self.commands[name]
         print("PyCommandInfo.getCommandInfoByName() Error: %s" % name)
-        message = 'Cant getCommandInfoByName, UnsupportedCommandException: %s' % name
-        raise UnsupportedCommandException(message, self)
+        msg = 'Cant getCommandInfoByName, UnsupportedCommandException: %s' % name
+        raise UnsupportedCommandException(msg, self)
     def getCommandInfoByHandle(self, handle):
         print("PyCommandInfo.getCommandInfoByHandle(): %s" % handle)
         for command in self.commands.values():
             if command.Handle == handle:
                 return command
         print("PyCommandInfo.getCommandInfoByHandle() Error: %s" % handle)
-        message = 'Cant getCommandInfoByHandle, UnsupportedCommandException: %s' % handle
-        raise UnsupportedCommandException(message, self)
+        msg = 'Cant getCommandInfoByHandle, UnsupportedCommandException: %s' % handle
+        raise UnsupportedCommandException(msg, self)
     def hasCommandByName(self, name):
         print("PyCommandInfo.hasCommandByName(): %s" % name)
         return name in self.commands
@@ -92,14 +92,14 @@ class PropertySet(XPropertySet):
         if name in properties and hasattr(self, name):
             setattr(self, name, value)
         else:
-            message = 'Cant setPropertyValue, UnknownProperty: %s - %s' % (name, value)
-            raise UnknownPropertyException(message, self)
+            msg = 'Cant setPropertyValue, UnknownProperty: %s - %s' % (name, value)
+            raise UnknownPropertyException(msg, self)
     def getPropertyValue(self, name):
         if name in self._getPropertySetInfo() and hasattr(self, name):
             return getattr(self, name)
         else:
-            message = 'Cant getPropertyValue, UnknownProperty: %s' % name
-            raise UnknownPropertyException(message, self)
+            msg = 'Cant getPropertyValue, UnknownProperty: %s' % name
+            raise UnknownPropertyException(msg, self)
     def addPropertyChangeListener(self, name, listener):
         pass
     def removePropertyChangeListener(self, name, listener):
@@ -123,8 +123,8 @@ class PropertySetInfo(unohelper.Base, XPropertySetInfo):
         if name in self.properties:
             return self.properties[name]
         print("PyPropertySetInfo.getPropertyByName() Error: %s" % name)
-        message = 'Cant getPropertyByName, UnknownProperty: %s' % name
-        raise UnknownPropertyException(message, self)
+        msg = 'Cant getPropertyByName, UnknownProperty: %s' % name
+        raise UnknownPropertyException(msg, self)
     def hasPropertyByName(self, name):
         print("PyPropertySetInfo.hasPropertyByName(): %s" % name)
         return name in self.properties

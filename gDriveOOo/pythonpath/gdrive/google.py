@@ -58,9 +58,9 @@ def getItem(ctx, scheme, username, id):
     params['fields'] = g_itemfields
     session = requests.Session()
     with session.get(url, params=params, timeout=g_timeout, auth=authentication) as r:
-        print("google.getItem(): %s" % r.json())
-        if r.status_code == requests.codes.ok:
-            status = True
+        print("google.getItem(): %s - %s" % (r.status_code, r.json()))
+        status = r.status_code
+        if status == requests.codes.ok:
             item = r.json()
     return status, item
 

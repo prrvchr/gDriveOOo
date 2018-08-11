@@ -12,21 +12,20 @@ from com.sun.star.beans import XPropertiesChangeNotifier
 
 from .unolib import Component, PropertySet
 from .unotools import createService, getProperty, getResourceLocation
-from .contenttools import queryContentIdentifier, queryContent
+from .contenttools import getContent
 from .dbtools import getDbConnection
 from .children import getChildSelect
 
 
 class ContentIdentifier(unohelper.Base, XContentIdentifier):
-    def __init__(self, scheme, identifier):
-        self.scheme = scheme
-        self.identifier = identifier
+    def __init__(self, uri):
+        self.uri = uri
 
     # XContentIdentifier
     def getContentIdentifier(self):
-        return self.identifier
+        return self.uri.getUriReference()
     def getContentProviderScheme(self):
-        return self.scheme
+        return self.uri.getScheme()
 
 
 class Row(unohelper.Base, XRow):
@@ -86,13 +85,14 @@ class Row(unohelper.Base, XRow):
         
 
 class DynamicResultSet(unohelper.Base, XDynamicResultSet):
-    def __init__(self, ctx, select):
+    def __init__(self, ctx, scheme, select):
         self.ctx = ctx
+        self.scheme = scheme
         self.select = select
 
     # XDynamicResultSet
     def getStaticResultSet(self):
-        return ContentResultSet(self.ctx, self.select,)
+        return ContentResultSet(self.ctx, self.scheme, self.select,)
     def setListener(self, listener):
         print("DynamicResultSet.setListener():")
         pass
@@ -106,8 +106,9 @@ class DynamicResultSet(unohelper.Base, XDynamicResultSet):
 
 class ContentResultSet(unohelper.Base, PropertySet, XComponent, XRow, XResultSet, XResultSetMetaDataSupplier,
                        XCloseable, XContentAccess):
-    def __init__(self, ctx, select):
+    def __init__(self, ctx, scheme, select):
         self.ctx = ctx
+        self.scheme = scheme
         self.resultset = select.executeQuery()
         self.resultset.last()
         self.RowCount = self.resultset.Row
@@ -182,10 +183,10 @@ class ContentResultSet(unohelper.Base, PropertySet, XComponent, XRow, XResultSet
         return self.resultset.getString(self.resultset.findColumn('TargetURL'))
     def queryContentIdentifier(self):
         identifier = self.queryContentIdentifierString()
-        return queryContentIdentifier(self.ctx, identifier)
+        return ContentIdentifier(self.scheme, identifier)
     def queryContent(self):
-        identifier = self.queryContentIdentifierString()
-        return queryContent(self.ctx, identifier)
+        identifier = self.queryContentIdentifier()
+        return getContent(self.ctx, identifier)
 
     # XResultSetMetaDataSupplier
     def getMetaData(self):

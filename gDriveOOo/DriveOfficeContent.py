@@ -9,11 +9,12 @@ from com.sun.star.container import XChild
 from com.sun.star.lang import XServiceInfo, NoSupportException
 from com.sun.star.ucb import XContent, XCommandProcessor2, IllegalIdentifierException
 
-from gdrive import Component, Initialization, PropertiesChangeNotifier, getPropertiesValues
+from gdrive import Component, Initialization, PropertiesChangeNotifier, getPropertiesValues, ContentIdentifier
+from gdrive import getUri, getUriPath, getParentUri
 from gdrive import CommandInfo, PropertySetInfo, Row, InputStream, createService
 from gdrive import getItemUpdate, getResourceLocation, parseDateTime
-from gdrive import queryContent, queryContentIdentifier, getSimpleFile, getCommandInfo, getProperty
-from gdrive import propertyChange, setPropertiesValues
+from gdrive import getContent, getSimpleFile, getCommandInfo, getProperty
+from gdrive import propertyChange, setPropertiesValues, getLogger
 #from gdrive import PyPropertiesChangeNotifier, PyPropertySetInfoChangeNotifier, PyCommandInfoChangeNotifier, PyPropertyContainer
 import requests
 import traceback
@@ -29,10 +30,13 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
     def __init__(self, ctx, *namedvalues):
         try:
             self.ctx = ctx
-            self.Scheme = None
+            self.Logger = getLogger(self.ctx)
+            level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
+            msg = "DriveOfficeContent loading ..."
+            self.Logger.logp(level, "DriveOfficeContent", "__init__()", msg)
             self.UserName = None
             self.Id = None
-            self.ParentId = None
+            self.Uri = None
             
             self.ContentType = 'application/vnd.oasis.opendocument'
             self.IsFolder = False
@@ -44,9 +48,11 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
             self.DateModified = parseDateTime()
             self.DateCreated = parseDateTime()
             
+            self.CreatableContentsInfo = self._getCreatableContentsInfo()
+            self.CmisProperties = ()
+            
             self.IsReadOnly = False
-            self.BaseURI = None
-            self.IsVersionable = False
+            self.IsVersionable = True
             
             
             self.listeners = []
@@ -63,24 +69,13 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
             self.Subject = 'Test de GoogleDriveFileContent'
             #self.CmisProperties = gdrive.PyXCmisDocument(self.cmisProperties)
             
-            self.Logger = None
             self.initialize(namedvalues)
             
-            level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
-            self.Logger.logp(level, "DriveOfficeContent", "__init__()", "OfficeContent of ContentType: %s... loading Done" % self.ContentType)
-            
-            self.TitleOnServer = '%s://%s/%s' % (self.Scheme, self.UserName, self.Id)
-            self.BaseURI = '%s://%s/%s' % (self.Scheme, self.UserName, self.Id)
-
-            #url = getResourceLocation(self.ctx, '%s.odb' % self.Scheme)
-            #db = self.ctx.ServiceManager.createInstance("com.sun.star.sdb.DatabaseContext").getByName(url)
-            #connection = db.getConnection('', '')
-            #query = uno.getConstantByName('com.sun.star.sdb.CommandType.QUERY')
-            #self.ItemSelect = connection.prepareCommand('getItem', query)
-            #self.itemSelect.setString(1, self.UserName)
-            #self.ItemUpdate = getItemUpdateStatement(connection, self.Id)
-            
-            #self._setParentId()
+            self.ObjectId = self.Id
+            self.TitleOnServer = self.Title
+            self.BaseURI = self.Uri.getUriReference()
+            msg = "DriveOfficeContent loading Uri: %s ... Done" % self.Uri.getUriReference()
+            self.Logger.logp(level, "DriveOfficeContent", "__init__()", msg)            
             print("DriveOfficeContent.__init__()")
         except Exception as e:
             print("DriveOfficeContent.__init__().Error: %s - %e" % (e, traceback.print_exc()))
@@ -102,16 +97,16 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
      # XChild
     def getParent(self):
         print("DriveOfficeContent.getParent() ***********************************************")
-        identifier = '%s://%s/%s' % (self.Scheme, self.UserName, self.ParentId)
-        return queryContent(self.ctx, identifier)
+        uri = getParentUri(self.ctx, self.Uri)
+        identifier = ContentIdentifier(uri)
+        return getContent(self.ctx, identifier)
     def setParent(self, parent):
         print("DriveOfficeContent.setParent() ***********************************************")
         raise NoSupportException('Parent can not be set', self)
 
     # XContent
     def getIdentifier(self):
-        identifier = '%s://%s/%s' % (self.Scheme, self.UserName, self.Id)
-        return queryContentIdentifier(self.ctx, identifier)
+        return ContentIdentifier(self.Uri)
     def getContentType(self):
         return 'application/vnd.oasis.opendocument'
     def addContentEventListener(self, listener):
@@ -135,6 +130,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
                 return PropertySetInfo(self._getPropertySetInfo())
             elif command.Name == 'getPropertyValues':
                 namedvalues = getPropertiesValues(self, command.Argument, self.Logger)
+                print("DriveOfficeContent.getPropertyValues(): %s" % (namedvalues, ))
                 return Row(namedvalues)
             elif command.Name == 'setPropertyValues':
                 return setPropertiesValues(self, command.Argument, self.Logger)
@@ -161,9 +157,9 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
 
     def _getStream(self):
         sf = getSimpleFile(self.ctx)
-        uri = getResourceLocation(self.ctx, '%s/%s' % (self.Scheme, self.Id))
+        uri = getResourceLocation(self.ctx, '%s/%s' % (self.Uri.getScheme(), self.Id))
         if not sf.exists(uri):
-            input = InputStream(self.ctx, self.Scheme, self.UserName, self.Id, self.Size)
+            input = InputStream(self.ctx, self.Uri.getScheme(), self.UserName, self.Id, self.Size)
             sf.writeFile(uri, input)
             input.closeInput()
         stream = createService('com.sun.star.io.TempFile')
@@ -189,31 +185,32 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
 
     def _getPropertySetInfo(self):
         properties = {}
+        bound = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.BOUND')
         readonly = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.READONLY')
-        transient = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.TRANSIENT')
-        properties['Id'] = getProperty('Id', 'string', readonly)
-        properties['ContentType'] = getProperty('ContentType', 'string', readonly)
-        properties['MediaType'] = getProperty('MediaType', 'string', readonly)
-        properties['IsDocument'] = getProperty('IsDocument', 'boolean', readonly)
-        properties['IsFolder'] = getProperty('IsFolder', 'boolean', readonly)
-        properties['Title'] = getProperty('Title', 'string', transient)
-        properties['Size'] = getProperty('Size', 'long', readonly)
-        properties['DateModified'] = getProperty('DateModified', 'com.sun.star.util.DateTime', readonly)
-        properties['DateCreated'] = getProperty('DateCreated', 'com.sun.star.util.DateTime', readonly)
-        properties['IsReadOnly'] = getProperty('IsReadOnly', 'boolean', readonly)
-        properties['BaseURI'] = getProperty('BaseURI', 'string', readonly)
-        properties['TargetURL'] = getProperty('TargetURL', 'string', readonly)
-        properties['TitleOnServer'] = getProperty('TitleOnServer', 'string', readonly)
-        properties['IsVersionable'] = getProperty('IsVersionable', 'boolean', readonly)
-        properties['CasePreservingURL'] = getProperty('CasePreservingURL', 'string', readonly)
-#        properties['CreatableContentsInfo'] = getProperty('CreatableContentsInfo', '[]com.sun.star.ucb.ContentInfo', readonly)
-#        properties['CmisProperties'] = getProperty('CmisProperties', '[]com.sun.star.beans.PropertyValue', readonly)
+        properties['Id'] = getProperty('Id', 'string', bound | readonly)
+        properties['ContentType'] = getProperty('ContentType', 'string', bound | readonly)
+        properties['MediaType'] = getProperty('MediaType', 'string', bound)
+        properties['IsDocument'] = getProperty('IsDocument', 'boolean', bound | readonly)
+        properties['IsFolder'] = getProperty('IsFolder', 'boolean', bound | readonly)
+        properties['Title'] = getProperty('Title', 'string', bound)
+        properties['Size'] = getProperty('Size', 'long', bound | readonly)
+        properties['DateModified'] = getProperty('DateModified', 'com.sun.star.util.DateTime', bound | readonly)
+        properties['DateCreated'] = getProperty('DateCreated', 'com.sun.star.util.DateTime', bound | readonly)
+        properties['IsReadOnly'] = getProperty('IsReadOnly', 'boolean', bound | readonly)
+        properties['BaseURI'] = getProperty('BaseURI', 'string', bound | readonly)
+        properties['TargetURL'] = getProperty('TargetURL', 'string', bound | readonly)
+        properties['TitleOnServer'] = getProperty('TitleOnServer', 'string', bound)
+        properties['ObjectId'] = getProperty('ObjectId', 'string', bound)
+        properties['IsVersionable'] = getProperty('IsVersionable', 'boolean', bound | readonly)
+        properties['CasePreservingURL'] = getProperty('CasePreservingURL', 'string', bound | readonly)
+        properties['CreatableContentsInfo'] = getProperty('CreatableContentsInfo', '[]com.sun.star.ucb.ContentInfo', bound | readonly)
+        properties['CmisProperties'] = getProperty('CmisProperties', '[]com.sun.star.document.CmisProperty', bound)
 #        properties['Author'] = getProperty('Author', 'string', transient)
 #        properties['Keywords'] = getProperty('Keywords', 'string', transient)
 #        properties['Subject'] = getProperty('Subject', 'string', transient)
         return properties
 
-    def getCreatableContentsInfo(self):
+    def _getCreatableContentsInfo(self):
         transient = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.TRANSIENT')
         document = uno.getConstantByName('com.sun.star.ucb.ContentInfoAttribute.KIND_DOCUMENT')
         folder = uno.getConstantByName('com.sun.star.ucb.ContentInfoAttribute.KIND_FOLDER')

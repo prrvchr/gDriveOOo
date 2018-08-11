@@ -56,36 +56,9 @@ class OptionsDialog(unohelper.Base, XServiceInfo, XContainerWindowEventHandler):
         try:
             print("PyOptionsDialog._doConnect() 1")
             #Need upload file here
-            level = uno.getConstantByName("com.sun.star.logging.LogLevel.SEVERE")
-            getLogger().logp(level, "OptionsDialog", "_doConnect()", "Test:")
             print("PyOptionsDialog._doConnect() 7")
         except Exception as e:
             print("PyOptionsDialog._doConnect().Error: %s - %s" % (e, traceback.print_exc()))
-
-    def _getArgumentsFromResult(self, result):
-        arguments = {}
-        arguments['Scheme'] = result.getColumns().getByName('Scheme').getString()
-        arguments['UserName'] = result.getColumns().getByName('UserName').getString()
-        arguments['Id'] = result.getColumns().getByName('Id').getString()
-        if result.getColumns().hasByName('ParentId'):
-            arguments['ParentId'] = result.getColumns().getByName('ParentId').getString()
-        else:
-            arguments['ParentId'] = None
-        arguments['Title'] = result.getColumns().getByName('Title').getString()
-        arguments['MediaType'] = result.getColumns().getByName('MediaType').getString()
-        arguments['DateCreated'] = result.getColumns().getByName('DateCreated').getTimestamp()
-        arguments['DateModified'] = result.getColumns().getByName('DateModified').getTimestamp()
-        arguments['Size'] = result.getColumns().getByName('Size').getLong()
-        arguments['IsReadOnly'] = result.getColumns().getByName('IsReadOnly').getBoolean()
-        arguments['CanRename'] = result.getColumns().getByName('CanRename').getBoolean()
-        arguments['CanAddChild'] = result.getColumns().getByName('CanAddChild').getBoolean()
-        arguments['IsInCache'] = result.getColumns().getByName('IsInCache').getBoolean()
-        arguments['IsVersionable'] = result.getColumns().getByName('IsVersionable').getBoolean()
-        arguments['BaseURI'] = result.getColumns().getByName('BaseURI').getString()
-        arguments['TargetURL'] = result.getColumns().getByName('TargetURL').getString()
-        arguments['TitleOnServer'] = result.getColumns().getByName('TitleOnServer').getString()
-        arguments['CasePreservingURL'] = result.getColumns().getByName('CasePreservingURL').getString()
-        return arguments
 
     def _loadSetting(self, dialog):
         self._loadLoggerSetting(dialog)

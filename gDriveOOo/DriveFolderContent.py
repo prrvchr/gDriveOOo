@@ -10,13 +10,14 @@ from com.sun.star.container import XChild
 from com.sun.star.lang import XServiceInfo, NoSupportException
 from com.sun.star.ucb import XContent, XCommandProcessor2, XContentCreator, IllegalIdentifierException
 
-from gdrive import Component, Initialization, CommandInfo, PropertySetInfo, Row, DynamicResultSet, PropertiesChangeNotifier
-from gdrive import getItemUpdate, parseDateTime, getPropertiesValues, getPropertiesValues
-from gdrive import propertyChange, getDbConnection, getChildSelect
+from gdrive import Component, Initialization, CommandInfo, PropertySetInfo, Row, DynamicResultSet
+from gdrive import ContentIdentifier, PropertiesChangeNotifier
+from gdrive import propertyChange, getChildSelect, parseDateTime, getPropertiesValues, getLogger
 
 from gdrive import updateChildren, createService, getSimpleFile, getResourceLocation
-from gdrive import getUcb, getUcp, getCommandInfo, getProperty, getContentInfo
-from gdrive import queryContentIdentifier, queryContent, getContentEvent, getUri, getId
+from gdrive import getUcb, getCommandInfo, getProperty, getContentInfo
+from gdrive import getContent, getContentEvent, getParentUri, setPropertiesValues
+from gdrive import getId, getUri, getUriPath, getUcp, getNewItem
 
 import requests
 import traceback
@@ -31,10 +32,13 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
     def __init__(self, ctx, *namedvalues):
         try:
             self.ctx = ctx
-            self.Scheme = None
+            self.Logger = getLogger(self.ctx)
+            level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
+            msg = "DriveFolderContent loading ..."
+            self.Logger.logp(level, "DriveFolderContent", "__init__()", msg)
             self.UserName = None
-            self.Id = None
-            self.ParentId = None
+            self._Id = None
+            self.Uri = None
 
             self.ContentType = 'application/vnd.google-apps.folder'
             self.IsFolder = True
@@ -57,14 +61,24 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
             #XCommandInfoChangeNotifier listeners
             self.commandInfoListeners = []
             
-            self.Logger = None
+            self.itemInsert = None
+            self.itemUpdate = None
+            self.childDelete = None
+            self.childInsert = None
             self.initialize(namedvalues)
-            level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
-            self.Logger.logp(level, "DriveFolderContent", "__init__()", "FolderContent of ContentType: %s... loading Done" % self.ContentType)
-            print("DriveFolderContent.__init__()")
+            msg = "DriveFolderContent loading Uri: %s ... Done" % self.Uri.getUriReference()
+            self.Logger.logp(level, "DriveFolderContent", "__init__()", msg)
+            print(msg)
         except Exception as e:
             print("DriveFolderContent.__init__().Error: %s - %e" % (e, traceback.print_exc()))
 
+    @property
+    def Id(self):
+        return self._Id
+    @Id.setter
+    def Id(self, id):
+        propertyChange(self, 'Id', self._Id, id)
+        self._Id = id
     @property
     def IsInCache(self):
         return self._IsInCache
@@ -102,15 +116,16 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
     # XChild
     def getParent(self):
         print("DriveFolderContent.getParent()")
-        identifier = '%s://%s/%s' % (self.Scheme, self.UserName, self.Id)
-        return queryContent(self.ctx, identifier)
+        uri = getParentUri(self.ctx, self.Uri)
+        identifier = ContentIdentifier(uri)
+        return getContent(self.ctx, identifier)
     def setParent(self, parent):
+        print("DriveFolderContent.setParent()")
         raise NoSupportException('Parent can not be set', self)
 
     # XContent
     def getIdentifier(self):
-        identifier = '%s://%s/%s' % (self.Scheme, self.UserName, self.Id)
-        return queryContentIdentifier(self.ctx, identifier)
+        return ContentIdentifier(self.Uri)
     def getContentType(self):
         return 'application/vnd.google-apps.folder'
     def addContentEventListener(self, listener):
@@ -137,38 +152,38 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
             elif command.Name == 'setPropertyValues':
                 return setPropertiesValues(self, command.Argument, self.Logger)
             elif command.Name == 'open':
-                connection = getDbConnection(self.ctx, self.Scheme)
                 if not self.IsInCache:
-                    updateChildren(self.ctx, connection, self.Scheme, self.UserName, self.Id)
+                    updateChildren(self.ctx, self.itemInsert, self.itemUpdate, self.childDelete, 
+                                   self.childInsert, self.Uri.getScheme(), self.UserName, self.Id)
                     self.IsInCache = True
-                select = getChildSelect(connection, self.UserName, self.Id, command.Argument.Properties, self.Logger)
-                return DynamicResultSet(self.ctx, select)
+                connection = self.childInsert.getConnection()
+                select = getChildSelect(self.ctx, connection, self.Id, self.Uri.getUriReference(), command.Argument.Properties)
+                return DynamicResultSet(self.ctx, self.Uri.getScheme(), select)
             elif command.Name == 'createNewContent':
                 if command.Argument.Type == 'application/vnd.google-apps.folder':
                     print("DriveFolderContent.execute(): createNewContent %s" % command.Argument)
-                    identifier = queryContentIdentifier(self.ctx, '%s://%s/new' % (self.Scheme, self.UserName))
-                    id = getId(getUri(self.ctx, identifier.getContentIdentifier()))
-                    print("createNewContent: %s" % id)
-                    kwargs = {'Scheme': self.Scheme, 'UserName': self.UserName, 'Id': id, 'ParentId': self.Id}
+                    item = getNewItem(self.ctx, self.Uri, self.UserName)
                     name = 'com.gmail.prrvchr.extensions.gDriveOOo.DriveFolderContent'
-                    content = createService(name, self.ctx, **kwargs)
+                    content = createService(name, self.ctx, **item)
                     return content
             elif command.Name == 'insert':
                 print("DriveFolderContent.execute() insert")
-                id = '%s://%s/%s' % (self.Scheme, self.UserName, self.ParentId)
-                identifier = queryContentIdentifier(self.ctx, id)
-                action = uno.getConstantByName('com.sun.star.ucb.ContentAction.INSERTED')
-                event = getContentEvent(action, self, identifier)
-                ucp = getUcp(self.ctx, id)
-                ucp.notify(event)
+                #uri = getParentUri(self.ctx, self.Uri)
+                #identifier = ContentIdentifier(uri)
+                #action = uno.getConstantByName('com.sun.star.ucb.ContentAction.INSERTED')
+                #event = getContentEvent(action, self, identifier)
+                ucp = getUcp(self.ctx, self.Uri.getUriReference())
+                self.addPropertiesChangeListener(('Id', 'IsInCache', 'Title', 'Size'), ucp)
+                self.Id = self.Id
             elif command.Name == 'delete':
                 print("DriveFolderContent.execute(): delete")
             elif command.Name == 'transfer':
+                print("DriveRootContent.execute(): transfer")
                 source = command.Argument.SourceURL
                 sf = getSimpleFile(self.ctx)
                 if sf.exists(source):
                     id = command.Argument.NewTitle
-                    target = getResourceLocation(self.ctx, '%s/%s' % (self.Scheme, id))
+                    target = getResourceLocation(self.ctx, '%s/%s' % (self.Uri.getScheme(), id))
                     inputstream = sf.openFileRead(source)
                     sf.writeFile(target, inputstream)
                     inputstream.closeInput()
@@ -201,28 +216,30 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
 
     def _getPropertySetInfo(self):
         properties = {}
+        bound = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.BOUND')
         readonly = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.READONLY')
         transient = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.TRANSIENT')
-        properties['Id'] = getProperty('Id', 'string', readonly)
-#        properties['ParentsId'] = getProperty('ParentsId', '[]string', readonly)
-        properties['ContentType'] = getProperty('ContentType', 'string', readonly)
-        properties['MediaType'] = getProperty('MediaType', 'string', readonly)
-        properties['IsDocument'] = getProperty('IsDocument', 'boolean', readonly)
-        properties['IsFolder'] = getProperty('IsFolder', 'boolean', readonly)
-        properties['Title'] = getProperty('Title', 'string', transient)
-        properties['Size'] = getProperty('Size', 'long', readonly)
-        properties['DateModified'] = getProperty('DateModified', 'com.sun.star.util.DateTime', readonly)
-        properties['DateCreated'] = getProperty('DateCreated', 'com.sun.star.util.DateTime', readonly)
-        properties['IsInCache'] = getProperty('IsInCache', 'boolean', readonly)
-        properties['CreatableContentsInfo'] = getProperty('CreatableContentsInfo', '[]com.sun.star.ucb.ContentInfo', readonly)
+        properties['Id'] = getProperty('Id', 'string', bound | readonly)
+#        properties['ParentsId'] = getProperty('ParentsId', '[]string', bound | readonly)
+        properties['ContentType'] = getProperty('ContentType', 'string', bound | readonly)
+        properties['MediaType'] = getProperty('MediaType', 'string', bound | readonly)
+        properties['IsDocument'] = getProperty('IsDocument', 'boolean', bound | readonly)
+        properties['IsFolder'] = getProperty('IsFolder', 'boolean', bound | readonly)
+        properties['Title'] = getProperty('Title', 'string', bound)
+        properties['Size'] = getProperty('Size', 'long', bound | readonly)
+        properties['DateModified'] = getProperty('DateModified', 'com.sun.star.util.DateTime', bound | readonly)
+        properties['DateCreated'] = getProperty('DateCreated', 'com.sun.star.util.DateTime', bound | readonly)
+        properties['IsInCache'] = getProperty('IsInCache', 'boolean', bound | readonly)
+        properties['CreatableContentsInfo'] = getProperty('CreatableContentsInfo', '[]com.sun.star.ucb.ContentInfo', bound | readonly)
         return properties
 
     def _getCreatableContentsInfo(self):
+        bound = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.BOUND')
         transient = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.TRANSIENT')
         document = uno.getConstantByName('com.sun.star.ucb.ContentInfoAttribute.KIND_DOCUMENT')
         folder = uno.getConstantByName('com.sun.star.ucb.ContentInfoAttribute.KIND_FOLDER')
         ctype = 'application/vnd.google-apps.folder'
-        properties = (getProperty('Title', 'string', transient), )
+        properties = (getProperty('Title', 'string', bound), )
         content = (getContentInfo(ctype, folder, properties), )
         return content
 

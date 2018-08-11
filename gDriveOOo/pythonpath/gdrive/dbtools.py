@@ -11,61 +11,41 @@ from .unotools import getResourceLocation, getPropertyValue
 import datetime
 import traceback
 
-g_url = 'jdbc:hsqldb:%s/%s%s'
+g_class = 'org.hsqldb.jdbc.JDBCDriver'
+g_jar = 'hsqldb.jar'
+g_protocol = 'jdbc:hsqldb:'
+g_path = 'hsqldb/'
+g_scheme = 'vnd.google-apps'
 #g_options = ';default_schema=true;shutdown=true;hsqldb.default_table_type=cached;get_column_name=false'
 g_options = ';default_schema=true;hsqldb.default_table_type=cached;get_column_name=false;ifexists=true'
-g_class = 'org.hsqldb.jdbc.JDBCDriver'
-g_path = '%s/hsqldb.jar'
-g_scheme = 'vnd.google-apps'
 
-
-class DataSource(unohelper.Base, XDataSource):
-
-    # XDataSource
-    def getConnection(self, user, password):
-        ctx = uno.getComponentContext()
-        location = getResourceLocation(ctx, 'hsqldb')
-        pool = ctx.ServiceManager.createInstance('com.sun.star.sdbc.ConnectionPool')
-        url = g_url % (location, g_scheme, g_options)
-        args = [getPropertyValue('JavaDriverClass', g_class), 
-                getPropertyValue('JavaDriverClassPath', g_path % location)]
-        if user:
-            args.append(getPropertyValue('user', user))
-        if password:
-            args.append(getPropertyValue('password', password))
-        return pool.getConnectionWithInfo(url, tuple(args))
-    def setLoginTimeout(self, timeout):
-        pass
-    def getLoginTimeout(self):
-        return 10
 
 def getDbConnection(ctx, scheme, shutdown=False, url=None):
-    try:
-        location = getResourceLocation(ctx, 'hsqldb') if url is None else url
-        pool = ctx.ServiceManager.createInstance('com.sun.star.sdbc.ConnectionPool')
-        url = g_url % (location, scheme, g_options)
-        if shutdown:
-            url += ';shutdown=true'
-        args = (getPropertyValue('JavaDriverClass', g_class), 
-                getPropertyValue('JavaDriverClassPath', g_path % location))
-        connection = pool.getConnectionWithInfo(url, args)
-#        dbcontext = ctx.ServiceManager.createInstance('com.sun.star.sdb.DatabaseContext')
-#        if dbcontext.hasRegisteredDatabase(scheme):
-#            #if dbcontext.getDatabaseLocation(scheme) != url:
-#            print("getDbConnection url changed; %s" % dbcontext.getDatabaseLocation(scheme)) 
-#        else:
-#            print("getDbConnection url changed")
-#            datasource = dbcontext.createInstance()
-#            dbcontext.registerObject(scheme, datasource)
-#            datasource.URL = url
-#            datasource.Info = args
-#            print("getDbConnection url changed; %s" % dbcontext.getDatabaseLocation(scheme))
-        #mri = ctx.ServiceManager.createInstance('mytools.Mri')
-        #mri.inspect(pool.getDriverByURL(url))
-        #mri.inspect(pool.getDriverByURL(url))
-        return connection
-    except IllegalArgumentException as e:
-        print("getDbConnection.Error: %s - %s" % (e.Message, traceback.print_exc()))
+    location = getResourceLocation(ctx, g_path) if url is None else url
+    pool = ctx.ServiceManager.createInstance('com.sun.star.sdbc.ConnectionPool')
+    url = g_protocol + location + scheme + g_options
+    if shutdown:
+        url += ';shutdown=true'
+    args = (getPropertyValue('JavaDriverClass', g_class), 
+            getPropertyValue('JavaDriverClassPath', location + g_jar))
+    connection = pool.getConnectionWithInfo(url, args)
+    return connection
+
+def setDbContext(ctx, scheme):
+    dbcontext = ctx.ServiceManager.createInstance('com.sun.star.sdb.DatabaseContext')
+    if dbcontext.hasRegisteredDatabase(scheme):
+        #if dbcontext.getDatabaseLocation(scheme) != url:
+        print("getDbConnection url changed; %s" % dbcontext.getDatabaseLocation(scheme)) 
+    else:
+        print("getDbConnection url changed")
+        datasource = dbcontext.createInstance()
+        dbcontext.registerObject(scheme, datasource) # datasource need to be a XDocumentDataSource
+        datasource.URL = url
+        datasource.Info = args
+        print("getDbConnection url changed; %s" % dbcontext.getDatabaseLocation(scheme))
+    #mri = ctx.ServiceManager.createInstance('mytools.Mri')
+    #mri.inspect(pool.getDriverByURL(url))
+    #mri.inspect(pool.getDriverByURL(url))
 
 def getMarks(fields):
     marks = []

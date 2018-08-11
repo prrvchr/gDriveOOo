@@ -2,15 +2,32 @@
 # -*- coding: utf-8 -*-
 
 import uno
+
 from com.sun.star.beans import UnknownPropertyException, IllegalTypeException
 from com.sun.star.uno import Exception as UnoException
 
 from .unotools import getProperty
+from .items import insertItem, updateItem
+from .children import insertParent
+from .identifiers import updateIdentifier
 
 import datetime
 import requests
 import traceback
 
+
+def insertContent(ctx, event, itemInsert, childInsert, idUpdate, root):
+    properties = ('Uri', 'Title', 'DateCreated', 'DateModified', 'MediaType')
+    row = getContentProperties(event.Source, properties)
+    uri = row.getObject(1, None)
+    parent = getId(getParentUri(ctx, uri), root)
+    return all((insertItem(itemInsert, event.NewValue, row),
+                insertParent(childInsert, event.NewValue, parent),
+                updateIdentifier(idUpdate, event.NewValue)))
+
+def updateContent(event, statement):
+    id = getContentProperties(event.Source, ('Id', )).getString(1)
+    return updateItem(event, statement, id)
 
 def propertyChange(source, name, oldvalue, newvalue):
     if name in source.propertiesListener:
@@ -22,13 +39,16 @@ def getPropertiesValues(source, properties, logger):
     namedvalues = []
     for property in properties:
         value = None
+        level = uno.getConstantByName("com.sun.star.logging.LogLevel.SEVERE")
+        msg = "ERROR: Requested property: %s as incorect type" % property
         if hasattr(property, 'Name') and hasattr(source, property.Name):
             value = getattr(source, property.Name)
             level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
-            logger.logp(level, source.__class__.__name__, "getPropertiesValues()", "Get property: %s value: %s" % (property.Name, value))
+            msg = "Get property: %s value: %s" % (property.Name, value)
         else:
             level = uno.getConstantByName("com.sun.star.logging.LogLevel.SEVERE")
-            logger.logp(level, source.__class__.__name__, "getPropertiesValues()", "ERROR: Requested property: %s is not available" % property.Name)
+            msg = "ERROR: Requested property: %s is not available" % property.Name
+        logger.logp(level, source.__class__.__name__, "getPropertiesValues()", msg)
         namedvalues.append(uno.createUnoStruct('com.sun.star.beans.NamedValue', property.Name, value))
     return tuple(namedvalues)
 
@@ -36,16 +56,18 @@ def setPropertiesValues(source, properties, logger):
     results = []
     for property in properties:
         result = UnoException('SetProperty Exception', source)
+        level = uno.getConstantByName("com.sun.star.logging.LogLevel.SEVERE")
+        msg = "ERROR: Requested property: %s as incorect type" % property
         if hasattr(property, 'Name') and hasattr(property, 'Value'):
             if hasattr(source, property.Name):
                 setattr(source, property.Name, property.Value)
                 result = None
                 level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
-                logger.logp(level, source.__class__.__name__, "setPropertiesValues()", "Set property: %s value: %s" % (property.Name, value))
+                msg = "Set property: %s value: %s" % (property.Name, property.Value)
             else:
                 result = UnknownPropertyException('UnknownProperty: %s' % property.Name, source)
-                level = uno.getConstantByName("com.sun.star.logging.LogLevel.SEVERE")
-                logger.logp(level, source.__class__.__name__, "setPropertiesValues()", "ERROR: Requested property: %s is not available" % property.Name)
+                msg = "ERROR: Requested property: %s is not available" % property.Name
+        logger.logp(level, source.__class__.__name__, "setPropertiesValues()", msg)
         results.append(result)
     return tuple(results)
 
@@ -56,12 +78,37 @@ def getContentProperties(content, names):
     command = getCommand('getPropertyValues', tuple(properties))
     return content.execute(command, 0, None)
 
-def getId(uri, id=None):
-    if uri.getPathSegmentCount() > 0:
-        path = uri.getPathSegment(uri.getPathSegmentCount() -1)
-        if path not in ('', '.', 'root'):
-            id = path
+def getId(uri, root=''):
+    id = ''
+    count = uri.getPathSegmentCount()
+    if count > 0:
+        id = uri.getPathSegment(count -1)
+    if count == 1 and id == "":
+        id = root
     return id
+
+def getNewItem(ctx, uri, username):
+    paths = getUriPath(uri, 'new')
+    id = '%s://%s/%s' % (uri.getScheme(), uri.getAuthority(), '/'.join(paths))
+    identifier = getUcp(ctx, id).createContentIdentifier(id)
+    id = getId(getUri(ctx, identifier.getContentIdentifier()))
+    uri = getUri(ctx, identifier.getContentIdentifier())
+    return {'UserName': username, 'Id': id, 'Uri': uri}
+
+def getUriPath(uri, path=None, remove=False):
+    paths = []
+    for index in range(uri.getPathSegmentCount()):
+        paths.append(uri.getPathSegment(index))
+    if remove and len(paths):
+        paths.pop()
+    if path is not None:
+        paths.append(path)
+    return paths
+
+def getParentUri(ctx, uri):
+    path = getUriPath(uri, None, True)
+    identifier = '%s://%s/%s' % (uri.getScheme(), uri.getAuthority(), '/'.join(path))
+    return getUri(ctx, identifier)
 
 def _getPropertyChangeEvent(source, name, oldvalue, newvalue, further=False, handle=-1):
     event = uno.createUnoStruct('com.sun.star.beans.PropertyChangeEvent')
@@ -157,12 +204,8 @@ def createIdentifier(auth, url, title):
                 print("contenttools.createIdentifier(): %s" % id)
     return id
 
-def queryContentIdentifier(ctx, identifier):
-    return getUcb(ctx).createContentIdentifier(identifier)
-
-def queryContent(ctx, identifier):
-    ucb = getUcb(ctx)
-    return ucb.queryContent(ucb.createContentIdentifier(identifier))
+def getContent(ctx, identifier):
+    return getUcb(ctx).queryContent(identifier)
 
 def getCmisProperty(id, name, value, typename, updatable=True, required=True, multivalued=False, openchoice=True, choices=None):
     property = uno.createUnoStruct('com.sun.star.document.CmisProperty')
@@ -248,8 +291,7 @@ def getUcb(ctx, arguments=None):
     return ctx.ServiceManager.createInstanceWithArguments(name, (arguments, ))
 
 def getUcp(ctx, identifier):
-    ucb = getUcb(ctx)
-    return ucb.queryContentProvider(identifier)
+    return getUcb(ctx).queryContentProvider(identifier)
 
 def getUploadLocation(auth, id, name, parent, size, mimetype):
     location = None
