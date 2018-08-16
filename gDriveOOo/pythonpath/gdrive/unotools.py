@@ -7,6 +7,14 @@ from .unolib import InteractionHandler
 
 import binascii
 
+
+def isCmisReady():
+    ctx = uno.getComponentContext()
+    product = getOfficeProductName(ctx)
+    cmisready = product != 'OpenOffice'
+    print("isCmisReady: %s" % cmisready)
+    return cmisready
+
 def getOfficeProductName(ctx):
     return getConfiguration(ctx, '/org.openoffice.Setup/Product').getByName('ooName')
 
@@ -34,6 +42,13 @@ def getProperty(name, typename=None, attributes=None, handle=-1):
     if attributes is not None:
         property.Attributes = attributes
     return property
+
+def getPropertySetInfoChangeEvent(source, name, reason, handle=-1):
+    event = uno.createUnoStruct('com.sun.star.beans.PropertySetInfoChangeEvent')
+    event.Source = source
+    event.Name = name
+    event.Handle = handle
+    event.Reason = reason
 
 def getPropertyValue(name, value, state=None, handle=-1):
     property = uno.createUnoStruct('com.sun.star.beans.PropertyValue')

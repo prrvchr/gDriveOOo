@@ -17,7 +17,7 @@ import traceback
 
 
 def insertContent(ctx, event, itemInsert, childInsert, idUpdate, root):
-    properties = ('Uri', 'Title', 'DateCreated', 'DateModified', 'MediaType')
+    properties = ('Uri', 'Title', 'DateCreated', 'DateModified', 'MediaType', 'IsVersionable')
     row = getContentProperties(event.Source, properties)
     uri = row.getObject(1, None)
     parent = getId(getParentUri(ctx, uri), root)
@@ -119,7 +119,20 @@ def _getPropertyChangeEvent(source, name, oldvalue, newvalue, further=False, han
     event.OldValue = oldvalue
     event.NewValue = newvalue
     return event
-    
+
+def getCmisProperty(id, name, unotype, updatable, required, multivalued, openchoice, choices, value):
+    property = uno.createUnoStruct('com.sun.star.document.CmisProperty')
+    property.Id = id
+    property.Name = name
+    property.Type = unotype
+    property.Updatable = updatable
+    property.Required = required
+    property.MultiValued = multivalued
+    property.OpenChoice = openchoice
+    property.Choices = choices
+    property.Value = value
+    return property
+
 def getSimpleFile(ctx):
     return ctx.ServiceManager.createInstance('com.sun.star.ucb.SimpleFileAccess')
 
@@ -206,20 +219,6 @@ def createIdentifier(auth, url, title):
 
 def getContent(ctx, identifier):
     return getUcb(ctx).queryContent(identifier)
-
-def getCmisProperty(id, name, value, typename, updatable=True, required=True, multivalued=False, openchoice=True, choices=None):
-    property = uno.createUnoStruct('com.sun.star.document.CmisProperty')
-    property.Id = id
-    property.Name = name
-    property.Type = typename
-    property.Updatable = updatable
-    property.Required= required
-    property.MultiValued = multivalued
-    property.OpenChoice = openchoice
-    if choices is not None:
-        property.Choices = choices
-    property.Value = value
-    return property
 
 def getContentEvent(action, content, id):
     event = uno.createUnoStruct('com.sun.star.ucb.ContentEvent')

@@ -14,13 +14,13 @@ g_options = ';default_schema=true;hsqldb.default_table_type=cached;get_column_na
 
 def setDataBaseConnection(*arg):
     doc = XSCRIPTCONTEXT.getDocument()
-    ctx = XSCRIPTCONTEXT.getComponentContext()
-    location = _getDocumentLocation(ctx, doc)
+    location = _getDocumentLocation(doc)
     doc.DataSource.Settings.JavaDriverClass = g_class
     doc.DataSource.Settings.JavaDriverClassPath = location + g_path + g_jar
     doc.DataSource.URL = g_protocol + location + g_path + g_scheme + g_options
 
-def _getDocumentLocation(ctx, doc):
+def _getDocumentLocation(doc):
+    ctx = uno.getComponentContext()
     url = uno.createUnoStruct('com.sun.star.util.URL')
     url.Complete = doc.URL
     dummy, url = ctx.ServiceManager.createInstanceWithContext('com.sun.star.util.URLTransformer', ctx).parseStrict(url)

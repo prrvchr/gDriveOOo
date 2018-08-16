@@ -14,7 +14,7 @@ if sys.version_info[0] < 3:
     requests.packages.urllib3.disable_warnings()
 
 g_url = 'https://www.googleapis.com/drive/v3/files'
-g_itemfields = 'id,parents,name,mimeType,size,createdTime,modifiedTime,capabilities(canEdit,canRename,canAddChildren)'
+g_itemfields = 'id,parents,name,mimeType,size,createdTime,modifiedTime,capabilities(canEdit,canRename,canAddChildren, canReadRevisions)'
 g_childfields = 'kind,nextPageToken,files(%s)' % g_itemfields
 g_chunk = 262144
 g_pages = 100

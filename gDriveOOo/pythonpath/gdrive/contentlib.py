@@ -6,8 +6,8 @@ import unohelper
 
 from com.sun.star.lang import XComponent
 from com.sun.star.ucb import XContentIdentifier, XContentAccess, XDynamicResultSet
+from com.sun.star.ucb import XCommandInfo, XCommandInfoChangeNotifier, UnsupportedCommandException
 from com.sun.star.sdbc import XRow, XResultSet, XResultSetMetaDataSupplier, XCloseable
-from com.sun.star.beans import XPropertiesChangeNotifier
 #from com.sun.star.document import XCmisDocument
 
 from .unolib import Component, PropertySet
@@ -15,6 +15,52 @@ from .unotools import createService, getProperty, getResourceLocation
 from .contenttools import getContent
 from .dbtools import getDbConnection
 from .children import getChildSelect
+
+
+class CommandInfo(unohelper.Base, XCommandInfo):
+    def __init__(self, commands={}):
+        self.commands = commands
+
+    # XCommandInfo
+    def getCommands(self):
+        print("PyCommandInfo.getCommands()")
+        return tuple(self.commands.values())
+    def getCommandInfoByName(self, name):
+        print("PyCommandInfo.getCommandInfoByName(): %s" % name)
+        if name in self.commands:
+            return self.commands[name]
+        print("PyCommandInfo.getCommandInfoByName() Error: %s" % name)
+        msg = 'Cant getCommandInfoByName, UnsupportedCommandException: %s' % name
+        raise UnsupportedCommandException(msg, self)
+    def getCommandInfoByHandle(self, handle):
+        print("PyCommandInfo.getCommandInfoByHandle(): %s" % handle)
+        for command in self.commands.values():
+            if command.Handle == handle:
+                return command
+        print("PyCommandInfo.getCommandInfoByHandle() Error: %s" % handle)
+        msg = 'Cant getCommandInfoByHandle, UnsupportedCommandException: %s' % handle
+        raise UnsupportedCommandException(msg, self)
+    def hasCommandByName(self, name):
+        print("PyCommandInfo.hasCommandByName(): %s" % name)
+        return name in self.commands
+    def hasCommandByHandle(self, handle):
+        print("PyCommandInfo.hasCommandByHandle(): %s" % handle)
+        for command in self.commands.values():
+            if command.Handle == handle:
+                return True
+        return False
+
+
+class CommandInfoChangeNotifier(XCommandInfoChangeNotifier):
+    def __init__(self):
+        self.commandInfoListeners = []
+
+    # XCommandInfoChangeNotifier
+    def addCommandInfoChangeListener(self, listener):
+        self.commandInfoListeners.append(listener)
+    def removeCommandInfoChangeListener(self, listener):
+        if listener in self.commandInfoListeners:
+            self.commandInfoListeners.remove(listener)
 
 
 class ContentIdentifier(unohelper.Base, XContentIdentifier):
@@ -238,56 +284,3 @@ class ContentResultSet(unohelper.Base, PropertySet, XComponent, XRow, XResultSet
         return self.resultset.getClob(index)
     def getArray(self, index):
         return self.resultset.getArray(index)
-
-
-class PropertiesChangeNotifier(XPropertiesChangeNotifier):
-    def __init__(self):
-        print("PyPropertiesChangeNotifier.__init__()")
-        self.propertiesListener = {}
-
-    #XPropertiesChangeNotifier
-    def addPropertiesChangeListener(self, names, listener):
-        print("PyPropertiesChangeNotifier.addPropertiesChangeListener()")
-        for name in names:
-            if name not in self.propertiesListener:
-                self.propertiesListener[name] = []
-            self.propertiesListener[name].append(listener)
-    def removePropertiesChangeListener(self, names, listener):
-        print("PyPropertiesChangeNotifier.removePropertiesChangeListener()")
-        for name in names:
-            if name in self.propertiesListener:
-                if listener in self.propertiesListener[name]:
-                    self.propertiesListener[name].remove(listener)
-
-'''
-class XCmisDocument(unohelper.Base, XCmisDocument):
-    def __init__(self, cmisproperties={}):
-        self._CmisProperties = cmisproperties
-
-    @property
-    def CmisProperties(self):
-        return tuple(self._CmisProperties.values)
-
-    #XCmisDocument
-    def checkOut(self):
-        pass
-    def cancelCheckOut(self):
-        pass
-    def checkIn(self, ismajor, comment):
-        pass
-    def isVersionable(self):
-        return True
-    def canCheckOut(self):
-        return True
-    def canCancelCheckOut(self):
-        return True
-    def canCheckIn (self):
-        return True
-    def updateCmisProperties(self, cmisproperties):
-        for cmisproperty in cmisproperties:
-            id = cmisproperty.Id
-            if id in self._CmisProperties:
-                self._CmisProperties[id] = cmisproperty
-    def getAllVersions(self):
-        return ()
-'''

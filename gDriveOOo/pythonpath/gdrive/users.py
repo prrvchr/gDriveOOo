@@ -28,5 +28,5 @@ def _getUserSelectColumns():
                '"I"."CanRename" "CanRename"',
                '"I"."CanAddChild" "CanAddChild"',
                '"I"."Size" "Size"',
-               '"I"."IsInCache" "IsInCache"')
+               '"I"."IsRead" "IsRead"')
     return columns

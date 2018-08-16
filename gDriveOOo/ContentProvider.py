@@ -5,7 +5,7 @@ import uno
 import unohelper
 
 from com.sun.star.lang import XServiceInfo, XComponent
-from com.sun.star.ucb import XContentProvider, XContentIdentifierFactory, IllegalIdentifierException
+from com.sun.star.ucb import XContentProvider, XContentIdentifierFactory, XParameterizedContentProvider, IllegalIdentifierException
 from com.sun.star.beans import XPropertiesChangeListener
 from com.sun.star.frame import XTerminateListener, TerminationVetoException
 
@@ -26,25 +26,23 @@ from requests import codes
 g_ImplementationHelper = unohelper.ImplementationHelper()
 g_ImplementationName = 'com.gmail.prrvchr.extensions.gDriveOOo.ContentProvider'
 
-g_Scheme = 'vnd.google-apps'
-
 
 class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider,
-                      XContentIdentifierFactory, XPropertiesChangeListener, XTerminateListener):
+                      XContentIdentifierFactory, XPropertiesChangeListener,
+                      XParameterizedContentProvider, XTerminateListener):
     def __init__(self, ctx):
         try:
+            level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
+            msg = "ContentProvider loading ..."
             print("ContentProvider.__init__()")
             self.ctx = ctx
-            self.Logger = getLogger(self.ctx)
-            level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
-            msg = "ContentProvider for Scheme: %s loading ..." % g_Scheme
-            self.Logger.logp(level, "ContentProvider", "__init__()", msg)
+            self.Scheme = None          #'vnd.google-apps'
             self.UserName = None
             self.Root = {}
-            self.listener = []
-            self._initDataBase()
-            level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
-            msg = "ContentProvider for Scheme: %s loading ... Done" % g_Scheme
+            self.listeners = []
+            self.cachedContent = {}
+            self.Logger = getLogger(self.ctx)
+            msg += " Done"
             self.Logger.logp(level, "ContentProvider", "__init__()", msg)
             print("ContentProvider.__init__()")
         except Exception as e:
@@ -57,6 +55,15 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
     def RootId(self, id):
         pass
 
+    # XParameterizedContentProvider
+    def registerInstance(self, template, arguments, replace):
+        print("ContentProvider.registerInstance() ****************************************")
+        self.Scheme = template
+        self._initDataBase()
+        return self
+    def deregisterInstance(self, template, argument):
+        print("ContentProvider.deregisterInstance() ****************************************")
+
     # XTerminateListener
     def queryTermination(self, event):
         print("ContentProvider.queryTermination()")
@@ -64,12 +71,14 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
     def notifyTermination(self, event):
         level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
         msg = "Shutdown database ..."
-        self.Logger.logp(level, "ContentProvider", "notifyTermination()", msg)
-        msg = "Shutdown database ... connection alredy closed..."
         connection = self.statement.getConnection()
-        if not connection.isClosed():
-            self._shutdownDataBase(connection)
-            msg = "Shutdown database ... Done"
+        if connection.isClosed():
+            level = uno.getConstantByName("com.sun.star.logging.LogLevel.SEVERE")
+            msg += " connection alredy closed !!!"
+        else:
+            self._shutdownDataBase()
+            msg += "closing connection ..."
+        msg += " Done"
         self.Logger.logp(level, "ContentProvider", "notifyTermination()", msg)
         print("ContentProvider.notifyTermination() %s" % msg)
 
@@ -111,11 +120,11 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
                     msg = "ERROR: Can't update Property: %s" % event.PropertyName
                 self.Logger.logp(level, "ContentProvider", "propertiesChange()", msg)
     def disposing(self, source):
-        print("ContentProvider.disposing() %s" % (source, ))
+        print("ContentProvider.disposing() '%s'" % (source, ))
 
     # XContentIdentifierFactory
     def createContentIdentifier(self, identifier):
-        print("ContentProvider.createContentIdentifier()")
+        print("ContentProvider.createContentIdentifier() %s" % identifier)
         level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
         msg = "Identifier: %s ..." % identifier
         self.Logger.logp(level, "ContentProvider", "createContentIdentifier()", msg)
@@ -126,9 +135,9 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
         if id == 'new':
             msg = "New Identifier: %s ..." % uri.getUriReference()
             self.Logger.logp(level, "ContentProvider", "createContentIdentifier()", msg)
-            id = getNewId(self.ctx, g_Scheme, self.UserName, self.idSelect, self.idInsert)
+            id = getNewId(self.ctx, self.Scheme, self.UserName, self.idSelect, self.idInsert)
             path = getUriPath(uri, id, True)
-            identifier = '%s://%s/%s' % (g_Scheme, uri.getAuthority(), '/'.join(path))
+            identifier = '%s://%s/%s' % (self.Scheme, uri.getAuthority(), '/'.join(path))
             uri = getUri(self.ctx, identifier)
             msg = "New Identifier: %s ... DONE" % uri.getUriReference()
             self.Logger.logp(level, "ContentProvider", "createContentIdentifier()", msg)           
@@ -136,11 +145,6 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
         self.Logger.logp(level, "ContentProvider", "createContentIdentifier()", msg)
         return ContentIdentifier(uri)
 
-    # XParameterizedContentProvider
-    def registerInstance(self, template, argument, replace):
-        print("ContentProvider.registerInstance() ****************************************")
-    def deregisterInstance(self, template, argument):
-        print("ContentProvider.deregisterInstance() ****************************************")
 
     # XContentProvider
     def queryContent(self, identifier):
@@ -150,35 +154,17 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
         msg = "Identifier: %s..." % identifier
         self.Logger.logp(level, "ContentProvider", "queryContent()", msg)
         uri = getUri(self.ctx, identifier)
-        print("ContentProvider.queryContent() 2: %s" % uri.getUriReference())
         if not self._checkAuthority(uri):
             raise IllegalIdentifierException('Identifier has no Authority: %s' % identifier, self)
-        print("ContentProvider.queryContent() 3: %s" % (self.RootId, ))
         id = getId(uri, self.RootId)
-        print("ContentProvider.queryContent() 4: %s - %s" % (id, self.RootId))
         if id == '':
             raise IllegalIdentifierException('Identifier has illegal Path: %s' % identifier, self)
-        retrived, item = self._getItem(id)
+        retrived, content = self._getContent(id, uri)
         if not retrived:
             raise IllegalIdentifierException('Identifier has not been retrived: %s' % id, self)
-        item.update({'Uri': uri})
-        name = 'com.gmail.prrvchr.extensions.gDriveOOo.'
-        media = item['MediaType']
-        if media == 'application/vnd.google-apps.folder':
-            statements = {'itemUpdate': self.itemUpdate, 'itemInsert': self.itemInsert,
-                         'childDelete': self.childDelete, 'childInsert': self.childInsert}
-            item.update(statements)
-            name += 'DriveFolderContent' if id != self.RootId else 'DriveRootContent'
-        elif media.startswith('application/vnd.oasis.opendocument'):
-            name += 'DriveOfficeContent'
-        else:
-            raise IllegalIdentifierException('ContentType is unknown: %s' % media, self)
-        service = createService(name, self.ctx, **item)
-        service.addPropertiesChangeListener(('IsInCache', 'Title', 'Size'), self)
         msg = "Identifier: %s... Done" % identifier
         self.Logger.logp(level, "ContentProvider", "queryContent()", msg)
-        return service
-
+        return content
 
     def compareContentIds(self, identifier1, identifier2):
         uri1 = getUri(identifier1.getContentIdentifier())
@@ -228,7 +214,7 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
         root = {}
         level = uno.getConstantByName("com.sun.star.logging.LogLevel.SEVERE")
         msg = None
-        status, json = getItem(self.ctx, g_Scheme, username, 'root')
+        status, json = getItem(self.ctx, self.Scheme, username, 'root')
         if status is None:
             msg = "ERROR: Can't retreive from provider UserName: %s" % username
         elif status == codes.ok:
@@ -248,6 +234,35 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
         if msg is not None:
             self.Logger.logp(level, "ContentProvider", "_getUserFromProvider()", msg)
         return retrived, username, root
+
+    def _getContent(self, id, uri):
+        retrived = id in self.cachedContent
+        if retrived:
+            content = self.cachedContent[id]
+        else:
+            retrived, content = self._createContent(id, uri)
+        return retrived, content
+
+    def _createContent(self, id, uri):
+        content = None
+        retrived, item = self._getItem(id)
+        if retrived:
+            item.update({'Uri': uri})
+            name = None
+            media = item['MediaType']
+            if media == 'application/vnd.google-apps.folder':
+                statements = {'itemUpdate': self.itemUpdate, 'itemInsert': self.itemInsert,
+                             'childDelete': self.childDelete, 'childInsert': self.childInsert}
+                item.update(statements)
+                name = 'DriveFolderContent' if id != self.RootId else 'DriveRootContent'
+            elif media.startswith('application/vnd.oasis.opendocument'):
+                name = 'DriveOfficeContent'
+            if name:
+                service = 'com.gmail.prrvchr.extensions.gDriveOOo.%s' % name
+                content = createService(service, self.ctx, **item)
+                content.addPropertiesChangeListener(('IsRead', 'Title', 'Size'), self)
+                self.cachedContent[id] = content
+        return retrived, content
 
     def _getItem(self, id):
         retrived, item = False, {}
@@ -270,7 +285,7 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
         item = {}
         level = uno.getConstantByName("com.sun.star.logging.LogLevel.SEVERE")
         msg = None
-        status, json = getItem(self.ctx, g_Scheme, self.UserName, id)
+        status, json = getItem(self.ctx, self.Scheme, self.UserName, id)
         if status is None:
             msg = "ERROR: Can't retreive Id from provider: %s" % id
         elif status == codes.ok:
@@ -300,18 +315,15 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
                 value = result.getBoolean(index)
             elif dbtype == 'BIGINT':
                 value = result.getLong(index)
-            else:
-                print("ContentProvider._getItemFromResult() Error ***************************************Error")
             if result.wasNull():
                 value = None
-            print("ContentProvider._getItemFromResult() %s - %s" % (result.MetaData.getColumnName(index), value))
             item[result.MetaData.getColumnName(index)] = value
         return item
 
     def _initDataBase(self):
         desktop = self.ctx.ServiceManager.createInstance('com.sun.star.frame.Desktop')
         desktop.addTerminateListener(self)
-        connection = getDbConnection(self.ctx, g_Scheme)
+        connection = getDbConnection(self.ctx, self.Scheme)
         self.statement = connection.createStatement()
         self.userSelect = getUserSelect(connection)
         self.userInsert = getUserInsert(connection)
@@ -324,7 +336,7 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
         self.idSelect = getIdSelect(connection)
         self.idUpdate = getIdUpdate(connection)
 
-    def _shutdownDataBase(self, connection):
+    def _shutdownDataBase(self):
         self.userSelect.close()
         self.userInsert.close()
         self.itemSelect.close()

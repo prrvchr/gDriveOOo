@@ -5,9 +5,9 @@ import uno
 import unohelper
 
 from com.sun.star.lang import XComponent, XInitialization
-from com.sun.star.beans import XPropertyContainer, XPropertySet, XPropertySetInfo, UnknownPropertyException
+from com.sun.star.beans import XPropertyContainer, XPropertySet, XPropertySetInfo
+from com.sun.star.beans import XPropertiesChangeNotifier, XPropertySetInfoChangeNotifier, UnknownPropertyException
 from com.sun.star.task import XInteractionHandler
-from com.sun.star.ucb import XCommandInfo, UnsupportedCommandException
 
 
 class Component(XComponent):
@@ -45,40 +45,6 @@ class InteractionHandler(unohelper.Base, XInteractionHandler):
         pass
 
 
-class CommandInfo(unohelper.Base, XCommandInfo):
-    def __init__(self, commands={}):
-        self.commands = commands
-
-    # XCommandInfo
-    def getCommands(self):
-        print("PyCommandInfo.getCommands()")
-        return tuple(self.commands.values())
-    def getCommandInfoByName(self, name):
-        print("PyCommandInfo.getCommandInfoByName(): %s" % name)
-        if name in self.commands:
-            return self.commands[name]
-        print("PyCommandInfo.getCommandInfoByName() Error: %s" % name)
-        msg = 'Cant getCommandInfoByName, UnsupportedCommandException: %s' % name
-        raise UnsupportedCommandException(msg, self)
-    def getCommandInfoByHandle(self, handle):
-        print("PyCommandInfo.getCommandInfoByHandle(): %s" % handle)
-        for command in self.commands.values():
-            if command.Handle == handle:
-                return command
-        print("PyCommandInfo.getCommandInfoByHandle() Error: %s" % handle)
-        msg = 'Cant getCommandInfoByHandle, UnsupportedCommandException: %s' % handle
-        raise UnsupportedCommandException(msg, self)
-    def hasCommandByName(self, name):
-        print("PyCommandInfo.hasCommandByName(): %s" % name)
-        return name in self.commands
-    def hasCommandByHandle(self, handle):
-        print("PyCommandInfo.hasCommandByHandle(): %s" % handle)
-        for command in self.commands.values():
-            if command.Handle == handle:
-                return True
-        return False
-
-
 class PropertySet(XPropertySet):
     def _getPropertySetInfo(self):
         raise NotImplementedError
@@ -110,9 +76,30 @@ class PropertySet(XPropertySet):
         pass
 
 
+class PropertiesChangeNotifier(XPropertiesChangeNotifier):
+    def __init__(self):
+        print("PyPropertiesChangeNotifier.__init__()")
+        self.propertiesListener = {}
+
+    #XPropertiesChangeNotifier
+    def addPropertiesChangeListener(self, names, listener):
+        print("PyPropertiesChangeNotifier.addPropertiesChangeListener()")
+        for name in names:
+            if name not in self.propertiesListener:
+                self.propertiesListener[name] = []
+            self.propertiesListener[name].append(listener)
+    def removePropertiesChangeListener(self, names, listener):
+        print("PyPropertiesChangeNotifier.removePropertiesChangeListener()")
+        for name in names:
+            if name in self.propertiesListener:
+                if listener in self.propertiesListener[name]:
+                    self.propertiesListener[name].remove(listener)
+
+
 class PropertySetInfo(unohelper.Base, XPropertySetInfo):
-    def __init__(self, properties):
+    def __init__(self, properties, getCmisProperty):
         self.properties = properties
+        self.getCmisProperty = getCmisProperty
 
     # XPropertySetInfo
     def getProperties(self):
@@ -127,4 +114,21 @@ class PropertySetInfo(unohelper.Base, XPropertySetInfo):
         raise UnknownPropertyException(msg, self)
     def hasPropertyByName(self, name):
         print("PyPropertySetInfo.hasPropertyByName(): %s" % name)
+        if name == 'CmisProperties'  and name not in self.properties:
+            print("PyPropertySetInfo.hasPropertyByName(): %s" % (name in self.properties, ))
+            properties = self.getCmisProperty()
+            self.properties.update(properties)
+            print("PyPropertySetInfo.hasPropertyByName(): %s" % (name in self.properties, ))
         return name in self.properties
+
+
+class PropertySetInfoChangeNotifier(XPropertySetInfoChangeNotifier):
+    def __init__(self):
+        self.propertyInfoListeners = []
+
+    # XPropertySetInfoChangeNotifier
+    def addPropertySetInfoChangeListener(self, listener):
+        self.propertyInfoListeners.append(listener)
+    def removePropertySetInfoChangeListener(self, listener):
+        if listener in self.propertyInfoListeners:
+            self.propertyInfoListeners.remove(listener)

@@ -10,8 +10,8 @@ from com.sun.star.container import XChild
 from com.sun.star.lang import XServiceInfo, NoSupportException
 from com.sun.star.ucb import XContent, XCommandProcessor2, XContentCreator, IllegalIdentifierException
 
-from gdrive import Component, Initialization, CommandInfo, PropertySetInfo, Row, DynamicResultSet
-from gdrive import ContentIdentifier, PropertiesChangeNotifier
+from gdrive import Component, Initialization, CommandInfo, PropertySetInfo, DynamicResultSet, ContentIdentifier
+from gdrive import PropertiesChangeNotifier, PropertySetInfoChangeNotifier, CommandInfoChangeNotifier, Row
 from gdrive import propertyChange, getChildSelect, parseDateTime, getPropertiesValues, getLogger
 
 from gdrive import updateChildren, createService, getSimpleFile, getResourceLocation
@@ -28,7 +28,8 @@ g_ImplementationName = 'com.gmail.prrvchr.extensions.gDriveOOo.DriveFolderConten
 
 
 class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization, PropertiesChangeNotifier,
-                         XContent, XCommandProcessor2, XContentCreator, XChild, XCallback, XPropertyContainer):
+                         XContent, XCommandProcessor2, XContentCreator, XChild, XCallback,
+                         PropertySetInfoChangeNotifier, XPropertyContainer, CommandInfoChangeNotifier):
     def __init__(self, ctx, *namedvalues):
         try:
             self.ctx = ctx
@@ -49,16 +50,15 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
             self.Size = 0
             self.DateModified = parseDateTime()
             self.DateCreated = parseDateTime()
-            self._IsInCache = False
+            self._IsRead = False
             self.CreatableContentsInfo = self._getCreatableContentsInfo()
             
+            self._commandInfo = self._getCommandInfo()
+            self._propertySetInfo = self._getPropertySetInfo()
             self.listeners = []
             self.contentListeners = []
-            #PropertiesChangeNotifier listeners
             self.propertiesListener = {}
-            #XPropertySetInfoChangeNotifier listeners
             self.propertyInfoListeners = []
-            #XCommandInfoChangeNotifier listeners
             self.commandInfoListeners = []
             
             self.itemInsert = None
@@ -80,12 +80,12 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
         propertyChange(self, 'Id', self._Id, id)
         self._Id = id
     @property
-    def IsInCache(self):
-        return self._IsInCache
-    @IsInCache.setter
-    def IsInCache(self, state):
-        propertyChange(self, 'IsInCache', self._IsInCache, state)
-        self._IsInCache = state
+    def IsRead(self):
+        return self._IsRead
+    @IsRead.setter
+    def IsRead(self, isread):
+        propertyChange(self, 'IsRead', self._IsRead, isread)
+        self._IsRead = isread
     @property
     def Title(self):
         return self._Title
@@ -127,7 +127,7 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
     def getIdentifier(self):
         return ContentIdentifier(self.Uri)
     def getContentType(self):
-        return 'application/vnd.google-apps.folder'
+        return self.ContentType
     def addContentEventListener(self, listener):
         #print("DriveFolderContent.addContentEventListener():*************************")
         self.contentListeners.append(listener)
@@ -143,29 +143,31 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
         try:
             print("DriveFolderContent.execute(): %s" % command.Name)
             if command.Name == 'getCommandInfo':
-                return CommandInfo(self._getCommandInfo())
+                return CommandInfo(self._commandInfo)
             elif command.Name == 'getPropertySetInfo':
-                return PropertySetInfo(self._getPropertySetInfo())
+                return PropertySetInfo(self._propertySetInfo)
             elif command.Name == 'getPropertyValues':
                 namedvalues = getPropertiesValues(self, command.Argument,self.Logger)
                 return Row(namedvalues)
             elif command.Name == 'setPropertyValues':
                 return setPropertiesValues(self, command.Argument, self.Logger)
             elif command.Name == 'open':
-                if not self.IsInCache:
+                if not self.IsRead:
                     updateChildren(self.ctx, self.itemInsert, self.itemUpdate, self.childDelete, 
                                    self.childInsert, self.Uri.getScheme(), self.UserName, self.Id)
-                    self.IsInCache = True
+                    self.IsRead = True
                 connection = self.childInsert.getConnection()
                 select = getChildSelect(self.ctx, connection, self.Id, self.Uri.getUriReference(), command.Argument.Properties)
                 return DynamicResultSet(self.ctx, self.Uri.getScheme(), select)
             elif command.Name == 'createNewContent':
+                print("DriveFolderContent.execute(): createNewContent %s" % command.Argument)
+                item = getNewItem(self.ctx, self.Uri, self.UserName)
                 if command.Argument.Type == 'application/vnd.google-apps.folder':
-                    print("DriveFolderContent.execute(): createNewContent %s" % command.Argument)
-                    item = getNewItem(self.ctx, self.Uri, self.UserName)
                     name = 'com.gmail.prrvchr.extensions.gDriveOOo.DriveFolderContent'
-                    content = createService(name, self.ctx, **item)
-                    return content
+                elif command.Argument.Type == 'application/vnd.oasis.opendocument':
+                    name = 'com.gmail.prrvchr.extensions.gDriveOOo.DriveOfficeContent'
+                content = createService(name, self.ctx, **item)
+                return content
             elif command.Name == 'insert':
                 print("DriveFolderContent.execute() insert")
                 #uri = getParentUri(self.ctx, self.Uri)
@@ -173,12 +175,12 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
                 #action = uno.getConstantByName('com.sun.star.ucb.ContentAction.INSERTED')
                 #event = getContentEvent(action, self, identifier)
                 ucp = getUcp(self.ctx, self.Uri.getUriReference())
-                self.addPropertiesChangeListener(('Id', 'IsInCache', 'Title', 'Size'), ucp)
+                self.addPropertiesChangeListener(('Id', 'IsRead', 'Title', 'Size'), ucp)
                 self.Id = self.Id
             elif command.Name == 'delete':
                 print("DriveFolderContent.execute(): delete")
             elif command.Name == 'transfer':
-                print("DriveRootContent.execute(): transfer")
+                print("DriveFolderContent.execute(): transfer")
                 source = command.Argument.SourceURL
                 sf = getSimpleFile(self.ctx)
                 if sf.exists(source):
@@ -209,6 +211,7 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
         commands['open'] = getCommandInfo('open', 'com.sun.star.ucb.OpenCommandArgument2')
         commands['createNewContent'] = getCommandInfo('createNewContent', 'com.sun.star.ucb.ContentInfo')
         commands['insert'] = getCommandInfo('insert', 'com.sun.star.ucb.InsertCommandArgument')
+#        commands['insert'] = getCommandInfo('insert', 'com.sun.star.ucb.InsertCommandArgument2')
         commands['delete'] = getCommandInfo('delete', 'boolean')
         commands['transfer'] = getCommandInfo('transfer', 'com.sun.star.ucb.TransferInfo')
         commands['close'] = getCommandInfo('close')
@@ -229,19 +232,20 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
         properties['Size'] = getProperty('Size', 'long', bound | readonly)
         properties['DateModified'] = getProperty('DateModified', 'com.sun.star.util.DateTime', bound | readonly)
         properties['DateCreated'] = getProperty('DateCreated', 'com.sun.star.util.DateTime', bound | readonly)
-        properties['IsInCache'] = getProperty('IsInCache', 'boolean', bound | readonly)
+        properties['IsRead'] = getProperty('IsRead', 'boolean', bound)
         properties['CreatableContentsInfo'] = getProperty('CreatableContentsInfo', '[]com.sun.star.ucb.ContentInfo', bound | readonly)
         return properties
 
     def _getCreatableContentsInfo(self):
         bound = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.BOUND')
-        transient = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.TRANSIENT')
         document = uno.getConstantByName('com.sun.star.ucb.ContentInfoAttribute.KIND_DOCUMENT')
         folder = uno.getConstantByName('com.sun.star.ucb.ContentInfoAttribute.KIND_FOLDER')
-        ctype = 'application/vnd.google-apps.folder'
+        foldertype = 'application/vnd.google-apps.folder'
+        documenttype = 'application/vnd.oasis.opendocument'
         properties = (getProperty('Title', 'string', bound), )
-        content = (getContentInfo(ctype, folder, properties), )
+        content = (getContentInfo(foldertype, folder, properties), getContentInfo(documenttype, document, properties))
         return content
+
 
     # XServiceInfo
     def supportsService(self, service):

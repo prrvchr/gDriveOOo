@@ -70,7 +70,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
             self.initialize(namedvalues)
             
             #self.ObjectId = self.Id
-            self.TitleOnServer = '%s - %s' % (self.Title, self.Id) # path of file
+            self.TitleOnServer = '%s - %s' % (self.Title, self.Id)
             self.CanCheckOut = True
             self.CanCheckIn = True
             self.CanCancelCheckOut = True

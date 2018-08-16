@@ -4,8 +4,8 @@
 import uno
 import unohelper
 
-from com.sun.star.lang import XServiceInfo
-from com.sun.star.ucb import XContentProvider, XContentProviderSupplier, XParameterizedContentProvider
+from com.sun.star.lang import XServiceInfo, XEventListener
+from com.sun.star.ucb import XContentProvider, XContentIdentifierFactory, XContentProviderSupplier, XParameterizedContentProvider
 
 from gdrive import createService
 
@@ -14,27 +14,43 @@ g_ImplementationHelper = unohelper.ImplementationHelper()
 g_ImplementationName = 'com.gmail.prrvchr.extensions.gDriveOOo.ContentProviderProxy'
 
 
-class ContentProviderProxy(unohelper.Base, XServiceInfo, XContentProvider,
-                           XContentProviderSupplier, XParameterizedContentProvider):
+class ContentProviderProxy(unohelper.Base, XServiceInfo, XContentProvider, XContentIdentifierFactory,
+                           XEventListener, XContentProviderSupplier, XParameterizedContentProvider):
     def __init__(self, ctx):
         self.ctx = ctx
         self.provider = None
+        self.template = ''
+        self.arguments = ''
+        self.replace = True
         print("ContentProviderProxy.__init__()")
+
+    # XEventListener
+    def disposing(self, source):
+        print("ContentProviderProxy.disposing()")
 
     # XContentProviderSupplier
     def getContentProvider(self):
         print("ContentProviderProxy.getContentProvider()")
         if self.provider is None:
-            name = "com.gmail.prrvchr.extensions.gDriveOOo.ContentProvider"
-            self.provider = createService(name, self.ctx)
+            self.provider = createService('com.gmail.prrvchr.extensions.gDriveOOo.ContentProvider', self.ctx)
+            #provider = factory.createContentProvider("com.gmail.prrvchr.extensions.gDriveOOo.ContentProvider")
+            self.provider.registerInstance(self.template, self.arguments, self.replace)
+            self.provider.addEventListener(self)
         return self.provider
 
     # XParameterizedContentProvider
-    def registerInstance(self, template, argument, replace):
-        print("ContentProviderProxy.registerInstance()")
-        return self.getContentProvider()
+    def registerInstance(self, template, arguments, replace):
+        print("ContentProviderProxy.registerInstance(): %s - %s - %s" % (template, arguments, replace))
+        self.template = template
+        self.arguments = arguments
+        self.replace = replace
+        return self
     def deregisterInstance(self, template, argument):
         print("ContentProviderProxy.deregisterInstance()")
+
+    # XContentIdentifierFactory
+    def createContentIdentifier(self, identifier):
+        return self.getContentProvider().createContentIdentifier(identifier)
 
     # XContentProvider
     def queryContent(self, identifier):

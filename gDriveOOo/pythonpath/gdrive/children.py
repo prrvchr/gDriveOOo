@@ -12,17 +12,12 @@ from .logger import getLogger
 
 def updateChildren(ctx, iteminsert, itemupdate, childdelete, childinsert, scheme, username, id):
     timestamp = parseDateTime()
-    result = all(_updateChild(item, itemupdate, iteminsert, childdelete, childinsert, timestamp)
-                 for item in ChildGenerator(ctx, scheme, username, id))
-#    for item in ChildGenerator(ctx, scheme, username, id):
-#         executeUpdateInsertItem(itemupdate, iteminsert, item, timestamp)
-#        _updateParent(childdelete, childinsert, item, timestamp)
-    print("children.updateChildren() 1 %s" % result)
-    return result
+    return all(_updateChild(item, itemupdate, iteminsert, childdelete, childinsert, timestamp)
+               for item in ChildGenerator(ctx, scheme, username, id))
 
 def _updateChild(item, itemupdate, iteminsert, childdelete, childinsert, timestamp):
     return all((executeUpdateInsertItem(itemupdate, iteminsert, item, timestamp),
-               _updateParent(childdelete, childinsert, item, timestamp)))
+               _updateParent(childdelete, childinsert, item)))
 
 # LibreOffice Column: ['Title', 'Size', 'DateModified', 'DateCreated', 'IsFolder', 'TargetURL', 'IsHidden', 'IsVolume', 'IsRemote', 'IsRemoveable', 'IsFloppy', 'IsCompactDisc']
 # OpenOffice Columns: ['Title', 'Size', 'DateModified', 'DateCreated', 'IsFolder', 'TargetURL', 'IsHidden', 'IsVolume', 'IsRemote', 'IsRemoveable', 'IsFloppy', 'IsCompactDisc']
@@ -73,11 +68,17 @@ def insertParent(insert, id, parent):
     insert.setString(2, parent)
     return insert.executeUpdate()
 
-def _updateParent(delete, insert, result, timestamp):
-    id = result['id']
+def _updateParent(delete, insert, item):
+    id = item['id']
+    return all((_deleteParent(delete, id),
+                _insertParent(insert, id, item)))
+
+def _deleteParent(delete, id):
     delete.setString(1, id)
     delete.executeUpdate()
-    if 'parents' in result:
-        for parent in result['parents']:
-            insertParent(insert, id, parent)
+    return 1
+    
+def _insertParent(insert, id, item):
+    if 'parents' in item:
+        return all(insertParent(insert, id, parent) for parent in item['parents'])
     return 1

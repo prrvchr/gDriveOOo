@@ -16,7 +16,8 @@ def _getItemSelectColumns():
                '"CanRename"',
                '"CanAddChild"',
                '"Size"',
-               '"IsInCache"')
+               '"IsVersionable"',
+               '"IsRead"')
     return columns
 
 def getItemSelect(connection):
@@ -54,7 +55,7 @@ def updateItem(event, statement, id):
     query = 'UPDATE "Items" SET "%s" = ?, "TimeStamp" = CURRENT_TIMESTAMP(3) WHERE "Id" = ?;' % event.PropertyName
     update = statement.getConnection().prepareStatement(query)
     update.setString(2, id)
-    if event.PropertyName == 'IsInCache':
+    if event.PropertyName == 'IsRead':
         update.setBoolean(1, event.NewValue)
     elif event.PropertyName == 'Title':
         update.setString(1, event.NewValue)
@@ -72,7 +73,8 @@ def insertItem(insert, id, row):
     insert.setBoolean(7, True)
     insert.setBoolean(8, True)
     insert.setLong(9, 0)
-    insert.setBoolean(10, True)
+    insert.setBoolean(10, row.getBoolean(6))
+    insert.setBoolean(11, True)
     return insert.executeUpdate()
 
 def _setInsertParameters(insert, json, timestamp, incache=False):
@@ -95,7 +97,7 @@ def _setInsertUpdateParameters(statement, json, timestamp, index):
     index += 1
     statement.setString(index, json['mimeType'])
     index += 1
-    readonly, canrename, addchild = True, False, False
+    readonly, canrename, addchild, isversionable = True, False, False, False
     if 'capabilities' in json:
         capabilities = json['capabilities']
         if 'canEdit' in capabilities:
@@ -104,6 +106,8 @@ def _setInsertUpdateParameters(statement, json, timestamp, index):
             canrename = capabilities['canRename']
         if 'canAddChildren' in capabilities:
             addchild = capabilities['canAddChildren']
+        if 'canReadRevisions' in capabilities:
+            isversionable = capabilities['canReadRevisions']
     statement.setBoolean(index, readonly)
     index += 1
     statement.setBoolean(index, canrename)
@@ -111,6 +115,8 @@ def _setInsertUpdateParameters(statement, json, timestamp, index):
     statement.setBoolean(index, addchild)
     index += 1
     statement.setLong(index, int(json['size']) if 'size' in json else 0)
+    index += 1
+    statement.setBoolean(index, isversionable)
     index += 1
     return index
 
@@ -124,7 +130,8 @@ def _getInsertColumns():
                '"CanRename"',
                '"CanAddChild"',
                '"Size"',
-               '"IsInCache"')
+               '"IsVersionable"',
+               '"IsRead"')
     return columns
 
 def _getUpdateColumns():
@@ -135,5 +142,6 @@ def _getUpdateColumns():
                '"IsReadOnly"', 
                '"CanRename"', 
                '"CanAddChild"', 
-               '"Size"')
+               '"Size"',
+               '"IsVersionable"')
     return columns
