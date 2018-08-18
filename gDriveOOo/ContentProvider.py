@@ -167,17 +167,18 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
         return content
 
     def compareContentIds(self, identifier1, identifier2):
-        uri1 = getUri(identifier1.getContentIdentifier())
-        uri2 = getUri(identifier2.getContentIdentifier())
+        compare = 1
+        uri1 = getUri(self.ctx, identifier1.getContentIdentifier())
+        uri2 = getUri(self.ctx, identifier2.getContentIdentifier())
+        id1 = getId(uri1, self.RootId)
+        id2 = getId(uri2, self.RootId)
         print("ContentProvider.compareContentIds(): %s - %s" % (id1, id2))
-        if uri1 == uri2:
-            print("ContentProvider.compareContentIds() ************")
-            return 0
-        if uri1.getScheme() != uri2.getScheme() or uri1.getAuthority() != uri2.getAuthority():
-            print("ContentProvider.compareContentIds() ------------")
-            return -1
-        print("ContentProvider.compareContentIds() ------------")
-        return 1
+        if id1 == id2:
+            compare = 0
+        elif uri1.getPathSegmentCount() != uri2.getPathSegmentCount():
+            compare = uri1.getPathSegmentCount() - uri2.getPathSegmentCount()
+        print("ContentProvider.compareContentIds(): %s" % compare)
+        return compare
 
     def _checkAuthority(self, uri):
         if uri.hasAuthority() and self.UserName != uri.getAuthority():

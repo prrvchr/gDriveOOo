@@ -15,7 +15,7 @@ from gdrive import PropertiesChangeNotifier, PropertySetInfoChangeNotifier, Comm
 from gdrive import propertyChange, getChildSelect, parseDateTime, getPropertiesValues, getLogger
 
 from gdrive import updateChildren, createService, getSimpleFile, getResourceLocation
-from gdrive import getUcb, getCommandInfo, getProperty, getContentInfo
+from gdrive import getUcb, getCommandInfo, getProperty, getContentInfo, setContentProperties
 from gdrive import getContent, getContentEvent, getParentUri, setPropertiesValues
 from gdrive import getId, getUri, getUriPath, getUcp, getNewItem
 
@@ -180,16 +180,19 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
             elif command.Name == 'delete':
                 print("DriveFolderContent.execute(): delete")
             elif command.Name == 'transfer':
-                print("DriveFolderContent.execute(): transfer")
                 source = command.Argument.SourceURL
+                id = command.Argument.NewTitle
+                print("DriveFolderContent.execute(): transfer %s - %s" % (source, id))
                 sf = getSimpleFile(self.ctx)
                 if sf.exists(source):
-                    id = command.Argument.NewTitle
                     target = getResourceLocation(self.ctx, '%s/%s' % (self.Uri.getScheme(), id))
                     inputstream = sf.openFileRead(source)
                     sf.writeFile(target, inputstream)
                     inputstream.closeInput()
-                    #size = sf.getSize(target)
+                    uri = getUri(self.ctx, '%s://%s/%s' % (self.Uri.getScheme(), self.Uri.getAuthority(), id))
+                    identifier = ContentIdentifier(uri)
+                    content = getContent(self.ctx, identifier)
+                    setContentProperties(content, {'Size': sf.getSize(target)})
                     if command.Argument.MoveData:
                         pass #must delete object
             elif command.Name == 'close':
@@ -256,6 +259,6 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
         return g_ImplementationHelper.getSupportedServiceNames(g_ImplementationName)
 
 
-g_ImplementationHelper.addImplementation(DriveFolderContent,                        # UNO object class
-                                         g_ImplementationName,                      # Implementation name
-                                        (g_ImplementationName,))                    # List of implemented services
+g_ImplementationHelper.addImplementation(DriveFolderContent,                                                 # UNO object class
+                                         g_ImplementationName,                                               # Implementation name
+                                        (g_ImplementationName, 'com.sun.star.ucb.Content'))                  # List of implemented services

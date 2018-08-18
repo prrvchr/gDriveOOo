@@ -11,9 +11,9 @@ from com.sun.star.ucb import XContent, XCommandProcessor2, XContentCreator, Ille
 
 from gdrive import Initialization, CommandInfo, PropertySetInfo, Row, DynamicResultSet, ContentIdentifier
 from gdrive import PropertySetInfoChangeNotifier, PropertiesChangeNotifier, CommandInfoChangeNotifier
-from gdrive import parseDateTime, getChildSelect, getLogger
+from gdrive import parseDateTime, getChildSelect, getLogger, setContentProperties
 from gdrive import updateChildren, createService, getSimpleFile, getResourceLocation
-from gdrive import getUcb, getCommandInfo, getProperty, getContentInfo
+from gdrive import getUcb, getCommandInfo, getProperty, getContentInfo, getContent
 from gdrive import propertyChange, getPropertiesValues, setPropertiesValues
 from gdrive import getId, getUri, getUriPath, getUcp, getNewItem
 
@@ -172,16 +172,19 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
             elif command.Name == 'delete':
                 print("DriveRootContent.execute(): delete")
             elif command.Name == 'transfer':
-                print("DriveRootContent.execute(): transfer")
                 source = command.Argument.SourceURL
+                id = command.Argument.NewTitle
+                print("DriveRootContent.execute(): transfer %s - %s" % (source, id))
                 sf = getSimpleFile(self.ctx)
                 if sf.exists(source):
-                    id = command.Argument.NewTitle
                     target = getResourceLocation(self.ctx, '%s/%s' % (self.Uri.getScheme(), id))
                     inputstream = sf.openFileRead(source)
                     sf.writeFile(target, inputstream)
                     inputstream.closeInput()
-                    #self.Size = sf.getSize(target)
+                    uri = getUri(self.ctx, '%s://%s/%s' % (self.Uri.getScheme(), self.Uri.getAuthority(), id))
+                    identifier = ContentIdentifier(uri)
+                    content = getContent(self.ctx, identifier)
+                    setContentProperties(content, {'Size': sf.getSize(target)})
                     if command.Argument.MoveData:
                         pass #must delete object
             elif command.Name == 'close':
@@ -250,4 +253,4 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
 
 g_ImplementationHelper.addImplementation(DriveRootContent,                                                   # UNO object class
                                          g_ImplementationName,                                               # Implementation name
-                                        (g_ImplementationName, ))                                            # List of implemented services
+                                        (g_ImplementationName, 'com.sun.star.ucb.Content'))                  # List of implemented services

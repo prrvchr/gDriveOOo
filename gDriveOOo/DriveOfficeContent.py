@@ -46,7 +46,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
             self._Title = 'Sans Nom'
             
             self.MediaType = None
-            self.Size = 0
+            self._Size = 0
             self.DateModified = parseDateTime()
             self.DateCreated = parseDateTime()
             
@@ -66,11 +66,11 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
             self.Subject = 'Test de GoogleDriveFileContent'
             self.IsVersionable = None
             self._CmisProperties = None
+            self._TitleOnServer = None
             
             self.initialize(namedvalues)
             
-            #self.ObjectId = self.Id
-            self.TitleOnServer = '%s - %s' % (self.Title, self.Id) # path of file
+            self.ObjectId = self.Id
             self.CanCheckOut = True
             self.CanCheckIn = True
             self.CanCancelCheckOut = True
@@ -85,6 +85,13 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
             print("DriveOfficeContent.__init__().Error: %s - %e" % (e, traceback.print_exc()))
 
     @property
+    def TitleOnServer(self):
+        print("DriveOfficeContent.TitleOnServer(): 1")
+        if self._TitleOnServer is None:
+            self._TitleOnServer = self._Title
+            self._Title = self.Id
+        return self._TitleOnServer
+    @property
     def CmisProperties(self):
         print("DriveOfficeContent.CmisProperties(): 1")
         if self._CmisProperties is None:
@@ -95,8 +102,16 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
         return self._Title
     @Title.setter
     def Title(self, title):
-        propertyChange(self, 'Title', self._Title, title)
+        if self._TitleOnServer is None:
+            propertyChange(self, 'Title', self._Title, title)
         self._Title = title
+    @property
+    def Size(self):
+        return self._Size
+    @Size.setter
+    def Size(self, size):
+        propertyChange(self, 'Size', self._Size, size)
+        self._Size = size
 
     # XContentCreator
     def queryCreatableContentsInfo(self):
@@ -262,7 +277,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
         properties['TitleOnServer'] = getProperty('TitleOnServer', 'string', bound)
 #        properties['CanCheckIn'] = getProperty('CanCheckIn', 'boolean', bound)
 #        properties['CanCancelCheckOut'] = getProperty('CanCancelCheckOut', 'boolean', bound)
-#        properties['ObjectId'] = getProperty('ObjectId', 'string', bound)
+        properties['ObjectId'] = getProperty('ObjectId', 'string', bound | readonly)
         properties['CasePreservingURL'] = getProperty('CasePreservingURL', 'boolean', bound | readonly)
         properties['CreatableContentsInfo'] = getProperty('CreatableContentsInfo', '[]com.sun.star.ucb.ContentInfo', bound | readonly)
         properties['Author'] = getProperty('Author', 'string', bound)
@@ -285,7 +300,8 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
 
     def _getCmisProperties(self):
         properties = []
-        properties.append(getCmisProperty('cmis:test', 'test', 'string', True, True, False, True, (), 'valeur de test'))
+        properties.append(getCmisProperty('cmis:isVersionSeriesCheckedOut', 'isVersionSeriesCheckedOut', 'boolean', True, True, False, True, (), True))
+        properties.append(getCmisProperty('cmis:title', 'title', 'string', True, True, False, True, (), 'nouveau titre'))
         return tuple(properties)
 
 #        self._propertySetInfo.update({property.Name: property})
@@ -315,6 +331,6 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
         return g_ImplementationHelper.getSupportedServiceNames(g_ImplementationName)
 
 
-g_ImplementationHelper.addImplementation(DriveOfficeContent,                        # UNO object class
-                                         g_ImplementationName,                      # Implementation name
-                                        (g_ImplementationName,))                    # List of implemented services
+g_ImplementationHelper.addImplementation(DriveOfficeContent,                                                 # UNO object class
+                                         g_ImplementationName,                                               # Implementation name
+                                        (g_ImplementationName, 'com.sun.star.ucb.Content'))                  # List of implemented services

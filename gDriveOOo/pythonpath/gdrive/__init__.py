@@ -32,7 +32,7 @@ from .contentlib import ContentIdentifier, Row, DynamicResultSet, CommandInfo, C
 from .contenttools import getUri, getUriPath, getUcb, getSimpleFile, getContentInfo, getCommandInfo
 from .contenttools import getContent, getContentEvent, getUcp, getNewItem, getParentUri
 from .contenttools import getId, getContentProperties, getPropertiesValues, setPropertiesValues, propertyChange
-from .contenttools import insertContent, updateContent, getCmisProperty
+from .contenttools import insertContent, updateContent, getCmisProperty, setContentProperties
 
 from .google import InputStream, getItem
 

@@ -6,7 +6,7 @@ import uno
 from com.sun.star.beans import UnknownPropertyException, IllegalTypeException
 from com.sun.star.uno import Exception as UnoException
 
-from .unotools import getProperty
+from .unotools import getProperty, getPropertyValue
 from .items import insertItem, updateItem
 from .children import insertParent
 from .identifiers import updateIdentifier
@@ -76,6 +76,13 @@ def getContentProperties(content, names):
     for name in names:
         properties.append(getProperty(name))
     command = getCommand('getPropertyValues', tuple(properties))
+    return content.execute(command, 0, None)
+
+def setContentProperties(content, arguments):
+    properties = []
+    for name, value in arguments.items():
+        properties.append(getPropertyValue(name, value))
+    command = getCommand('setPropertyValues', tuple(properties))
     return content.execute(command, 0, None)
 
 def getId(uri, root=''):
