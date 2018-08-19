@@ -5,7 +5,8 @@ import uno
 import unohelper
 
 from com.sun.star.lang import XServiceInfo, XComponent
-from com.sun.star.ucb import XContentProvider, XContentIdentifierFactory, XParameterizedContentProvider, IllegalIdentifierException
+from com.sun.star.ucb import XContentProvider, XContentIdentifierFactory, XParameterizedContentProvider
+from com.sun.star.ucb import URLAuthenticationRequest, IllegalIdentifierException
 from com.sun.star.beans import XPropertiesChangeListener
 from com.sun.star.frame import XTerminateListener, TerminationVetoException
 
@@ -31,7 +32,7 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
                       XContentIdentifierFactory, XPropertiesChangeListener,
                       XParameterizedContentProvider, XTerminateListener):
     def __init__(self, ctx):
-        level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
+        level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
         msg = "ContentProvider loading ..."
         self.ctx = ctx
         self.Scheme = None          #'vnd.google-apps'
@@ -65,11 +66,11 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
         print("ContentProvider.queryTermination()")
         # ToDo: Upload modified metadata/files after asking user
     def notifyTermination(self, event):
-        level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
+        level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
         msg = "Shutdown database ..."
         connection = self.statement.getConnection()
         if connection.isClosed():
-            level = uno.getConstantByName("com.sun.star.logging.LogLevel.SEVERE")
+            level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
             msg += " connection alredy closed !!!"
         else:
             self._shutdownDataBase()
@@ -97,14 +98,14 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
     # XPropertiesChangeListener
     def propertiesChange(self, events):
         for event in events:
-            level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
+            level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
             if event.PropertyName == 'Id':
                 msg = "Item inserted new Id: %s ..." % event.NewValue
                 self.Logger.logp(level, "ContentProvider", "propertiesChange()", msg)
                 if insertContent(self.ctx, event, self.itemInsert, self.childInsert, self.idUpdate, self.RootId):
                     msg = "Item inserted new Id: %s ... Done" % event.NewValue
                 else:
-                    level = uno.getConstantByName("com.sun.star.logging.LogLevel.SEVERE")
+                    level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
                     msg = "ERROR: Can't insert new Id: %s" % event.NewValue
             else:
                 msg = "Item updated Property: %s ..." % event.PropertyName
@@ -112,7 +113,7 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
                 if updateContent(event, self.statement):
                     msg = "Item updated Property: %s ... Done" % event.PropertyName
                 else:
-                    level = uno.getConstantByName("com.sun.star.logging.LogLevel.SEVERE")
+                    level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
                     msg = "ERROR: Can't update Property: %s" % event.PropertyName
                 self.Logger.logp(level, "ContentProvider", "propertiesChange()", msg)
     def disposing(self, source):
@@ -121,7 +122,7 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
     # XContentIdentifierFactory
     def createContentIdentifier(self, identifier):
         print("ContentProvider.createContentIdentifier() %s" % identifier)
-        level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
+        level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
         msg = "Identifier: %s ..." % identifier
         self.Logger.logp(level, "ContentProvider", "createContentIdentifier()", msg)
         uri = getUri(self.ctx, identifier)
@@ -148,7 +149,7 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
     def queryContent(self, identifier):
         identifier = identifier.getContentIdentifier()
         print("ContentProvider.queryContent() 1: %s" % identifier)
-        level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
+        level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
         msg = "Identifier: %s..." % identifier
         uri = getUri(self.ctx, identifier)
         if not self._checkAuthority(uri):
@@ -169,7 +170,7 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
         compare = 1
         identifier1 = identifier1.getContentIdentifier()
         identifier2 = identifier2.getContentIdentifier()
-        level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
+        level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
         msg = "Identifiers: %s - %s ..." % (identifier1, identifier2)
         uri1 = getUri(self.ctx, identifier1)
         uri2 = getUri(self.ctx, identifier2)
@@ -188,22 +189,39 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
         return compare
 
     def _checkAuthority(self, uri):
-        if uri.hasAuthority() and self.UserName != uri.getAuthority():
-            return self._getUserName(uri.getAuthority())
-        elif self.UserName is not None:
-            return True
-        return False
+        if uri.hasAuthority() and uri.getAuthority():
+            print("ContentProvider._checkAuthority(): Uri hasAuthority()")
+            if self.UserName != uri.getAuthority():
+                print("ContentProvider._checkAuthority(): _getUserName()")
+                return self._getUserName(uri.getAuthority())
+            else:
+                print("ContentProvider._checkAuthority(): Nothing to do: %s" % self.UserName)
+                return True
+        if self.UserName is None:
+            print("ContentProvider._checkAuthority(): UserName is None")
+            e = URLAuthenticationRequest()
+            e.URL = self.Scheme
+            e.HasRealm = False
+            e.HasUserName = False
+            e.HasPassword = False
+            e.HasAccount = True
+            e.Classification = uno.getConstantByName('com.sun.star.task.ClassifiedInteractionRequest.QUERY')
+            e.Message = "Authentication is needed!!!"
+            e.Context = self
+            raise e
+        print("ContentProvider._checkAuthority(): Nothing to do: %s" % self.UserName)
+        return True
 
     def _getUserName(self, username):
         try:
-            level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
+            level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
             msg = "UserName have been changed ..."
             self.Logger.logp(level, "ContentProvider", "_getUserName()", msg)
             self.userSelect.setString(1, username)
             result = self.userSelect.executeQuery()
             if result.next():
                 retrived, self.UserName, self.Root = self._getUserFromDataBase(result, username)
-                level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
+                level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
                 msg = "UserName retreive from database ... Done"
                 self.Logger.logp(level, "ContentProvider", "_getUserFromDataBase()", msg)
             else:
@@ -220,7 +238,7 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
     def _getUserFromProvider(self, username):
         retrived = False
         root = {}
-        level = uno.getConstantByName("com.sun.star.logging.LogLevel.SEVERE")
+        level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
         msg = None
         status, json = getItem(self.ctx, self.Scheme, username, 'root')
         if status is None:
@@ -231,13 +249,13 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
                 result = self.userSelect.executeQuery()
                 if result.next():
                     retrived, username, root = self._getUserFromDataBase(result, username)
-                    level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
+                    level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
                     msg = "UserName retreive from provider ... Done"
                 result.close()
             else:
                 msg = "ERROR: Can't insert new User in databse UserName: %s" % username
         elif status == codes.bad_request:
-            level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
+            level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
             msg = "ERROR: Can't retreive Id from provider: %s" % id
         if msg is not None:
             self.Logger.logp(level, "ContentProvider", "_getUserFromProvider()", msg)
@@ -293,7 +311,7 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
     def _getItemFromProvider(self, id):
         retrived = False
         item = {}
-        level = uno.getConstantByName("com.sun.star.logging.LogLevel.SEVERE")
+        level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
         msg = None
         status, json = getItem(self.ctx, self.Scheme, self.UserName, id)
         if status is None:
@@ -307,7 +325,7 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
             else:
                 msg = "ERROR: Can't insert new Item in databse Id: %s" % id
         elif status == codes.bad_request:
-            level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
+            level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
             msg = "ERROR: Can't retreive Id from provider: %s" % id
         if msg is not None:
             self.Logger.logp(level, "ContentProvider", "_getItemFromProvider()", msg)            
