@@ -67,6 +67,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
             self.IsVersionable = None
             self._CmisProperties = None
             self._TitleOnServer = None
+            self._IsWrite = False
             
             self.initialize(namedvalues)
             
@@ -87,6 +88,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
     @property
     def TitleOnServer(self):
         print("DriveOfficeContent.TitleOnServer(): 1")
+        #LibreOffice look for this property!!! Need this hack to have Transfer working fine in LibreOffice...
         if self._TitleOnServer is None:
             self._TitleOnServer = self._Title
             self._Title = self.Id
@@ -112,6 +114,13 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
     def Size(self, size):
         propertyChange(self, 'Size', self._Size, size)
         self._Size = size
+    @property
+    def IsWrite(self):
+        return self._IsWrite
+    @IsWrite.setter
+    def IsWrite(self, iswrite):
+        propertyChange(self, 'IsWrite', self._IsWrite, iswrite)
+        self._IsWrite = iswrite
 
     # XContentCreator
     def queryCreatableContentsInfo(self):

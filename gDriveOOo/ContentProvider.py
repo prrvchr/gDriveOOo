@@ -14,10 +14,10 @@ import traceback
 from gdrive import ContentIdentifier
 from gdrive import getDbConnection, getUserSelect, getUserInsert, executeUserInsert, executeUpdateInsertItem
 from gdrive import getItemSelect, getItemInsert, getItemUpdate, getContentProperties
-from gdrive import executeItemInsert, getChildDelete, getChildInsert
+from gdrive import executeItemInsert, getChildDelete, getChildInsert, setContentProperties
 
 from gdrive import createService, getItem, getUri, getUriPath, getProperty
-from gdrive import getLogger, insertContent, updateContent
+from gdrive import getLogger, insertContent, updateContent, getParentUri
 from gdrive import getNewId, getId, getIdSelect, getIdInsert, getIdUpdate
 
 from requests import codes
@@ -31,29 +31,25 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
                       XContentIdentifierFactory, XPropertiesChangeListener,
                       XParameterizedContentProvider, XTerminateListener):
     def __init__(self, ctx):
-        try:
-            level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
-            msg = "ContentProvider loading ..."
-            print("ContentProvider.__init__()")
-            self.ctx = ctx
-            self.Scheme = None          #'vnd.google-apps'
-            self.UserName = None
-            self.Root = {}
-            self.listeners = []
-            self.cachedContent = {}
-            self.Logger = getLogger(self.ctx)
-            msg += " Done"
-            self.Logger.logp(level, "ContentProvider", "__init__()", msg)
-            print("ContentProvider.__init__()")
-        except Exception as e:
-            print("ContentProvider.__init__().Error: %s" % e)
+        level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
+        msg = "ContentProvider loading ..."
+        self.ctx = ctx
+        self.Scheme = None          #'vnd.google-apps'
+        self.UserName = None
+        self.Root = {}
+        self.currentFolder = None
+        self.listeners = []
+        self.cachedContent = {}
+        self.Logger = getLogger(self.ctx)
+        msg += " Done"
+        self.Logger.logp(level, "ContentProvider", "__init__()", msg)
 
     @property
     def RootId(self):
         return self.Root['Id'] if 'Id' in self.Root else ''
-    @RootId.setter
-    def RootId(self, id):
-        pass
+    @property
+    def RootUri(self):
+        return self.Root['Uri'] if 'Uri' in self.Root else getUri(self.ctx, '%s://%s/' % (self.Scheme, self.UserName))
 
     # XParameterizedContentProvider
     def registerInstance(self, template, arguments, replace):
@@ -139,8 +135,10 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
             path = getUriPath(uri, id, True)
             identifier = '%s://%s/%s' % (self.Scheme, uri.getAuthority(), '/'.join(path))
             uri = getUri(self.ctx, identifier)
-            msg = "New Identifier: %s ... DONE" % uri.getUriReference()
-            self.Logger.logp(level, "ContentProvider", "createContentIdentifier()", msg)           
+            msg = "New Identifier: %s ... Done" % uri.getUriReference()
+            self.Logger.logp(level, "ContentProvider", "createContentIdentifier()", msg)  
+        elif id in ('.', ''):
+            uri = self.RootUri if self.currentFolder is None else self.currentFolder
         msg = "Identifier: %s ... Done" % uri.getUriReference()
         self.Logger.logp(level, "ContentProvider", "createContentIdentifier()", msg)
         return ContentIdentifier(uri)
@@ -152,7 +150,6 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
         print("ContentProvider.queryContent() 1: %s" % identifier)
         level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
         msg = "Identifier: %s..." % identifier
-        self.Logger.logp(level, "ContentProvider", "queryContent()", msg)
         uri = getUri(self.ctx, identifier)
         if not self._checkAuthority(uri):
             raise IllegalIdentifierException('Identifier has no Authority: %s' % identifier, self)
@@ -162,22 +159,32 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
         retrived, content = self._getContent(id, uri)
         if not retrived:
             raise IllegalIdentifierException('Identifier has not been retrived: %s' % id, self)
-        msg = "Identifier: %s... Done" % identifier
+        if not getContentProperties(content, ('IsFolder', )).getBoolean(1):
+            self.currentFolder = getParentUri(self.ctx, uri)
+        msg += " Done"
         self.Logger.logp(level, "ContentProvider", "queryContent()", msg)
         return content
 
     def compareContentIds(self, identifier1, identifier2):
         compare = 1
-        uri1 = getUri(self.ctx, identifier1.getContentIdentifier())
-        uri2 = getUri(self.ctx, identifier2.getContentIdentifier())
+        identifier1 = identifier1.getContentIdentifier()
+        identifier2 = identifier2.getContentIdentifier()
+        level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
+        msg = "Identifiers: %s - %s ..." % (identifier1, identifier2)
+        uri1 = getUri(self.ctx, identifier1)
+        uri2 = getUri(self.ctx, identifier2)
         id1 = getId(uri1, self.RootId)
         id2 = getId(uri2, self.RootId)
-        print("ContentProvider.compareContentIds(): %s - %s" % (id1, id2))
         if id1 == id2:
+            msg += " seem to be the same..."
             compare = 0
         elif uri1.getPathSegmentCount() != uri2.getPathSegmentCount():
+            msg += " are not the same..."
             compare = uri1.getPathSegmentCount() - uri2.getPathSegmentCount()
-        print("ContentProvider.compareContentIds(): %s" % compare)
+        else:
+            msg += " are not the same..."
+        msg += " Done"
+        self.Logger.logp(level, "ContentProvider", "compareContentIds()", msg)
         return compare
 
     def _checkAuthority(self, uri):
@@ -240,6 +247,8 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
         retrived = id in self.cachedContent
         if retrived:
             content = self.cachedContent[id]
+            # a Content can have multiple parent...
+            setContentProperties(content, {'Uri': uri})
         else:
             retrived, content = self._createContent(id, uri)
         return retrived, content
@@ -261,7 +270,7 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
             if name:
                 service = 'com.gmail.prrvchr.extensions.gDriveOOo.%s' % name
                 content = createService(service, self.ctx, **item)
-                content.addPropertiesChangeListener(('IsRead', 'Title', 'Size'), self)
+                content.addPropertiesChangeListener(('IsWrite', 'IsRead', 'Title', 'Size'), self)
                 self.cachedContent[id] = content
         return retrived, content
 

@@ -51,6 +51,7 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
             self.DateModified = parseDateTime()
             self.DateCreated = parseDateTime()
             self._IsRead = False
+            self.IsWrite = False
             self.CreatableContentsInfo = self._getCreatableContentsInfo()
             
             self._commandInfo = self._getCommandInfo()
@@ -189,10 +190,11 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
                     inputstream = sf.openFileRead(source)
                     sf.writeFile(target, inputstream)
                     inputstream.closeInput()
-                    uri = getUri(self.ctx, '%s://%s/%s' % (self.Uri.getScheme(), self.Uri.getAuthority(), id))
+                    # Folder Uri end whith it's Id: ie: 'scheme://authority/.../parentId/folderId'
+                    uri = getUri(self.ctx, '%s/%s' % (self.Uri.getUriReference(), id))
                     identifier = ContentIdentifier(uri)
                     content = getContent(self.ctx, identifier)
-                    setContentProperties(content, {'Size': sf.getSize(target)})
+                    setContentProperties(content, {'Size': sf.getSize(target), 'IsWrite': True})
                     if command.Argument.MoveData:
                         pass #must delete object
             elif command.Name == 'close':

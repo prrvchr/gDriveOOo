@@ -22,31 +22,27 @@ class ContentProviderProxy(unohelper.Base, XServiceInfo, XContentProvider, XCont
         self.template = ''
         self.arguments = ''
         self.replace = True
-        print("ContentProviderProxy.__init__()")
 
     # XEventListener
     def disposing(self, source):
-        print("ContentProviderProxy.disposing()")
+        pass
 
     # XContentProviderSupplier
     def getContentProvider(self):
-        print("ContentProviderProxy.getContentProvider()")
         if self.provider is None:
             self.provider = createService('com.gmail.prrvchr.extensions.gDriveOOo.ContentProvider', self.ctx)
-            #provider = factory.createContentProvider("com.gmail.prrvchr.extensions.gDriveOOo.ContentProvider")
             self.provider.registerInstance(self.template, self.arguments, self.replace)
             self.provider.addEventListener(self)
         return self.provider
 
     # XParameterizedContentProvider
     def registerInstance(self, template, arguments, replace):
-        print("ContentProviderProxy.registerInstance(): %s - %s - %s" % (template, arguments, replace))
         self.template = template
         self.arguments = arguments
         self.replace = replace
         return self
     def deregisterInstance(self, template, argument):
-        print("ContentProviderProxy.deregisterInstance()")
+        pass
 
     # XContentIdentifierFactory
     def createContentIdentifier(self, identifier):
@@ -54,10 +50,8 @@ class ContentProviderProxy(unohelper.Base, XServiceInfo, XContentProvider, XCont
 
     # XContentProvider
     def queryContent(self, identifier):
-        print("ContentProviderProxy.queryContent()")
         return self.getContentProvider().queryContent(identifier)
     def compareContentIds(self, identifier1, identifier2):
-        print("ContentProviderProxy.compareContentIds()")
         return self.getContentProvider().compareContentIds(identifier1, identifier2)
 
     # XServiceInfo

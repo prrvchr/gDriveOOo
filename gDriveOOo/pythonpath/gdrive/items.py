@@ -57,6 +57,8 @@ def updateItem(event, statement, id):
     update.setString(2, id)
     if event.PropertyName == 'IsRead':
         update.setBoolean(1, event.NewValue)
+    elif event.PropertyName == 'IsWrite':
+        update.setBoolean(1, event.NewValue)
     elif event.PropertyName == 'Title':
         update.setString(1, event.NewValue)
     elif event.PropertyName == 'Size':
