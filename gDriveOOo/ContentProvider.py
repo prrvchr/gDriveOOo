@@ -14,7 +14,7 @@ import traceback
 
 from gdrive import ContentIdentifier
 from gdrive import getDbConnection, getUserSelect, getUserInsert, executeUserInsert, executeUpdateInsertItem
-from gdrive import getItemSelect, getItemInsert, getItemUpdate, getContentProperties
+from gdrive import getItemSelect, getItemInsert, getItemUpdate, getContentProperties, getUcb
 from gdrive import executeItemInsert, getChildDelete, getChildInsert, setContentProperties
 
 from gdrive import createService, getItem, getUri, getUriPath, getProperty
@@ -54,17 +54,18 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
 
     # XParameterizedContentProvider
     def registerInstance(self, template, arguments, replace):
-        print("ContentProvider.registerInstance() ****************************************")
+        ucb = getUcb(self.ctx)
         self.Scheme = template
         self._initDataBase()
-        return self
+        return ucb.registerContentProvider(self, self.Scheme, replace)
     def deregisterInstance(self, template, argument):
-        print("ContentProvider.deregisterInstance() ****************************************")
+        ucb = getUcb(self.ctx)
+        ucb.deregisterContentProvider(self, self.Scheme)
 
     # XTerminateListener
     def queryTermination(self, event):
-        print("ContentProvider.queryTermination()")
         # ToDo: Upload modified metadata/files after asking user
+        pass
     def notifyTermination(self, event):
         level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
         msg = "Shutdown database ..."
@@ -77,21 +78,16 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
             msg += "closing connection ..."
         msg += " Done"
         self.Logger.logp(level, "ContentProvider", "notifyTermination()", msg)
-        print("ContentProvider.notifyTermination() %s" % msg)
 
     # XComponent
     def dispose(self):
-        print("ContentProvider.dispose() 1")
         event = uno.createUnoStruct('com.sun.star.lang.EventObject', self)
         for listener in self.listeners:
             listener.disposing(event)
-        print("ContentProvider.dispose() 2 ********************************************************")
     def addEventListener(self, listener):
-        print("ContentProvider.addEventListener() *************************************************")
         if listener not in self.listeners:
             self.listeners.append(listener)
     def removeEventListener(self, listener):
-        print("ContentProvider.removeEventListener() **********************************************")
         if listener in self.listeners:
             self.listeners.remove(listener)
 
@@ -117,11 +113,10 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
                     msg = "ERROR: Can't update Property: %s" % event.PropertyName
                 self.Logger.logp(level, "ContentProvider", "propertiesChange()", msg)
     def disposing(self, source):
-        print("ContentProvider.disposing() '%s'" % (source, ))
+        pass
 
     # XContentIdentifierFactory
     def createContentIdentifier(self, identifier):
-        print("ContentProvider.createContentIdentifier() %s" % identifier)
         level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
         msg = "Identifier: %s ..." % identifier
         self.Logger.logp(level, "ContentProvider", "createContentIdentifier()", msg)
@@ -148,7 +143,6 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
     # XContentProvider
     def queryContent(self, identifier):
         identifier = identifier.getContentIdentifier()
-        print("ContentProvider.queryContent() 1: %s" % identifier)
         level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
         msg = "Identifier: %s..." % identifier
         uri = getUri(self.ctx, identifier)
@@ -189,16 +183,10 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
         return compare
 
     def _checkAuthority(self, uri):
-        if uri.hasAuthority() and uri.getAuthority():
-            print("ContentProvider._checkAuthority(): Uri hasAuthority()")
-            if self.UserName != uri.getAuthority():
-                print("ContentProvider._checkAuthority(): _getUserName()")
-                return self._getUserName(uri.getAuthority())
-            else:
-                print("ContentProvider._checkAuthority(): Nothing to do: %s" % self.UserName)
-                return True
-        if self.UserName is None:
-            print("ContentProvider._checkAuthority(): UserName is None")
+        if uri.hasAuthority() and uri.getAuthority() != '' and uri.getAuthority() != self.UserName:
+            return self._getUserName(uri.getAuthority())
+        elif self.UserName is None:
+            # Todo InterActionHandler here to retreive UserName!!!
             e = URLAuthenticationRequest()
             e.URL = self.Scheme
             e.HasRealm = False
@@ -209,27 +197,23 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
             e.Message = "Authentication is needed!!!"
             e.Context = self
             raise e
-        print("ContentProvider._checkAuthority(): Nothing to do: %s" % self.UserName)
         return True
 
     def _getUserName(self, username):
-        try:
+        level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
+        msg = "UserName have been changed ..."
+        self.Logger.logp(level, "ContentProvider", "_getUserName()", msg)
+        self.userSelect.setString(1, username)
+        result = self.userSelect.executeQuery()
+        if result.next():
+            retrived, self.UserName, self.Root = self._getUserFromDataBase(result, username)
             level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
-            msg = "UserName have been changed ..."
-            self.Logger.logp(level, "ContentProvider", "_getUserName()", msg)
-            self.userSelect.setString(1, username)
-            result = self.userSelect.executeQuery()
-            if result.next():
-                retrived, self.UserName, self.Root = self._getUserFromDataBase(result, username)
-                level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
-                msg = "UserName retreive from database ... Done"
-                self.Logger.logp(level, "ContentProvider", "_getUserFromDataBase()", msg)
-            else:
-                retrived, self.UserName, self.Root = self._getUserFromProvider(username)
-            result.close()
-            return retrived
-        except Exception as e:
-            print("ContentProvider._getUserName().Error: %s - %s" % (e, traceback.print_exc()))
+            msg = "UserName retreive from database ... Done"
+            self.Logger.logp(level, "ContentProvider", "_getUserFromDataBase()", msg)
+        else:
+            retrived, self.UserName, self.Root = self._getUserFromProvider(username)
+        result.close()
+        return retrived
 
     def _getUserFromDataBase(self, result, username):
         root = self._getItemFromResult(result, username)

@@ -30,9 +30,11 @@ def updateContent(event, statement):
     return updateItem(event, statement, id)
 
 def propertyChange(source, name, oldvalue, newvalue):
+    #mri = source.ctx.ServiceManager.createInstance('mytools.Mri')
     if name in source.propertiesListener:
         events = (_getPropertyChangeEvent(source, name, oldvalue, newvalue), )
         for listener in source.propertiesListener[name]:
+            #mri.inspect(listener)
             listener.propertiesChange(events)
 
 def getPropertiesValues(source, properties, logger):

@@ -238,10 +238,8 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
         folder = uno.getConstantByName('com.sun.star.ucb.ContentInfoAttribute.KIND_FOLDER')
         foldertype = 'application/vnd.google-apps.folder'
         documenttype = 'application/vnd.oasis.opendocument'
-        folderproperties = (getProperty('Title', 'string', bound), )
-        documentproperties = (getProperty('Id', 'string', bound | readonly), )
-        content = (getContentInfo(foldertype, folder, folderproperties),
-                   getContentInfo(documenttype, document, documentproperties))
+        properties = (getProperty('Title', 'string', bound), )
+        content = (getContentInfo(foldertype, folder, properties), getContentInfo(documenttype, document, properties))
         return content
 
     # XServiceInfo

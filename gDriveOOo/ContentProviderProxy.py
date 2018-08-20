@@ -7,7 +7,7 @@ import unohelper
 from com.sun.star.lang import XServiceInfo, XEventListener
 from com.sun.star.ucb import XContentProvider, XContentIdentifierFactory, XContentProviderSupplier, XParameterizedContentProvider
 
-from gdrive import createService
+from gdrive import createService, getUcp
 
 # pythonloader looks for a static g_ImplementationHelper variable
 g_ImplementationHelper = unohelper.ImplementationHelper()
@@ -15,25 +15,23 @@ g_ImplementationName = 'com.gmail.prrvchr.extensions.gDriveOOo.ContentProviderPr
 
 
 class ContentProviderProxy(unohelper.Base, XServiceInfo, XContentProvider, XContentIdentifierFactory,
-                           XEventListener, XContentProviderSupplier, XParameterizedContentProvider):
+                           XContentProviderSupplier, XParameterizedContentProvider):
     def __init__(self, ctx):
         self.ctx = ctx
-        self.provider = None
+        self.registered = False
         self.template = ''
         self.arguments = ''
         self.replace = True
 
-    # XEventListener
-    def disposing(self, source):
-        pass
-
     # XContentProviderSupplier
     def getContentProvider(self):
-        if self.provider is None:
-            self.provider = createService('com.gmail.prrvchr.extensions.gDriveOOo.ContentProvider', self.ctx)
-            self.provider.registerInstance(self.template, self.arguments, self.replace)
-            self.provider.addEventListener(self)
-        return self.provider
+        if not self.registered:
+            provider = createService('com.gmail.prrvchr.extensions.gDriveOOo.ContentProvider', self.ctx)
+            provider.registerInstance(self.template, self.arguments, self.replace)
+            self.registered = True
+        else:
+            provider = getUcp(self.ctx, self.template)
+        return provider
 
     # XParameterizedContentProvider
     def registerInstance(self, template, arguments, replace):
@@ -42,7 +40,7 @@ class ContentProviderProxy(unohelper.Base, XServiceInfo, XContentProvider, XCont
         self.replace = replace
         return self
     def deregisterInstance(self, template, argument):
-        pass
+        self.getContentProvider().deregisterInstance(template, argument)
 
     # XContentIdentifierFactory
     def createContentIdentifier(self, identifier):
