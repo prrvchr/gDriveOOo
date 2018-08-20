@@ -22,7 +22,7 @@ In menu Tools - Options - Libre/OpenOffice - General: check use Libre/OpenOffice
 
 ### Open your Google Drive:
 
-In File - Open - File name enter: vnd.google-apps://youraccount@gmail.com/root
+In File - Open - File name enter: vnd.google-apps://youraccount@gmail.com/
 
 Normally Google Drive should open!!!
 
