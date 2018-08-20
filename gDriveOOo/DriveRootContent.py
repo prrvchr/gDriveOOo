@@ -51,6 +51,7 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
             self.DateCreated = parseDateTime()
             self._IsRead = False
             self.IsWrite = False
+            self.IsVersionable = False
             self.CreatableContentsInfo = self._getCreatableContentsInfo()
             
             self._commandInfo = self._getCommandInfo()

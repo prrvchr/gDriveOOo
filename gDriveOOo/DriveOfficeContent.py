@@ -64,7 +64,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
             self.Author = 'Pierre Vacher'
             self.Keywords = 'clefs de recherche'
             self.Subject = 'Test de GoogleDriveFileContent'
-            self.IsVersionable = None
+            self.IsVersionable = False
             self._CmisProperties = None
             self._TitleOnServer = None
             self._IsWrite = False

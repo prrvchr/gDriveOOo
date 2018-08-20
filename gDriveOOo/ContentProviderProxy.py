@@ -1,11 +1,11 @@
 #!
 # -*- coding: utf_8 -*-
 
-import uno
 import unohelper
 
-from com.sun.star.lang import XServiceInfo, XEventListener
-from com.sun.star.ucb import XContentProvider, XContentIdentifierFactory, XContentProviderSupplier, XParameterizedContentProvider
+from com.sun.star.lang import XServiceInfo
+from com.sun.star.ucb import XContentProvider, XContentIdentifierFactory
+from com.sun.star.ucb import XContentProviderSupplier, XParameterizedContentProvider
 
 from gdrive import createService, getUcp
 

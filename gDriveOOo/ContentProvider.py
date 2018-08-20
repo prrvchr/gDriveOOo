@@ -81,6 +81,7 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
 
     # XComponent
     def dispose(self):
+        print("ContentProvider.dispose() ****************************************************")
         event = uno.createUnoStruct('com.sun.star.lang.EventObject', self)
         for listener in self.listeners:
             listener.disposing(event)
