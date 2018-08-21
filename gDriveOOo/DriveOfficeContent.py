@@ -69,15 +69,22 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
             self._TitleOnServer = None
             self._IsWrite = False
             
+            self.IsHidden = False
+            self.IsVolume = False
+            self.IsRemote = False
+            self.IsRemoveable = False
+            self.IsFloppy = False
+            self.IsCompactDisc = False
+            
             self.initialize(namedvalues)
             
             self.ObjectId = self.Id
             self.CanCheckOut = True
             self.CanCheckIn = True
             self.CanCancelCheckOut = True
-            self.TargetURL = ''
+            self.TargetURL = self.Uri.getUriReference()
             self.BaseURI = getParentUri(self.ctx, self.Uri).getUriReference()
-            self.CasePreservingURL = True
+            self.CasePreservingURL = self.Uri.getUriReference()
 #            print("DriveOfficeContent.__init__(): %s - %s" % (self.Uri.getUriReference(), self.BaseURI))
             msg = "DriveOfficeContent loading Uri: %s ... Done" % self.Uri.getUriReference()
             self.Logger.logp(level, "DriveOfficeContent", "__init__()", msg)            
@@ -259,9 +266,10 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
         
     def _updateCommandInfo(self):
         commands = {}
+        commands['insert'] = getCommandInfo('insert', 'com.sun.star.ucb.InsertCommandArgument2')
         commands['checkout'] = getCommandInfo('checkout')
         commands['cancelCheckout'] = getCommandInfo('cancelCheckout')
-        commands['checkIn'] = getCommandInfo('checkIn', 'com.sun.star.ucb.TransferInfo')
+        commands['checkIn'] = getCommandInfo('checkIn', 'com.sun.star.ucb.CheckinArgument')
         commands['updateProperties'] = getCommandInfo('updateProperties', '[]com.sun.star.document.CmisProperty')
         commands['getAllVersions'] = getCommandInfo('getAllVersions', '[]com.sun.star.document.CmisVersion')
         self._commandInfo.update(commands)
@@ -282,16 +290,23 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
         properties['IsReadOnly'] = getProperty('IsReadOnly', 'boolean', bound | readonly)
         properties['IsRead'] = getProperty('IsRead', 'boolean', bound)
         properties['BaseURI'] = getProperty('BaseURI', 'string', bound | readonly)
-#        properties['TargetURL'] = getProperty('TargetURL', 'string', bound | readonly)
+        properties['TargetURL'] = getProperty('TargetURL', 'string', bound | readonly)
         properties['TitleOnServer'] = getProperty('TitleOnServer', 'string', bound)
 #        properties['CanCheckIn'] = getProperty('CanCheckIn', 'boolean', bound)
 #        properties['CanCancelCheckOut'] = getProperty('CanCancelCheckOut', 'boolean', bound)
         properties['ObjectId'] = getProperty('ObjectId', 'string', bound | readonly)
-        properties['CasePreservingURL'] = getProperty('CasePreservingURL', 'boolean', bound | readonly)
+        properties['CasePreservingURL'] = getProperty('CasePreservingURL', 'string', bound | readonly)
         properties['CreatableContentsInfo'] = getProperty('CreatableContentsInfo', '[]com.sun.star.ucb.ContentInfo', bound | readonly)
         properties['Author'] = getProperty('Author', 'string', bound)
         properties['Keywords'] = getProperty('Keywords', 'string', bound)
         properties['Subject'] = getProperty('Subject', 'string', bound)
+        
+        properties['IsHidden'] = getProperty('IsHidden', 'boolean', bound | readonly)
+        properties['IsVolume'] = getProperty('IsVolume', 'boolean', bound | readonly)
+        properties['IsRemote'] = getProperty('IsRemote', 'boolean', bound | readonly)
+        properties['IsRemoveable'] = getProperty('IsRemoveable', 'boolean', bound | readonly)
+        properties['IsFloppy'] = getProperty('IsFloppy', 'boolean', bound | readonly)
+        properties['IsCompactDisc'] = getProperty('IsCompactDisc', 'boolean', bound | readonly)
         return properties
 
     def _getCmisPropertySetInfo(self):

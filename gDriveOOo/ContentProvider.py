@@ -118,6 +118,7 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
 
     # XContentIdentifierFactory
     def createContentIdentifier(self, identifier):
+        print("ContentProvider.createContentIdentifier() %s" % identifier)
         level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
         msg = "Identifier: %s ..." % identifier
         self.Logger.logp(level, "ContentProvider", "createContentIdentifier()", msg)
@@ -144,6 +145,7 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
     # XContentProvider
     def queryContent(self, identifier):
         identifier = identifier.getContentIdentifier()
+        print("ContentProvider.queryContent() %s" % identifier)
         level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
         msg = "Identifier: %s..." % identifier
         uri = getUri(self.ctx, identifier)
@@ -165,6 +167,7 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
         compare = 1
         identifier1 = identifier1.getContentIdentifier()
         identifier2 = identifier2.getContentIdentifier()
+        print("ContentProvider.compareContentIds() %s - %s" % (identifier1, identifier2))
         level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
         msg = "Identifiers: %s - %s ..." % (identifier1, identifier2)
         uri1 = getUri(self.ctx, identifier1)

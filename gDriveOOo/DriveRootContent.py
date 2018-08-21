@@ -54,6 +54,13 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
             self.IsVersionable = False
             self.CreatableContentsInfo = self._getCreatableContentsInfo()
             
+            self.IsHidden = False
+            self.IsVolume = False
+            self.IsRemote = False
+            self.IsRemoveable = False
+            self.IsFloppy = False
+            self.IsCompactDisc = False
+
             self._commandInfo = self._getCommandInfo()
             self._propertySetInfo = self._getPropertySetInfo()
             self.listeners = []
@@ -230,6 +237,13 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
         properties['DateCreated'] = getProperty('DateCreated', 'com.sun.star.util.DateTime', bound | readonly)
         properties['IsRead'] = getProperty('IsRead', 'boolean', bound)
         properties['CreatableContentsInfo'] = getProperty('CreatableContentsInfo', '[]com.sun.star.ucb.ContentInfo', bound | readonly)
+
+        properties['IsHidden'] = getProperty('IsHidden', 'boolean', bound | readonly)
+        properties['IsVolume'] = getProperty('IsVolume', 'boolean', bound | readonly)
+        properties['IsRemote'] = getProperty('IsRemote', 'boolean', bound | readonly)
+        properties['IsRemoveable'] = getProperty('IsRemoveable', 'boolean', bound | readonly)
+        properties['IsFloppy'] = getProperty('IsFloppy', 'boolean', bound | readonly)
+        properties['IsCompactDisc'] = getProperty('IsCompactDisc', 'boolean', bound | readonly)
         return properties
 
     def _getCreatableContentsInfo(self):

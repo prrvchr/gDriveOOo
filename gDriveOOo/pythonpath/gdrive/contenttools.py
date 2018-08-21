@@ -49,6 +49,7 @@ def getPropertiesValues(source, properties, logger):
             level = uno.getConstantByName("com.sun.star.logging.LogLevel.SEVERE")
             msg = "ERROR: Requested property: %s is not available" % property.Name
         logger.logp(level, source.__class__.__name__, "getPropertiesValues()", msg)
+        print("%s.getPropertiesValues() %s" % (source.__class__.__name__, msg))
         namedvalues.append(uno.createUnoStruct('com.sun.star.beans.NamedValue', property.Name, value))
     return tuple(namedvalues)
 
@@ -68,6 +69,7 @@ def setPropertiesValues(source, properties, logger):
                 result = UnknownPropertyException('UnknownProperty: %s' % property.Name, source)
                 msg = "ERROR: Requested property: %s is not available" % property.Name
         logger.logp(level, source.__class__.__name__, "setPropertiesValues()", msg)
+        print("%s.setPropertiesValues() %s" % (source.__class__.__name__, msg))
         results.append(result)
     return tuple(results)
 
