@@ -199,6 +199,9 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
                 print("DriveDocimentContent.execute(): createNewContent %s" % command.Argument)
             elif command.Name == 'insert':
                 print("DriveOfficeContent.execute() insert")
+                input = command.Argument.Data
+                replace = command.Argument.ReplaceExisting
+                print("DriveOfficeContent.execute() insert %s - %s" % (replace, input))
             elif command.Name == 'addProperty':
                 print("DriveOfficeContent.addProperty():")
             elif command.Name == 'removeProperty':
@@ -269,7 +272,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
         commands['insert'] = getCommandInfo('insert', 'com.sun.star.ucb.InsertCommandArgument2')
         commands['checkout'] = getCommandInfo('checkout')
         commands['cancelCheckout'] = getCommandInfo('cancelCheckout')
-        commands['checkIn'] = getCommandInfo('checkIn', 'com.sun.star.ucb.CheckinArgument')
+        commands['checkin'] = getCommandInfo('checkin', 'com.sun.star.ucb.CheckinArgument')
         commands['updateProperties'] = getCommandInfo('updateProperties', '[]com.sun.star.document.CmisProperty')
         commands['getAllVersions'] = getCommandInfo('getAllVersions', '[]com.sun.star.document.CmisVersion')
         self._commandInfo.update(commands)

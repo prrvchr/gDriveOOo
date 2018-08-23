@@ -120,7 +120,7 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
         return self.CreatableContentsInfo
     def createNewContent(self, contentinfo):
         print("DriveFolderContent.createNewContent():************************* %s" % contentinfo)
-        pass
+        return self._createNewContent(contentinfo)
 
     # XChild
     def getParent(self):
@@ -149,71 +149,81 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
     def createCommandIdentifier(self):
         return 0
     def execute(self, command, id, environment):
-        try:
-            print("DriveFolderContent.execute(): %s" % command.Name)
-            if command.Name == 'getCommandInfo':
-                return CommandInfo(self._commandInfo)
-            elif command.Name == 'getPropertySetInfo':
-                return PropertySetInfo(self._propertySetInfo)
-            elif command.Name == 'getPropertyValues':
-                namedvalues = getPropertiesValues(self, command.Argument,self.Logger)
-                return Row(namedvalues)
-            elif command.Name == 'setPropertyValues':
-                return setPropertiesValues(self, command.Argument, self.Logger)
-            elif command.Name == 'open':
-                if not self.IsRead:
-                    updateChildren(self.ctx, self.itemInsert, self.itemUpdate, self.childDelete, 
-                                   self.childInsert, self.Uri.getScheme(), self.UserName, self.Id)
-                    self.IsRead = True
-                connection = self.childInsert.getConnection()
-                select = getChildSelect(self.ctx, connection, self.Id, self.Uri.getUriReference(), command.Argument.Properties)
-                return DynamicResultSet(self.ctx, self.Uri.getScheme(), select)
-            elif command.Name == 'createNewContent':
-                print("DriveFolderContent.execute(): createNewContent %s" % command.Argument)
-                item = getNewItem(self.ctx, self.Uri, self.UserName)
-                if command.Argument.Type == 'application/vnd.google-apps.folder':
-                    name = 'com.gmail.prrvchr.extensions.gDriveOOo.DriveFolderContent'
-                elif command.Argument.Type == 'application/vnd.oasis.opendocument':
-                    name = 'com.gmail.prrvchr.extensions.gDriveOOo.DriveOfficeContent'
-                content = createService(name, self.ctx, **item)
-                return content
-            elif command.Name == 'insert':
-                print("DriveFolderContent.execute() insert")
-                #uri = getParentUri(self.ctx, self.Uri)
-                #identifier = ContentIdentifier(uri)
-                #action = uno.getConstantByName('com.sun.star.ucb.ContentAction.INSERTED')
-                #event = getContentEvent(action, self, identifier)
-                ucp = getUcp(self.ctx, self.Uri.getUriReference())
-                self.addPropertiesChangeListener(('Id', 'IsRead', 'Title', 'Size'), ucp)
-                self.Id = self.Id
-            elif command.Name == 'delete':
-                print("DriveFolderContent.execute(): delete")
-            elif command.Name == 'transfer':
-                source = command.Argument.SourceURL
-                id = command.Argument.NewTitle
-                print("DriveFolderContent.execute(): transfer %s - %s" % (source, id))
-                sf = getSimpleFile(self.ctx)
-                if sf.exists(source):
-                    target = getResourceLocation(self.ctx, '%s/%s' % (self.Uri.getScheme(), id))
-                    inputstream = sf.openFileRead(source)
-                    sf.writeFile(target, inputstream)
-                    inputstream.closeInput()
-                    # Folder Uri end whith it's Id: ie: 'scheme://authority/.../parentId/folderId'
-                    uri = getUri(self.ctx, '%s/%s' % (self.Uri.getUriReference(), id))
-                    identifier = ContentIdentifier(uri)
-                    content = getContent(self.ctx, identifier)
-                    setContentProperties(content, {'Size': sf.getSize(target), 'IsWrite': True})
-                    if command.Argument.MoveData:
-                        pass #must delete object
-            elif command.Name == 'close':
-                print("DriveFolderContent.execute(): close")
-        except Exception as e:
-            print("DriveFolderContent.execute().Error: %s - %e" % (e, traceback.print_exc()))
+        print("DriveFolderContent.execute(): %s" % command.Name)
+        if command.Name == 'getCommandInfo':
+            return CommandInfo(self._commandInfo)
+        elif command.Name == 'getPropertySetInfo':
+            return PropertySetInfo(self._propertySetInfo)
+        elif command.Name == 'getPropertyValues':
+            namedvalues = getPropertiesValues(self, command.Argument,self.Logger)
+            return Row(namedvalues)
+        elif command.Name == 'setPropertyValues':
+            return setPropertiesValues(self, command.Argument, self.Logger)
+        elif command.Name == 'open':
+            if not self.IsRead:
+                updateChildren(self.ctx, self.itemInsert, self.itemUpdate, self.childDelete, 
+                               self.childInsert, self.Uri.getScheme(), self.UserName, self.Id)
+                self.IsRead = True
+            connection = self.childInsert.getConnection()
+            select = getChildSelect(self.ctx, connection, self.Id, self.Uri.getUriReference(), command.Argument.Properties)
+            return DynamicResultSet(self.ctx, self.Uri.getScheme(), select)
+        elif command.Name == 'createNewContent':
+            print("DriveFolderContent.execute(): createNewContent %s" % command.Argument)
+            return self._createNewContent(command.Argument)
+        elif command.Name == 'insert':
+            print("DriveFolderContent.execute() insert")
+            #uri = getParentUri(self.ctx, self.Uri)
+            #identifier = ContentIdentifier(uri)
+            #action = uno.getConstantByName('com.sun.star.ucb.ContentAction.INSERTED')
+            #event = getContentEvent(action, self, identifier)
+            ucp = getUcp(self.ctx, self.Uri.getUriReference())
+            self.addPropertiesChangeListener(('Id', 'IsRead', 'Title', 'Size'), ucp)
+            self.Id = self.Id
+        elif command.Name == 'delete':
+            print("DriveFolderContent.execute(): delete")
+        elif command.Name == 'transfer':
+            # Transfer command is only used for existing document (File Save)
+            # For new document (File Save As) we use command: createNewContent and Insert
+            source = command.Argument.SourceURL
+            if not isChild(seld.Id, source):
+                raise InteractiveBadTransferURLException("Couln't handle Url: %s" % source, self)
+            print("DriveFolderContent.execute(): transfer: %s" % source)
+            raise InteractiveBadTransferURLException("Couln't handle Url: %s" % source, self)
+            #handler = environment.getInteractionHandler()
+            #handler.handle(r)
+            #id = command.Argument.NewTitle
+            #print("DriveFolderContent.execute(): transfer %s - %s" % (source, id))
+            #sf = getSimpleFile(self.ctx)
+            #if sf.exists(source):
+            #    target = getResourceLocation(self.ctx, '%s/%s' % (self.Uri.getScheme(), id))
+            #    inputstream = sf.openFileRead(source)
+            #    sf.writeFile(target, inputstream)
+            #    inputstream.closeInput()
+            #    # Folder Uri end whith it's Id: ie: 'scheme://authority/.../parentId/folderId'
+            #    uri = getUri(self.ctx, '%s/%s' % (self.Uri.getUriReference(), id))
+            #    identifier = ContentIdentifier(uri)
+            #    content = getContent(self.ctx, identifier)
+            #    setContentProperties(content, {'Size': sf.getSize(target), 'IsWrite': True})
+            #    if command.Argument.MoveData:
+            #        pass #must delete object
+        elif command.Name == 'close':
+            print("DriveFolderContent.execute(): close")
+        #except Exception as e:
+        #    print("DriveFolderContent.execute().Error: %s - %e" % (e, traceback.print_exc()))
 
     def abort(self, id):
         pass
     def releaseCommandIdentifier(self, id):
         pass
+
+    def _createNewContent(self, contentinfo):
+        print("DriveRootContent.execute(): createNewContent %s" % contentinfo)
+        item = getNewItem(self.ctx, self.Uri, self.UserName)
+        if contentinfo.Type == 'application/vnd.google-apps.folder':
+            name = 'com.gmail.prrvchr.extensions.gDriveOOo.DriveFolderContent'
+        elif contentinfo.Type == 'application/vnd.oasis.opendocument':
+            name = 'com.gmail.prrvchr.extensions.gDriveOOo.DriveOfficeContent'
+        return createService(name, self.ctx, **item)
 
     def _getCommandInfo(self):
         commands = {}

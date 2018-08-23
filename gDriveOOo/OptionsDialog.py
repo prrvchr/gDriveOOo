@@ -55,8 +55,19 @@ class OptionsDialog(unohelper.Base, XServiceInfo, XContainerWindowEventHandler):
     def _doConnect(self, dialog):
         try:
             print("PyOptionsDialog._doConnect() 1")
+            mri = self.ctx.ServiceManager.createInstance('mytools.Mri')
+            connection = getDbConnection(self.ctx, 'vnd.google-apps')
+            #mri.inspect(connection)
+            id = '1brCJfoSt8DraCKpInyCj37bK5dkUhozE'
+            parent = '0AAtPs2F6BEgRUk9PVA'
+            call = connection.prepareCall('call ISCHILDOFITEM(?, ?, ?)')
+            call.setString(1, id)
+            call.setString(2, parent)
+            call.execute()
+            isChild = call.getLong(3)
+            mri.inspect(call)
             #Need upload file here
-            print("PyOptionsDialog._doConnect() 7")
+            print("PyOptionsDialog._doConnect() 2: %s" % isChild)
         except Exception as e:
             print("PyOptionsDialog._doConnect().Error: %s - %s" % (e, traceback.print_exc()))
 
