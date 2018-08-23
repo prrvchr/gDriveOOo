@@ -76,6 +76,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
             self.IsFloppy = False
             self.IsCompactDisc = False
             
+            self.statement = None
             self.initialize(namedvalues)
             
             self.ObjectId = self.Id

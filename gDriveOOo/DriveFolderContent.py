@@ -74,6 +74,7 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
             self.itemUpdate = None
             self.childDelete = None
             self.childInsert = None
+            self.statement = None
             self.initialize(namedvalues)
             msg = "DriveFolderContent loading Uri: %s ... Done" % self.Uri.getUriReference()
             self.Logger.logp(level, "DriveFolderContent", "__init__()", msg)
@@ -184,28 +185,24 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
         elif command.Name == 'transfer':
             # Transfer command is only used for existing document (File Save)
             # For new document (File Save As) we use command: createNewContent and Insert
+            id = command.Argument.NewTitle
             source = command.Argument.SourceURL
-            if not isChild(seld.Id, source):
+            if isChildOfItem(self.statement.getConnection(), id, self.Id) != 1:
                 raise InteractiveBadTransferURLException("Couln't handle Url: %s" % source, self)
-            print("DriveFolderContent.execute(): transfer: %s" % source)
-            raise InteractiveBadTransferURLException("Couln't handle Url: %s" % source, self)
-            #handler = environment.getInteractionHandler()
-            #handler.handle(r)
-            #id = command.Argument.NewTitle
-            #print("DriveFolderContent.execute(): transfer %s - %s" % (source, id))
-            #sf = getSimpleFile(self.ctx)
-            #if sf.exists(source):
-            #    target = getResourceLocation(self.ctx, '%s/%s' % (self.Uri.getScheme(), id))
-            #    inputstream = sf.openFileRead(source)
-            #    sf.writeFile(target, inputstream)
-            #    inputstream.closeInput()
-            #    # Folder Uri end whith it's Id: ie: 'scheme://authority/.../parentId/folderId'
-            #    uri = getUri(self.ctx, '%s/%s' % (self.Uri.getUriReference(), id))
-            #    identifier = ContentIdentifier(uri)
-            #    content = getContent(self.ctx, identifier)
-            #    setContentProperties(content, {'Size': sf.getSize(target), 'IsWrite': True})
-            #    if command.Argument.MoveData:
-            #        pass #must delete object
+            print("DriveFolderContent.execute(): transfer: %s - %s" % (source, id))
+            sf = getSimpleFile(self.ctx)
+            if sf.exists(source):
+                target = getResourceLocation(self.ctx, '%s/%s' % (self.Uri.getScheme(), id))
+                inputstream = sf.openFileRead(source)
+                sf.writeFile(target, inputstream)
+                inputstream.closeInput()
+                # Folder Uri end whith it's Id: ie: 'scheme://authority/.../parentId/folderId'
+                uri = getUri(self.ctx, '%s/%s' % (self.Uri.getUriReference(), id))
+                identifier = ContentIdentifier(uri)
+                content = getContent(self.ctx, identifier)
+                setContentProperties(content, {'Size': sf.getSize(target), 'IsWrite': True})
+                if command.Argument.MoveData:
+                    pass #must delete object
         elif command.Name == 'close':
             print("DriveFolderContent.execute(): close")
         #except Exception as e:

@@ -267,11 +267,12 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
             name = None
             media = item['MediaType']
             if media == 'application/vnd.google-apps.folder':
-                statements = {'itemUpdate': self.itemUpdate, 'itemInsert': self.itemInsert,
+                statements = {'statement': self.statement,'itemUpdate': self.itemUpdate, 'itemInsert': self.itemInsert,
                              'childDelete': self.childDelete, 'childInsert': self.childInsert}
                 item.update(statements)
                 name = 'DriveFolderContent' if id != self.RootId else 'DriveRootContent'
             elif media.startswith('application/vnd.oasis.opendocument'):
+                item.update({'statement': self.statement})
                 name = 'DriveOfficeContent'
             if name:
                 service = 'com.gmail.prrvchr.extensions.gDriveOOo.%s' % name

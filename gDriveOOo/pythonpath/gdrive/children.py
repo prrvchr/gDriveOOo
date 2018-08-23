@@ -10,6 +10,16 @@ from .unotools import getResourceLocation, createService
 from .logger import getLogger
 
 
+def isChildOfItem(connection, id, parent):
+    ischild = 0
+    call = connection.prepareCall('call IS_CHILD_OF_ITEM(?, ?)')
+    call.setString(1, id)
+    call.setString(2, parent)
+    set = call.executeQuery()
+    if set.next():
+        ischild = set.getInt(1)
+    return ischild
+
 def updateChildren(ctx, iteminsert, itemupdate, childdelete, childinsert, scheme, username, id):
     timestamp = parseDateTime()
     return all(_updateChild(item, itemupdate, iteminsert, childdelete, childinsert, timestamp)

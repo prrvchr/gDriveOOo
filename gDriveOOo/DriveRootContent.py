@@ -12,7 +12,7 @@ from com.sun.star.ucb import InteractiveBadTransferURLException, IllegalIdentifi
 
 from gdrive import Initialization, CommandInfo, PropertySetInfo, Row, DynamicResultSet, ContentIdentifier
 from gdrive import PropertySetInfoChangeNotifier, PropertiesChangeNotifier, CommandInfoChangeNotifier
-from gdrive import parseDateTime, getChildSelect, getLogger, setContentProperties
+from gdrive import parseDateTime, isChildOfItem, getChildSelect, getLogger, setContentProperties
 from gdrive import updateChildren, createService, getSimpleFile, getResourceLocation
 from gdrive import getUcb, getCommandInfo, getProperty, getContentInfo, getContent
 from gdrive import propertyChange, getPropertiesValues, setPropertiesValues
@@ -74,6 +74,7 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
             self.itemUpdate = None
             self.childDelete = None
             self.childInsert = None
+            self.statement = None
             self.initialize(namedvalues)
             msg = "DriveRootContent loading Uri: %s ... Done" % self.Uri.getUriReference()
             self.Logger.logp(level, "DriveRootContent", "__init__()", msg)
@@ -177,39 +178,25 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
         elif command.Name == 'transfer':
             # Transfer command is only used for existing document (File Save)
             # For new document (File Save As) we use command: createNewContent and Insert
-            source = command.Argument.SourceURL
             id = command.Argument.NewTitle
-            move = command.Argument.MoveData
-            print("DriveRootContent.execute(): transfer: %s - %s - %s" % (source, move, id))
-            connection = self.itemInsert.getConnection()
-            call = connection.prepareCall('isChildOfItem')
-            call.setString(1, id)
-            call.setString(2, self.Id)
-            call.execute()
-            isChild = call.getLong(3)
-            print("DriveRootContent.execute(): transfer: %s" % (isChild, ))
-            #if not isChild(seld.Id, source):
-            #    raise InteractiveBadTransferURLException("Couln't handle Url: %s" % source, self)
-            print("DriveRootContent.execute(): transfer: %s - %s - %s" % (source, move, id))
-            #{raise InteractiveBadTransferURLException("Couln't handle Url: %s" % source, self)
-            #handler = environment.getInteractionHandler()
-            #handler.handle(r)
-            
-            #id = command.Argument.NewTitle
-            #print("DriveRootContent.execute(): transfer %s - %s" % (source, id))
-            #sf = getSimpleFile(self.ctx)
-            #if sf.exists(source):
-            #    target = getResourceLocation(self.ctx, '%s/%s' % (self.Uri.getScheme(), id))
-            #    inputstream = sf.openFileRead(source)
-            #    sf.writeFile(target, inputstream)
-            #    inputstream.closeInput()
+            source = command.Argument.SourceURL
+            if isChildOfItem(self.statement.getConnection(), id, self.Id) != 1:
+                print("DriveRootContent.execute(): transfer: %s - %s" % (source, id))
+                raise InteractiveBadTransferURLException("Couln't handle Url: %s" % source, self)
+            print("DriveRootContent.execute(): transfer: %s - %s" % (source, id))
+            sf = getSimpleFile(self.ctx)
+            if sf.exists(source):
+                target = getResourceLocation(self.ctx, '%s/%s' % (self.Uri.getScheme(), id))
+                inputstream = sf.openFileRead(source)
+                sf.writeFile(target, inputstream)
+                inputstream.closeInput()
                 # Root Uri end whith '/': ie: 'scheme://authority/'
-            #    uri = getUri(self.ctx, '%s%s' % (self.Uri.getUriReference(), id))
-            #    identifier = ContentIdentifier(uri)
-            #    content = getContent(self.ctx, identifier)
-            #    setContentProperties(content, {'Size': sf.getSize(target), 'IsWrite': True})
-            #    if command.Argument.MoveData:
-            #       pass #must delete object
+                uri = getUri(self.ctx, '%s%s' % (self.Uri.getUriReference(), id))
+                identifier = ContentIdentifier(uri)
+                content = getContent(self.ctx, identifier)
+                setContentProperties(content, {'Size': sf.getSize(target), 'IsWrite': True})
+                if command.Argument.MoveData:
+                    pass #must delete object
         elif command.Name == 'close':
             print("DriveRootContent.execute(): close")
         #except Exception as e:

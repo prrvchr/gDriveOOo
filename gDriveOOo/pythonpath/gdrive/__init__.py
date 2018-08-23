@@ -22,7 +22,7 @@ from .users import getUserSelect, getUserInsert, executeUserInsert
 from .items import getItemSelect, executeItemInsert, getItemInsert, getItemUpdate
 from .items import executeUpdateInsertItem
 
-from .children import updateChildren, getChildSelect, getChildDelete, getChildInsert
+from .children import isChildOfItem, updateChildren, getChildSelect, getChildDelete, getChildInsert
 
 from .identifiers import getIdUpdate, getIdSelect, getIdInsert, getNewId
 

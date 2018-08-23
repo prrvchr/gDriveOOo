@@ -10,7 +10,7 @@ from com.sun.star.awt import XContainerWindowEventHandler
 from gdrive import getStringResource, getFileSequence, createService
 from gdrive import getLoggerUrl, getLoggerSetting, setLoggerSetting, getLogger
 
-from gdrive import getItem, getDbConnection, executeUserInsert, executeUpdateInsertItem
+from gdrive import getItem, getDbConnection, executeUserInsert, executeUpdateInsertItem, isChildOfItem
 import traceback
 
 # pythonloader looks for a static g_ImplementationHelper variable
@@ -55,19 +55,11 @@ class OptionsDialog(unohelper.Base, XServiceInfo, XContainerWindowEventHandler):
     def _doConnect(self, dialog):
         try:
             print("PyOptionsDialog._doConnect() 1")
-            mri = self.ctx.ServiceManager.createInstance('mytools.Mri')
-            connection = getDbConnection(self.ctx, 'vnd.google-apps')
+            #mri = self.ctx.ServiceManager.createInstance('mytools.Mri')
+            #connection = getDbConnection(self.ctx, 'vnd.google-apps')
             #mri.inspect(connection)
-            id = '1brCJfoSt8DraCKpInyCj37bK5dkUhozE'
-            parent = '0AAtPs2F6BEgRUk9PVA'
-            call = connection.prepareCall('call ISCHILDOFITEM(?, ?, ?)')
-            call.setString(1, id)
-            call.setString(2, parent)
-            call.execute()
-            isChild = call.getLong(3)
-            mri.inspect(call)
             #Need upload file here
-            print("PyOptionsDialog._doConnect() 2: %s" % isChild)
+            print("PyOptionsDialog._doConnect() 2")
         except Exception as e:
             print("PyOptionsDialog._doConnect().Error: %s - %s" % (e, traceback.print_exc()))
 
