@@ -3,7 +3,7 @@
 
 import uno
 
-from .dbtools import getItemFromResult, parseDateTime, getMarks, getFieldMarks
+from .dbtools import getCapabilities, getItemFromResult, parseDateTime, getMarks, getFieldMarks
 
 
 def selectItem(connection, id):
@@ -19,8 +19,23 @@ def selectItem(connection, id):
 
 def insertItem(connection, json):
     retrived, item = False, {}
-    timestamp = parseDateTime()
     call = connection.prepareCall('CALL "insertItem"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    _setCallParameters(call, json, parseDateTime())
+    result = call.executeQuery()
+    if result.next():
+        retrived, item = True, getItemFromResult(result)
+    call.close()
+    print("items.insertItem(): %s - %s" % (retrived, item))
+    return retrived, item
+
+def mergeItem(call, json, timestamp):
+    _setCallParameters(call, json, timestamp)
+    call.execute()
+    row = call.getLong(11)
+    print("users.mergeItem(): %s" % (row, ))
+    return row
+
+def _setCallParameters(call, json, timestamp):
     call.setString(1, json['id'])
     call.setString(2, json['name'])
     call.setTimestamp(3, parseDateTime(json['createdTime']) if 'createdTime' in json else timestamp)
@@ -31,13 +46,6 @@ def insertItem(connection, json):
     call.setBoolean(8, getCapabilities(json, 'canAddChildren', False))
     call.setLong(9, int(json['size']) if 'size' in json else 0)
     call.setBoolean(10, getCapabilities(json, 'canReadRevisions', False))
-    result = call.executeQuery()
-    if result.next():
-        retrived, item = True, getItemFromResult(result)
-    call.close()
-    print("items.insertItem(): %s - %s" % (retrived, item))
-    return retrived, item
-
 
 def _getItemSelectColumns():
     columns = ('"Id"',

@@ -5,8 +5,8 @@ import uno
 
 from com.sun.star.ucb.ConnectionMode import ONLINE
 
-from .dbtools import getDbConnection, getMarks, parseDateTime
-from .items import executeUpdateInsertItem
+from .dbtools import parseDateTime, getMarks
+from .items import mergeItem, executeUpdateInsertItem
 from .google import ChildGenerator
 from .unotools import getResourceLocation, createService
 from .logger import getLogger
@@ -25,14 +25,24 @@ def isChildOfItem(connection, id, parent):
     call.close()
     return ischild
 
-def updateChildren(ctx, iteminsert, itemupdate, childdelete, childinsert, scheme, username, id):
-    timestamp = parseDateTime()
-    return all(_updateChild(item, itemupdate, iteminsert, childdelete, childinsert, timestamp)
-               for item in ChildGenerator(ctx, scheme, username, id))
+def updateChildren(ctx, connection, scheme, username, id):
+    try:
+        timestamp = parseDateTime()
+        merge = connection.prepareCall('CALL "mergeItem"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+        delete = connection.prepareCall('CALL "deleteChild"(?)')
+        insert = connection.prepareCall('CALL "insertChild"(?, ?, ?)')
+        result = all(updateChild(merge, delete, insert, item, timestamp) for item in ChildGenerator(ctx, scheme, username, id))
+        merge.close()
+        delete.close()
+        insert.close()
+        return result
+    except Exception as e:
+        print("children.updateChildren().Error: %s - %s" % (e, traceback.print_exc()))
 
-def _updateChild(item, itemupdate, iteminsert, childdelete, childinsert, timestamp):
-    return all((executeUpdateInsertItem(itemupdate, iteminsert, item, timestamp),
-               _updateParent(childdelete, childinsert, item)))
+def updateChild(merge, delete, insert, item, timestamp):
+    result = all((mergeItem(merge, item, timestamp), updateParent(delete, insert, item)))
+    print("children.updateChild() %s" % result)
+    return result
 
 # LibreOffice Column: ['Title', 'Size', 'DateModified', 'DateCreated', 'IsFolder', 'TargetURL', 'IsHidden', 'IsVolume', 'IsRemote', 'IsRemoveable', 'IsFloppy', 'IsCompactDisc']
 # OpenOffice Columns: ['Title', 'Size', 'DateModified', 'DateCreated', 'IsFolder', 'TargetURL', 'IsHidden', 'IsVolume', 'IsRemote', 'IsRemoveable', 'IsFloppy', 'IsCompactDisc']
@@ -79,22 +89,31 @@ def getChildInsert(connection):
     query = 'INSERT INTO "Children" ("Id", "ParentId", "TimeStamp") VALUES (?, ?, CURRENT_TIMESTAMP(3) );'
     return connection.prepareStatement(query)
 
-def insertParent(insert, id, parent):
-    insert.setString(1, id)
-    insert.setString(2, parent)
-    return insert.executeUpdate()
-
-def _updateParent(delete, insert, item):
+def updateParent(delete, insert, item):
+    result = 0
+    print("children.updateParent()")
     id = item['id']
-    return all((_deleteParent(delete, id),
-                _insertParent(insert, id, item)))
+    result = all((deleteParent(delete, id), insertParent(insert, id, item)))
+    print("children.updateParent() %s" % result)
+    return result
 
-def _deleteParent(delete, id):
+def deleteParent(delete, id):
+    print("children.deleteParent()")
     delete.setString(1, id)
-    delete.executeUpdate()
+    delete.execute()
     return 1
     
-def _insertParent(insert, id, item):
+def insertParent(insert, id, item):
+    print("children.insertParent()")
     if 'parents' in item:
-        return all(insertParent(insert, id, parent) for parent in item['parents'])
+        return all(_insertParent(insert, id, parent) for parent in item['parents'])
     return 1
+
+def _insertParent(insert, id, parent):
+    print("children._insertParent()")
+    insert.setString(1, id)
+    insert.setString(2, parent)
+    insert.execute()
+    result = insert.getLong(3)
+    print("children._insertParent() %s" % result)
+    return result

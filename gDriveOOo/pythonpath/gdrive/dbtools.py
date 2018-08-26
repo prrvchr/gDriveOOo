@@ -31,6 +31,14 @@ def getDbConnection(ctx, scheme, shutdown=False, url=None):
     connection = pool.getConnectionWithInfo(url, args)
     return connection
 
+def getCapabilities(json, capability, default):
+    capacity = default
+    if 'capabilities' in json:
+        capabilities = json['capabilities']
+        if capability in capabilities:
+            capacity = capabilities[capability]
+    return capacity
+
 def getItemFromResult(result):
     item = {}
     for index in range(1, result.MetaData.ColumnCount +1):

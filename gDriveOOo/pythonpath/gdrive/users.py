@@ -3,7 +3,7 @@
 
 import uno
 
-from .dbtools import getItemFromResult, parseDateTime
+from .dbtools import getCapabilities, getItemFromResult, parseDateTime
 
 def selectRoot(connection, username):
     retrived, root = False, {}
@@ -37,14 +37,6 @@ def mergeRoot(connection, username, json):
     call.close()
     print("users.mergeRoot(): %s - %s - %s" % (retrived, username, root))
     return retrived, root
-
-def getCapabilities(json, capability, default):
-    capacity = default
-    if 'capabilities' in json:
-        capabilities = json['capabilities']
-        if capability in capabilities:
-            capacity = capabilities[capability]
-    return capacity
 
 def getUserSelect(connection):
     columns = ', '.join(_getUserSelectColumns())

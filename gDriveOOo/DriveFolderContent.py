@@ -163,11 +163,10 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
         elif command.Name == 'setPropertyValues':
             return setPropertiesValues(self, command.Argument, self.Logger)
         elif command.Name == 'open':
+            connection = self.statement.getConnection()
             if self.ConnectionMode == ONLINE and not self.IsRead:
-                updateChildren(self.ctx, self.itemInsert, self.itemUpdate, self.childDelete, 
-                               self.childInsert, self.Uri.getScheme(), self.UserName, self.Id)
-                self.IsRead = True
-            connection = self.childInsert.getConnection()
+                if updateChildren(self.ctx, connection, self.Uri.getScheme(), self.UserName, self.Id):
+                    self.IsRead = True
             select = getChildSelect(self.ctx, connection, self.ConnectionMode, self.Id, self.Uri.getUriReference(), command.Argument.Properties)
             return DynamicResultSet(self.ctx, self.Uri.getScheme(), select)
         elif command.Name == 'createNewContent':
