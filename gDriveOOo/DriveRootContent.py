@@ -9,6 +9,7 @@ from com.sun.star.beans import XPropertyContainer
 from com.sun.star.lang import XServiceInfo, XComponent
 from com.sun.star.ucb import XContent, XCommandProcessor2, XContentCreator
 from com.sun.star.ucb import InteractiveBadTransferURLException, IllegalIdentifierException
+from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
 
 from gdrive import Initialization, CommandInfo, PropertySetInfo, Row, DynamicResultSet, ContentIdentifier
 from gdrive import PropertySetInfoChangeNotifier, PropertiesChangeNotifier, CommandInfoChangeNotifier
@@ -37,6 +38,7 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
             level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
             msg = "DriveRootContent loading ..."
             self.Logger.logp(level, "DriveRootContent", "__init__()", msg)
+            self.ConnectionMode = OFFLINE
             self.UserName = None
             self.Id = None
             self.Uri = None
@@ -161,12 +163,12 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
         elif command.Name == 'setPropertyValues':
             return setPropertiesValues(self, command.Argument, self.Logger)
         elif command.Name == 'open':
-            if not self.IsRead:
+            if self.ConnectionMode == ONLINE and not self.IsRead:
                 updateChildren(self.ctx, self.itemInsert, self.itemUpdate, self.childDelete, 
                                self.childInsert, self.Uri.getScheme(), self.UserName, self.Id)
                 self.IsRead = True
             connection = self.childInsert.getConnection()
-            select = getChildSelect(self.ctx, connection, self.Id, self.Uri.getUriReference(), command.Argument.Properties)
+            select = getChildSelect(self.ctx, connection, self.ConnectionMode, self.Id, self.Uri.getUriReference(), command.Argument.Properties)
             return DynamicResultSet(self.ctx, self.Uri.getScheme(), select)
         elif command.Name == 'createNewContent':
             print("DriveRootContent.execute(): createNewContent %s" % command.Argument)
@@ -180,7 +182,7 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
             # For new document (File Save As) we use command: createNewContent and Insert
             id = command.Argument.NewTitle
             source = command.Argument.SourceURL
-            if isChildOfItem(self.statement.getConnection(), id, self.Id) != 1:
+            if not isChildOfItem(self.statement.getConnection(), id, self.Id):
                 print("DriveRootContent.execute(): transfer: %s - %s" % (source, id))
                 raise InteractiveBadTransferURLException("Couln't handle Url: %s" % source, self)
             print("DriveRootContent.execute(): transfer: %s - %s" % (source, id))
@@ -199,6 +201,8 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
                     pass #must delete object
         elif command.Name == 'close':
             print("DriveRootContent.execute(): close")
+        elif command.Name == 'flush':
+            print("DriveRootContent.execute(): flush")
         #except Exception as e:
         #    print("DriveRootContent.execute().Error: %s - %e" % (e, traceback.print_exc()))
     def abort(self, id):
@@ -228,6 +232,7 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
         commands['delete'] = getCommandInfo('delete', 'boolean')
         commands['transfer'] = getCommandInfo('transfer', 'com.sun.star.ucb.TransferInfo')
         commands['close'] = getCommandInfo('close')
+        commands['flush'] = getCommandInfo('flush')
         return commands
 
     def _getPropertySetInfo(self):

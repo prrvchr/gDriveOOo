@@ -3,7 +3,40 @@
 
 import uno
 
-from .dbtools import getMarks, getFieldMarks, parseDateTime
+from .dbtools import getItemFromResult, parseDateTime, getMarks, getFieldMarks
+
+
+def selectItem(connection, id):
+    retrived, item = False, {}
+    call = connection.prepareCall('CALL "getItem"(?)')
+    call.setString(1, id)
+    result = call.executeQuery()
+    if result.next():
+        retrived, item = True, getItemFromResult(result)
+    call.close()
+    print("items.getItem(): %s - %s " % (retrived, item))
+    return retrived, item
+
+def insertItem(connection, json):
+    retrived, item = False, {}
+    timestamp = parseDateTime()
+    call = connection.prepareCall('CALL "insertItem"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    call.setString(1, json['id'])
+    call.setString(2, json['name'])
+    call.setTimestamp(3, parseDateTime(json['createdTime']) if 'createdTime' in json else timestamp)
+    call.setTimestamp(4, parseDateTime(json['modifiedTime']) if 'modifiedTime' in json else timestamp)
+    call.setString(5, json['mimeType'])
+    call.setBoolean(6, not getCapabilities(json, 'canEdit', True))
+    call.setBoolean(7, getCapabilities(json, 'canRename', False))
+    call.setBoolean(8, getCapabilities(json, 'canAddChildren', False))
+    call.setLong(9, int(json['size']) if 'size' in json else 0)
+    call.setBoolean(10, getCapabilities(json, 'canReadRevisions', False))
+    result = call.executeQuery()
+    if result.next():
+        retrived, item = True, getItemFromResult(result)
+    call.close()
+    print("items.insertItem(): %s - %s" % (retrived, item))
+    return retrived, item
 
 
 def _getItemSelectColumns():
@@ -19,11 +52,6 @@ def _getItemSelectColumns():
                '"IsVersionable"',
                '"IsRead"')
     return columns
-
-def getItemSelect(connection):
-    columns = ', '.join(_getItemSelectColumns())
-    query = 'SELECT %s FROM "Items" WHERE "Id" = ?;' % columns
-    return connection.prepareStatement(query)
     
 def executeUpdateInsertItem(update, insert, json, timestamp=None):
     timestamp = parseDateTime() if timestamp is None else timestamp
@@ -73,9 +101,9 @@ def insertItem(insert, id, row):
     insert.setString(5, row.getString(5))
     insert.setBoolean(6, False)
     insert.setBoolean(7, True)
-    insert.setBoolean(8, True)
-    insert.setLong(9, 0)
-    insert.setBoolean(10, row.getBoolean(6))
+    insert.setBoolean(8, row.getBoolean(6))
+    insert.setLong(9, row.getLong(7))
+    insert.setBoolean(10, row.getBoolean(8))
     insert.setBoolean(11, True)
     return insert.executeUpdate()
 

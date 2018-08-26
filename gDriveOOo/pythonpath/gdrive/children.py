@@ -3,21 +3,26 @@
 
 import uno
 
+from com.sun.star.ucb.ConnectionMode import ONLINE
+
 from .dbtools import getDbConnection, getMarks, parseDateTime
 from .items import executeUpdateInsertItem
 from .google import ChildGenerator
 from .unotools import getResourceLocation, createService
 from .logger import getLogger
 
+import traceback
+
 
 def isChildOfItem(connection, id, parent):
-    ischild = 0
-    call = connection.prepareCall('call IS_CHILD_OF_ITEM(?, ?)')
+    ischild = False
+    call = connection.prepareCall('CALL "isChildOfItem"(?, ?)')
     call.setString(1, id)
     call.setString(2, parent)
-    set = call.executeQuery()
-    if set.next():
-        ischild = set.getInt(1)
+    result = call.executeQuery()
+    if result.next():
+        ischild = result.getBoolean(1)
+    call.close()
     return ischild
 
 def updateChildren(ctx, iteminsert, itemupdate, childdelete, childinsert, scheme, username, id):
@@ -56,9 +61,10 @@ def _getChildSelectColumns(ctx, url, properties):
             getLogger(ctx).logp(level, "children", "_getChildSelectColumns()", "Column not found: %s... ERROR" % property.Name)
     return columns
 
-def getChildSelect(ctx, connection, id, url, properties):
+def getChildSelect(ctx, connection, mode, id, url, properties):
     columns = ', '.join(_getChildSelectColumns(ctx, url, properties))
-    query = 'SELECT %s FROM "Items" AS "I" JOIN "Children" AS "C" ON "I"."Id" = "C"."Id" WHERE "C"."ParentId" = ?;' % columns
+    filter = '' if mode == ONLINE else ' AND "I"."IsRead" = TRUE'
+    query = 'SELECT %s FROM "Items" AS "I" JOIN "Children" AS "C" ON "I"."Id" = "C"."Id" WHERE "C"."ParentId" = ?%s;' % (columns, filter)
     select = connection.prepareStatement(query)
     select.ResultSetType = uno.getConstantByName('com.sun.star.sdbc.ResultSetType.SCROLL_SENSITIVE')
     #select.ResultSetConcurrency = uno.getConstantByName('com.sun.star.sdbc.ResultSetConcurrency.UPDATABLE')

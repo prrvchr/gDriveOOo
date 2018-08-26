@@ -17,14 +17,14 @@ from .cmislib import CmisDocument
 
 from .dbtools import getDbConnection, parseDateTime
 
-from .users import getUserSelect, getUserInsert, executeUserInsert
+from .users import selectRoot, mergeRoot, getUserSelect, executeUserInsert
 
-from .items import getItemSelect, executeItemInsert, getItemInsert, getItemUpdate
+from .items import selectItem, insertItem, executeItemInsert, getItemInsert, getItemUpdate
 from .items import executeUpdateInsertItem
 
 from .children import isChildOfItem, updateChildren, getChildSelect, getChildDelete, getChildInsert
 
-from .identifiers import getIdUpdate, getIdSelect, getIdInsert, getNewId
+from .identifiers import getCountOfIdentifier, getIdUpdate, getIdSelect, getIdInsert, getNewId
 
 
 from .contentlib import ContentIdentifier, Row, DynamicResultSet, CommandInfo, CommandInfoChangeNotifier
@@ -38,7 +38,7 @@ from .google import InputStream, getItem
 
 from .logger import getLogger, getLoggerSetting, setLoggerSetting, getLoggerUrl
 
-from .unotools import getResourceLocation, createService, getStringResource
+from .unotools import getResourceLocation, createService, getStringResource, getPropertyValue
 from .unotools import getFileSequence, getProperty, getPropertySetInfoChangeEvent
 
 from .unolib import Component, Initialization, InteractionHandler, PropertiesChangeNotifier

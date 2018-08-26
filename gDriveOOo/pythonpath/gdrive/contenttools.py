@@ -17,7 +17,7 @@ import traceback
 
 
 def insertContent(ctx, event, itemInsert, childInsert, idUpdate, root):
-    properties = ('Uri', 'Title', 'DateCreated', 'DateModified', 'MediaType', 'IsVersionable')
+    properties = ('Uri', 'Title', 'DateCreated', 'DateModified', 'MediaType', 'IsFolder', 'Size', 'IsVersionable')
     row = getContentProperties(event.Source, properties)
     uri = row.getObject(1, None)
     parent = getId(getParentUri(ctx, uri), root)

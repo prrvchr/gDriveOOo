@@ -8,14 +8,15 @@ from com.sun.star.beans import XPropertyContainer
 from com.sun.star.container import XChild
 from com.sun.star.lang import XServiceInfo, NoSupportException
 from com.sun.star.ucb import XContent, XCommandProcessor2, XContentCreator, IllegalIdentifierException
+from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
 
 from gdrive import Component, Initialization, PropertiesChangeNotifier, CmisDocument
 from gdrive import PropertySetInfoChangeNotifier, ContentIdentifier, CommandInfoChangeNotifier
 from gdrive import getUri, getUriPath, getParentUri, getContentInfo, getPropertiesValues
 from gdrive import CommandInfo, PropertySetInfo, Row, InputStream, createService
 from gdrive import getItemUpdate, getResourceLocation, parseDateTime, getPropertySetInfoChangeEvent
-from gdrive import getContent, getSimpleFile, getCommandInfo, getProperty
-from gdrive import propertyChange, setPropertiesValues, getLogger, getCmisProperty
+from gdrive import getContent, getSimpleFile, getCommandInfo, getProperty, getUcp
+from gdrive import propertyChange, setPropertiesValues, getLogger, getCmisProperty, getPropertyValue
 #from gdrive import PyPropertiesChangeNotifier, PyPropertySetInfoChangeNotifier, PyCommandInfoChangeNotifier, PyPropertyContainer
 import requests
 import traceback
@@ -36,8 +37,9 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
             level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
             msg = "DriveOfficeContent loading ..."
             self.Logger.logp(level, "DriveOfficeContent", "__init__()", msg)
+            self.ConnectionMode = OFFLINE
             self.UserName = None
-            self.Id = None
+            self._Id = None
             self.Uri = None
             
             self.ContentType = 'application/vnd.oasis.opendocument'
@@ -68,6 +70,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
             self._CmisProperties = None
             self._TitleOnServer = None
             self._IsWrite = False
+            self._IsRead = False
             
             self.IsHidden = False
             self.IsVolume = False
@@ -93,6 +96,13 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
         except Exception as e:
             print("DriveOfficeContent.__init__().Error: %s - %e" % (e, traceback.print_exc()))
 
+    @property
+    def Id(self):
+        return self._Id
+    @Id.setter
+    def Id(self, id):
+        propertyChange(self, 'Id', self._Id, id)
+        self._Id = id
     @property
     def TitleOnServer(self):
         print("DriveOfficeContent.TitleOnServer(): 1")
@@ -122,6 +132,13 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
     def Size(self, size):
         propertyChange(self, 'Size', self._Size, size)
         self._Size = size
+    @property
+    def IsRead(self):
+        return self._IsRead
+    @IsRead.setter
+    def IsRead(self, isread):
+        propertyChange(self, 'IsRead', self._IsRead, isread)
+        self._IsRead = isread
     @property
     def IsWrite(self):
         return self._IsWrite
@@ -197,12 +214,26 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
                     sink.setStream(self._getStream())
                 result = None
             elif command.Name == 'createNewContent':
-                print("DriveDocimentContent.execute(): createNewContent %s" % command.Argument)
+                print("DriveDocumentContent.execute(): createNewContent %s" % command.Argument)
             elif command.Name == 'insert':
-                print("DriveOfficeContent.execute() insert")
+                # The Insert command is only used to create a new document (File Save As)
+                # it saves content from createNewContent from the parent folder
                 input = command.Argument.Data
                 replace = command.Argument.ReplaceExisting
-                print("DriveOfficeContent.execute() insert %s - %s" % (replace, input))
+                print("DriveOfficeContent.execute() insert %s" % (replace, ))
+                if input.queryInterface(uno.getTypeByName('com.sun.star.io.XInputStream')):
+                    sf = getSimpleFile(self.ctx)
+                    target = getResourceLocation(self.ctx, '%s/%s' % (self.Uri.getScheme(), self.Id))
+                    sf.writeFile(target, input)
+                    self.MediaType = self._getMediaType(input)
+                    input.closeInput()
+                    self.Size = sf.getSize(target)
+                    self.IsWrite = True
+                    self.IsRead = True
+                    ucp = getUcp(self.ctx, self.Uri.getUriReference())
+                    self.addPropertiesChangeListener(('Id', 'IsWrite', 'IsRead', 'Title', 'Size'), ucp)
+                    self.Id = self.Id
+                    print("DriveOfficeContent.execute() insert %s - %s" % (self.Size, self.MediaType))
             elif command.Name == 'addProperty':
                 print("DriveOfficeContent.addProperty():")
             elif command.Name == 'removeProperty':
@@ -249,7 +280,20 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
             input = InputStream(self.ctx, self.Uri.getScheme(), self.UserName, self.Id, self.Size)
             sf.writeFile(url, input)
             input.closeInput()
+            self.IsRead = True
         return url
+
+    def _getMediaType(self, input):
+        mediatype = "application/octet-stream"
+        detection = self.ctx.ServiceManager.createInstance('com.sun.star.document.TypeDetection')
+        descriptor = (getPropertyValue('InputStream', input), )
+        format, dummy = detection.queryTypeByDescriptor(descriptor, True)
+        if detection.hasByName(format):
+            properties = detection.getByName(format)
+            for property in properties:
+                if property.Name == "MediaType":
+                    mediatype = property.Value
+        return mediatype
 
     def _getCommandInfo(self):
         commands = {}

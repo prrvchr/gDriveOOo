@@ -31,6 +31,25 @@ def getDbConnection(ctx, scheme, shutdown=False, url=None):
     connection = pool.getConnectionWithInfo(url, args)
     return connection
 
+def getItemFromResult(result):
+    item = {}
+    for index in range(1, result.MetaData.ColumnCount +1):
+        dbtype = result.MetaData.getColumnTypeName(index)
+        if dbtype == 'VARCHAR':
+            value = result.getString(index)
+        elif dbtype == 'TIMESTAMP':
+            value = result.getTimestamp(index)
+        elif dbtype == 'BOOLEAN':
+            value = result.getBoolean(index)
+        elif dbtype == 'BIGINT':
+            value = result.getLong(index)
+        else:
+            value = result.getObject(index, None)
+        if result.wasNull():
+            value = None
+        item[result.MetaData.getColumnName(index)] = value
+    return item
+
 def setDbContext(ctx, scheme):
     dbcontext = ctx.ServiceManager.createInstance('com.sun.star.sdb.DatabaseContext')
     if dbcontext.hasRegisteredDatabase(scheme):

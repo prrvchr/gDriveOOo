@@ -4,6 +4,16 @@
 from .google import IdGenerator
 
 
+def getCountOfIdentifier(connection, username):
+    count = 0
+    call = connection.prepareCall('CALL "getCountOfIdentifier"(?)')
+    call.setString(1, username)
+    result = call.executeQuery()
+    if result.next():
+        count = result.getLong(1)
+    call.close()
+    return count
+
 def getIdDelete(connection):
     query = 'DELETE FROM "Identifiers" WHERE "UserName" = ? AND "Id" = ?;'
     return connection.prepareStatement(query)
