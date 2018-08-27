@@ -7,8 +7,8 @@ from com.sun.star.beans import UnknownPropertyException, IllegalTypeException
 from com.sun.star.uno import Exception as UnoException
 
 from .unotools import getProperty, getPropertyValue
-from .items import insertItem, updateItem
-from .children import insertParent
+from .items import mergeItem, insertItem, updateItem
+from .children import updateParent, insertParent
 from .identifiers import updateIdentifier
 
 import datetime
@@ -16,18 +16,44 @@ import requests
 import traceback
 
 
-def insertContent(ctx, event, itemInsert, childInsert, idUpdate, root):
-    properties = ('Uri', 'Title', 'DateCreated', 'DateModified', 'MediaType', 'IsFolder', 'Size', 'IsVersionable')
-    row = getContentProperties(event.Source, properties)
-    uri = row.getObject(1, None)
-    parent = getId(getParentUri(ctx, uri), root)
-    return all((insertItem(itemInsert, event.NewValue, row),
-                insertParent(childInsert, event.NewValue, parent),
-                updateIdentifier(idUpdate, event.NewValue)))
-
-def updateContent(event, statement):
-    id = getContentProperties(event.Source, ('Id', )).getString(1)
-    return updateItem(event, statement, id)
+def mergeContent(ctx, connection, event, root):
+    result = False
+    if event.PropertyName == 'Id':
+        properties = ('Uri', 'Title', 'DateCreated', 'DateModified', 'MediaType',
+                      'IsReadOnly', 'CanRename', 'IsFolder', 'Size', 'IsVersionable')
+        row = getContentProperties(event.Source, properties)
+        uri = row.getObject(1, None)
+        parent = getId(getParentUri(ctx, uri), root)
+        item = {'Id': event.NewValue}
+        item['Title'] = row.getString(2)
+        item['DateCreated'] = row.getTimestamp(3)
+        item['DateModified'] = row.getTimestamp(4)
+        item['MediaType'] = row.getString(5)
+        item['IsReadOnly'] = row.getBoolean(6)
+        item['CanRename'] = row.getBoolean(7)
+        item['IsFolder'] = row.getBoolean(8)
+        item['Size'] = row.getLong(9)
+        item['IsVersionable'] = row.getBoolean(10)
+        merge = connection.prepareCall('CALL "mergeItem"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+        insert = connection.prepareCall('CALL "insertChild"(?, ?, ?)')
+        result = all((mergeItem(merge, item), updateParent(insert, item)))
+    elif event.PropertyName == 'Title':
+        update = connection.prepareCall('CALL "updateTitle"(?, ?, ?)')
+        update.execute()
+        result = update.getLong(3)
+    elif event.PropertyName == 'Size':
+        update = connection.prepareCall('CALL "updateSize"(?, ?, ?)')
+        update.execute()
+        result = update.getLong(3)
+    elif event.PropertyName == 'IsRead':
+        update = connection.prepareCall('CALL "updateIsRead"(?, ?, ?)')
+        update.execute()
+        result = update.getLong(3)
+    elif event.PropertyName == 'IsWrite':
+        update = connection.prepareCall('CALL "updateIsWrite"(?, ?, ?)')
+        update.execute()
+        result = update.getLong(3)
+    return result
 
 def propertyChange(source, name, oldvalue, newvalue):
     if name in source.propertiesListener:

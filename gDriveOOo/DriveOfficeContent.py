@@ -69,6 +69,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
             self.IsVersionable = False
             self._CmisProperties = None
             self._TitleOnServer = None
+            self.CanRename = False
             self._IsWrite = False
             self._IsRead = False
             

@@ -3,11 +3,11 @@
 
 import uno
 
-from .dbtools import getCapabilities, getItemFromResult, parseDateTime
+from .dbtools import getItemFromResult
 
 def selectRoot(connection, username):
     retrived, root = False, {}
-    call = connection.prepareCall('CALL "getRoot"(?)')
+    call = connection.prepareCall('CALL "selectRoot"(?)')
     call.setString(1, username)
     result = call.executeQuery()
     if result.next():
@@ -16,27 +16,30 @@ def selectRoot(connection, username):
     print("users.getRootFromUser(): %s - %s - %s" % (retrived, username, root))
     return retrived, username, root
 
-def mergeRoot(connection, username, json):
+def mergeRoot(connection, username, item):
     retrived, root = False, {}
-    timestamp = parseDateTime()
     call = connection.prepareCall('CALL "mergeRoot"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
     call.setString(1, username)
-    call.setString(2, json['id'])
-    call.setString(3, json['name'])
-    call.setTimestamp(4, parseDateTime(json['createdTime']) if 'createdTime' in json else timestamp)
-    call.setTimestamp(5, parseDateTime(json['modifiedTime']) if 'modifiedTime' in json else timestamp)
-    call.setString(6, json['mimeType'])
-    call.setBoolean(7, not getCapabilities(json, 'canEdit', True))
-    call.setBoolean(8, getCapabilities(json, 'canRename', False))
-    call.setBoolean(9, getCapabilities(json, 'canAddChildren', False))
-    call.setLong(10, int(json['size']) if 'size' in json else 0)
-    call.setBoolean(11, getCapabilities(json, 'canReadRevisions', False))
+    call.setString(2, item['Id'])
+    call.setString(3, item['Title'])
+    call.setTimestamp(4, item['DateCreated'])
+    call.setTimestamp(5, item['DateModified'])
+    call.setString(6, item['MediaType'])
+    call.setBoolean(7, item['IsReadOnly'])
+    call.setBoolean(8, item['CanRename'])
+    call.setBoolean(9, item['IsFolder'])
+    call.setLong(10, item['Size'])
+    call.setBoolean(11, item['IsVersionable'])
     result = call.executeQuery()
     if result.next():
         retrived, root = True, getItemFromResult(result)
     call.close()
     print("users.mergeRoot(): %s - %s - %s" % (retrived, username, root))
     return retrived, root
+
+
+
+
 
 def getUserSelect(connection):
     columns = ', '.join(_getUserSelectColumns())

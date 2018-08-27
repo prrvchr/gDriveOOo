@@ -6,6 +6,8 @@ import unohelper
 
 from com.sun.star.io import XActiveDataSource, XActiveDataSink, XActiveDataControl, XInputStream
 
+from .dbtools import parseDateTime
+
 import requests
 import sys
 
@@ -61,9 +63,30 @@ def getItem(ctx, scheme, username, id):
         print("google.getItem(): %s - %s" % (r.status_code, r.json()))
         status = r.status_code
         if status == requests.codes.ok:
-            item = r.json()
+            item = getItemFromJson(r.json(), parseDateTime())
     return status, item
 
+def getItemFromJson(json, timestamp):
+    item = {}
+    item['Id'] = json['id']
+    item['Title'] = json['name']
+    item['DateCreated'] = parseDateTime(json['createdTime']) if 'createdTime' in json else timestamp
+    item['DateModified'] = parseDateTime(json['modifiedTime']) if 'modifiedTime' in json else timestamp
+    item['MediaType'] = json['mimeType']
+    item['IsReadOnly'] = not getCapabilities(json, 'canEdit', True)
+    item['CanRename'] = getCapabilities(json, 'canRename', False)
+    item['IsFolder'] = getCapabilities(json, 'canAddChildren', False)
+    item['Size'] = int(json['size']) if 'size' in json else 0
+    item['IsVersionable'] = getCapabilities(json, 'canReadRevisions', False)
+    return item
+
+def getCapabilities(json, capability, default):
+    capacity = default
+    if 'capabilities' in json:
+        capabilities = json['capabilities']
+        if capability in capabilities:
+            capacity = capabilities[capability]
+    return capacity
 
 class IdGenerator():
     def __init__(self, ctx, scheme, username, space='drive'):
@@ -99,6 +122,7 @@ class ChildGenerator():
         self.authentication = OAuth2Ooo(ctx, scheme, username)
         self.params = {'fields': g_childfields, 'pageSize': g_pages}
         self.params['q'] = "'%s' in parents" % id
+        self.timestamp = parseDateTime()
         print("google.ChildGenerator.__init__()")
     def __iter__(self):
         self.session = requests.Session()
@@ -122,7 +146,7 @@ class ChildGenerator():
             if r.status_code == requests.codes.ok:
                 result = r.json()
                 if 'files' in result:
-                    rows = result['files']
+                    rows = [getItemFromJson(j, self.timestamp) for j in result['files']]
                 if 'nextPageToken' in result:
                     token = result['nextPageToken']
         return rows, token

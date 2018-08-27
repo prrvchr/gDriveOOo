@@ -54,6 +54,7 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
             self.DateCreated = parseDateTime()
             self._IsRead = False
             self.IsWrite = False
+            self.CanRename = False
             self.IsVersionable = False
             self.CreatableContentsInfo = self._getCreatableContentsInfo()
             
@@ -163,12 +164,13 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
         elif command.Name == 'setPropertyValues':
             return setPropertiesValues(self, command.Argument, self.Logger)
         elif command.Name == 'open':
+            scheme = self.Uri.getScheme()
+            identifier = self.Uri.getUriReference()
             connection = self.statement.getConnection()
             if self.ConnectionMode == ONLINE and not self.IsRead:
-                if updateChildren(self.ctx, connection, self.Uri.getScheme(), self.UserName, self.Id):
-                    self.IsRead = True
-            select = getChildSelect(self.ctx, connection, self.ConnectionMode, self.Id, self.Uri.getUriReference(), command.Argument.Properties)
-            return DynamicResultSet(self.ctx, self.Uri.getScheme(), select)
+                self.IsRead = updateChildren(self.ctx, connection, scheme, self.UserName, self.Id)
+            select = getChildSelect(self.ctx, connection, self.ConnectionMode, self.Id, identifier, command.Argument.Properties)
+            return DynamicResultSet(self.ctx, scheme, select)
         elif command.Name == 'createNewContent':
             print("DriveRootContent.execute(): createNewContent %s" % command.Argument)
             return self._createNewContent(command.Argument)

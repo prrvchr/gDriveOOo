@@ -3,12 +3,12 @@
 
 import uno
 
-from .dbtools import getCapabilities, getItemFromResult, parseDateTime, getMarks, getFieldMarks
+from .dbtools import getItemFromResult, parseDateTime, getMarks, getFieldMarks
 
 
 def selectItem(connection, id):
     retrived, item = False, {}
-    call = connection.prepareCall('CALL "getItem"(?)')
+    call = connection.prepareCall('CALL "selectItem"(?)')
     call.setString(1, id)
     result = call.executeQuery()
     if result.next():
@@ -17,10 +17,10 @@ def selectItem(connection, id):
     print("items.getItem(): %s - %s " % (retrived, item))
     return retrived, item
 
-def insertItem(connection, json):
+def insertItem(connection, item):
     retrived, item = False, {}
     call = connection.prepareCall('CALL "insertItem"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-    _setCallParameters(call, json, parseDateTime())
+    _setCallParameters(call, item)
     result = call.executeQuery()
     if result.next():
         retrived, item = True, getItemFromResult(result)
@@ -28,24 +28,32 @@ def insertItem(connection, json):
     print("items.insertItem(): %s - %s" % (retrived, item))
     return retrived, item
 
-def mergeItem(call, json, timestamp):
-    _setCallParameters(call, json, timestamp)
+
+def mergeItem(call, item):
+    _setCallParameters(call, item)
     call.execute()
     row = call.getLong(11)
     print("users.mergeItem(): %s" % (row, ))
     return row
 
-def _setCallParameters(call, json, timestamp):
-    call.setString(1, json['id'])
-    call.setString(2, json['name'])
-    call.setTimestamp(3, parseDateTime(json['createdTime']) if 'createdTime' in json else timestamp)
-    call.setTimestamp(4, parseDateTime(json['modifiedTime']) if 'modifiedTime' in json else timestamp)
-    call.setString(5, json['mimeType'])
-    call.setBoolean(6, not getCapabilities(json, 'canEdit', True))
-    call.setBoolean(7, getCapabilities(json, 'canRename', False))
-    call.setBoolean(8, getCapabilities(json, 'canAddChildren', False))
-    call.setLong(9, int(json['size']) if 'size' in json else 0)
-    call.setBoolean(10, getCapabilities(json, 'canReadRevisions', False))
+# Call Parameter:
+# IN(Id, Title, DateCreated, DateModified, MediaType, IsReadOnly, CanRename, CanAddChild, Size, IsVersionable)
+# OUT(NumRow)
+def _setCallParameters(call, item):
+    call.setString(1, item['Id'])
+    call.setString(2, item['Title'])
+    call.setTimestamp(3, item['DateCreated'])
+    call.setTimestamp(4, item['DateModified'])
+    call.setString(5, item['MediaType'])
+    call.setBoolean(6, item['IsReadOnly'])
+    call.setBoolean(7, item['CanRename'])
+    call.setBoolean(8, item['IsFolder'])
+    call.setLong(9, item['Size'])
+    call.setBoolean(10, item['IsVersionable'])
+
+
+
+
 
 def _getItemSelectColumns():
     columns = ('"Id"',

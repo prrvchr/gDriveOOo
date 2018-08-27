@@ -15,14 +15,14 @@ import traceback
 
 from gdrive import ContentIdentifier
 from gdrive import getDbConnection, selectRoot, mergeRoot, selectItem, insertItem
-from gdrive import getItem
+from gdrive import getItem, mergeContent
 
 from gdrive import getUserSelect, executeUserInsert, executeUpdateInsertItem
 from gdrive import getItemInsert, getItemUpdate, getContentProperties, getUcb
 from gdrive import executeItemInsert, getChildDelete, getChildInsert, setContentProperties
 
 from gdrive import createService, getUri, getUriPath, getProperty
-from gdrive import getLogger, insertContent, updateContent, getParentUri
+from gdrive import getLogger, getParentUri
 from gdrive import getNewId, getId, getIdSelect, getIdInsert, getIdUpdate
 
 from requests import codes
@@ -99,24 +99,19 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
     # XPropertiesChangeListener
     def propertiesChange(self, events):
         for event in events:
+            name = event.PropertyName
             level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
-            if event.PropertyName == 'Id':
-                msg = "Item inserted new Id: %s ..." % event.NewValue
-                self.Logger.logp(level, "ContentProvider", "propertiesChange()", msg)
-                if insertContent(self.ctx, event, self.itemInsert, self.childInsert, self.idUpdate, self.RootId):
-                    msg = "Item inserted new Id: %s ... Done" % event.NewValue
-                else:
-                    level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
-                    msg = "ERROR: Can't insert new Id: %s" % event.NewValue
+            msg = "Item inserted new Id: %s ..." % event.NewValue if name == 'Id' else \
+                  "Item updated Property: %s ..." % name
+            self.Logger.logp(level, "ContentProvider", "propertiesChange()", msg)
+            if mergeContent(self.ctx, self.Connection, event, self.RootId):
+                msg = "Item inserted new Id: %s ... Done" % event.NewValue if name == 'Id' else \
+                      "Item updated Property: %s ... Done" % event.PropertyName
             else:
-                msg = "Item updated Property: %s ..." % event.PropertyName
-                self.Logger.logp(level, "ContentProvider", "propertiesChange()", msg)
-                if updateContent(event, self.statement):
-                    msg = "Item updated Property: %s ... Done" % event.PropertyName
-                else:
-                    level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
-                    msg = "ERROR: Can't update Property: %s" % event.PropertyName
-                self.Logger.logp(level, "ContentProvider", "propertiesChange()", msg)
+                level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
+                msg = "ERROR: Can't insert new Id: %s" % event.NewValue if name == 'Id' else \
+                      "ERROR: Can't update Property: %s" % name
+            self.Logger.logp(level, "ContentProvider", "propertiesChange()", msg)
     def disposing(self, source):
         pass
 
@@ -232,10 +227,10 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
             retrived, root = False, {}
             level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
             msg = None
-            status, json = getItem(self.ctx, self.Scheme, username, 'root')
+            status, root = getItem(self.ctx, self.Scheme, username, 'root')
             print("ContentProvider._getUserFromProvider(): %s" % username)
             if status == codes.ok:
-                retrived, root = mergeRoot(self.Connection, username, json)
+                retrived, root = mergeRoot(self.Connection, username, root)
             elif status == codes.bad_request:
                 level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
                 msg = "ERROR: Can't retreive Id from provider: %s" % id
