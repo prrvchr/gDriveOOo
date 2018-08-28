@@ -17,11 +17,9 @@ from .cmislib import CmisDocument
 
 from .dbtools import getDbConnection, parseDateTime
 
+from .items import selectRoot, mergeRoot, selectItem, insertItem
 
-from .items import selectRoot, mergeRoot, selectItem, insertItem, executeItemInsert, getItemInsert, getItemUpdate
-from .items import executeUpdateInsertItem
-
-from .children import isChildOfItem, updateChildren, getChildSelect, getChildDelete, getChildInsert
+from .children import isChildOfItem, updateChildren, getChildSelect
 
 from .identifiers import getCountOfIdentifier, getIdUpdate, getIdSelect, getIdInsert, getNewId
 

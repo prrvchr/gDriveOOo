@@ -14,7 +14,7 @@ from gdrive import Component, Initialization, PropertiesChangeNotifier, CmisDocu
 from gdrive import PropertySetInfoChangeNotifier, ContentIdentifier, CommandInfoChangeNotifier
 from gdrive import getUri, getUriPath, getParentUri, getContentInfo, getPropertiesValues
 from gdrive import CommandInfo, PropertySetInfo, Row, InputStream, createService
-from gdrive import getItemUpdate, getResourceLocation, parseDateTime, getPropertySetInfoChangeEvent
+from gdrive import getResourceLocation, parseDateTime, getPropertySetInfoChangeEvent
 from gdrive import getContent, getSimpleFile, getCommandInfo, getProperty, getUcp
 from gdrive import propertyChange, setPropertiesValues, getLogger, getCmisProperty, getPropertyValue
 #from gdrive import PyPropertiesChangeNotifier, PyPropertySetInfoChangeNotifier, PyCommandInfoChangeNotifier, PyPropertyContainer

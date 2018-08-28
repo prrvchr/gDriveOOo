@@ -17,13 +17,10 @@ from gdrive import ContentIdentifier
 from gdrive import getDbConnection, selectRoot, mergeRoot, selectItem, insertItem
 from gdrive import getItem, mergeContent
 
-from gdrive import getUserSelect, executeUserInsert, executeUpdateInsertItem
-from gdrive import getItemInsert, getItemUpdate, getContentProperties, getUcb
-from gdrive import executeItemInsert, getChildDelete, getChildInsert, setContentProperties
-
+from gdrive import getUcb, getContentProperties, setContentProperties
 from gdrive import createService, getUri, getUriPath, getProperty
-from gdrive import getLogger, getParentUri
-from gdrive import getNewId, getId, getIdSelect, getIdInsert, getIdUpdate
+from gdrive import getLogger, getParentUri, getNewId, getId
+from gdrive import getIdSelect, getIdInsert, getIdUpdate
 
 from requests import codes
 
@@ -49,6 +46,8 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
         self.cachedContent = {}
         self.Logger = getLogger(self.ctx)
         msg += " Done"
+        desktop = self.ctx.ServiceManager.createInstance('com.sun.star.frame.Desktop')
+        desktop.addTerminateListener(self)
         self.Logger.logp(level, "ContentProvider", "__init__()", msg)
 
     @property
@@ -62,7 +61,10 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
     def registerInstance(self, template, arguments, replace):
         self.Scheme = template
         self.Connection = getDbConnection(self.ctx, self.Scheme)
-        self._initDataBase()
+        self.statement = self.Connection.createStatement()
+        self.idInsert = getIdInsert(self.Connection)
+        self.idSelect = getIdSelect(self.Connection)
+        self.idUpdate = getIdUpdate(self.Connection)
         return getUcb(self.ctx).registerContentProvider(self, self.Scheme, replace)
     def deregisterInstance(self, template, argument):
         getUcb(self.ctx).deregisterContentProvider(self, self.Scheme)
@@ -72,16 +74,26 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
         # ToDo: Upload modified metadata/files after asking user
         pass
     def notifyTermination(self, event):
+        print("ContentProvider.notifyTermination() 1")
         level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
         msg = "Shutdown database ..."
         if self.Connection.isClosed():
+            print("ContentProvider.notifyTermination() 2")
             level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
             msg += " connection alredy closed !!!"
         else:
-            self._shutdownDataBase()
+            self.idInsert.close()
+            self.idSelect.close()
+            self.idUpdate.close()
+            #mri = self.ctx.ServiceManager.createInstance('mytools.Mri')
+            #connection = getDbConnection(self.ctx, 'vnd.google-apps')
+            #mri.inspect(self.Connection)
+            self.Connection.close()
+            print("ContentProvider.notifyTermination() 3")
             msg += "closing connection ..."
         msg += " Done"
         self.Logger.logp(level, "ContentProvider", "notifyTermination()", msg)
+        print("ContentProvider.notifyTermination() 4")
 
     # XComponent
     def dispose(self):
@@ -242,7 +254,6 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
         except Exception as e:
             print("ContentProvider._getUserFromProvider().Error: %s - %s" % (e, traceback.print_exc()))
 
-
     def _getContent(self, id, uri):
         retrived = id in self.cachedContent
         if retrived:
@@ -260,15 +271,12 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
             retrived, item = self._getItemFromProvider(id)
         if retrived:
             name = None
-            item.update({'UserName': self.UserName, 'Uri': uri, 'ConnectionMode': self.ConnectionMode})
+            item.update({'UserName': self.UserName, 'Uri': uri,
+                         'ConnectionMode': self.ConnectionMode, 'statement': self.statement})
             media = item['MediaType']
             if media == 'application/vnd.google-apps.folder':
-                statements = {'statement': self.statement,'itemUpdate': self.itemUpdate, 'itemInsert': self.itemInsert,
-                             'childDelete': self.childDelete, 'childInsert': self.childInsert}
-                item.update(statements)
                 name = 'DriveFolderContent' if id != self.RootId else 'DriveRootContent'
             elif media.startswith('application/vnd.oasis.opendocument'):
-                item.update({'statement': self.statement})
                 name = 'DriveOfficeContent'
             if name:
                 service = 'com.gmail.prrvchr.extensions.gDriveOOo.%s' % name
@@ -292,28 +300,6 @@ class ContentProvider(unohelper.Base, XComponent, XServiceInfo, XContentProvider
         if msg is not None:
             self.Logger.logp(level, "ContentProvider", "_getItemFromProvider()", msg)            
         return retrived, item
-
-    def _initDataBase(self):
-        desktop = self.ctx.ServiceManager.createInstance('com.sun.star.frame.Desktop')
-        desktop.addTerminateListener(self)
-        self.statement = self.Connection.createStatement()
-        self.itemInsert = getItemInsert(self.Connection)
-        self.itemUpdate = getItemUpdate(self.Connection)
-        self.childDelete = getChildDelete(self.Connection)
-        self.childInsert = getChildInsert(self.Connection)
-        self.idInsert = getIdInsert(self.Connection)
-        self.idSelect = getIdSelect(self.Connection)
-        self.idUpdate = getIdUpdate(self.Connection)
-
-    def _shutdownDataBase(self):
-        self.itemInsert.close()
-        self.itemUpdate.close()
-        self.childDelete.close()
-        self.childInsert.close()
-        self.idInsert.close()
-        self.idSelect.close()
-        self.idUpdate.close()
-        self.Connection.createStatement().execute('SHUTDOWN COMPACT;')
 
     # XServiceInfo
     def supportsService(self, service):

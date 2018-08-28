@@ -7,8 +7,8 @@ from com.sun.star.beans import UnknownPropertyException, IllegalTypeException
 from com.sun.star.uno import Exception as UnoException
 
 from .unotools import getProperty, getPropertyValue
-from .items import mergeItem, insertItem, updateItem
-from .children import updateParent, insertParent
+from .items import mergeItem
+from .children import updateParent
 from .identifiers import updateIdentifier
 
 import datetime

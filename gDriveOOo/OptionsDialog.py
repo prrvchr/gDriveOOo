@@ -10,7 +10,7 @@ from com.sun.star.awt import XContainerWindowEventHandler
 from gdrive import getStringResource, getFileSequence, createService
 from gdrive import getLoggerUrl, getLoggerSetting, setLoggerSetting, getLogger
 
-from gdrive import getItem, getDbConnection, executeUserInsert, executeUpdateInsertItem, isChildOfItem
+from gdrive import getDbConnection
 import traceback
 
 # pythonloader looks for a static g_ImplementationHelper variable

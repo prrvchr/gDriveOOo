@@ -5,13 +5,8 @@ import uno
 
 from com.sun.star.ucb.ConnectionMode import ONLINE
 
-from .dbtools import getMarks
-from .items import mergeItem, executeUpdateInsertItem
+from .items import mergeItem
 from .google import ChildGenerator
-from .unotools import getResourceLocation, createService
-from .logger import getLogger
-
-import traceback
 
 
 def isChildOfItem(connection, id, parent):
@@ -63,46 +58,3 @@ def getChildSelect(connection, mode, id, url):
     url = url if url.endswith('/') else '%s/' % url
     select.setString(2, url)
     return select
-
-def _getChildSelectColumns(ctx, url, properties):
-    if not url.endswith('/'):
-        url += '/'
-    columns = []
-    fields = {}
-    fields['Title'] = '"I"."Title"'
-    fields['Size'] = '"I"."Size"'
-    fields['DateModified'] = '"I"."DateModified"'
-    fields['DateCreated'] = '"I"."DateCreated"'
-    fields['IsFolder'] = '"I"."CanAddChild"'
-    fields['TargetURL'] = 'CONCAT(\'%s\', "I"."Id")' % url
-    fields['IsHidden'] = 'FALSE'
-    fields['IsVolume'] = 'FALSE'
-    fields['IsRemote'] = 'FALSE'
-    fields['IsRemoveable'] = 'FALSE'
-    fields['IsFloppy'] = 'FALSE'
-    fields['IsCompactDisc'] = 'FALSE'
-    for property in properties:
-        if hasattr(property, 'Name') and property.Name in fields:
-            columns.append('%s "%s"' % (fields[property.Name], property.Name))
-        else:
-            level = uno.getConstantByName("com.sun.star.logging.LogLevel.SEVERE")
-            getLogger(ctx).logp(level, "children", "_getChildSelectColumns()", "Column not found: %s... ERROR" % property.Name)
-    return columns
-
-def getChildSelect1(ctx, connection, mode, id, url, properties):
-    columns = ', '.join(_getChildSelectColumns(ctx, url, properties))
-    filter = '' if mode == ONLINE else ' AND "I"."IsRead" = TRUE'
-    query = 'SELECT %s FROM "Items" AS "I" JOIN "Children" AS "C" ON "I"."Id" = "C"."Id" WHERE "C"."ParentId" = ?%s;' % (columns, filter)
-    select = connection.prepareStatement(query)
-    select.ResultSetType = uno.getConstantByName('com.sun.star.sdbc.ResultSetType.SCROLL_SENSITIVE')
-    #select.ResultSetConcurrency = uno.getConstantByName('com.sun.star.sdbc.ResultSetConcurrency.UPDATABLE')
-    select.setString(1, id)
-    return select
-
-def getChildDelete(connection):
-    query = 'DELETE FROM "Children" WHERE "Id" = ?;'
-    return connection.prepareStatement(query)
-
-def getChildInsert(connection):
-    query = 'INSERT INTO "Children" ("Id", "ParentId", "TimeStamp") VALUES (?, ?, CURRENT_TIMESTAMP(3) );'
-    return connection.prepareStatement(query)

@@ -73,10 +73,6 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
             self.propertyInfoListeners = []
             self.commandInfoListeners = []
             
-            self.itemInsert = None
-            self.itemUpdate = None
-            self.childDelete = None
-            self.childInsert = None
             self.statement = None
             self.initialize(namedvalues)
             msg = "DriveFolderContent loading Uri: %s ... Done" % self.Uri.getUriReference()
@@ -165,12 +161,11 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
             return setPropertiesValues(self, command.Argument, self.Logger)
         elif command.Name == 'open':
             scheme = self.Uri.getScheme()
-            identifier = self.Uri.getUriReference()
             connection = self.statement.getConnection()
             if self.ConnectionMode == ONLINE and not self.IsRead:
                 self.IsRead = updateChildren(self.ctx, connection, scheme, self.UserName, self.Id)
             # Not Used: command.Argument.Properties - Implement me!!!
-            select = getChildSelect(self.ctx, connection, self.ConnectionMode, self.Id, identifier)
+            select = getChildSelect(connection, self.ConnectionMode, self.Id, self.Uri.getUriReference())
             return DynamicResultSet(self.ctx, scheme, select)
         elif command.Name == 'createNewContent':
             print("DriveFolderContent.execute(): createNewContent %s" % command.Argument)
