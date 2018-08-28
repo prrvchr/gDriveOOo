@@ -156,11 +156,13 @@ class ContentResultSet(unohelper.Base, PropertySet, XComponent, XRow, XResultSet
         self.ctx = ctx
         self.scheme = scheme
         self.resultset = select.executeQuery()
-        self.resultset.last()
-        self.RowCount = self.resultset.Row
+        #self.resultset.last()
+        #self.RowCount = self.resultset.Row
+        self.RowCount = select.getLong(3)
         self.IsRowCountFinal = not select.MoreResults
-        self.resultset.beforeFirst()
+        #self.resultset.beforeFirst()
         self.listeners = []
+        print("contentlib.ContentResultSet.__init__(): %s - %s" % (self.RowCount, self.IsRowCountFinal))
 
     def _getPropertySetInfo(self):
         properties = {}

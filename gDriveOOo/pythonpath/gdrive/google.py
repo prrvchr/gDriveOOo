@@ -78,6 +78,7 @@ def getItemFromJson(json, timestamp):
     item['IsFolder'] = getCapabilities(json, 'canAddChildren', False)
     item['Size'] = int(json['size']) if 'size' in json else 0
     item['IsVersionable'] = getCapabilities(json, 'canReadRevisions', False)
+    item['Parents'] = tuple(json['parents']) if 'parents' in json else ()
     return item
 
 def getCapabilities(json, capability, default):

@@ -38,19 +38,25 @@ def mergeContent(ctx, connection, event, root):
         insert = connection.prepareCall('CALL "insertChild"(?, ?, ?)')
         result = all((mergeItem(merge, item), updateParent(insert, item)))
     elif event.PropertyName == 'Title':
+        id = getContentProperties(event.Source, ('Id', )).getString(1)
         update = connection.prepareCall('CALL "updateTitle"(?, ?, ?)')
+        update.setString(1, id)
+        update.setString(2, event.NewValue)
         update.execute()
         result = update.getLong(3)
     elif event.PropertyName == 'Size':
+        id = getContentProperties(event.Source, ('Id', )).getString(1)
         update = connection.prepareCall('CALL "updateSize"(?, ?, ?)')
+        update.setString(1, id)
+        update.setLong(2, event.NewValue)
         update.execute()
         result = update.getLong(3)
-    elif event.PropertyName == 'IsRead':
-        update = connection.prepareCall('CALL "updateIsRead"(?, ?, ?)')
-        update.execute()
-        result = update.getLong(3)
-    elif event.PropertyName == 'IsWrite':
-        update = connection.prepareCall('CALL "updateIsWrite"(?, ?, ?)')
+    elif event.PropertyName in ('IsRead', 'IsWrite'):
+        id = getContentProperties(event.Source, ('Id', )).getString(1)
+        procedure = 'CALL "update%s"(?, ?, ?)' % event.PropertyName
+        update = connection.prepareCall(procedure)
+        update.setString(1, id)
+        update.setBoolean(2, event.NewValue)
         update.execute()
         result = update.getLong(3)
     return result

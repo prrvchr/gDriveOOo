@@ -26,30 +26,24 @@ def isChildOfItem(connection, id, parent):
     return ischild
 
 def updateChildren(ctx, connection, scheme, username, id):
-    try:
-        merge = connection.prepareCall('CALL "mergeItem"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-        insert = connection.prepareCall('CALL "insertChild"(?, ?, ?)')
-        result = all(updateChild(merge, insert, item) for item in ChildGenerator(ctx, scheme, username, id))
-        merge.close()
-        insert.close()
-        return result
-    except Exception as e:
-        print("children.updateChildren().Error: %s - %s" % (e, traceback.print_exc()))
-
-def updateChild(merge, insert, item):
-    result = all((mergeItem(merge, item), updateParent(insert, item)))
-    print("children.updateChild() %s" % result)
+    merge = connection.prepareCall('CALL "mergeItem"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    insert = connection.prepareCall('CALL "insertChild"(?, ?, ?)')
+    result = all(updateChild(merge, insert, item) for item in ChildGenerator(ctx, scheme, username, id))
+    merge.close()
+    insert.close()
     return result
 
+def updateChild(merge, insert, item):
+    return all((mergeItem(merge, item), updateParent(insert, item)))
+
 def updateParent(insert, item):
-    print("children.updateParent()")
-    if 'parents' in item:
-        id = item['id']
-        return all(insertParent(insert, id, parent) for parent in item['parents'])
-    return True
+    result = True
+    if 'Parents' in item:
+        id = item['Id']
+        result = all(insertParent(insert, id, parent) for parent in item['Parents'])
+    return result
 
 def insertParent(insert, id, parent):
-    print("children.insertParent()")
     insert.setString(1, id)
     insert.setString(2, parent)
     insert.execute()
@@ -58,17 +52,16 @@ def insertParent(insert, id, parent):
 # LibreOffice Column: ['Title', 'Size', 'DateModified', 'DateCreated', 'IsFolder', 'TargetURL', 'IsHidden', 'IsVolume', 'IsRemote', 'IsRemoveable', 'IsFloppy', 'IsCompactDisc']
 # OpenOffice Columns: ['Title', 'Size', 'DateModified', 'DateCreated', 'IsFolder', 'TargetURL', 'IsHidden', 'IsVolume', 'IsRemote', 'IsRemoveable', 'IsFloppy', 'IsCompactDisc']
 
-def getChildSelect(ctx, connection, mode, id, url):
+def getChildSelect(connection, mode, id, url):
     if mode == ONLINE:
-        select = connection.prepareCall('CALL "selectChildOn"(?, ?)')
+        select = connection.prepareCall('CALL "selectChildOn"(?, ?, ?)')
     else:
-        select = connection.prepareCall('CALL "selectChildOff"(?, ?)')
-    select.ResultSetType = uno.getConstantByName('com.sun.star.sdbc.ResultSetType.SCROLL_SENSITIVE')
+        select = connection.prepareCall('CALL "selectChildOff"(?, ?, ?)')
+    #select.ResultSetType = uno.getConstantByName('com.sun.star.sdbc.ResultSetType.SCROLL_INSENSITIVE')
     #select.ResultSetConcurrency = uno.getConstantByName('com.sun.star.sdbc.ResultSetConcurrency.UPDATABLE')
-    call.setString(1, id)
-    if not url.endswith('/'):
-        url += '/'
-    call.setString(2, url)
+    select.setString(1, id)
+    url = url if url.endswith('/') else '%s/' % url
+    select.setString(2, url)
     return select
 
 def _getChildSelectColumns(ctx, url, properties):

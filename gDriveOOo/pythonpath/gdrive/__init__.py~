@@ -17,6 +17,7 @@ from .cmislib import CmisDocument
 
 from .dbtools import getDbConnection, parseDateTime
 
+from .users import getUserSelect, executeUserInsert
 
 from .items import selectRoot, mergeRoot, selectItem, insertItem, executeItemInsert, getItemInsert, getItemUpdate
 from .items import executeUpdateInsertItem
