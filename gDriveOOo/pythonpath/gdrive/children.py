@@ -9,9 +9,9 @@ from .items import mergeItem
 from .google import ChildGenerator
 
 
-def isChildOfItem(connection, id, parent):
+def isChild(connection, id, parent):
     ischild = False
-    call = connection.prepareCall('CALL "isChildOfItem"(?, ?)')
+    call = connection.prepareCall('CALL "isChild"(?, ?)')
     call.setString(1, id)
     call.setString(2, parent)
     result = call.executeQuery()

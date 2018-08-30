@@ -5,16 +5,81 @@ import uno
 import unohelper
 
 from com.sun.star.lang import XComponent
-from com.sun.star.ucb import XContentIdentifier, XContentAccess, XDynamicResultSet
+from com.sun.star.ucb import XContentIdentifier, XContentAccess, XDynamicResultSet, URLAuthenticationRequest
+from com.sun.star.ucb import AuthenticationRequest
 from com.sun.star.ucb import XCommandInfo, XCommandInfoChangeNotifier, UnsupportedCommandException
 from com.sun.star.sdbc import XRow, XResultSet, XResultSetMetaDataSupplier, XCloseable
+from com.sun.star.sdb import ParametersRequest
+from com.sun.star.container import XIndexAccess
+from com.sun.star.task import XInteractionRequest
 #from com.sun.star.document import XCmisDocument
 
 from .unolib import Component, PropertySet
 from .unotools import createService, getProperty, getResourceLocation
 from .contenttools import getContent
 from .dbtools import getDbConnection
-from .children import getChildSelect
+
+
+class InteractionRequest(unohelper.Base, XInteractionRequest):
+    def __init__(self, source, connection, message="Authentication is needed!!!"):
+        self.request = ParametersRequest()
+        self.request.Connection = connection
+        self.request.Classification = uno.Enum('com.sun.star.task.InteractionClassification', 'QUERY')
+        self.request.Message = message
+        self.request.Context = source
+        self.request.Parameters = RequestParameters(message)
+
+    def getRequest(self):
+        return self.request
+    def getContinuations(self):
+        return (self.request.Context, )
+
+
+class RequestParameters(unohelper.Base, XIndexAccess):
+    def __init__(self, description):
+        self.description = description
+
+    # XIndexAccess
+    def getCount(self):
+        return 1
+    def getByIndex(self, index):
+        return Parameters(self.description)
+    def getElementType(self):
+        return uno.getTypeByName('string')
+    def hasElements(self):
+        return True
+
+
+class Parameters(unohelper.Base, PropertySet):
+    def __init__(self, description):
+        self.Name = 'UserName'
+        self.Type = uno.getConstantByName('com.sun.star.sdbc.DataType.VARCHAR')
+        self.TypeName = 'VARCHAR'
+        self.Precision = 0
+        self.Scale = 0
+        self.IsNullable = uno.getConstantByName('com.sun.star.sdbc.ColumnValue.NO_NULLS')
+        self.IsAutoIncrement = False
+        self.IsCurrency = False
+        self.IsRowVersion = False
+        self.Description = description
+        self.DefaultValue = ''
+        
+    def _getPropertySetInfo(self):
+        properties = {}
+        bound = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.BOUND')
+        readonly = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.READONLY')
+        properties['Name'] = getProperty('Name', 'string', bound | readonly)
+        properties['Type'] = getProperty('Type', 'long', bound | readonly)
+        properties['TypeName'] = getProperty('TypeName', 'string', bound | readonly)
+        properties['Precision'] = getProperty('Precision', 'long', bound | readonly)        
+        properties['Scale'] = getProperty('Scale', 'long', bound | readonly)
+        properties['IsNullable'] = getProperty('IsNullable', 'long', bound | readonly)
+        properties['IsAutoIncrement'] = getProperty('IsAutoIncrement', 'boolean', bound | readonly)
+        properties['IsCurrency'] = getProperty('IsCurrency', 'boolean', bound | readonly)
+        properties['IsRowVersion'] = getProperty('IsRowVersion', 'boolean', bound | readonly)
+        properties['Description'] = getProperty('Description', 'string', bound | readonly)
+        properties['DefaultValue'] = getProperty('DefaultValue', 'string', bound | readonly)
+        return properties
 
 
 class CommandInfo(unohelper.Base, XCommandInfo):
@@ -156,13 +221,9 @@ class ContentResultSet(unohelper.Base, PropertySet, XComponent, XRow, XResultSet
         self.ctx = ctx
         self.scheme = scheme
         self.resultset = select.executeQuery()
-        #self.resultset.last()
-        #self.RowCount = self.resultset.Row
         self.RowCount = select.getLong(3)
         self.IsRowCountFinal = not select.MoreResults
-        #self.resultset.beforeFirst()
         self.listeners = []
-        print("contentlib.ContentResultSet.__init__(): %s - %s" % (self.RowCount, self.IsRowCountFinal))
 
     def _getPropertySetInfo(self):
         properties = {}
@@ -228,7 +289,9 @@ class ContentResultSet(unohelper.Base, PropertySet, XComponent, XRow, XResultSet
 
     # XContentAccess
     def queryContentIdentifierString(self):
-        return self.resultset.getString(self.resultset.findColumn('TargetURL'))
+        identifier = self.resultset.getString(self.resultset.findColumn('TargetURL'))
+        print("contentlib.ContentResultSet.queryContentIdentifierString(): %s" % identifier)
+        return identifier
     def queryContentIdentifier(self):
         identifier = self.queryContentIdentifierString()
         return ContentIdentifier(self.scheme, identifier)

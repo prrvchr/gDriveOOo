@@ -19,19 +19,20 @@ from .dbtools import getDbConnection, parseDateTime
 
 from .items import selectRoot, mergeRoot, selectItem, insertItem
 
-from .children import isChildOfItem, updateChildren, getChildSelect
+from .children import isChild, updateChildren, getChildSelect
 
-from .identifiers import getCountOfIdentifier, getIdUpdate, getIdSelect, getIdInsert, getNewId
+from .identifiers import checkIdentifiers, geIdentifier
 
 
 from .contentlib import ContentIdentifier, Row, DynamicResultSet, CommandInfo, CommandInfoChangeNotifier
+from .contentlib import InteractionRequest
 
 from .contenttools import getUri, getUriPath, getUcb, getSimpleFile, getContentInfo, getCommandInfo
 from .contenttools import getContent, getContentEvent, getUcp, getNewItem, getParentUri
 from .contenttools import getId, getContentProperties, getPropertiesValues, setPropertiesValues, propertyChange
 from .contenttools import getCmisProperty, setContentProperties, mergeContent
 
-from .google import InputStream, getItem
+from .google import InputStream, getUser, getItem
 
 from .logger import getLogger, getLoggerSetting, setLoggerSetting, getLoggerUrl
 

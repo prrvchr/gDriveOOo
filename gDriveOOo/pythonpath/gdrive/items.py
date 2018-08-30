@@ -1,7 +1,9 @@
 #!
 # -*- coding: utf_8 -*-
 
-from .dbtools import getItemFromResult
+from .dbtools import getItemFromResult, SqlArray
+
+import traceback
 
 
 def selectRoot(connection, username):
@@ -12,13 +14,15 @@ def selectRoot(connection, username):
     if result.next():
         retrived, root = True, getItemFromResult(result)
     select.close()
-    return retrived, username, root
+    return retrived, root
 
-def mergeRoot(connection, username, item):
+def mergeRoot(connection, user, item):
     retrived, root = False, {}
-    merge = connection.prepareCall('CALL "mergeRoot"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-    merge.setString(1, username)
-    _setCallParameters(merge, item, 2)
+    merge = connection.prepareCall('CALL "mergeRoot"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    merge.setString(1, user['Id'])
+    merge.setString(2, user['UserName'])
+    merge.setString(3, user['DisplayName'])
+    dummy = _setCallParameters(merge, item, 4)
     result = merge.executeQuery()
     if result.next():
         retrived, root = True, getItemFromResult(result)
@@ -38,7 +42,8 @@ def selectItem(connection, id):
 def insertItem(connection, item):
     retrived, item = False, {}
     insert = connection.prepareCall('CALL "insertItem"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-    _setCallParameters(insert, item)
+    index = _setCallParameters(insert, item)
+    #insert.setArray(index, SqlArray(item['Parents'], 'VARCHAR'))
     result = insert.executeQuery()
     if result.next():
         retrived, item = True, getItemFromResult(result)
@@ -46,7 +51,8 @@ def insertItem(connection, item):
     return retrived, item
 
 def mergeItem(merge, item):
-    _setCallParameters(merge, item)
+    index = _setCallParameters(merge, item)
+    #merge.setArray(index, SqlArray(item['Parents'], 'VARCHAR'))
     merge.execute()
     return merge.getLong(11)
 
@@ -56,7 +62,7 @@ def mergeItem(merge, item):
 def _setCallParameters(call, item, index=1):
     call.setString(index, item['Id'])
     index += 1
-    call.setString(index, item['Title'])
+    call.setString(index, item['Name'])
     index += 1
     call.setTimestamp(index, item['DateCreated'])
     index += 1
@@ -73,3 +79,6 @@ def _setCallParameters(call, item, index=1):
     call.setLong(index, item['Size'])
     index += 1
     call.setBoolean(index, item['IsVersionable'])
+    index += 1
+    return index
+

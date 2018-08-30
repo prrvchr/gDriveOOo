@@ -12,7 +12,7 @@ from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
 
 from gdrive import Component, Initialization, PropertiesChangeNotifier, CmisDocument
 from gdrive import PropertySetInfoChangeNotifier, ContentIdentifier, CommandInfoChangeNotifier
-from gdrive import getUri, getUriPath, getParentUri, getContentInfo, getPropertiesValues
+from gdrive import getDbConnection, getUri, getUriPath, getParentUri, getContentInfo, getPropertiesValues
 from gdrive import CommandInfo, PropertySetInfo, Row, InputStream, createService
 from gdrive import getResourceLocation, parseDateTime, getPropertySetInfoChangeEvent
 from gdrive import getContent, getSimpleFile, getCommandInfo, getProperty, getUcp
@@ -45,7 +45,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
             self.ContentType = 'application/vnd.oasis.opendocument'
             self.IsFolder = False
             self.IsDocument = True
-            self._Title = 'Sans Nom'
+            self.Name = 'Sans Nom'
             
             self.MediaType = None
             self._Size = 0
@@ -68,9 +68,8 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
             self.Subject = 'Test de GoogleDriveFileContent'
             self.IsVersionable = False
             self._CmisProperties = None
-            self._TitleOnServer = None
             self.CanRename = False
-            self._IsWrite = False
+            self._WhoWrite = ''
             self._IsRead = False
             
             self.IsHidden = False
@@ -80,8 +79,9 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
             self.IsFloppy = False
             self.IsCompactDisc = False
             
-            self.statement = None
             self.initialize(namedvalues)
+            
+            #self.Connection = getDbConnection(self.ctx, self.Uri.getScheme())
             
             self.ObjectId = self.Id
             self.CanCheckOut = True
@@ -106,12 +106,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
         self._Id = id
     @property
     def TitleOnServer(self):
-        print("DriveOfficeContent.TitleOnServer(): 1")
-        #LibreOffice look for this property!!! Need this hack to have Transfer working fine in LibreOffice...
-        if self._TitleOnServer is None:
-            self._TitleOnServer = self._Title
-            self._Title = self.Id
-        return self._TitleOnServer
+        return self.Name
     @property
     def CmisProperties(self):
         print("DriveOfficeContent.CmisProperties(): 1")
@@ -120,12 +115,11 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
         return self._CmisProperties
     @property
     def Title(self):
-        return self._Title
+        return self.Id
     @Title.setter
     def Title(self, title):
-        if self._TitleOnServer is None:
-            propertyChange(self, 'Title', self._Title, title)
-        self._Title = title
+        propertyChange(self, 'Name', self.Name, title)
+        self.Name = title
     @property
     def Size(self):
         return self._Size
@@ -141,12 +135,12 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
         propertyChange(self, 'IsRead', self._IsRead, isread)
         self._IsRead = isread
     @property
-    def IsWrite(self):
-        return self._IsWrite
-    @IsWrite.setter
-    def IsWrite(self, iswrite):
-        propertyChange(self, 'IsWrite', self._IsWrite, iswrite)
-        self._IsWrite = iswrite
+    def WhoWrite(self):
+        return self._WhoWrite
+    @WhoWrite.setter
+    def WhoWrite(self, whowrite):
+        propertyChange(self, 'WhoWrite', self._WhoWrite, whowrite)
+        self._WhoWrite = whowrite
 
     # XContentCreator
     def queryCreatableContentsInfo(self):
@@ -229,10 +223,10 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
                     self.MediaType = self._getMediaType(input)
                     input.closeInput()
                     self.Size = sf.getSize(target)
-                    self.IsWrite = True
+                    self.WhoWrite = self.UserName
                     self.IsRead = True
                     ucp = getUcp(self.ctx, self.Uri.getUriReference())
-                    self.addPropertiesChangeListener(('Id', 'IsWrite', 'IsRead', 'Title', 'Size'), ucp)
+                    self.addPropertiesChangeListener(('Id', 'WhoWrite', 'IsRead', 'Title', 'Size'), ucp)
                     self.Id = self.Id
                     print("DriveOfficeContent.execute() insert %s - %s" % (self.Size, self.MediaType))
             elif command.Name == 'addProperty':
@@ -310,7 +304,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
 #        commands['insert'] = getCommandInfo('insert', 'com.sun.star.ucb.InsertCommandArgument2')
 #        commands['lock'] = getCommandInfo('lock')
 #        commands['unlock'] = getCommandInfo('unlock')
-#        commands['close'] = getCommandInfo('close')
+        commands['close'] = getCommandInfo('close')
         return commands
         
     def _updateCommandInfo(self):

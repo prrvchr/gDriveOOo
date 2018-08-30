@@ -6,9 +6,11 @@ import unohelper
 
 from com.sun.star.lang import XServiceInfo
 from com.sun.star.awt import XContainerWindowEventHandler
+from com.sun.star.ucb import URLAuthenticationRequest
 
 from gdrive import getStringResource, getFileSequence, createService
 from gdrive import getLoggerUrl, getLoggerSetting, setLoggerSetting, getLogger
+from gdrive import getPropertyValue, InteractionRequest
 
 from gdrive import getDbConnection
 import traceback
@@ -59,7 +61,26 @@ class OptionsDialog(unohelper.Base, XServiceInfo, XContainerWindowEventHandler):
             #connection = getDbConnection(self.ctx, 'vnd.google-apps')
             #mri.inspect(connection)
             #Need upload file here
-            print("PyOptionsDialog._doConnect() 2")
+            desktop = self.ctx.ServiceManager.createInstance('com.sun.star.frame.Desktop')
+            message = "Authentication is needed!!!"
+            window = desktop.ActiveFrame.ComponentWindow
+            #mri = self.ctx.ServiceManager.createInstance('mytools.Mri')
+            #mri.inspect(desktop)
+            args = (getPropertyValue('Parent', window), getPropertyValue('Context', message))
+            interaction = self.ctx.ServiceManager.createInstanceWithArguments('com.sun.star.task.InteractionHandler', args)
+            #e = URLAuthenticationRequest()
+            #e.URL = 'vnd.google-apps://'
+            #e.HasRealm = False
+            #e.HasUserName = False
+            #e.HasPassword = False
+            #e.HasAccount = True
+            #e.Classification = uno.Enum('com.sun.star.task.InteractionClassification', 'QUERY')
+            #e.Message = "Authentication is needed!!!"
+            #e.Context = self
+            connection = getDbConnection(self.ctx, 'vnd.google-apps')
+            e = InteractionRequest(self, connection)
+            result = interaction.handleInteractionRequest(e)
+            print("PyOptionsDialog._doConnect() 2 %s" % result)
         except Exception as e:
             print("PyOptionsDialog._doConnect().Error: %s - %s" % (e, traceback.print_exc()))
 

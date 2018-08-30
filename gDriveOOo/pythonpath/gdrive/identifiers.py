@@ -3,10 +3,34 @@
 
 from .google import IdGenerator
 
+g_IdentifierRange = (10, 50)
 
-def getCountOfIdentifier(connection, username):
+
+def checkIdentifiers(ctx, scheme, connection, username):
+    result = True
+    if _countIdentifier(connection, username) < min(g_IdentifierRange):
+        result = _insertIdentifier(ctx, scheme, connection, username, max(g_IdentifierRange))
+    return result
+
+def geIdentifier(connection, username):
+    select = connection.prepareCall('CALL "selectIdentifier"(?)')
+    select.setString(1, username)
+    result = select.executeQuery()
+    if result.next():
+        id = result.getString(1)
+    select.close()
+    return id
+
+def updateIdentifier(connection, username, id):
+    update = connection.prepareCall('CALL "updateIdentifier"(?, ?, ?)')
+    update.setString(1, username)
+    update.setString(2, id)
+    update.execute()
+    return update.getLong(3)
+
+def _countIdentifier(connection, username):
     count = 0
-    call = connection.prepareCall('CALL "getCountOfIdentifier"(?)')
+    call = connection.prepareCall('CALL "countIdentifier"(?)')
     call.setString(1, username)
     result = call.executeQuery()
     if result.next():
@@ -14,43 +38,14 @@ def getCountOfIdentifier(connection, username):
     call.close()
     return count
 
-def getIdDelete(connection):
-    query = 'DELETE FROM "Identifiers" WHERE "UserName" = ? AND "Id" = ?;'
-    return connection.prepareStatement(query)
-
-def getIdSelect(connection):
-    query = 'SELECT "Id", "TimeStamp" FROM "Identifiers" WHERE "InUse" = FALSE AND "UserName"= ? ORDER BY "TimeStamp" LIMIT 1;'
-    return connection.prepareStatement(query)
-
-def getIdInsert(connection):
-    query = 'INSERT INTO "Identifiers" ("UserName", "Id") VALUES (?, ?);'
-    return connection.prepareStatement(query)
-
-def getIdUpdate(connection):
-    query = 'UPDATE "Identifiers" SET "InUse" = TRUE, "TimeStamp" = CURRENT_TIMESTAMP(3) WHERE "Id" = ?;'
-    return connection.prepareStatement(query)
-
-def updateIdentifier(update, id):
-    update.setString(1, id)
-    return update.executeUpdate()
-    
-def getNewId(ctx, scheme, username, select, insert):
-    select.setString(1, username)
-    result = select.executeQuery()
-    if result.next():
-        id = result.getString(1)
-    else:
-        id = _insertNewId(ctx, scheme, username, insert, select)
-    result.close()
-    return id
-
-def _insertNewId(ctx, scheme, username, insert, select):
+def _insertIdentifier(ctx, scheme, connection, username, count):
+    insert = connection.prepareCall('CALL "insertIdentifier"(?, ?, ?)')
     insert.setString(1, username)
-    for id in IdGenerator(ctx, scheme, username):
-        insert.setString(2, id)
-        insert.executeUpdate()
-    result = select.executeQuery()
-    if result.next():
-        id = result.getString(1)
-    result.close()
-    return id
+    result = all(_doInsert(insert, id) for id in IdGenerator(ctx, scheme, username, count))
+    insert.close()
+    return result
+
+def _doInsert(insert, id):
+    insert.setString(2, id)
+    insert.execute()
+    return insert.getLong(3)

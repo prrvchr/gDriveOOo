@@ -16,30 +16,39 @@ import requests
 import traceback
 
 
-def mergeContent(ctx, connection, event, root):
+def mergeContent(ctx, connection, event, root, user):
     result = False
     if event.PropertyName == 'Id':
-        properties = ('Uri', 'Title', 'DateCreated', 'DateModified', 'MediaType',
+        properties = ('Uri', 'UserName', 'Name', 'DateCreated', 'DateModified', 'MediaType',
                       'IsReadOnly', 'CanRename', 'IsFolder', 'Size', 'IsVersionable')
         row = getContentProperties(event.Source, properties)
         uri = row.getObject(1, None)
         parent = getId(getParentUri(ctx, uri), root)
+        username = row.getString(2)
         item = {'Id': event.NewValue}
-        item['Title'] = row.getString(2)
-        item['DateCreated'] = row.getTimestamp(3)
-        item['DateModified'] = row.getTimestamp(4)
-        item['MediaType'] = row.getString(5)
-        item['IsReadOnly'] = row.getBoolean(6)
-        item['CanRename'] = row.getBoolean(7)
-        item['IsFolder'] = row.getBoolean(8)
-        item['Size'] = row.getLong(9)
-        item['IsVersionable'] = row.getBoolean(10)
+        item['Name'] = row.getString(3)
+        item['DateCreated'] = row.getTimestamp(4)
+        item['DateModified'] = row.getTimestamp(5)
+        item['MediaType'] = row.getString(6)
+        item['IsReadOnly'] = row.getBoolean(7)
+        item['CanRename'] = row.getBoolean(8)
+        item['IsFolder'] = row.getBoolean(9)
+        item['Size'] = row.getLong(10)
+        item['IsVersionable'] = row.getBoolean(11)
+        item['Parents'] = (parent, )
         merge = connection.prepareCall('CALL "mergeItem"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
         insert = connection.prepareCall('CALL "insertChild"(?, ?, ?)')
-        result = all((mergeItem(merge, item), updateParent(insert, item)))
-    elif event.PropertyName == 'Title':
+        result = all((mergeItem(merge, item), updateParent(insert, item), updateIdentifier(connection, username, event.NewValue)))
+    elif event.PropertyName  == 'Name':
         id = getContentProperties(event.Source, ('Id', )).getString(1)
-        update = connection.prepareCall('CALL "updateTitle"(?, ?, ?)')
+        update = connection.prepareCall('CALL "updateName"(?, ?, ?)')
+        update.setString(1, id)
+        update.setString(2, event.NewValue)
+        update.execute()
+        result = update.getLong(3)
+    elif event.PropertyName == 'WhoWrite':
+        id = getContentProperties(event.Source, ('Id', )).getString(1)
+        update = connection.prepareCall('CALL "updateWhoWrite"(?, ?, ?)')
         update.setString(1, id)
         update.setString(2, event.NewValue)
         update.execute()
@@ -51,10 +60,9 @@ def mergeContent(ctx, connection, event, root):
         update.setLong(2, event.NewValue)
         update.execute()
         result = update.getLong(3)
-    elif event.PropertyName in ('IsRead', 'IsWrite'):
+    elif event.PropertyName  == 'IsRead':
         id = getContentProperties(event.Source, ('Id', )).getString(1)
-        procedure = 'CALL "update%s"(?, ?, ?)' % event.PropertyName
-        update = connection.prepareCall(procedure)
+        update = connection.prepareCall('CALL "updateIsRead"(?, ?, ?)')
         update.setString(1, id)
         update.setBoolean(2, event.NewValue)
         update.execute()

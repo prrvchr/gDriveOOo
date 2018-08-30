@@ -9,13 +9,14 @@ from com.sun.star.beans import XPropertyContainer
 from com.sun.star.container import XChild
 from com.sun.star.lang import XServiceInfo, NoSupportException
 from com.sun.star.ucb import XContent, XCommandProcessor2, XContentCreator, IllegalIdentifierException
+from com.sun.star.ucb import InteractiveBadTransferURLException
 from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
 
 from gdrive import Component, Initialization, CommandInfo, PropertySetInfo, DynamicResultSet, ContentIdentifier
 from gdrive import PropertiesChangeNotifier, PropertySetInfoChangeNotifier, CommandInfoChangeNotifier, Row
-from gdrive import propertyChange, getChildSelect, parseDateTime, getPropertiesValues, getLogger
+from gdrive import getDbConnection, propertyChange, getChildSelect, parseDateTime, getPropertiesValues, getLogger
 
-from gdrive import updateChildren, createService, getSimpleFile, getResourceLocation
+from gdrive import updateChildren, createService, getSimpleFile, getResourceLocation, isChild
 from gdrive import getUcb, getCommandInfo, getProperty, getContentInfo, setContentProperties
 from gdrive import getContent, getContentEvent, getParentUri, setPropertiesValues
 from gdrive import getId, getUri, getUriPath, getUcp, getNewItem
@@ -46,14 +47,14 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
             self.ContentType = 'application/vnd.google-apps.folder'
             self.IsFolder = True
             self.IsDocument = False
-            self._Title = 'Sans Nom'
+            self.Name = 'Sans Nom'
             
             self.MediaType = 'application/vnd.google-apps.folder'
             self.Size = 0
             self.DateModified = parseDateTime()
             self.DateCreated = parseDateTime()
             self._IsRead = False
-            self.IsWrite = False
+            self.WhoWrite = ''
             self.CanRename = False
             self.IsVersionable = False
             self.CreatableContentsInfo = self._getCreatableContentsInfo()
@@ -73,8 +74,9 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
             self.propertyInfoListeners = []
             self.commandInfoListeners = []
             
-            self.statement = None
+            self.Statement = None
             self.initialize(namedvalues)
+            #self.Connection = getDbConnection(self.ctx, self.Uri.getScheme())
             msg = "DriveFolderContent loading Uri: %s ... Done" % self.Uri.getUriReference()
             self.Logger.logp(level, "DriveFolderContent", "__init__()", msg)
             print(msg)
@@ -97,11 +99,11 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
         self._IsRead = isread
     @property
     def Title(self):
-        return self._Title
+        return self.Name
     @Title.setter
     def Title(self, title):
-        propertyChange(self, 'Title', self._Title, title)
-        self._Title = title
+        propertyChange(self, 'Name', self.Name, title)
+        self.Name = title
 
     # XPropertyContainer
     def addProperty(self, name, attribute, default):
@@ -161,7 +163,7 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
             return setPropertiesValues(self, command.Argument, self.Logger)
         elif command.Name == 'open':
             scheme = self.Uri.getScheme()
-            connection = self.statement.getConnection()
+            connection = self.Statement.getConnection()
             if self.ConnectionMode == ONLINE and not self.IsRead:
                 self.IsRead = updateChildren(self.ctx, connection, scheme, self.UserName, self.Id)
             # Not Used: command.Argument.Properties - Implement me!!!
@@ -177,7 +179,7 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
             #action = uno.getConstantByName('com.sun.star.ucb.ContentAction.INSERTED')
             #event = getContentEvent(action, self, identifier)
             ucp = getUcp(self.ctx, self.Uri.getUriReference())
-            self.addPropertiesChangeListener(('Id', 'IsRead', 'Title', 'Size'), ucp)
+            self.addPropertiesChangeListener(('Id', 'IsRead', 'Name', 'Size'), ucp)
             self.Id = self.Id
         elif command.Name == 'delete':
             print("DriveFolderContent.execute(): delete")
@@ -186,7 +188,9 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
             # For new document (File Save As) we use command: createNewContent and Insert
             id = command.Argument.NewTitle
             source = command.Argument.SourceURL
-            if not isChildOfItem(self.statement.getConnection(), id, self.Id):
+            print("DriveFolderContent.execute(): transfer: %s - %s" % (source, id))
+            if not isChild(self.Statement.getConnection(), id, self.Id):
+                print("DriveFolderContent.execute(): transfer copy: %s - %s" % (source, id))
                 raise InteractiveBadTransferURLException("Couln't handle Url: %s" % source, self)
             print("DriveFolderContent.execute(): transfer: %s - %s" % (source, id))
             sf = getSimpleFile(self.ctx)
@@ -199,7 +203,9 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
                 uri = getUri(self.ctx, '%s/%s' % (self.Uri.getUriReference(), id))
                 identifier = ContentIdentifier(uri)
                 content = getContent(self.ctx, identifier)
-                setContentProperties(content, {'Size': sf.getSize(target), 'IsWrite': True})
+                args = {'Size': sf.getSize(target), 'WhoWrite': self.UserName, 'UserName': self.UserName}
+                setContentProperties(content, args)
+                print("DriveFolderContent.execute(): transfer: Fin")
                 if command.Argument.MoveData:
                     pass #must delete object
         elif command.Name == 'close':

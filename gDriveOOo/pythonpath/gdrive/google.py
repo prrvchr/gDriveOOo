@@ -15,12 +15,12 @@ import sys
 if sys.version_info[0] < 3:
     requests.packages.urllib3.disable_warnings()
 
-g_url = 'https://www.googleapis.com/drive/v3/files'
+g_url = 'https://www.googleapis.com/drive/v3/'
+g_userfields = 'user(displayName,permissionId,emailAddress)'
 g_itemfields = 'id,parents,name,mimeType,size,createdTime,modifiedTime,capabilities(canEdit,canRename,canAddChildren, canReadRevisions)'
 g_childfields = 'kind,nextPageToken,files(%s)' % g_itemfields
 g_chunk = 262144
 g_pages = 100
-g_count = 10
 g_timeout = (15, 60)
 
 
@@ -51,11 +51,27 @@ class OAuth2Ooo(object):
         return request
 
 
-def getItem(ctx, scheme, username, id):
-    status = False
-    item = {}
+def getUser(ctx, scheme, username):
+    status, user = False, {}
     authentication = OAuth2Ooo(ctx, scheme, username)
-    url = '%s/%s' % (g_url, id)
+    url = '%sabout' % g_url
+    params = {}
+    params['fields'] = g_userfields
+    session = requests.Session()
+    with session.get(url, params=params, timeout=g_timeout, auth=authentication) as r:
+        print("google.getUser(): %s - %s" % (r.status_code, r.json()))
+        status = r.status_code
+        if status == requests.codes.ok:
+            result = r.json()
+            if 'user' in result:
+                user = getUserFromJson(result['user'])
+    return status, user
+
+
+def getItem(ctx, scheme, username, id):
+    status, item = False, {}
+    authentication = OAuth2Ooo(ctx, scheme, username)
+    url = '%sfiles/%s' % (g_url, id)
     params = {}
     params['fields'] = g_itemfields
     session = requests.Session()
@@ -69,7 +85,7 @@ def getItem(ctx, scheme, username, id):
 def getItemFromJson(json, timestamp):
     item = {}
     item['Id'] = json['id']
-    item['Title'] = json['name']
+    item['Name'] = json['name']
     item['DateCreated'] = parseDateTime(json['createdTime']) if 'createdTime' in json else timestamp
     item['DateModified'] = parseDateTime(json['modifiedTime']) if 'modifiedTime' in json else timestamp
     item['MediaType'] = json['mimeType']
@@ -81,6 +97,13 @@ def getItemFromJson(json, timestamp):
     item['Parents'] = tuple(json['parents']) if 'parents' in json else ()
     return item
 
+def getUserFromJson(json):
+    user = {}
+    user['Id'] = json['permissionId']
+    user['UserName'] = json['emailAddress']
+    user['DisplayName'] = json['displayName']
+    return user
+
 def getCapabilities(json, capability, default):
     capacity = default
     if 'capabilities' in json:
@@ -90,10 +113,10 @@ def getCapabilities(json, capability, default):
     return capacity
 
 class IdGenerator():
-    def __init__(self, ctx, scheme, username, space='drive'):
+    def __init__(self, ctx, scheme, username, count, space='drive'):
         print("google.IdGenerator.__init__()")
         self.authentication = OAuth2Ooo(ctx, scheme, username)
-        self.params = {'count': g_count, 'space': space}
+        self.params = {'count': count, 'space': space}
         print("google.IdGenerator.__init__()")
     def __iter__(self):
         self.session = requests.Session()
@@ -107,7 +130,7 @@ class IdGenerator():
         return self.__next__()
     def _getIds(self):
         ids = []
-        url = '%s/generateIds' % g_url
+        url = '%sfiles/generateIds' % g_url
         with self.session.get(url, params=self.params, timeout=g_timeout, auth=self.authentication) as r:
             print("google.IdGenerator(): %s" % r.json())
             if r.status_code == requests.codes.ok:
@@ -124,6 +147,7 @@ class ChildGenerator():
         self.params = {'fields': g_childfields, 'pageSize': g_pages}
         self.params['q'] = "'%s' in parents" % id
         self.timestamp = parseDateTime()
+        self.url = '%sfiles' % g_url
         print("google.ChildGenerator.__init__()")
     def __iter__(self):
         self.session = requests.Session()
@@ -142,7 +166,7 @@ class ChildGenerator():
         self.params['pageToken'] = token
         rows = []
         token = None
-        with self.session.get(g_url, params=self.params, timeout=g_timeout, auth=self.authentication) as r:
+        with self.session.get(self.url, params=self.params, timeout=g_timeout, auth=self.authentication) as r:
             print("google.ChildGenerator(): %s" % r.json())
             if r.status_code == requests.codes.ok:
                 result = r.json()
@@ -156,7 +180,7 @@ class ChildGenerator():
 class InputStream(unohelper.Base, XInputStream):
     def __init__(self, ctx, scheme, username, id, size):
         self.authentication = OAuth2Ooo(ctx, scheme, username)
-        self.url = '%s/%s' % (g_url, id)
+        self.url = '%sfiles/%s' % (g_url, id)
         self.size = size
         self.start = 0
         self.session = requests.Session()
@@ -196,7 +220,7 @@ class InputStream(unohelper.Base, XInputStream):
 
 class ActiveDataSource(unohelper.Base, XActiveDataSource, XActiveDataControl):
     def __init__(self, auth, id, size):
-        self.url = '%s/%s' % (g_url, id)
+        self.url = '%sfiles/%s' % (g_url, id)
         self.auth = auth
         self.size = size
         self.listeners = []
