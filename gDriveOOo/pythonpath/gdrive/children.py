@@ -3,7 +3,7 @@
 
 import uno
 
-from com.sun.star.ucb.ConnectionMode import ONLINE
+from com.sun.star.ucb.ConnectionMode import OFFLINE
 
 from .items import mergeItem
 from .google import ChildGenerator
@@ -39,22 +39,24 @@ def updateParent(insert, item):
     return result
 
 def insertParent(insert, id, parent):
+    # insertChild(IN ID VARCHAR(100),IN PARENT VARCHAR(100),OUT ROWCOUNT SMALLINT)
     insert.setString(1, id)
     insert.setString(2, parent)
     insert.execute()
     return insert.getLong(3)
 
-# LibreOffice Column: ['Title', 'Size', 'DateModified', 'DateCreated', 'IsFolder', 'TargetURL', 'IsHidden', 'IsVolume', 'IsRemote', 'IsRemoveable', 'IsFloppy', 'IsCompactDisc']
-# OpenOffice Columns: ['Title', 'Size', 'DateModified', 'DateCreated', 'IsFolder', 'TargetURL', 'IsHidden', 'IsVolume', 'IsRemote', 'IsRemoveable', 'IsFloppy', 'IsCompactDisc']
-
-def getChildSelect(connection, mode, id, url):
-    if mode == ONLINE:
-        select = connection.prepareCall('CALL "selectChildOn"(?, ?, ?)')
-    else:
-        select = connection.prepareCall('CALL "selectChildOff"(?, ?, ?)')
+def getChildSelect(connection, mode, id, uri, isroot):
+    # LibreOffice Columns: ['Title', 'Size', 'DateModified', 'DateCreated', 'IsFolder', 'TargetURL', 'IsHidden', 'IsVolume', 'IsRemote', 'IsRemoveable', 'IsFloppy', 'IsCompactDisc']
+    # OpenOffice Columns: ['Title', 'Size', 'DateModified', 'DateCreated', 'IsFolder', 'TargetURL', 'IsHidden', 'IsVolume', 'IsRemote', 'IsRemoveable', 'IsFloppy', 'IsCompactDisc']
+    index, select = 1, connection.prepareCall('CALL "selectChild"(?, ?, ?, ?)')
+    # Never managed to run the next line: select return RowCount as OUT parameter in select.getLong(index)!!!
     #select.ResultSetType = uno.getConstantByName('com.sun.star.sdbc.ResultSetType.SCROLL_INSENSITIVE')
-    #select.ResultSetConcurrency = uno.getConstantByName('com.sun.star.sdbc.ResultSetConcurrency.UPDATABLE')
-    select.setString(1, id)
-    url = url if url.endswith('/') else '%s/' % url
-    select.setString(2, url)
-    return select
+    # selectChild(IN ID VARCHAR(100),IN URL VARCHAR(250),IN OFFLINE BOOLEAN,OUT ROWCOUNT SMALLINT)
+    select.setString(index, id)
+    index += 1
+    # "TargetURL" is done by CONCAT(uri,id)... The root uri already ends with a '/' ...
+    select.setString(index, uri if isroot else '%s/' % uri)
+    index += 1
+    select.setBoolean(index, mode == OFFLINE)
+    index += 1
+    return index, select

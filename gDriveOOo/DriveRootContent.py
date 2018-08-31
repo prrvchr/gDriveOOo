@@ -166,8 +166,8 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
             if self.ConnectionMode == ONLINE and not self.IsRead:
                 self.IsRead = updateChildren(self.ctx, connection, scheme, self.UserName, self.Id)
             # Not Used: command.Argument.Properties - Implement me!!!
-            select = getChildSelect(connection, self.ConnectionMode, self.Id, self.Uri.getUriReference())
-            return DynamicResultSet(self.ctx, scheme, select)
+            index, select = getChildSelect(connection, self.ConnectionMode, self.Id, self.Uri.getUriReference(), True)
+            return DynamicResultSet(self.ctx, scheme, select, index)
         elif command.Name == 'createNewContent':
             print("DriveRootContent.execute(): createNewContent %s" % command.Argument)
             return self._createNewContent(command.Argument)

@@ -199,9 +199,7 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
         for property in values:
             if property.Name == 'UserName' and property.Value:
                 self.Parameter = property.Value
-        print("ContentProvider.setParameters() %s" % property.Value)
     def select(self):
-        print("ContentProvider.select()")
         pass
 
     def _checkAuthority(self, uri):

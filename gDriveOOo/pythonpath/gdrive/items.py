@@ -9,6 +9,7 @@ import traceback
 def selectRoot(connection, username):
     retrived, root = False, {}
     select = connection.prepareCall('CALL "selectRoot"(?)')
+    # selectRoot(IN USERNAME VARCHAR(100))
     select.setString(1, username)
     result = select.executeQuery()
     if result.next():
@@ -32,6 +33,7 @@ def mergeRoot(connection, user, item):
 def selectItem(connection, id):
     retrived, item = False, {}
     select = connection.prepareCall('CALL "selectItem"(?)')
+    # selectItem(IN ID VARCHAR(100))
     select.setString(1, id)
     result = select.executeQuery()
     if result.next():
@@ -43,6 +45,7 @@ def insertItem(connection, item):
     retrived, item = False, {}
     insert = connection.prepareCall('CALL "insertItem"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
     index = _setCallParameters(insert, item)
+    # Never managed to run the next line: implement me ;.)
     #insert.setArray(index, SqlArray(item['Parents'], 'VARCHAR'))
     result = insert.executeQuery()
     if result.next():
@@ -52,14 +55,16 @@ def insertItem(connection, item):
 
 def mergeItem(merge, item):
     index = _setCallParameters(merge, item)
+    # Never managed to run the next line: implement me ;.)
     #merge.setArray(index, SqlArray(item['Parents'], 'VARCHAR'))
     merge.execute()
     return merge.getLong(11)
 
-# Call Parameter:
-# IN(Id, Title, DateCreated, DateModified, MediaType, IsReadOnly, CanRename, CanAddChild, Size, IsVersionable)
-# OUT(NumRow)
 def _setCallParameters(call, item, index=1):
+    # IN Call Parameters for: mergeRoot(), insertItem(), mergeItem()
+    # Id, Title, DateCreated, DateModified, MediaType, IsReadOnly, CanRename, CanAddChild, Size, IsVersionable
+    # OUT Call Parameters for: mergeItem()
+    # RowCount
     call.setString(index, item['Id'])
     index += 1
     call.setString(index, item['Name'])
