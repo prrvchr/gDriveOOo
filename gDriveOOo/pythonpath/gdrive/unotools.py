@@ -18,14 +18,17 @@ def isCmisReady():
 def getOfficeProductName(ctx):
     return getConfiguration(ctx, '/org.openoffice.Setup/Product').getByName('ooName')
 
+def getSimpleFile(ctx):
+    return ctx.ServiceManager.createInstance('com.sun.star.ucb.SimpleFileAccess')
+
 def getFileSequence(ctx, url, default=None):
     length, sequence = 0, uno.ByteSequence(b'')
-    fileservice = ctx.ServiceManager.createInstance('com.sun.star.ucb.SimpleFileAccess')
-    if fileservice.exists(url):
-        length, sequence = getSequence(fileservice.openFileRead(url), fileservice.getSize(url))
-    elif default is not None and fileservice.exists(default):
-        inputstream = fileservice.openFileRead(default)
-        length, sequence = getSequence(fileservice.openFileRead(default), fileservice.getSize(default))
+    fs = getSimpleFile(ctx)
+    if fs.exists(url):
+        length, sequence = getSequence(fs.openFileRead(url), fs.getSize(url))
+    elif default is not None and fs.exists(default):
+        inputstream = fs.openFileRead(default)
+        length, sequence = getSequence(fs.openFileRead(default), fs.getSize(default))
     return length, sequence
 
 def getSequence(inputstream, length):

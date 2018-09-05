@@ -4,7 +4,8 @@
 import uno
 import unohelper
 
-from com.sun.star.io import XActiveDataSource, XActiveDataSink, XActiveDataControl, XInputStream
+from com.sun.star.io import XActiveDataSource, XActiveDataSink, XActiveDataControl
+from com.sun.star.io import XOutputStream, XInputStream, IOException
 
 from .dbtools import parseDateTime
 
@@ -16,12 +17,71 @@ if sys.version_info[0] < 3:
     requests.packages.urllib3.disable_warnings()
 
 g_url = 'https://www.googleapis.com/drive/v3/'
+g_upload = 'https://www.googleapis.com/upload/drive/v3/files'
 g_userfields = 'user(displayName,permissionId,emailAddress)'
 g_itemfields = 'id,parents,name,mimeType,size,createdTime,modifiedTime,capabilities(canEdit,canRename,canAddChildren, canReadRevisions)'
 g_childfields = 'kind,nextPageToken,files(%s)' % g_itemfields
+# Minimun chunk: 262144
 g_chunk = 262144
 g_pages = 100
 g_timeout = (15, 60)
+g_folder = 'application/vnd.google-apps.folder'
+g_link = 'application/vnd.google-apps.drive-sdk'
+g_doc = 'application/vnd.google-apps.'
+
+
+def getUser(ctx, scheme, username):
+    status, user = False, {}
+    authentication = OAuth2Ooo(ctx, scheme, username)
+    url = '%sabout' % g_url
+    params = {}
+    params['fields'] = g_userfields
+    session = requests.Session()
+    with session.get(url, params=params, timeout=g_timeout, auth=authentication) as r:
+        print("google.getUser(): %s - %s" % (r.status_code, r.json()))
+        status = r.status_code
+        if status == requests.codes.ok:
+            result = r.json()
+            if 'user' in result:
+                user = _parseUser(result['user'])
+    return status, user
+
+def getItem(ctx, scheme, username, id):
+    status, item = False, {}
+    authentication = OAuth2Ooo(ctx, scheme, username)
+    url = '%sfiles/%s' % (g_url, id)
+    params = {}
+    params['fields'] = g_itemfields
+    session = requests.Session()
+    with session.get(url, params=params, timeout=g_timeout, auth=authentication) as r:
+        print("google.getItem(): %s - %s" % (r.status_code, r.json()))
+        status = r.status_code
+        if status == requests.codes.ok:
+            item = _parseItem(r.json(), parseDateTime())
+    return status, item
+
+def getUploadLocation(ctx, identifier, name, size, mimetype, new):
+    location = None
+    url = g_upload if new else '%s/%s' % (g_upload, identifier.Id)
+    #url = '%s/%s' % (g_upload, identifier.Id)
+    authentication = OAuth2Ooo(ctx, identifier.getContentProviderScheme(), identifier.UserName)
+    print("google.getUploadLocation()1: %s" % (identifier.Id, ))
+    session = requests.Session()
+    params = {'uploadType': 'resumable'}
+    headers = {}
+    headers['X-Upload-Content-Type'] = mimetype
+    headers['X-Upload-Content-Length'] = '%s' % size
+    headers['Content-Type'] = 'application/json; charset=UTF-8'
+    data = {'name': name}
+    if new:
+        data['id'] = identifier.Id
+    #with session.patch(url, headers=headers, params=params, json=data, auth=authentication) as r:
+    with session.patch(url, headers=headers, params=params, json=data, auth=authentication) as r:
+        print("contenttools.getUploadLocation()2 %s - %s" % (r.status_code, r.headers))
+        if r.status_code == requests.codes.ok:
+            if 'Location' in r.headers:
+                location = r.headers['Location']
+    return location, session
 
 
 class OAuth2Ooo(object):
@@ -50,67 +110,6 @@ class OAuth2Ooo(object):
         request.headers['Authorization'] = 'Bearer %s' % self.service.Token
         return request
 
-
-def getUser(ctx, scheme, username):
-    status, user = False, {}
-    authentication = OAuth2Ooo(ctx, scheme, username)
-    url = '%sabout' % g_url
-    params = {}
-    params['fields'] = g_userfields
-    session = requests.Session()
-    with session.get(url, params=params, timeout=g_timeout, auth=authentication) as r:
-        print("google.getUser(): %s - %s" % (r.status_code, r.json()))
-        status = r.status_code
-        if status == requests.codes.ok:
-            result = r.json()
-            if 'user' in result:
-                user = getUserFromJson(result['user'])
-    return status, user
-
-
-def getItem(ctx, scheme, username, id):
-    status, item = False, {}
-    authentication = OAuth2Ooo(ctx, scheme, username)
-    url = '%sfiles/%s' % (g_url, id)
-    params = {}
-    params['fields'] = g_itemfields
-    session = requests.Session()
-    with session.get(url, params=params, timeout=g_timeout, auth=authentication) as r:
-        print("google.getItem(): %s - %s" % (r.status_code, r.json()))
-        status = r.status_code
-        if status == requests.codes.ok:
-            item = getItemFromJson(r.json(), parseDateTime())
-    return status, item
-
-def getItemFromJson(json, timestamp):
-    item = {}
-    item['Id'] = json['id']
-    item['Name'] = json['name']
-    item['DateCreated'] = parseDateTime(json['createdTime']) if 'createdTime' in json else timestamp
-    item['DateModified'] = parseDateTime(json['modifiedTime']) if 'modifiedTime' in json else timestamp
-    item['MediaType'] = json['mimeType']
-    item['IsReadOnly'] = not getCapabilities(json, 'canEdit', True)
-    item['CanRename'] = getCapabilities(json, 'canRename', False)
-    item['IsFolder'] = getCapabilities(json, 'canAddChildren', False)
-    item['Size'] = int(json['size']) if 'size' in json else 0
-    item['IsVersionable'] = getCapabilities(json, 'canReadRevisions', False)
-    item['Parents'] = tuple(json['parents']) if 'parents' in json else ()
-    return item
-
-def getUserFromJson(json):
-    user = {}
-    user['Id'] = json['permissionId']
-    user['UserName'] = json['emailAddress']
-    user['DisplayName'] = json['displayName']
-    return user
-
-def getCapabilities(json, capability, default):
-    capacity = default
-    if 'capabilities' in json:
-        capabilities = json['capabilities']
-        if capability in capabilities:
-            capacity = capabilities[capability]
-    return capacity
 
 class IdGenerator():
     def __init__(self, ctx, scheme, username, count, space='drive'):
@@ -171,7 +170,7 @@ class ChildGenerator():
             if r.status_code == requests.codes.ok:
                 result = r.json()
                 if 'files' in result:
-                    rows = [getItemFromJson(j, self.timestamp) for j in result['files']]
+                    rows = [_parseItem(data, self.timestamp) for data in result['files']]
                 if 'nextPageToken' in result:
                     token = result['nextPageToken']
         return rows, token
@@ -179,32 +178,22 @@ class ChildGenerator():
 
 class InputStream(unohelper.Base, XInputStream):
     def __init__(self, ctx, scheme, username, id, size):
-        self.authentication = OAuth2Ooo(ctx, scheme, username)
+        self.session = requests.Session()
+        self.session.auth = OAuth2Ooo(ctx, scheme, username)
         self.url = '%sfiles/%s' % (g_url, id)
         self.size = size
-        self.start = 0
-        self.session = requests.Session()
+        self.start, self.sequences = 0, None
 
     #XInputStream
     def readBytes(self, sequence, length):
-        print("google.InputStream.start() 1")
-        headers = {}
-        headers['Content-Type'] = None
-        headers['Accept-Encoding'] = 'gzip'
-        params = {'alt': 'media'}
-        chunk = min(self.available(), length)
-        headers['Range'] = 'bytes=%s-%s' % (self.start, self.start + chunk -1)
-        length, sequence = 0, uno.ByteSequence(b'')
-        print("google.InputStream.start() 2: %s" % (headers['Range'], ))
-        with self.session.get(self.url, headers=headers, params=params, timeout=g_timeout, auth=self.authentication) as r:
-            print("google.InputStream.start() 3: %s - %s" % (r.status_code, r.headers))
-            if r.status_code == requests.codes.partial_content or \
-               r.status_code == requests.codes.ok:
-                sequence = uno.ByteSequence(r.content)
-                length = int(r.headers['Content-Length'])
-                self.start += length
-                print("google.InputStream.start() 4 %s" % self.start)
-        print("google.InputStream.start() 5")
+        # I assume that length is constant...
+        if self.sequences is None:
+            self.sequences = (s for chunks in ChunkDownloader(self.session, self.url, self.size, length) for s in chunks)
+        print("google.InputStream.readBytes() 4")
+        sequence = uno.ByteSequence(next(self.sequences, b''))
+        length = len(sequence)
+        self.start += length
+        print("google.InputStream.readBytes() 6 %s - %s" % (length, self.start))
         return length, sequence
     def readSomeBytes(self, sequence, length):
         return self.readBytes(sequence, length)
@@ -215,128 +204,147 @@ class InputStream(unohelper.Base, XInputStream):
         return self.size - self.start
     def closeInput(self):
         self.session.close()
+        self.start, self.sequences = 0, None
+
+
+class ChunkDownloader():
+    def __init__(self, session, url, size, length):
+        print("google.ChunkDownloader.__init__()")
+        self.session = session
+        self.url = url
+        self.size = size
+        self.length = min(length, size)
         self.start = 0
+        self.headers = {}
+        self.headers['Content-Type'] = None
+        self.headers['Accept-Encoding'] = 'gzip'
+        self.params = {'alt': 'media'}
+        print("google.ChunkDownloader.__init__()")
+    def __iter__(self):
+        return self
+    def __next__(self):
+        if self._available():
+            print("google.ChunkDownloader.__next__() 1")
+            chunk = min(self.size, g_chunk)
+            self.headers['Range'] = 'bytes=%s-%s' % (self.start, self.start + chunk -1)
+            print("google.ChunkDownloader.__next__() 2: %s" % (self.headers['Range'], ))
+            r = self.session.get(self.url, headers=self.headers, params=self.params, timeout=g_timeout, stream=True)
+            print("google.ChunkDownloader.__next__() 3: %s - %s" % (r.status_code, r.headers))
+            if r.status_code == requests.codes.partial_content or r.status_code == requests.codes.ok:
+                iterator = r.iter_content(self.length)
+                self.start += chunk
+                print("google.ChunkDownloader.__next__() 4 %s" % self.start)
+            else:
+                iterator = iter([])
+                print("google.ChunkDownloader.__next__() Error *********************************************")
+            print("google.ChunkDownloader.__next__() 5")
+            return iterator
+        raise StopIteration
+    def next(self):
+        return self.__next__()
+    def _available(self):
+        return self.size - self.start
 
 
-class ActiveDataSource(unohelper.Base, XActiveDataSource, XActiveDataControl):
-    def __init__(self, auth, id, size):
-        self.url = '%sfiles/%s' % (g_url, id)
-        self.auth = auth
+class OutputStream(unohelper.Base, XOutputStream):
+    def __init__(self, ctx, session, identifier, url, size):
+        self.authentication = OAuth2Ooo(ctx, identifier.getContentProviderScheme(), identifier.UserName)
+        self.session = session
+        self.url = url
         self.size = size
-        self.listeners = []
-        self.output = None
-        self.canceled = False
-        self.error = ''
-    #XActiveDataSource
-    def setOutputStream(self, output):
-        self.output = output
-    def getOutputStream(self):
-        return self.output
+        self.buffers = uno.ByteSequence(b'')
+        self.start = 0
+        self.headers = {'Content-Type': 'application/octet-stream'}
+        self.closed, self.flushed, self.chunked = False, False, size >= g_chunk
+        
+        #self.headers['Content-Range'] = 'bytes */%s' % self.size
+        #with self.session.put(self.url, headers=self.headers, timeout=g_timeout, auth=self.authentication) as r:
+        #    print("google.OutputStream.__init__(): %s - %s" % (r.status_code, r.headers))
+        #    if r.status_code == requests.codes.ok:
+        #        if 'Range' in r.headers:
+        #            self.start = int(r.headers['Range'].split('-')[-1]) +1
+        #self.headers['Content-Type'] = mimetype
 
-    #XActiveDataControl
-    def addListener(self, listener):
-        self.listeners.append(listener)
-    def removeListener(self, listener):
-        if listener in self.listeners:
-            self.listeners.remove(listener)
-    def start(self):
-        for listener in self.listeners:
-            listener.started()
-        start = 0
-        chunk = min(self.size, g_chunk)
-        print("google.ActiveDataSource.start()1")
-        session = requests.Session()
-        headers = {}
-        headers['Content-Type'] = None
-        headers['Accept-Encoding'] = 'gzip'
-        params = {'alt': 'media'}
-        while start < self.size and not self.canceled:
-            end = min(start + chunk -1, self.size -1)
-            headers['Range'] = 'bytes=%s-%s' % (start, end)
-            print("google.ActiveDataSource.start()2: %s" % (headers['Range'], ))
-            with session.get(self.url, headers=headers, params=params, timeout=g_timeout, auth=self.auth) as r:
-                print("google.ActiveDataSource.start()3: %s - %s" % (r.status_code, r.headers))
-                if r.status_code == requests.codes.partial_content or \
-                   r.status_code == requests.codes.ok:
-                    self.output.writeBytes(uno.ByteSequence(r.content))
-                    start += int(r.headers['Content-Length'])
-                    print("google.ActiveDataSource.start()4 %s" % start)
-                else:
-                    self.error = 'http error status:%s - headers:%s' % (r.status_code, r.headers)
-                    break
-        self.output.flush()
-        self.output.closeOutput()
-        for listener in self.listeners:
-            if self.error:
-                listener.error(Exception(self.error, self))
-            if self.canceled:
-                listener.terminated()
-            listener.closed()
-        print("google.ActiveDataSource.start()5")
-    def terminate(self):
-        self.canceled = True
-
-
-class ActiveDataSink(unohelper.Base, XActiveDataSink, XActiveDataControl):
-    def __init__(self, auth, location, size, mimetype, chunk):
-        self.auth = auth
-        self.location = location
-        self.size = size
-        self.mimetype = mimetype
-        self.chunk = chunk
-        self.listeners = []
-        self.input = None
-        self.canceled = False
-        self.error = ''
-    #XActiveDataSink
-    def setInputStream(self, input):
-        self.input = input
-    def getInputStream(self):
-        return self.input
-
-    #XActiveDataControl
-    def addListener(self, listener):
-        self.listeners.append(listener)
-    def removeListener(self, listener):
-        if listener in self.listeners:
-            self.listeners.remove(listener)
-    def start(self):
-        for listener in self.listeners:
-            listener.started()
-        print("contentlib.PyActiveDataSink.start() 1")
-        start = 0
-        session = requests.Session()
-        headers = {}
-        headers['Content-Range'] = 'bytes */%s' % self.size
-        with session.put(self.location, headers=headers, timeout=g_timeout, auth=self.auth) as r:
-            if r.status_code == requests.codes.ok:
+    # XOutputStream
+    def writeBytes(self, sequence):
+        if self.closed:
+            raise IOException('OutputStream is closed...', self)
+        self.buffers += sequence
+        length = len(self.buffers)
+        if length >= g_chunk and not self._isWrite(length):
+            raise IOException('Error Uploading file...', self)
+        else:
+            print("google.OutputStream.writeBytes() Bufferize: %s - %s" % (self.start, length))
+        return
+    def flush(self):
+        print("google.OutputStream.flush()")
+        if self.closed:
+            raise IOException('OutputStream is closed...', self)
+        if not self.flushed and not self._flush():
+            raise IOException('Error Uploading file...', self)
+    def closeOutput(self):
+        print("google.OutputStream.closeOutput()")
+        if not self.flushed and not self._flush():
+            raise IOException('Error Uploading file...', self)
+        self.closed = True
+    def _flush(self):
+        self.flushed = True
+        length = len(self.buffers)
+        return self._isWrite(length)
+    def _isWrite(self, length):
+        print("google.OutputStream._write() 1: %s" % (self.start, ))
+        if self.chunked:
+            end = self.start + length -1
+            self.headers['Content-Range'] = 'bytes %s-%s/%s' % (self.start, end, self.size)
+            print("google.OutputStream._write() multiple: %s" % (self.headers['Content-Range'], ))
+        else:
+            print("google.OutputStream._write() simple")
+        with self.session.put(self.url, headers=self.headers, data=self.buffers.value, auth=self.authentication) as r:
+            print("google.OutputStream._write() 2: %s" % (r.request.headers, ))
+            print("google.OutputStream._write() 3: %s - %s" % (r.status_code, r.headers))
+            print("google.OutputStream._write() 4: %s" % (r.content, ))
+            if r.status_code == requests.codes.ok or r.status_code == requests.codes.created:
+                self.start += int(r.request.headers['Content-Length'])
+                self.buffers = uno.ByteSequence(b'')
+                result = r.json()
+                if result:
+                    print("google.OutputStream._write() 5: %s" % (result, ))
+                return True
+            elif r.status_code == requests.codes.permanent_redirect:
                 if 'Range' in r.headers:
-                    start = int(r.headers['Range'].split('-')[-1]) +1
-        chunk = min(self.size, self.chunk)
-        headers['Content-Type'] = self.mimetype
-        while start < self.size and not self.canceled:
-            end = min(start + chunk -1, self.size -1)
-            headers['Content-Range'] = 'bytes %s-%s/%s' % (start, end, self.size)
-            print("contentlib.PyActiveDataSink.start() 2 %s" % (headers['Content-Range'], ))
-            length, sequence = self.input.readBytes(None, chunk)
-            data = sequence.value
-            with session.put(self.location, headers=headers, data=data, auth=self.auth) as r:
-                print("contentlib.PyActiveDataSink.start() 3 %s %s" % (r.status_code, r.headers))
-                if r.status_code == requests.codes.ok or r.status_code == requests.codes.created:
-                    start += length
-                elif r.status_code == requests.codes.permanent_redirect:
-                    if 'Range' in r.headers:
-                        start += int(r.headers['Range'].split('-')[-1]) +1
-                else:
-                    self.error = 'http error status:%s - headers:%s' % (r.status_code, r.headers)
-                    break
-        self.input.closeInput()
-        for listener in self.listeners:
-            if self.error:
-                listener.error(Exception(self.error, self))
-            if self.canceled:
-                listener.terminated()
-            listener.closed()
-        print("contentlib.PyActiveDataSink.start()4")
-    def terminate(self):
-        self.canceled = True
+                    self.start += int(r.headers['Range'].split('-')[-1]) +1
+                    self.buffers = uno.ByteSequence(b'')
+                    return True
+        return False
+
+
+def _parseItem(data, timestamp):
+    item = {}
+    item['Id'] = data['id']
+    item['Name'] = data['name']
+    item['DateCreated'] = parseDateTime(data['createdTime']) if 'createdTime' in data else timestamp
+    item['DateModified'] = parseDateTime(data['modifiedTime']) if 'modifiedTime' in data else timestamp
+    item['MediaType'] = data['mimeType']
+    item['IsFolder'] = data['mimeType'] == g_folder
+    item['IsReadOnly'] = not _parseCapabilities(data, 'canEdit', True)
+    item['CanRename'] = _parseCapabilities(data, 'canRename', False)
+    item['CanAddChild'] = _parseCapabilities(data, 'canAddChildren', False)
+    item['Size'] = int(data['size']) if 'size' in data else 0
+    item['IsVersionable'] = _parseCapabilities(data, 'canReadRevisions', False)
+    item['Parents'] = tuple(data['parents']) if 'parents' in data else ()
+    return item
+
+def _parseUser(data):
+    user = {}
+    user['Id'] = data['permissionId']
+    user['UserName'] = data['emailAddress']
+    user['DisplayName'] = data['displayName']
+    return user
+
+def _parseCapabilities(data, capability, default):
+    capacity = default
+    if 'capabilities' in data:
+        capabilities = data['capabilities']
+        if capability in capabilities:
+            capacity = capabilities[capability]
+    return capacity

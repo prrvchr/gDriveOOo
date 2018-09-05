@@ -15,29 +15,29 @@
 
 from .cmislib import CmisDocument
 
-from .dbtools import getDbConnection, parseDateTime
+from .dbtools import getDbConnection, parseDateTime, registerDataBase
 
 from .items import selectRoot, mergeRoot, selectItem, insertItem
 
 from .children import isChild, updateChildren, getChildSelect
 
-from .identifiers import checkIdentifiers, geIdentifier
+from .identifiers import checkIdentifiers, getIdentifier
 
 
 from .contentlib import ContentIdentifier, Row, DynamicResultSet, CommandInfo, CommandInfoChangeNotifier
 from .contentlib import InteractionRequest
 
-from .contenttools import getUri, getUriPath, getUcb, getSimpleFile, getContentInfo, getCommandInfo
-from .contenttools import getContent, getContentEvent, getUcp, getNewItem, getParentUri
-from .contenttools import getId, getContentProperties, getPropertiesValues, setPropertiesValues, propertyChange
-from .contenttools import getCmisProperty, setContentProperties, mergeContent
+from .contenttools import getUri, getUcb, getUcp, getPropertiesValues, setPropertiesValues
+from .contenttools import getContent, getContentEvent, getCmisProperty, getCommandInfo
+from .contenttools import getContentProperties, setContentProperties, getContentInfo
+from .contenttools import mergeContent, propertyChange, uploadItem, createNewContent
 
-from .google import InputStream, getUser, getItem
+from .google import InputStream, getUser, getItem, g_folder
 
 from .logger import getLogger, getLoggerSetting, setLoggerSetting, getLoggerUrl
 
 from .unotools import getResourceLocation, createService, getStringResource, getPropertyValue
-from .unotools import getFileSequence, getProperty, getPropertySetInfoChangeEvent
+from .unotools import getFileSequence, getProperty, getPropertySetInfoChangeEvent, getSimpleFile
 
 from .unolib import Component, Initialization, InteractionHandler, PropertiesChangeNotifier
-from .unolib import PropertySetInfo, PropertySet, PropertySetInfoChangeNotifier
+from .unolib import PropertySetInfo, CmisPropertySetInfo, PropertySet, PropertySetInfoChangeNotifier

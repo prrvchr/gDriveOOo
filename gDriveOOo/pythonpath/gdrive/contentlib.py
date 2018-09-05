@@ -4,20 +4,60 @@
 import uno
 import unohelper
 
-from com.sun.star.lang import XComponent
-from com.sun.star.ucb import XContentIdentifier, XContentAccess, XDynamicResultSet, URLAuthenticationRequest
-from com.sun.star.ucb import AuthenticationRequest
+from com.sun.star.lang import NoSupportException
+from com.sun.star.ucb import XContentIdentifier, XContentAccess, XDynamicResultSet
 from com.sun.star.ucb import XCommandInfo, XCommandInfoChangeNotifier, UnsupportedCommandException
-from com.sun.star.sdbc import XRow, XResultSet, XResultSetMetaDataSupplier, XCloseable
+from com.sun.star.sdbc import XRow, XResultSet, XResultSetMetaDataSupplier
 from com.sun.star.sdb import ParametersRequest
-from com.sun.star.container import XIndexAccess
+from com.sun.star.container import XIndexAccess, XChild
 from com.sun.star.task import XInteractionRequest
 #from com.sun.star.document import XCmisDocument
 
-from .unolib import Component, PropertySet
-from .unotools import createService, getProperty, getResourceLocation
-from .contenttools import getContent
-from .dbtools import getDbConnection
+from .unolib import PropertySet
+from .unotools import getProperty
+from .contenttools import getContent, getId, getParentUri
+
+import traceback
+
+
+class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild):
+    def __init__(self, ctx, mode, uri, username, root):
+        self.ctx = ctx
+        self.root = root
+        self.ConnectionMode = mode
+        self.UserName = username
+        self.Uri, self.Id = self._getId(uri)
+        self.IsRoot = self.Id == root
+
+    def _getId(self, uri):
+        id = getId(uri, self.root)
+        if id in ('', '.'):
+            uri = getParentUri(self.ctx, uri)
+            id = getId(uri, self.root)
+        return uri, id
+
+    def _getPropertySetInfo(self):
+        properties = {}
+        bound = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.BOUND')
+        readonly = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.READONLY')
+        properties['Id'] = getProperty('Id', 'string', bound | readonly)
+        properties['Uri'] = getProperty('Uri', 'com.sun.star.uri.XUriReference', bound | readonly)
+        properties['IsRoot'] = getProperty('IsRoot', 'boolean', bound | readonly)
+        properties['UserName'] = getProperty('UserName', 'string', bound | readonly)
+        properties['ConnectionMode'] = getProperty('ConnectionMode', 'short', bound | readonly)
+        return properties
+
+    # XContentIdentifier
+    def getContentIdentifier(self):
+        return self.Uri.getUriReference()
+    def getContentProviderScheme(self):
+        return self.Uri.getScheme()
+
+    # XChild
+    def getParent(self):
+        return ContentIdentifier(self.ctx, self.ConnectionMode, getParentUri(self.ctx, self.Uri), self.UserName, self.root)
+    def setParent(self, parent):
+        raise NoSupportException('Parent can not be set', self)
 
 
 class InteractionRequest(unohelper.Base, XInteractionRequest):
@@ -128,17 +168,6 @@ class CommandInfoChangeNotifier(XCommandInfoChangeNotifier):
             self.commandInfoListeners.remove(listener)
 
 
-class ContentIdentifier(unohelper.Base, XContentIdentifier):
-    def __init__(self, uri):
-        self.uri = uri
-
-    # XContentIdentifier
-    def getContentIdentifier(self):
-        return self.uri.getUriReference()
-    def getContentProviderScheme(self):
-        return self.uri.getScheme()
-
-
 class Row(unohelper.Base, XRow):
     def __init__(self, namedvalues):
         self.namedvalues = namedvalues
@@ -216,8 +245,8 @@ class DynamicResultSet(unohelper.Base, XDynamicResultSet):
         return uno.getConstantByName('com.sun.star.ucb.ContentResultSetCapability.SORTED')
 
 
-class ContentResultSet(unohelper.Base, PropertySet, XComponent, XRow, XResultSet, XResultSetMetaDataSupplier,
-                       XCloseable, XContentAccess):
+class ContentResultSet(unohelper.Base, PropertySet, XResultSet, XRow,
+                       XResultSetMetaDataSupplier, XContentAccess):
     def __init__(self, ctx, scheme, select, index):
         self.ctx = ctx
         self.scheme = scheme
@@ -232,23 +261,6 @@ class ContentResultSet(unohelper.Base, PropertySet, XComponent, XRow, XResultSet
         properties['RowCount'] = getProperty('RowCount', 'long', readonly)
         properties['IsRowCountFinal'] = getProperty('IsRowCountFinal', 'boolean', readonly)
         return properties
-
-    # XComponent
-    def dispose(self):
-        print("contentlib.ContentResultSet.dispose() 1")
-        #if not self.connection.isClosed():
-        #    self.connection.close()
-        event = uno.createUnoStruct('com.sun.star.lang.EventObject', self)
-        for listener in self.listeners:
-            listener.disposing(event)
-        print("contentlib.ContentResultSet.dispose() 2 ********************************************************")
-    def addEventListener(self, listener):
-        print("contentlib.ContentResultSet.addEventListener() *************************************************")
-        self.listeners.append(listener)
-    def removeEventListener(self, listener):
-        print("contentlib.ContentResultSet.removeEventListener() **********************************************")
-        if listener in self.listeners:
-            self.listeners.remove(listener)
 
     # XResultSet
     def next(self):
@@ -287,27 +299,6 @@ class ContentResultSet(unohelper.Base, PropertySet, XComponent, XRow, XResultSet
         return self.resultset.rowDeleted()
     def getStatement(self):
         return self.resultset.getStatement()
-
-    # XContentAccess
-    def queryContentIdentifierString(self):
-        identifier = self.resultset.getString(self.resultset.findColumn('TargetURL'))
-        print("contentlib.ContentResultSet.queryContentIdentifierString(): %s" % identifier)
-        return identifier
-    def queryContentIdentifier(self):
-        identifier = self.queryContentIdentifierString()
-        return ContentIdentifier(self.scheme, identifier)
-    def queryContent(self):
-        identifier = self.queryContentIdentifier()
-        return getContent(self.ctx, identifier)
-
-    # XResultSetMetaDataSupplier
-    def getMetaData(self):
-        return self.resultset.getMetaData()
-
-    # XCloseable
-    def close(self):
-        print("ContentResultSet.close() *****************************************************")
-        pass
 
     # XRow
     def wasNull(self):
@@ -350,3 +341,17 @@ class ContentResultSet(unohelper.Base, PropertySet, XComponent, XRow, XResultSet
         return self.resultset.getClob(index)
     def getArray(self, index):
         return self.resultset.getArray(index)
+
+    # XResultSetMetaDataSupplier
+    def getMetaData(self):
+        return self.resultset.getMetaData()
+
+    # XContentAccess
+    def queryContentIdentifierString(self):
+        return self.resultset.getString(self.resultset.findColumn('TargetURL'))
+    def queryContentIdentifier(self):
+        identifier = self.queryContentIdentifierString()
+        return ContentIdentifier(self.scheme, identifier)
+    def queryContent(self):
+        identifier = self.queryContentIdentifier()
+        return getContent(self.ctx, identifier)

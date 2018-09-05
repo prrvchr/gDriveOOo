@@ -6,39 +6,57 @@ import uno
 from com.sun.star.beans import UnknownPropertyException, IllegalTypeException
 from com.sun.star.uno import Exception as UnoException
 
-from .unotools import getProperty, getPropertyValue
+from .unotools import getProperty, getPropertyValue, createService
 from .items import mergeItem
 from .children import updateParent
 from .identifiers import updateIdentifier
+from .google import getUploadLocation, OutputStream
 
 import datetime
 import requests
 import traceback
 
 
+def uploadItem(ctx, inputstream, identifier, name, size, mediatype, new=False):
+    location, session = getUploadLocation(ctx, identifier, name, size, mediatype, new)
+    if location is not None:
+        pump = getPump(ctx)
+        pump.setInputStream(inputstream)
+        output = OutputStream(ctx, session, identifier, location, size)
+        pump.setOutputStream(output)
+        pump.start()
+
+def createNewContent(ctx, statement, identifier, contentinfo):
+    print("contenttools._createNewContent()")
+    item = {'Identifier': getUcb(ctx).createContentIdentifier('%s#' % identifier)}
+    if contentinfo.Type == 'application/vnd.google-apps.folder':
+        item.update({'Statement': statement})
+        name = 'com.gmail.prrvchr.extensions.gDriveOOo.DriveFolderContent'
+    elif contentinfo.Type == 'application/vnd.oasis.opendocument':
+        name = 'com.gmail.prrvchr.extensions.gDriveOOo.DriveOfficeContent'
+    return createService(name, ctx, **item)
+
 def mergeContent(ctx, connection, event, root, user):
     result = False
     if event.PropertyName == 'Id':
-        properties = ('Uri', 'UserName', 'Name', 'DateCreated', 'DateModified', 'MediaType',
+        properties = ('Identifier', 'Name', 'DateCreated', 'DateModified', 'MediaType',
                       'IsReadOnly', 'CanRename', 'IsFolder', 'Size', 'IsVersionable')
         row = getContentProperties(event.Source, properties)
-        uri = row.getObject(1, None)
-        parent = getId(getParentUri(ctx, uri), root)
-        username = row.getString(2)
+        identifier = row.getObject(1, None)
         item = {'Id': event.NewValue}
-        item['Name'] = row.getString(3)
-        item['DateCreated'] = row.getTimestamp(4)
-        item['DateModified'] = row.getTimestamp(5)
-        item['MediaType'] = row.getString(6)
-        item['IsReadOnly'] = row.getBoolean(7)
-        item['CanRename'] = row.getBoolean(8)
-        item['IsFolder'] = row.getBoolean(9)
-        item['Size'] = row.getLong(10)
-        item['IsVersionable'] = row.getBoolean(11)
-        item['Parents'] = (parent, )
+        item['Name'] = row.getString(2)
+        item['DateCreated'] = row.getTimestamp(3)
+        item['DateModified'] = row.getTimestamp(4)
+        item['MediaType'] = row.getString(5)
+        item['IsReadOnly'] = row.getBoolean(6)
+        item['CanRename'] = row.getBoolean(7)
+        item['IsFolder'] = row.getBoolean(8)
+        item['Size'] = row.getLong(9)
+        item['IsVersionable'] = row.getBoolean(10)
+        item['Parents'] = (identifier.getParent().Id, )
         merge = connection.prepareCall('CALL "mergeItem"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
         insert = connection.prepareCall('CALL "insertChild"(?, ?, ?)')
-        result = all((mergeItem(merge, item), updateParent(insert, item), updateIdentifier(connection, username, event.NewValue)))
+        result = all((mergeItem(merge, item), updateParent(insert, item), updateIdentifier(connection, identifier.UserName, event.NewValue)))
     elif event.PropertyName  == 'Name':
         id = getContentProperties(event.Source, ('Id', )).getString(1)
         update = connection.prepareCall('CALL "updateName"(?, ?, ?)')
@@ -131,33 +149,23 @@ def getId(uri, root=''):
     id = ''
     count = uri.getPathSegmentCount()
     if count > 0:
-        id = uri.getPathSegment(count -1)
-    if count == 1 and id == "":
+        id = uri.getPathSegment(count -1).strip()
+    if count < 2 and id == "":
         id = root
     return id
 
-def getNewItem(ctx, uri, username):
-    paths = getUriPath(uri, 'new')
-    id = '%s://%s/%s' % (uri.getScheme(), uri.getAuthority(), '/'.join(paths))
-    identifier = getUcp(ctx, id).createContentIdentifier(id)
-    id = getId(getUri(ctx, identifier.getContentIdentifier()))
-    uri = getUri(ctx, identifier.getContentIdentifier())
-    return {'UserName': username, 'Id': id, 'Uri': uri}
-
-def getUriPath(uri, path=None, remove=False):
-    paths = []
-    for index in range(uri.getPathSegmentCount()):
-        paths.append(uri.getPathSegment(index))
-    if remove and len(paths):
-        paths.pop()
-    if path is not None:
-        paths.append(path)
-    return paths
-
 def getParentUri(ctx, uri):
-    path = getUriPath(uri, None, True)
+    path = _getParentPath(uri)
     identifier = '%s://%s/%s' % (uri.getScheme(), uri.getAuthority(), '/'.join(path))
     return getUri(ctx, identifier)
+
+def _getParentPath(uri):
+    paths = []
+    count = uri.getPathSegmentCount()
+    if count > 0:
+        for i in range(count -1):
+            paths.append(uri.getPathSegment(i).strip())
+    return tuple(paths)
 
 def _getPropertyChangeEvent(source, name, oldvalue, newvalue, further=False, handle=-1):
     event = uno.createUnoStruct('com.sun.star.beans.PropertyChangeEvent')
@@ -182,9 +190,6 @@ def getCmisProperty(id, name, unotype, updatable, required, multivalued, opencho
     property.Value = value
     return property
 
-def getSimpleFile(ctx):
-    return ctx.ServiceManager.createInstance('com.sun.star.ucb.SimpleFileAccess')
-
 def getTempFile(ctx):
     tmp = ctx.ServiceManager.createInstance('com.sun.star.io.TempFile')
     tmp.RemoveFile = False
@@ -196,76 +201,6 @@ def getPump(ctx):
 def getPipe(ctx):
     return ctx.ServiceManager.createInstance('com.sun.star.io.Pipe')
 
-def getResultSet(auth, url, id, fields):
-    rows = []
-    final = True
-    timeout = 10
-    params = {}
-    params['q'] = "'%s' in parents" % id
-    params['fields'] = fields
-    try:
-        with requests.get(url, params=params, timeout=timeout, auth=auth) as r:
-            print("contenttools.getResultSet(): %s" % r.json())
-            if r.status_code == requests.codes.ok:
-                result = r.json()
-                if 'files' in result:
-                    rows = result['files']
-                if 'incompleteSearch' in result:
-                    final = not bool(result['incompleteSearch'])
-        return (rows, final)
-    except Exception as e:
-        print("contenttools.getResultSet() ERROR: %s" % e)
-
-def getResultContent(auth, url, fields, token=None, pages=100):
-    rows = []
-    final = True
-    timeout = 10
-    params = {}
-    params['fields'] = fields
-    params['pageSize'] = pages
-    if token is not None:
-        params['pageToken'] = token
-    token = None
-    try:
-        with requests.get(url, params=params, timeout=timeout, auth=auth) as r:
-            print("contenttools.getResultContent(): %s" % r.json())
-            if r.status_code == requests.codes.ok:
-                result = r.json()
-                if 'files' in result:
-                    rows = result['files']
-                if 'nextPageToken' in result:
-                    token = result['nextPageToken']
-        return (rows, token)
-    except Exception as e:
-        print("contenttools.getResultContent() ERROR: %s" % e)
-
-def getNewIdentifier(auth, url):
-    ids = []
-    url += '/generateIds'
-    timeout = 10
-    params = {'space': 'drive'}
-    with requests.get(url, params=params, timeout=timeout, auth=auth) as r:
-        if r.status_code == requests.codes.ok:
-            result = r.json()
-            if 'ids' in result:
-                ids = result['ids']
-                print("contenttools.getNewIdentifier(): %s" % (ids, ))
-    return ids
-
-def createIdentifier(auth, url, title):
-    id = None
-    timeout = 10
-    data = {'name': title}
-#    data['mimeType'] = mimetype
-#    data['parents'] = list(parents)
-    with requests.post(url, json=data, timeout=timeout, auth=auth) as r:
-        if r.status_code == requests.codes.ok:
-            result = r.json()
-            if 'id' in result:
-                id = result['id']
-                print("contenttools.createIdentifier(): %s" % id)
-    return id
-
 def getContent(ctx, identifier):
     return getUcb(ctx).queryContent(identifier)
 
@@ -275,36 +210,6 @@ def getContentEvent(action, content, id):
     event.Content = content
     event.Id = id
     return event
-
-def parseDateTime(timestr=None, format=u'%Y-%m-%dT%H:%M:%S.%fZ'):
-    if timestr is None:
-        t = datetime.datetime.now()
-    else:
-        t = datetime.datetime.strptime(timestr, format)
-    return getDateTime(t.microsecond, t.second, t.minute, t.hour, t.day, t.month, t.year)
-
-def unparseDateTime(t):
-    if hasattr(t, 'HundredthSeconds'):
-        timestr = '%s-%s-%sT%s:%s:%s.%sZ' % (t.Year, t.Month, t.Day, t.Hours, t.Minutes, t.Seconds, t.HundredthSeconds * 10)
-    elif hasattr(t, 'NanoSeconds'):
-        timestr = '%s-%s-%sT%s:%s:%s.%sZ' % (t.Year, t.Month, t.Day, t.Hours, t.Minutes, t.Seconds, t.NanoSeconds // 1000000)
-    return timestr
-
-def getDateTime(microsecond=0, second=0, minute=0, hour=0, day=1, month=1, year=1970, utc=True):
-    t = uno.createUnoStruct('com.sun.star.util.DateTime')
-    t.Year = year
-    t.Month = month
-    t.Day = day
-    t.Hours = hour
-    t.Minutes = minute
-    t.Seconds = second
-    if hasattr(t, 'HundredthSeconds'):
-        t.HundredthSeconds = microsecond // 10000
-    elif hasattr(t, 'NanoSeconds'):
-        t.NanoSeconds = microsecond * 1000
-    if hasattr(t, 'IsUTC'):
-        t.IsUTC = utc
-    return t
 
 def getCommand(name, argument, handle=-1):
     command = uno.createUnoStruct('com.sun.star.ucb.Command')
@@ -340,22 +245,3 @@ def getUcb(ctx, arguments=None):
 
 def getUcp(ctx, identifier):
     return getUcb(ctx).queryContentProvider(identifier)
-
-def getUploadLocation(auth, id, name, parent, size, mimetype):
-    location = None
-    url = 'https://www.googleapis.com/upload/drive/v3/files/%s' % id
-    print("contenttools.getUploadLocation()1: %s - %s" % (id, size))
-    session = requests.Session()
-    headers = {}
-    headers['X-Upload-Content-Length'] = '%s' % size
-    headers['X-Upload-Content-Type'] = mimetype
-    headers['Content-Type'] = 'application/json; charset=UTF-8'
-    params = {'uploadType': 'resumable'}
-    json = {'name': name, 'parentsId': [parent]}
-    with session.patch(url, headers=headers, params=params, json=json, auth=auth) as r:
-        print("contenttools.getUploadLocation()2 %s - %s" % (r.status_code, r.headers))
-        if r.status_code == requests.codes.ok:
-            if 'Location' in r.headers:
-                location = r.headers['Location']
-    return location
-

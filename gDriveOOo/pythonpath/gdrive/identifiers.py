@@ -12,7 +12,7 @@ def checkIdentifiers(ctx, scheme, connection, username):
         result = _insertIdentifier(ctx, scheme, connection, username, max(g_IdentifierRange))
     return result
 
-def geIdentifier(connection, username):
+def getIdentifier(connection, username):
     select = connection.prepareCall('CALL "selectIdentifier"(?)')
     select.setString(1, username)
     result = select.executeQuery()

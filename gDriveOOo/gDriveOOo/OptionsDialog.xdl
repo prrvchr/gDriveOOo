@@ -27,10 +27,13 @@
    <dlg:radio dlg:id="OptionButton2" dlg:tab-index="5" dlg:left="165" dlg:top="25" dlg:width="35" dlg:height="14" dlg:help-text="&amp;OptionsDialog.OptionButton2.HelpText" dlg:value="&amp;OptionsDialog.OptionButton2.Label" dlg:valign="center"/>
   </dlg:radiogroup>
   <dlg:button dlg:id="CommandButton1" dlg:tab-index="6" dlg:disabled="true" dlg:left="205" dlg:top="25" dlg:width="45" dlg:height="14" dlg:help-text="&amp;OptionsDialog.CommandButton1.HelpText" dlg:value="&amp;OptionsDialog.CommandButton1.Label">
-   <script:event script:event-name="on-performaction" script:macro-name="vnd.sun.star.UNO:View" script:language="UNO"/>
+   <script:event script:event-name="on-performaction" script:macro-name="vnd.sun.star.UNO:ViewLog" script:language="UNO"/>
   </dlg:button>
   <dlg:button dlg:id="CommandButton2" dlg:tab-index="7" dlg:left="205" dlg:top="75" dlg:width="45" dlg:height="14" dlg:help-text="&amp;OptionsDialog.CommandButton2.HelpText" dlg:value="&amp;OptionsDialog.CommandButton2.Label">
-   <script:event script:event-name="on-performaction" script:macro-name="vnd.sun.star.UNO:Connect" script:language="UNO"/>
+   <script:event script:event-name="on-performaction" script:macro-name="vnd.sun.star.UNO:ViewDataBase" script:language="UNO"/>
+  </dlg:button>
+  <dlg:button dlg:id="CommandButton3" dlg:tab-index="8" dlg:left="205" dlg:top="125" dlg:width="45" dlg:height="14" dlg:help-text="&amp;OptionsDialog.CommandButton3.HelpText" dlg:value="&amp;OptionsDialog.CommandButton3.Label">
+   <script:event script:event-name="on-performaction" script:macro-name="vnd.sun.star.UNO:ViewFile" script:language="UNO"/>
   </dlg:button>
  </dlg:bulletinboard>
 </dlg:window>

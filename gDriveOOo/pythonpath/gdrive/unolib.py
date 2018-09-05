@@ -97,6 +97,22 @@ class PropertiesChangeNotifier(XPropertiesChangeNotifier):
 
 
 class PropertySetInfo(unohelper.Base, XPropertySetInfo):
+    def __init__(self, properties):
+        self.properties = properties
+
+    # XPropertySetInfo
+    def getProperties(self):
+        return tuple(self.properties.values())
+    def getPropertyByName(self, name):
+        if name in self.properties:
+            return self.properties[name]
+        msg = 'Cant getPropertyByName, UnknownProperty: %s' % name
+        raise UnknownPropertyException(msg, self)
+    def hasPropertyByName(self, name):
+        return name in self.properties
+
+
+class CmisPropertySetInfo(unohelper.Base, XPropertySetInfo):
     def __init__(self, properties, getCmisProperty):
         self.properties = properties
         self.getCmisProperty = getCmisProperty

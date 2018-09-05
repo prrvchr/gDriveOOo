@@ -1,9 +1,9 @@
 
 cd .\vnd.google-apps
 
-..\..\zip -0 vnd.google-apps.zip mimetype
+..\..\zip.exe -0 vnd.google-apps.zip mimetype
 
-..\..\zip -r vnd.google-apps.zip *
+..\..\zip.exe -r vnd.google-apps.zip *
 
 cd ..
 

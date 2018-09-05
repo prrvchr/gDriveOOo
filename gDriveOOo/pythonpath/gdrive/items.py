@@ -45,7 +45,7 @@ def insertItem(connection, item):
     retrived, item = False, {}
     insert = connection.prepareCall('CALL "insertItem"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
     index = _setCallParameters(insert, item)
-    # Never managed to run the next line: implement me ;.)
+    # Never managed to run the next line: Implement me ;-)
     #insert.setArray(index, SqlArray(item['Parents'], 'VARCHAR'))
     result = insert.executeQuery()
     if result.next():
@@ -55,7 +55,7 @@ def insertItem(connection, item):
 
 def mergeItem(merge, item):
     index = _setCallParameters(merge, item)
-    # Never managed to run the next line: implement me ;.)
+    # Never managed to run the next line: Implement me ;-)
     #merge.setArray(index, SqlArray(item['Parents'], 'VARCHAR'))
     merge.execute()
     return merge.getLong(11)

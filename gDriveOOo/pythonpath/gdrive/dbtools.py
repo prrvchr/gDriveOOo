@@ -7,29 +7,53 @@ import unohelper
 from com.sun.star.sdbc import XDataSource, XArray, XRow, XResultSet
 from com.sun.star.lang import IllegalArgumentException
 
-from .unotools import getResourceLocation, getPropertyValue
+from .unotools import getResourceLocation, getPropertyValue, getSimpleFile
+
 import datetime
 import traceback
 
-g_class = 'org.hsqldb.jdbc.JDBCDriver'
-g_jar = 'hsqldb.jar'
 g_protocol = 'jdbc:hsqldb:'
-g_path = 'hsqldb/'
-g_scheme = 'vnd.google-apps'
-#g_options = ';default_schema=true;shutdown=true;hsqldb.default_table_type=cached;get_column_name=false'
+g_folder = 'hsqldb/'
+g_jar = 'hsqldb.jar'
+g_class = 'org.hsqldb.jdbc.JDBCDriver'
 g_options = ';default_schema=true;hsqldb.default_table_type=cached;get_column_name=false;ifexists=true'
+g_shutdow = ';shutdown=true'
 
+
+def _getUrl(location, scheme, shutdown):
+    return '%s%s%s%s%s%s' % (g_protocol, location, g_folder, scheme, g_options, g_shutdow if shutdown else '')
+
+def _getInfo(location):
+    path = '%s%s%s' % (location, g_folder, g_jar)
+    return (getPropertyValue('JavaDriverClass', g_class), 
+            getPropertyValue('JavaDriverClassPath', path))
 
 def getDbConnection(ctx, scheme, shutdown=False, url=None):
-    location = getResourceLocation(ctx, g_path) if url is None else url
+    location = getResourceLocation(ctx, '') if url is None else url
     pool = ctx.ServiceManager.createInstance('com.sun.star.sdbc.ConnectionPool')
-    url = g_protocol + location + scheme + g_options
-    if shutdown:
-        url += ';shutdown=true'
-    args = (getPropertyValue('JavaDriverClass', g_class), 
-            getPropertyValue('JavaDriverClassPath', location + g_jar))
-    connection = pool.getConnectionWithInfo(url, args)
+    url = _getUrl(location, scheme, shutdown)
+    info = _getInfo(location)
+    connection = pool.getConnectionWithInfo(url, info)
     return connection
+    
+def registerDataBase(ctx, scheme, shutdown=False, url=None):
+    location = getResourceLocation(ctx, '') if url is None else url
+    url = '%s%s.odb' % (location, scheme)
+    dbcontext = ctx.ServiceManager.createInstance('com.sun.star.sdb.DatabaseContext')
+    if not getSimpleFile(ctx).exists(url):
+        _createDataBase(dbcontext, scheme, location, url, shutdown)
+    if not dbcontext.hasRegisteredDatabase(scheme):
+        dbcontext.registerDatabaseLocation(scheme, url)
+    elif dbcontext.getDatabaseLocation(scheme) != url:
+        dbcontext.changeDatabaseLocation(scheme, url)
+    return url
+
+def _createDataBase(dbcontext, scheme, location, url, shutdown):
+    datasource = dbcontext.createInstance()
+    datasource.URL = _getUrl(location, scheme, shutdown)
+    datasource.Info = _getInfo(location)
+    descriptor = (getPropertyValue('Overwrite', True), )
+    datasource.DatabaseDocument.storeAsURL(url, descriptor)
 
 
 class SqlArray(unohelper.Base, XArray):
@@ -195,34 +219,6 @@ def getItemFromResult(result):
             value = None
         item[result.MetaData.getColumnName(index)] = value
     return item
-
-def setDbContext(ctx, scheme):
-    dbcontext = ctx.ServiceManager.createInstance('com.sun.star.sdb.DatabaseContext')
-    if dbcontext.hasRegisteredDatabase(scheme):
-        #if dbcontext.getDatabaseLocation(scheme) != url:
-        print("getDbConnection url changed; %s" % dbcontext.getDatabaseLocation(scheme)) 
-    else:
-        print("getDbConnection url changed")
-        datasource = dbcontext.createInstance()
-        dbcontext.registerObject(scheme, datasource) # datasource need to be a XDocumentDataSource
-        datasource.URL = url
-        datasource.Info = args
-        print("getDbConnection url changed; %s" % dbcontext.getDatabaseLocation(scheme))
-    #mri = ctx.ServiceManager.createInstance('mytools.Mri')
-    #mri.inspect(pool.getDriverByURL(url))
-    #mri.inspect(pool.getDriverByURL(url))
-
-def getMarks(fields):
-    marks = []
-    for field in fields:
-        marks.append('?')
-    return marks
-
-def getFieldMarks(fields):
-    marks = []
-    for field in fields:
-        marks.append('%s = ?' % field)
-    return marks
 
 def parseDateTime(timestr=None, format=u'%Y-%m-%dT%H:%M:%S.%fZ'):
     if timestr is None:

@@ -1,15 +1,13 @@
 
-cd .\make_odb
-
-call .\make_odb.bat
-
-cd ..
+rem cd .\make_odb
+rem call .\make_odb.bat
+rem cd ..
 
 cd .\gDriveOOo
 
-..\zip -0 gDriveOOo.zip mimetype
+..\zip.exe -0 gDriveOOo.zip mimetype
 
-..\zip -r gDriveOOo.zip *
+..\zip.exe -r gDriveOOo.zip *
 
 cd ..
 

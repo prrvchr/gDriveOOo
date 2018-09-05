@@ -10,7 +10,7 @@ from com.sun.star.ucb import URLAuthenticationRequest
 
 from gdrive import getStringResource, getFileSequence, createService
 from gdrive import getLoggerUrl, getLoggerSetting, setLoggerSetting, getLogger
-from gdrive import getPropertyValue, InteractionRequest
+from gdrive import getPropertyValue, registerDataBase
 
 from gdrive import getDbConnection
 import traceback
@@ -19,6 +19,7 @@ import traceback
 g_ImplementationHelper = unohelper.ImplementationHelper()
 g_ImplementationName = 'com.gmail.prrvchr.extensions.gDriveOOo.OptionsDialog'
 
+g_scheme = 'vnd.google-apps'
 
 class OptionsDialog(unohelper.Base, XServiceInfo, XContainerWindowEventHandler):
     def __init__(self, ctx):
@@ -44,45 +45,33 @@ class OptionsDialog(unohelper.Base, XServiceInfo, XContainerWindowEventHandler):
         elif method == 'Logger':
             self._doLogger(dialog, bool(event.Source.State))
             handled = True
-        elif method == 'View':
-            self._doView(dialog)
+        elif method == 'ViewLog':
+            self._doViewLog(dialog)
             handled = True
-        elif method == 'Connect':
-            self._doConnect(dialog)
+        elif method == 'ViewDataBase':
+            self._doViewDataBase(dialog)
+            handled = True
+        elif method == 'ViewFile':
+            self._doViewFile(dialog)
             handled = True
         return handled
     def getSupportedMethodNames(self):
-        return ('external_event', 'Logger', 'View', 'Connect')
+        return ('external_event', 'Logger', 'ViewLog', 'ViewDataBase', 'ViewFile')
 
-    def _doConnect(self, dialog):
+    def _doViewDataBase(self, dialog):
         try:
             print("PyOptionsDialog._doConnect() 1")
-            #mri = self.ctx.ServiceManager.createInstance('mytools.Mri')
-            #connection = getDbConnection(self.ctx, 'vnd.google-apps')
-            #mri.inspect(connection)
-            #Need upload file here
+            url = registerDataBase(self.ctx, g_scheme)
             desktop = self.ctx.ServiceManager.createInstance('com.sun.star.frame.Desktop')
-            message = "Authentication is needed!!!"
-            window = desktop.ActiveFrame.ComponentWindow
+            desktop.loadComponentFromURL(url, '_default', 0, ())
             #mri = self.ctx.ServiceManager.createInstance('mytools.Mri')
-            #mri.inspect(desktop)
-            args = (getPropertyValue('Parent', window), getPropertyValue('Context', message))
-            interaction = self.ctx.ServiceManager.createInstanceWithArguments('com.sun.star.task.InteractionHandler', args)
-            #e = URLAuthenticationRequest()
-            #e.URL = 'vnd.google-apps://'
-            #e.HasRealm = False
-            #e.HasUserName = False
-            #e.HasPassword = False
-            #e.HasAccount = True
-            #e.Classification = uno.Enum('com.sun.star.task.InteractionClassification', 'QUERY')
-            #e.Message = "Authentication is needed!!!"
-            #e.Context = self
-            connection = getDbConnection(self.ctx, 'vnd.google-apps')
-            e = InteractionRequest(self, connection)
-            result = interaction.handleInteractionRequest(e)
-            print("PyOptionsDialog._doConnect() 2 %s" % result)
+            #mri.inspect(connection)
+            print("PyOptionsDialog._doConnect() 2")
         except Exception as e:
             print("PyOptionsDialog._doConnect().Error: %s - %s" % (e, traceback.print_exc()))
+
+    def _doViewFile(self, dialog):
+        pass
 
     def _loadSetting(self, dialog):
         self._loadLoggerSetting(dialog)
@@ -97,7 +86,7 @@ class OptionsDialog(unohelper.Base, XServiceInfo, XContainerWindowEventHandler):
         dialog.getControl('OptionButton2').Model.Enabled = enabled
         dialog.getControl('CommandButton1').Model.Enabled = enabled
 
-    def _doView(self, window):
+    def _doViewLog(self, window):
         url = getLoggerUrl(self.ctx)
         length, sequence = getFileSequence(self.ctx, url)
         text = sequence.value.decode('utf-8')
