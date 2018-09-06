@@ -7,62 +7,77 @@ import traceback
 
 
 def selectRoot(connection, username):
-    retrived, root = False, {}
     select = connection.prepareCall('CALL "selectRoot"(?)')
     # selectRoot(IN USERNAME VARCHAR(100))
     select.setString(1, username)
     result = select.executeQuery()
+    retrived, root = False, {}
     if result.next():
         retrived, root = True, getItemFromResult(result)
     select.close()
     return retrived, root
 
 def mergeRoot(connection, user, item):
-    retrived, root = False, {}
-    merge = connection.prepareCall('CALL "mergeRoot"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-    merge.setString(1, user['Id'])
-    merge.setString(2, user['UserName'])
-    merge.setString(3, user['DisplayName'])
-    dummy = _setCallParameters(merge, item, 4)
-    result = merge.executeQuery()
-    if result.next():
-        retrived, root = True, getItemFromResult(result)
-    merge.close()
-    return retrived, root
+    try:
+        print("items.mergeRoot(): 1")
+        merge = connection.prepareCall('CALL "mergeRoot"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+        print("items.mergeRoot(): 2")
+        merge.setString(1, user['Id'])
+        merge.setString(2, user['UserName'])
+        merge.setString(3, user['DisplayName'])
+        dummy = _setCallParameters(merge, item, 4)
+        print("items.mergeRoot(): 3")
+        result = merge.executeQuery()
+        print("items.mergeRoot(): 4")
+        retrived, root = False, {}
+        if result.next():
+            print("items.mergeRoot(): 5")
+            retrived, root = True, getItemFromResult(result)
+        merge.close()
+        print("items.mergeRoot(): 6")
+        return retrived, root
+    except Exception as e:
+        print("items.mergeRoot().Error: %s - %s" % (e, traceback.print_exc()))
 
-def selectItem(connection, id):
-    retrived, item = False, {}
-    select = connection.prepareCall('CALL "selectItem"(?)')
+def selectItem(connection, userid, itemid):
+    select = connection.prepareCall('CALL "selectItem"(?, ?)')
     # selectItem(IN ID VARCHAR(100))
-    select.setString(1, id)
+    select.setString(1, userid)
+    select.setString(2, itemid)
     result = select.executeQuery()
+    retrived, item = False, {}
     if result.next():
         retrived, item = True, getItemFromResult(result)
     select.close()
     return retrived, item
 
-def insertItem(connection, item):
-    retrived, item = False, {}
-    insert = connection.prepareCall('CALL "insertItem"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-    index = _setCallParameters(insert, item)
-    # Never managed to run the next line: Implement me ;-)
-    #insert.setArray(index, SqlArray(item['Parents'], 'VARCHAR'))
-    result = insert.executeQuery()
-    if result.next():
-        retrived, item = True, getItemFromResult(result)
-    insert.close()
-    return retrived, item
+def insertItem(connection, userid, item):
+    try:
+        insert = connection.prepareCall('CALL "insertItem"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+        insert.setString(1, userid)
+        index = _setCallParameters(insert, item, 2)
+        # Never managed to run the next line: Implement me ;-)
+        #insert.setArray(index, SqlArray(item['Parents'], 'VARCHAR'))
+        result = insert.executeQuery()
+        retrived, item = False, {}
+        if result.next():
+            retrived, item = True, getItemFromResult(result)
+        insert.close()
+        return retrived, item
+    except Exception as e:
+        print("items.insertItem().Error: %s - %s" % (e, traceback.print_exc()))
 
-def mergeItem(merge, item):
-    index = _setCallParameters(merge, item)
+def mergeItem(merge, userid, item):
+    merge.setString(1, userid)
+    index = _setCallParameters(merge, item, 2)
     # Never managed to run the next line: Implement me ;-)
     #merge.setArray(index, SqlArray(item['Parents'], 'VARCHAR'))
     merge.execute()
-    return merge.getLong(11)
+    return merge.getLong(index)
 
 def _setCallParameters(call, item, index=1):
     # IN Call Parameters for: mergeRoot(), insertItem(), mergeItem()
-    # Id, Title, DateCreated, DateModified, MediaType, IsReadOnly, CanRename, CanAddChild, Size, IsVersionable
+    # Id, Title, DateCreated, DateModified, MediaType, Size, CanAddChild, CanRename, IsReadOnly, IsVersionable
     # OUT Call Parameters for: mergeItem()
     # RowCount
     call.setString(index, item['Id'])
@@ -75,13 +90,13 @@ def _setCallParameters(call, item, index=1):
     index += 1
     call.setString(index, item['MediaType'])
     index += 1
-    call.setBoolean(index, item['IsReadOnly'])
+    call.setLong(index, item['Size'])
+    index += 1
+    call.setBoolean(index, item['CanAddChild'])
     index += 1
     call.setBoolean(index, item['CanRename'])
     index += 1
-    call.setBoolean(index, item['IsFolder'])
-    index += 1
-    call.setLong(index, item['Size'])
+    call.setBoolean(index, item['IsReadOnly'])
     index += 1
     call.setBoolean(index, item['IsVersionable'])
     index += 1

@@ -10,20 +10,24 @@ from .unotools import getProperty, getPropertyValue, createService
 from .items import mergeItem
 from .children import updateParent
 from .identifiers import updateIdentifier
-from .google import getUploadLocation, OutputStream
+from .google import getUploadLocation, OutputStream, OAuth2Ooo
 
 import datetime
 import requests
 import traceback
 
 
-def uploadItem(ctx, inputstream, identifier, name, size, mediatype, new=False):
-    location, session = getUploadLocation(ctx, identifier, name, size, mediatype, new)
+def getSession(ctx, scheme, username):
+    session = requests.Session()
+    session.auth = OAuth2Ooo(ctx, scheme, username)
+    return session
+
+def uploadItem(session, stream, id, name, size, mediatype, new=False):
+    location = getUploadLocation(session, id, name, size, mediatype, new)
     if location is not None:
         pump = getPump(ctx)
-        pump.setInputStream(inputstream)
-        output = OutputStream(ctx, session, identifier, location, size)
-        pump.setOutputStream(output)
+        pump.setInputStream(stream)
+        pump.setOutputStream(OutputStream(session, location, size))
         pump.start()
 
 def createNewContent(ctx, statement, identifier, contentinfo):
@@ -36,7 +40,7 @@ def createNewContent(ctx, statement, identifier, contentinfo):
         name = 'com.gmail.prrvchr.extensions.gDriveOOo.DriveOfficeContent'
     return createService(name, ctx, **item)
 
-def mergeContent(ctx, connection, event, root, user):
+def mergeContent(ctx, connection, event, userid):
     result = False
     if event.PropertyName == 'Id':
         properties = ('Identifier', 'Name', 'DateCreated', 'DateModified', 'MediaType',
@@ -56,7 +60,7 @@ def mergeContent(ctx, connection, event, root, user):
         item['Parents'] = (identifier.getParent().Id, )
         merge = connection.prepareCall('CALL "mergeItem"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
         insert = connection.prepareCall('CALL "insertChild"(?, ?, ?)')
-        result = all((mergeItem(merge, item), updateParent(insert, item), updateIdentifier(connection, identifier.UserName, event.NewValue)))
+        result = all((mergeItem(merge, item), updateParent(insert, item), updateIdentifier(connection, userid, event.NewValue)))
     elif event.PropertyName  == 'Name':
         id = getContentProperties(event.Source, ('Id', )).getString(1)
         update = connection.prepareCall('CALL "updateName"(?, ?, ?)')
@@ -64,11 +68,11 @@ def mergeContent(ctx, connection, event, root, user):
         update.setString(2, event.NewValue)
         update.execute()
         result = update.getLong(3)
-    elif event.PropertyName == 'WhoWrite':
+    elif event.PropertyName == 'IsWrite':
         id = getContentProperties(event.Source, ('Id', )).getString(1)
-        update = connection.prepareCall('CALL "updateWhoWrite"(?, ?, ?)')
-        update.setString(1, id)
-        update.setString(2, event.NewValue)
+        update = connection.prepareCall('CALL "updateIsWrite"(?, ?, ?)')
+        update.setString(1, userid)
+        update.setString(2, id)
         update.execute()
         result = update.getLong(3)
     elif event.PropertyName == 'Size':

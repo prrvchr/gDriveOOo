@@ -21,11 +21,12 @@ import traceback
 
 
 class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild):
-    def __init__(self, ctx, mode, uri, username, root):
+    def __init__(self, ctx, mode, uri, id, name, root):
         self.ctx = ctx
         self.root = root
         self.ConnectionMode = mode
-        self.UserName = username
+        self.UserId  = id
+        self.UserName = name
         self.Uri, self.Id = self._getId(uri)
         self.IsRoot = self.Id == root
 
@@ -43,6 +44,7 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild)
         properties['Id'] = getProperty('Id', 'string', bound | readonly)
         properties['Uri'] = getProperty('Uri', 'com.sun.star.uri.XUriReference', bound | readonly)
         properties['IsRoot'] = getProperty('IsRoot', 'boolean', bound | readonly)
+        properties['UserId'] = getProperty('UserId', 'string', bound | readonly)
         properties['UserName'] = getProperty('UserName', 'string', bound | readonly)
         properties['ConnectionMode'] = getProperty('ConnectionMode', 'short', bound | readonly)
         return properties
@@ -253,7 +255,7 @@ class ContentResultSet(unohelper.Base, PropertySet, XResultSet, XRow,
         self.resultset = select.executeQuery()
         self.RowCount = select.getLong(index)
         self.IsRowCountFinal = not select.MoreResults
-        self.listeners = []
+        print("ContentResultSet.__init__(): %s" % self.RowCount)
 
     def _getPropertySetInfo(self):
         properties = {}

@@ -17,10 +17,10 @@ from gdrive import getDbConnection, selectRoot, mergeRoot, selectItem, insertIte
 from gdrive import getItem, mergeContent, checkIdentifiers, getIdentifier
 
 from gdrive import getUcb, getContentProperties, setContentProperties
-from gdrive import createService, getUri, getProperty
+from gdrive import createService, getUri, getProperty, g_folder, getSession
 from gdrive import getLogger, getPropertyValue, getUser
 
-from requests import codes
+from requests import Session, codes
 import traceback
 
 # pythonloader looks for a static g_ImplementationHelper variable
@@ -38,6 +38,7 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
         self.Scheme = None          #'vnd.google-apps'
         self.Statement = None
         self.ConnectionMode = ONLINE
+        self.Session = None
         self._UserName = ''
         self._Root = {}
         self.cachedContent = {}
@@ -52,10 +53,9 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
         return self._Root
     @Root.setter
     def Root(self, root):
-        username = root['UserName']
-        if self.UserName != username:
-            checkIdentifiers(self.ctx, self.Scheme, self.Statement.getConnection(), username)
-        self._Root = root
+        if self.UserId != root['UserId']:
+            self._Root = root
+            checkIdentifiers(self.Statement.getConnection(), self.Session, self.UserId)
     @property
     def RootId(self):
         return self.Root['Id'] if 'Id' in self.Root else ''
@@ -99,7 +99,7 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
             msg = "Item inserted new Id: %s ..." % event.NewValue if name == 'Id' else \
                   "Item updated Property: %s ..." % name
             self.Logger.logp(level, "ContentProvider", "propertiesChange()", msg)
-            if mergeContent(self.ctx, self.Statement.getConnection(), event, self.RootId, self.UserId):
+            if mergeContent(self.ctx, self.Statement.getConnection(), event, self.UserId):
                 msg = "Item inserted new Id: %s ... Done" % event.NewValue if name == 'Id' else \
                       "Item updated Property: %s ... Done" % event.PropertyName
             else:
@@ -127,11 +127,11 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
             baseuri = uri.getUriReference()
             msg = "New Identifier: %s ..." % identifier
             self.Logger.logp(level, "ContentProvider", "createContentIdentifier()", msg)
-            id = getIdentifier(self.Statement.getConnection(), self.UserName)
+            id = getIdentifier(self.Statement.getConnection(), self.UserId)
             print("ContentProvider.createContentIdentifier() createNewId %s" % id)
             identifier = '%s%s' % (baseuri, id) if baseuri.endswith('/') else '%s/%s' % (baseuri, id)
             uri = getUri(self.ctx, identifier)
-        content = ContentIdentifier(self.ctx, self.ConnectionMode, uri, self.UserName, self.RootId)
+        content = ContentIdentifier(self.ctx, self.ConnectionMode, uri, self.UserId, self.UserName, self.RootId)
         msg = "Identifier: %s ... Done" % content.getContentIdentifier()
         self.Logger.logp(level, "ContentProvider", "createContentIdentifier()", msg)
         return content
@@ -209,33 +209,37 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
         elif self.ConnectionMode == ONLINE:
             ret, root = self._getRoot(username)
         if ret:
+            print("ContentProvider._getUser(): %s" % root)
             self.Root = root
         return ret
 
     def _getRoot(self, username):
-        ret, root = False, {}
-        level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
-        msg = None
-        status1, user = getUser(self.ctx, self.Scheme, username)
-        status2, item = getItem(self.ctx, self.Scheme, username, 'root')
-        print("ContentProvider._getUserFromProvider(): %s" % username)
-        if status1 == codes.ok and status2 == codes.ok:
-            ret, root = mergeRoot(self.Statement.getConnection(), user, item)
-        elif status1 == codes.bad_request and status2 == codes.bad_request:
-            level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
-            msg = "ERROR: Can't retreive Id from provider: %s" % id
-        else:
-            msg = "ERROR: Can't retreive from provider UserName: %s" % username
-        if msg is not None:
-            self.Logger.logp(level, "ContentProvider", "_getUser()", msg)
-        return ret, root
+        try:
+            ret, root, self.Session = False, {}, getSession(self.ctx, self.Scheme, username)
+            level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
+            msg = None
+            status1, user = getUser(self.Session)
+            status2, item = getItem(self.Session, 'root')
+            print("ContentProvider._getUserFromProvider(): %s" % username)
+            if status1 == codes.ok and status2 == codes.ok:
+                ret, root = mergeRoot(self.Statement.getConnection(), user, item)
+            elif status1 == codes.bad_request and status2 == codes.bad_request:
+                level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
+                msg = "ERROR: Can't retreive Id from provider: %s" % id
+            else:
+                msg = "ERROR: Can't retreive from provider UserName: %s" % username
+            if msg is not None:
+                self.Logger.logp(level, "ContentProvider", "_getUser()", msg)
+            return ret, root
+        except Exception as e:
+            print("ContentProvider._getRoot().Error: %s - %s" % (e, traceback.print_exc()))
 
     def _getItem(self, id):
         ret, item = False, {}
         msg = None
-        status, json = getItem(self.ctx, self.Scheme, self.UserName, id)
+        status, json = getItem(self.Session, id)
         if status == codes.ok:
-            ret, item = insertItem(self.Statement.getConnection(), json)
+            ret, item = insertItem(self.Statement.getConnection(), self.UserId, json)
         elif status == codes.bad_request:
             level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
             msg = "ERROR: Can't retreive Id from provider: %s" % id
@@ -258,14 +262,14 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
 
     def _createContent(self, identifier):
         id, content = identifier.Id, None
-        ret, item = selectItem(self.Statement.getConnection(), id)
+        ret, item = selectItem(self.Statement.getConnection(), self.UserId, id)
         if not ret and self.ConnectionMode == ONLINE:
             ret, item = self._getItem(id)
         if ret:
             name = None
             item.update({'Identifier': identifier})
             media = item['MediaType']
-            if media == 'application/vnd.google-apps.folder':
+            if media == g_folder:
                 name = 'DriveRootContent' if identifier.IsRoot else 'DriveFolderContent'
                 item.update({'Statement': self.Statement})
             else:
@@ -273,7 +277,7 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
             if name:
                 service = 'com.gmail.prrvchr.extensions.gDriveOOo.%s' % name
                 content = createService(service, self.ctx, **item)
-                content.addPropertiesChangeListener(('WhoWrite', 'IsRead', 'Name', 'Size'), self)
+                content.addPropertiesChangeListener(('IsWrite', 'IsRead', 'Name', 'Size'), self)
                 self.cachedContent[id] = content
         return ret, content
 

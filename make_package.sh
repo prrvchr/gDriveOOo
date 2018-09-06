@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# cd ./make_odb
-# ./make_odb.sh
-# cd ..
+#cd ./make_odb
+#./make_odb.sh
+#cd ..
 
 cd ./gDriveOOo/
 

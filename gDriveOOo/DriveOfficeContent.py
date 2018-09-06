@@ -12,7 +12,7 @@ from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
 
 from gdrive import Component, Initialization, PropertiesChangeNotifier, CmisDocument
 from gdrive import PropertySetInfoChangeNotifier, ContentIdentifier, CommandInfoChangeNotifier
-from gdrive import getContentInfo, getPropertiesValues, uploadItem
+from gdrive import getContentInfo, getPropertiesValues, uploadItem, getSession
 from gdrive import CommandInfo, CmisPropertySetInfo, Row, InputStream
 from gdrive import createService, getResourceLocation, parseDateTime, getPropertySetInfoChangeEvent
 from gdrive import getContent, getSimpleFile, getCommandInfo, getProperty, getUcp
@@ -66,7 +66,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
             self.IsVersionable = False
             self._CmisProperties = None
             self.CanRename = False
-            self._WhoWrite = ''
+            self._IsWrite = False
             self._IsRead = False
             
             self.IsHidden = False
@@ -129,12 +129,12 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
         propertyChange(self, 'IsRead', self._IsRead, isread)
         self._IsRead = isread
     @property
-    def WhoWrite(self):
-        return self._WhoWrite
-    @WhoWrite.setter
-    def WhoWrite(self, whowrite):
-        propertyChange(self, 'WhoWrite', self._WhoWrite, whowrite)
-        self._WhoWrite = whowrite
+    def IsWrite(self):
+        return self._IsWrite
+    @IsWrite.setter
+    def IsWrite(self, iswrite):
+        propertyChange(self, 'IsWrite', self._IsWrite, iswrite)
+        self._IsWrite = iswrite
 
     # XContentCreator
     def queryCreatableContentsInfo(self):
@@ -216,14 +216,15 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
                     self.MediaType = self._getMediaType(inputstream)
                     inputstream.closeInput()
                     self.Size = sf.getSize(target)
-                    self.WhoWrite = self.Identifier.UserName
+                    self.IsWrite = True
                     self.IsRead = True
                     ucp = getUcp(self.ctx, self.Identifier.getContentIdentifier())
-                    self.addPropertiesChangeListener(('Id', 'WhoWrite', 'IsRead', 'Title', 'Size'), ucp)
+                    self.addPropertiesChangeListener(('Id', 'IsWrite', 'IsRead', 'Title', 'Size'), ucp)
                     self.Id = self.Id
                     if self.Identifier.ConnectionMode == ONLINE:
+                        session = getSession(self.ctx, self.Identifier.getContentProviderScheme(), self.Identifier.UserName)
                         inputstream = sf.openFileRead(target)
-                        uploadItem(self.ctx, inputstream, self.Identifier, self.Name, self.Size, self.MediaType, True)
+                        uploadItem(session, inputstream, self.Id, self.Name, self.Size, self.MediaType, True)
             elif command.Name == 'addProperty':
                 print("DriveOfficeContent.addProperty():")
             elif command.Name == 'removeProperty':

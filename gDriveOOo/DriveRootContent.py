@@ -17,10 +17,9 @@ from gdrive import getDbConnection, parseDateTime, isChild, getChildSelect, getL
 from gdrive import updateChildren, createService, getSimpleFile, getResourceLocation
 from gdrive import getUcb, getCommandInfo, getProperty, getContentInfo, getContent
 from gdrive import propertyChange, getPropertiesValues, setPropertiesValues, uploadItem
-from gdrive import createNewContent, getContentProperties, setContentProperties
+from gdrive import createNewContent, getContentProperties, setContentProperties, getSession
 
 #from gdrive import PyPropertiesChangeNotifier, PyPropertySetInfoChangeNotifier, PyCommandInfoChangeNotifier, PyPropertyContainer, PyDynamicResultSet
-import requests
 import traceback
 
 # pythonloader looks for a static g_ImplementationHelper variable
@@ -50,7 +49,7 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
             self.DateModified = parseDateTime()
             self.DateCreated = parseDateTime()
             self._IsRead = False
-            self.WhoWrite = ''
+            self.IsWrite = False
             self.CanRename = False
             self.IsVersionable = False
             self.CreatableContentsInfo = self._getCreatableContentsInfo()
@@ -161,7 +160,8 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
             connection = self.Statement.getConnection()
             mode = self.Identifier.ConnectionMode
             if mode == ONLINE and not self.IsRead:
-                self.IsRead = updateChildren(self.ctx, connection, scheme, self.Identifier.UserName, self.Id)
+                session = getSession(self.ctx, scheme, self.Identifier.UserName)
+                self.IsRead = updateChildren(connection, session, self.Identifier.UserId, self.Id)
             # Not Used: command.Argument.Properties - Implement me ;-)
             index, select = getChildSelect(connection, mode, self.Id, self.Identifier.getContentIdentifier(), True)
             return DynamicResultSet(self.ctx, scheme, select, index)
@@ -185,9 +185,9 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
             sf = getSimpleFile(self.ctx)
             if sf.exists(source):
                 target = getResourceLocation(self.ctx, '%s/%s' % (self.Identifier.getContentProviderScheme(), id))
-                inputstream = sf.openFileRead(source)
-                sf.writeFile(target, inputstream)
-                inputstream.closeInput()
+                stream = sf.openFileRead(source)
+                sf.writeFile(target, stream)
+                stream.closeInput()
                 ucb = getUcb(self.ctx)
                 # Root Uri end whith '/': ie: 'scheme://authority/'
                 identifier = ucb.createContentIdentifier('%s%s' % (self.Identifier.getContentIdentifier(), id))
@@ -195,10 +195,10 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
                 size = sf.getSize(target)
                 properties = {'Size': size, 'WhoWrite': self.Identifier.UserName}
                 setContentProperties(content, properties)
-                row = getContentProperties(content, ('Name', 'MediaType'))
                 if self.Identifier.ConnectionMode == ONLINE:
-                    inputstream = sf.openFileRead(target)
-                    uploadItem(self.ctx, inputstream, identifier, row.getString(1), size, row.getString(2))
+                    row = getContentProperties(content, ('Name', 'MediaType'))
+                    stream = sf.openFileRead(target)
+                    uploadItem(self.ctx, stream, identifier, row.getString(1), size, row.getString(2))
                 print("DriveRootContent.execute(): transfer: Fin")
                 if command.Argument.MoveData:
                     pass #must delete object
