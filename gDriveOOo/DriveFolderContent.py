@@ -86,6 +86,9 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
     def Id(self, id):
         propertyChange(self, 'Id', self.Id, id)
     @property
+    def Scheme(self):
+        return self.Identifier.getContentProviderScheme()
+    @property
     def Title(self):
         return self.Name
     @Title.setter
@@ -164,15 +167,14 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
         elif command.Name == 'setPropertyValues':
             return setPropertiesValues(self, command.Argument, self.Logger)
         elif command.Name == 'open':
-            scheme = self.Identifier.getContentProviderScheme()
             connection = self.Statement.getConnection()
             mode = self.Identifier.ConnectionMode
             if mode == ONLINE and not self.IsRead:
-                session = getSession(self.ctx, scheme, self.Identifier.UserName)
+                session = getSession(self.ctx, self.Scheme, self.Identifier.UserName)
                 self.IsRead = updateChildren(connection, session, self.Identifier.UserId, self.Id)
             # Not Used: command.Argument.Properties - Implement me ;-)
             index, select = getChildSelect(connection, mode, self.Id, self.Identifier.getContentIdentifier(), False)
-            return DynamicResultSet(self.ctx, scheme, select, index)
+            return DynamicResultSet(self.ctx, self.Scheme, select, index)
         elif command.Name == 'createNewContent':
             print("DriveFolderContent.execute(): createNewContent %s" % command.Argument)
             return createNewContent(self.ctx, self.Statement, self.Identifier.getContentIdentifier(), command.Argument)
@@ -201,10 +203,10 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
             print("DriveFolderContent.execute(): transfer: %s - %s" % (source, id))
             sf = getSimpleFile(self.ctx)
             if sf.exists(source):
-                target = getResourceLocation(self.ctx, '%s/%s' % (self.Identifier.getContentProviderScheme(), id))
-                stream = sf.openFileRead(source)
-                sf.writeFile(target, stream)
-                stream.closeInput()
+                target = getResourceLocation(self.ctx, '%s/%s' % (self.Scheme, id))
+                inputstream = sf.openFileRead(source)
+                sf.writeFile(target, inputstream)
+                inputstream.closeInput()
                 ucb = getUcb(self.ctx)
                 # Folder Uri end whith it's Id: ie: 'scheme://authority/.../parentId/folderId'
                 identifier = ucb.createContentIdentifier('%s/%s' % (self.Identifier.getContentIdentifier(), id))
@@ -214,8 +216,9 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
                 setContentProperties(content, properties)
                 if self.Identifier.ConnectionMode == ONLINE:
                     row = getContentProperties(content, ('Name', 'MediaType'))
-                    stream = sf.openFileRead(target)
-                    uploadItem(self.ctx, stream, identifier, row.getString(1), size, row.getString(2))                
+                    session = getSession(self.ctx, self.Scheme, self.Identifier.UserName)
+                    inputstream = sf.openFileRead(target)
+                    uploadItem(self.ctx, session, inputstream, id, row.getString(1), size, row.getString(2), False)               
                 print("DriveFolderContent.execute(): transfer: Fin")
                 if command.Argument.MoveData:
                     pass #must delete object

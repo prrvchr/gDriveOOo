@@ -22,7 +22,7 @@ def getSession(ctx, scheme, username):
     session.auth = OAuth2Ooo(ctx, scheme, username)
     return session
 
-def uploadItem(session, stream, id, name, size, mediatype, new=False):
+def uploadItem(ctx, session, stream, id, name, size, mediatype, new=False):
     location = getUploadLocation(session, id, name, size, mediatype, new)
     if location is not None:
         pump = getPump(ctx)

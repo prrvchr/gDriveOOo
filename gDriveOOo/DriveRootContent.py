@@ -81,6 +81,9 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
     def Id(self):
         return self.Identifier.Id
     @property
+    def Scheme(self):
+        return self.Identifier.getContentProviderScheme()
+    @property
     def Title(self):
         return self.Name
     @property
@@ -156,15 +159,14 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
         elif command.Name == 'setPropertyValues':
             return setPropertiesValues(self, command.Argument, self.Logger)
         elif command.Name == 'open':
-            scheme = self.Identifier.getContentProviderScheme()
             connection = self.Statement.getConnection()
             mode = self.Identifier.ConnectionMode
             if mode == ONLINE and not self.IsRead:
-                session = getSession(self.ctx, scheme, self.Identifier.UserName)
+                session = getSession(self.ctx, self.Scheme, self.Identifier.UserName)
                 self.IsRead = updateChildren(connection, session, self.Identifier.UserId, self.Id)
             # Not Used: command.Argument.Properties - Implement me ;-)
             index, select = getChildSelect(connection, mode, self.Id, self.Identifier.getContentIdentifier(), True)
-            return DynamicResultSet(self.ctx, scheme, select, index)
+            return DynamicResultSet(self.ctx, self.Scheme, select, index)
         elif command.Name == 'createNewContent':
             print("DriveRootContent.execute(): createNewContent %s" % command.Argument)
             return createNewContent(self.ctx, self.Statement, self.Identifier.getContentIdentifier(), command.Argument)
@@ -184,21 +186,22 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
             print("DriveRootContent.execute(): transfer: %s - %s" % (source, id))
             sf = getSimpleFile(self.ctx)
             if sf.exists(source):
-                target = getResourceLocation(self.ctx, '%s/%s' % (self.Identifier.getContentProviderScheme(), id))
-                stream = sf.openFileRead(source)
-                sf.writeFile(target, stream)
-                stream.closeInput()
+                target = getResourceLocation(self.ctx, '%s/%s' % (self.Scheme, id))
+                inputstream = sf.openFileRead(source)
+                sf.writeFile(target, inputstream)
+                inputstream.closeInput()
                 ucb = getUcb(self.ctx)
                 # Root Uri end whith '/': ie: 'scheme://authority/'
                 identifier = ucb.createContentIdentifier('%s%s' % (self.Identifier.getContentIdentifier(), id))
                 content = ucb.queryContent(identifier)
                 size = sf.getSize(target)
-                properties = {'Size': size, 'WhoWrite': self.Identifier.UserName}
+                properties = {'Size': size, 'IsWrite': True}
                 setContentProperties(content, properties)
                 if self.Identifier.ConnectionMode == ONLINE:
                     row = getContentProperties(content, ('Name', 'MediaType'))
-                    stream = sf.openFileRead(target)
-                    uploadItem(self.ctx, stream, identifier, row.getString(1), size, row.getString(2))
+                    session = getSession(self.ctx, self.Scheme, self.Identifier.UserName)
+                    inputstream = sf.openFileRead(target)
+                    uploadItem(self.ctx, session, inputstream, id, row.getString(1), size, row.getString(2), False)
                 print("DriveRootContent.execute(): transfer: Fin")
                 if command.Argument.MoveData:
                     pass #must delete object

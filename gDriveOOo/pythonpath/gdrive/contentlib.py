@@ -57,7 +57,8 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild)
 
     # XChild
     def getParent(self):
-        return ContentIdentifier(self.ctx, self.ConnectionMode, getParentUri(self.ctx, self.Uri), self.UserName, self.root)
+        parent = getParentUri(self.ctx, self.Uri)
+        return ContentIdentifier(self.ctx, self.ConnectionMode, parent, self.UserId, self.UserName, self.root)
     def setParent(self, parent):
         raise NoSupportException('Parent can not be set', self)
 

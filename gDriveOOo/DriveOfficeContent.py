@@ -99,6 +99,9 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
     def Id(self, id):
         propertyChange(self, 'Id', self.Id, id)
     @property
+    def Scheme(self):
+        return self.Identifier.getContentProviderScheme()
+    @property
     def TitleOnServer(self):
         return self.Name
     @property
@@ -211,7 +214,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
                 replace = command.Argument.ReplaceExisting
                 if inputstream.queryInterface(uno.getTypeByName('com.sun.star.io.XInputStream')):
                     sf = getSimpleFile(self.ctx)
-                    target = getResourceLocation(self.ctx, '%s/%s' % (self.Identifier.getContentProviderScheme(), self.Id))
+                    target = getResourceLocation(self.ctx, '%s/%s' % (self.Scheme, self.Id))
                     sf.writeFile(target, inputstream)
                     self.MediaType = self._getMediaType(inputstream)
                     inputstream.closeInput()
@@ -222,9 +225,9 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
                     self.addPropertiesChangeListener(('Id', 'IsWrite', 'IsRead', 'Title', 'Size'), ucp)
                     self.Id = self.Id
                     if self.Identifier.ConnectionMode == ONLINE:
-                        session = getSession(self.ctx, self.Identifier.getContentProviderScheme(), self.Identifier.UserName)
+                        session = getSession(self.ctx, self.Scheme, self.Identifier.UserName)
                         inputstream = sf.openFileRead(target)
-                        uploadItem(session, inputstream, self.Id, self.Name, self.Size, self.MediaType, True)
+                        uploadItem(self.ctx, session, inputstream, self.Id, self.Name, self.Size, self.MediaType, True)
             elif command.Name == 'addProperty':
                 print("DriveOfficeContent.addProperty():")
             elif command.Name == 'removeProperty':
@@ -266,10 +269,9 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
         return sf.openFileRead(url)
 
     def _getUrl(self, sf):
-        scheme = self.Identifier.getContentProviderScheme()
-        url = getResourceLocation(self.ctx, '%s/%s' % (scheme, self.Id))
+        url = getResourceLocation(self.ctx, '%s/%s' % (self.Scheme, self.Id))
         if not sf.exists(url):
-            inputstream = InputStream(self.ctx, scheme, self.Identifier.UserName, self.Id, self.Size)
+            inputstream = InputStream(self.ctx, self.Scheme, self.Identifier.UserName, self.Id, self.Size)
             sf.writeFile(url, inputstream)
             inputstream.closeInput()
             self.IsRead = True
