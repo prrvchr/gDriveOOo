@@ -20,14 +20,6 @@ g_options = ';default_schema=true;hsqldb.default_table_type=cached;get_column_na
 g_shutdow = ';shutdown=true'
 
 
-def _getUrl(location, scheme, shutdown):
-    return '%s%s%s%s%s%s' % (g_protocol, location, g_folder, scheme, g_options, g_shutdow if shutdown else '')
-
-def _getInfo(location):
-    path = '%s%s%s' % (location, g_folder, g_jar)
-    return (getPropertyValue('JavaDriverClass', g_class), 
-            getPropertyValue('JavaDriverClassPath', path))
-
 def getDbConnection(ctx, scheme, shutdown=False, url=None):
     location = getResourceLocation(ctx, '') if url is None else url
     pool = ctx.ServiceManager.createInstance('com.sun.star.sdbc.ConnectionPool')
@@ -47,6 +39,14 @@ def registerDataBase(ctx, scheme, shutdown=False, url=None):
     elif dbcontext.getDatabaseLocation(scheme) != url:
         dbcontext.changeDatabaseLocation(scheme, url)
     return url
+
+def _getUrl(location, scheme, shutdown):
+    return '%s%s%s%s%s%s' % (g_protocol, location, g_folder, scheme, g_options, g_shutdow if shutdown else '')
+
+def _getInfo(location):
+    path = '%s%s%s' % (location, g_folder, g_jar)
+    return (getPropertyValue('JavaDriverClass', g_class), 
+            getPropertyValue('JavaDriverClassPath', path))
 
 def _createDataBase(dbcontext, scheme, location, url, shutdown):
     datasource = dbcontext.createInstance()

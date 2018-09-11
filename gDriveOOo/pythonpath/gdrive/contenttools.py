@@ -11,6 +11,7 @@ from .items import mergeItem
 from .children import updateParent
 from .identifiers import updateIdentifier
 from .google import getUploadLocation, OutputStream, OAuth2Ooo
+from .dbtools import unparseDateTime
 
 import datetime
 import requests
@@ -22,8 +23,18 @@ def getSession(ctx, scheme, username):
     session.auth = OAuth2Ooo(ctx, scheme, username)
     return session
 
-def uploadItem(ctx, session, stream, id, name, size, mediatype, new=False):
-    location = getUploadLocation(session, id, name, size, mediatype, new)
+def uploadItem(ctx, session, stream, content, id, size, new=False):
+    data, headers = None, {'X-Upload-Content-Length': '%s' % size}
+    if new:
+        data = {'id': id}
+        row = getContentProperties(content, ('MediaType', 'Name', 'DateCreated', 'DateModified', 'Identifier'))
+        headers['X-Upload-Content-Type'] = row.getString(1)
+        data['name'] = row.getString(2)
+        data['createdTime'] = unparseDateTime(row.getTimestamp(3))
+        data['modifiedTime'] = unparseDateTime(row.getTimestamp(4))
+        data['parents'] = [row.getObject(5, None).getParent().Id]
+    session.headers.update(headers)
+    location = getUploadLocation(session, id, data)
     if location is not None:
         pump = getPump(ctx)
         pump.setInputStream(stream)
@@ -162,6 +173,14 @@ def getParentUri(ctx, uri):
     path = _getParentPath(uri)
     identifier = '%s://%s/%s' % (uri.getScheme(), uri.getAuthority(), '/'.join(path))
     return getUri(ctx, identifier)
+
+def getParentId(identifier):
+    paths = []
+    while not identifier.IsRoot:
+        paths.append(identifier.Id)
+        identifier = identifier.getParent()
+    paths.append(identifier.Id)
+    return tuple(paths)
 
 def _getParentPath(uri):
     paths = []

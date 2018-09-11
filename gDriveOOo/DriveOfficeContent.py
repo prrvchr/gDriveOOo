@@ -210,14 +210,14 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
             elif command.Name == 'insert':
                 # The Insert command is only used to create a new document (File Save As)
                 # it saves content from createNewContent from the parent folder
-                inputstream = command.Argument.Data
+                stream = command.Argument.Data
                 replace = command.Argument.ReplaceExisting
-                if inputstream.queryInterface(uno.getTypeByName('com.sun.star.io.XInputStream')):
+                if stream.queryInterface(uno.getTypeByName('com.sun.star.io.XInputStream')):
                     sf = getSimpleFile(self.ctx)
                     target = getResourceLocation(self.ctx, '%s/%s' % (self.Scheme, self.Id))
-                    sf.writeFile(target, inputstream)
-                    self.MediaType = self._getMediaType(inputstream)
-                    inputstream.closeInput()
+                    sf.writeFile(target, stream)
+                    self.MediaType = self._getMediaType(stream)
+                    stream.closeInput()
                     self.Size = sf.getSize(target)
                     self.IsWrite = True
                     self.IsRead = True
@@ -225,9 +225,9 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
                     self.addPropertiesChangeListener(('Id', 'IsWrite', 'IsRead', 'Title', 'Size'), ucp)
                     self.Id = self.Id
                     if self.Identifier.ConnectionMode == ONLINE:
-                        session = getSession(self.ctx, self.Scheme, self.Identifier.UserName)
-                        inputstream = sf.openFileRead(target)
-                        uploadItem(self.ctx, session, inputstream, self.Id, self.Name, self.Size, self.MediaType, True)
+                        stream = sf.openFileRead(target)
+                        with getSession(self.ctx, self.Scheme, self.Identifier.UserName) as session:
+                            uploadItem(self.ctx, session, stream, self, self.Id, self.Size, True)
             elif command.Name == 'addProperty':
                 print("DriveOfficeContent.addProperty():")
             elif command.Name == 'removeProperty':
@@ -271,16 +271,16 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
     def _getUrl(self, sf):
         url = getResourceLocation(self.ctx, '%s/%s' % (self.Scheme, self.Id))
         if not sf.exists(url):
-            inputstream = InputStream(self.ctx, self.Scheme, self.Identifier.UserName, self.Id, self.Size)
-            sf.writeFile(url, inputstream)
-            inputstream.closeInput()
+            stream = InputStream(self.ctx, self.Scheme, self.Identifier.UserName, self.Id, self.Size)
+            sf.writeFile(url, stream)
+            stream.closeInput()
             self.IsRead = True
         return url
 
-    def _getMediaType(self, inputstream):
+    def _getMediaType(self, stream):
         mediatype = "application/octet-stream"
         detection = self.ctx.ServiceManager.createInstance('com.sun.star.document.TypeDetection')
-        descriptor = (getPropertyValue('InputStream', inputstream), )
+        descriptor = (getPropertyValue('InputStream', stream), )
         format, dummy = detection.queryTypeByDescriptor(descriptor, True)
         if detection.hasByName(format):
             properties = detection.getByName(format)

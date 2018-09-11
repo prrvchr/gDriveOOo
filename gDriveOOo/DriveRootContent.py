@@ -186,22 +186,30 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
             print("DriveRootContent.execute(): transfer: %s - %s" % (source, id))
             sf = getSimpleFile(self.ctx)
             if sf.exists(source):
+                print("DriveRootContent.execute(): transfer: 1")
                 target = getResourceLocation(self.ctx, '%s/%s' % (self.Scheme, id))
-                inputstream = sf.openFileRead(source)
-                sf.writeFile(target, inputstream)
-                inputstream.closeInput()
+                stream = sf.openFileRead(source)
+                sf.writeFile(target, stream)
+                stream.closeInput()
+                print("DriveRootContent.execute(): transfer: 2")
                 ucb = getUcb(self.ctx)
+                print("DriveRootContent.execute(): transfer: 3")
                 # Root Uri end whith '/': ie: 'scheme://authority/'
                 identifier = ucb.createContentIdentifier('%s%s' % (self.Identifier.getContentIdentifier(), id))
                 content = ucb.queryContent(identifier)
+                print("DriveRootContent.execute(): transfer: 4")
                 size = sf.getSize(target)
-                properties = {'Size': size, 'IsWrite': True}
-                setContentProperties(content, properties)
+                print("DriveRootContent.execute(): transfer: 5")
                 if self.Identifier.ConnectionMode == ONLINE:
-                    row = getContentProperties(content, ('Name', 'MediaType'))
-                    session = getSession(self.ctx, self.Scheme, self.Identifier.UserName)
-                    inputstream = sf.openFileRead(target)
-                    uploadItem(self.ctx, session, inputstream, id, row.getString(1), size, row.getString(2), False)
+                    print("DriveRootContent.execute(): transfer: 6")
+                    stream = sf.openFileRead(target)
+                    print("DriveRootContent.execute(): transfer: 7")
+                    with getSession(self.ctx, self.Scheme, self.Identifier.UserName) as session:
+                        print("DriveRootContent.execute(): transfer: 8")
+                        uploadItem(self.ctx, session, stream, content, id, size, False)
+                else:
+                    print("DriveRootContent.execute(): transfer: 9")
+                    setContentProperties(content, {'Size': size, 'IsWrite': True})
                 print("DriveRootContent.execute(): transfer: Fin")
                 if command.Argument.MoveData:
                     pass #must delete object

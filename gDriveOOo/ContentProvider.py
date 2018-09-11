@@ -132,6 +132,8 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
             identifier = '%s%s' % (baseuri, id) if baseuri.endswith('/') else '%s/%s' % (baseuri, id)
             uri = getUri(self.ctx, identifier)
         content = ContentIdentifier(self.ctx, self.ConnectionMode, uri, self.UserId, self.UserName, self.RootId)
+        if not self._isValide(content):
+            raise IllegalIdentifierException('Identifier is not valide: %s' % identifier, self)
         msg = "Identifier: %s ... Done" % content.getContentIdentifier()
         self.Logger.logp(level, "ContentProvider", "createContentIdentifier()", msg)
         return content
@@ -175,6 +177,24 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
     def select(self):
         print("ContentProvider.select()")
         pass
+
+    def _isValide(self, identifier):
+        connection = self.Statement.getConnection()
+        for id in getParentId(identifier):
+            ret = True
+            if not existItem(id):
+                if self.ConnectionMode == ONLINE:
+                    ret, item = self._getItem(id)
+                else:
+                    ret = False
+            if not isReadItem(id):
+                if self.ConnectionMode == ONLINE:
+                    ret = updateChildren(connection, self.Session, self.UserId, id)
+                else:
+                    ret = False
+            if not ret:
+                return False
+        return True
 
     def _hasUserName(self, uri):
         username = ''

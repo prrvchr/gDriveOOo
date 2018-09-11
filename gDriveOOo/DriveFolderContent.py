@@ -204,21 +204,20 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
             sf = getSimpleFile(self.ctx)
             if sf.exists(source):
                 target = getResourceLocation(self.ctx, '%s/%s' % (self.Scheme, id))
-                inputstream = sf.openFileRead(source)
-                sf.writeFile(target, inputstream)
-                inputstream.closeInput()
+                stream = sf.openFileRead(source)
+                sf.writeFile(target, stream)
+                stream.closeInput()
                 ucb = getUcb(self.ctx)
                 # Folder Uri end whith it's Id: ie: 'scheme://authority/.../parentId/folderId'
                 identifier = ucb.createContentIdentifier('%s/%s' % (self.Identifier.getContentIdentifier(), id))
                 content = ucb.queryContent(identifier)
                 size = sf.getSize(target)
-                properties = {'Size': size, 'IsWrite': True}
-                setContentProperties(content, properties)
                 if self.Identifier.ConnectionMode == ONLINE:
-                    row = getContentProperties(content, ('Name', 'MediaType'))
-                    session = getSession(self.ctx, self.Scheme, self.Identifier.UserName)
-                    inputstream = sf.openFileRead(target)
-                    uploadItem(self.ctx, session, inputstream, id, row.getString(1), size, row.getString(2), False)               
+                    stream = sf.openFileRead(target)
+                    with getSession(self.ctx, self.Scheme, self.Identifier.UserName) as session:
+                        uploadItem(self.ctx, session, stream, content, id, size, False)               
+                else:
+                    setContentProperties(content, {'Size': size, 'IsWrite': True})
                 print("DriveFolderContent.execute(): transfer: Fin")
                 if command.Argument.MoveData:
                     pass #must delete object

@@ -56,21 +56,12 @@ def getItem(session, id):
             item = _parseItem(r.json(), parseDateTime())
     return status, item
 
-def getUploadLocation(session, id, name, size, mimetype, new):
+def getUploadLocation(session, id, data):
     location = None
-    url = g_upload if new else '%s/%s' % (g_upload, id)
-    #url = '%s/%s' % (g_upload, identifier.Id)
+    url = '%s/%s' % (g_upload, id) if data is None else g_upload
     print("google.getUploadLocation()1: %s" % (id, ))
     params = {'uploadType': 'resumable'}
-    headers = {}
-    headers['X-Upload-Content-Type'] = mimetype
-    headers['X-Upload-Content-Length'] = '%s' % size
-    headers['Content-Type'] = 'application/json; charset=UTF-8'
-    data = {'name': name}
-    if new:
-        data['id'] = id
-    #with session.patch(url, headers=headers, params=params, json=data, auth=authentication) as r:
-    r = session.patch(url, headers=headers, params=params, json=data)
+    r = session.patch(url, params=params, json=data)
     print("contenttools.getUploadLocation()2 %s - %s" % (r.status_code, r.headers))
     if r.status_code == requests.codes.ok and 'Location' in r.headers:
         location = r.headers['Location']
