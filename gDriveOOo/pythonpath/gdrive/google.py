@@ -6,6 +6,7 @@ import unohelper
 
 from com.sun.star.io import XActiveDataSource, XActiveDataSink, XActiveDataControl
 from com.sun.star.io import XOutputStream, XInputStream, IOException
+from com.sun.star.connection import NoConnectException
 
 from .dbtools import parseDateTime
 
@@ -16,8 +17,9 @@ import sys
 if sys.version_info[0] < 3:
     requests.packages.urllib3.disable_warnings()
 
-g_url = 'https://www.googleapis.com/drive/v3/'
-g_upload = 'https://www.googleapis.com/upload/drive/v3/files'
+g_host = 'www.googleapis.com'
+g_url = 'https://%s/drive/v3/' % g_host
+g_upload = 'https://%s/upload/drive/v3/files' % g_host
 g_userfields = 'user(displayName,permissionId,emailAddress)'
 g_itemfields = 'id,parents,name,mimeType,size,createdTime,modifiedTime,capabilities(canEdit,canRename,canAddChildren, canReadRevisions)'
 g_childfields = 'kind,nextPageToken,files(%s)' % g_itemfields
@@ -29,6 +31,17 @@ g_folder = 'application/vnd.google-apps.folder'
 g_link = 'application/vnd.google-apps.drive-sdk'
 g_doc = 'application/vnd.google-apps.'
 
+
+def isNetworkUp(ctx):
+    connector = ctx.ServiceManager.createInstance('com.sun.star.connection.Connector')
+    try:
+        connection = connector.connect('socket,host=%s,port=80' % g_host)
+        if connection:
+            connection.close()
+            return True
+        return False
+    except NoConnectException as e:
+        return False
 
 def getUser(session):
     status, user = False, {}

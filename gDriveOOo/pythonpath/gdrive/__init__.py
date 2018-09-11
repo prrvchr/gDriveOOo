@@ -21,7 +21,7 @@ from .items import selectRoot, mergeRoot, selectItem, insertItem
 
 from .children import isChild, updateChildren, getChildSelect
 
-from .identifiers import checkIdentifiers, getIdentifier
+from .identifiers import checkIdentifiers, getIdentifier, isIdentifier
 
 
 from .contentlib import ContentIdentifier, Row, DynamicResultSet, CommandInfo, CommandInfoChangeNotifier
@@ -29,10 +29,10 @@ from .contentlib import InteractionRequest
 
 from .contenttools import getUri, getUcb, getUcp, getPropertiesValues, setPropertiesValues
 from .contenttools import getContent, getContentEvent, getCmisProperty, getCommandInfo
-from .contenttools import getContentProperties, setContentProperties, getContentInfo, getParentId
+from .contenttools import getContentProperties, setContentProperties, getContentInfo
 from .contenttools import mergeContent, propertyChange, uploadItem, createNewContent, getSession
 
-from .google import InputStream, getUser, getItem, g_folder
+from .google import InputStream, getUser, getItem, g_folder, isNetworkUp
 
 from .logger import getLogger, getLoggerSetting, setLoggerSetting, getLoggerUrl
 

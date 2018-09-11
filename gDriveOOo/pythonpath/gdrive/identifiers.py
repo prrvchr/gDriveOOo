@@ -6,6 +6,17 @@ from .google import IdGenerator
 g_IdentifierRange = (10, 50)
 
 
+def isIdentifier(connection, identifier):
+    retreived = False
+    call = connection.prepareCall('CALL "isIdentifier"(?, ?)')
+    call.setString(1, identifier.UserId)
+    call.setString(2, identifier.Id)
+    result = call.executeQuery()
+    if result.next():
+        retreived = result.getBoolean(1)
+    call.close()
+    return retreived
+
 def checkIdentifiers(connection, session, userid):
     result = True
     if _countIdentifier(connection, userid) < min(g_IdentifierRange):

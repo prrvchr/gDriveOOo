@@ -18,7 +18,7 @@ from gdrive import getItem, mergeContent, checkIdentifiers, getIdentifier
 
 from gdrive import getUcb, getContentProperties, setContentProperties
 from gdrive import createService, getUri, getProperty, g_folder, getSession
-from gdrive import getLogger, getPropertyValue, getUser
+from gdrive import getLogger, getPropertyValue, getUser, isIdentifier, isNetworkUp
 
 from requests import Session, codes
 import traceback
@@ -37,12 +37,13 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
         self.ctx = ctx
         self.Scheme = None          #'vnd.google-apps'
         self.Statement = None
-        self.ConnectionMode = ONLINE
         self.Session = None
         self._UserName = ''
         self._Root = {}
         self.cachedContent = {}
         self.Logger = getLogger(self.ctx)
+        self.ConnectionMode = ONLINE if isNetworkUp(self.ctx) else OFFLINE
+        print("ContentProvider.__init__() %s" % self.ConnectionMode)
         msg += " Done"
         desktop = self.ctx.ServiceManager.createInstance('com.sun.star.frame.Desktop')
         desktop.addTerminateListener(self)
@@ -132,7 +133,8 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
             identifier = '%s%s' % (baseuri, id) if baseuri.endswith('/') else '%s/%s' % (baseuri, id)
             uri = getUri(self.ctx, identifier)
         content = ContentIdentifier(self.ctx, self.ConnectionMode, uri, self.UserId, self.UserName, self.RootId)
-        if not self._isValide(content):
+        if not isIdentifier(self.Statement.getConnection(), content):
+            print("ContentProvider.createContentIdentifier() isIdentifier ******* %s" % content.Id)
             raise IllegalIdentifierException('Identifier is not valide: %s' % identifier, self)
         msg = "Identifier: %s ... Done" % content.getContentIdentifier()
         self.Logger.logp(level, "ContentProvider", "createContentIdentifier()", msg)
@@ -154,9 +156,9 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
 
     def compareContentIds(self, identifier1, identifier2):
         compare = 1
-        print("ContentProvider.compareContentIds() %s - %s" % (identifier1, identifier2))
+        print("ContentProvider.compareContentIds() %s - %s" % (identifier1.getContentIdentifier(), identifier2.getContentIdentifier()))
         level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
-        msg = "Identifiers: %s - %s ..." % (identifier1, identifier2)
+        msg = "Identifiers: %s - %s ..." % (identifier1.getContentIdentifier(), identifier2.getContentIdentifier())
         if identifier1.Id == identifier2.Id:
             msg += " seem to be the same..."
             compare = 0
