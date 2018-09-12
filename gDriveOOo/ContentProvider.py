@@ -18,7 +18,7 @@ from gdrive import getItem, mergeContent, checkIdentifiers, getIdentifier
 
 from gdrive import getUcb, getContentProperties, setContentProperties
 from gdrive import createService, getUri, getProperty, g_folder, getSession
-from gdrive import getLogger, getPropertyValue, getUser, isIdentifier, isNetworkUp
+from gdrive import getLogger, getPropertyValue, getUser, isIdentifier, getConnectionMode
 
 from requests import Session, codes
 import traceback
@@ -42,7 +42,7 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
         self._Root = {}
         self.cachedContent = {}
         self.Logger = getLogger(self.ctx)
-        self.ConnectionMode = ONLINE if isNetworkUp(self.ctx) else OFFLINE
+        self.ConnectionMode = getConnectionMode(self.ctx)
         print("ContentProvider.__init__() %s" % self.ConnectionMode)
         msg += " Done"
         desktop = self.ctx.ServiceManager.createInstance('com.sun.star.frame.Desktop')
@@ -113,7 +113,6 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
 
     # XContentIdentifierFactory
     def createContentIdentifier(self, identifier):
-        #try:
         print("ContentProvider.createContentIdentifier() %s" % identifier)
         level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
         msg = "Identifier: %s ..." % identifier
@@ -123,22 +122,21 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
             raise IllegalIdentifierException('Identifier cannot be parsed: %s' % identifier, self)
         if not self._hasUserName(uri):
             raise IllegalIdentifierException('Identifier need a UserName: %s' % identifier, self)
-        if uri.hasFragment():
-            uri.clearFragment()
-            baseuri = uri.getUriReference()
+        contentidentifier = ContentIdentifier(self.ctx, self.ConnectionMode, uri, self.UserId, self.UserName, self.RootId)
+        if not isIdentifier(self.Statement.getConnection(), contentidentifier):
             msg = "New Identifier: %s ..." % identifier
             self.Logger.logp(level, "ContentProvider", "createContentIdentifier()", msg)
+            name = contentidentifier.Id
+            baseuri = contentidentifier.getParent().getContentIdentifier()
             id = getIdentifier(self.Statement.getConnection(), self.UserId)
             print("ContentProvider.createContentIdentifier() createNewId %s" % id)
             identifier = '%s%s' % (baseuri, id) if baseuri.endswith('/') else '%s/%s' % (baseuri, id)
             uri = getUri(self.ctx, identifier)
-        content = ContentIdentifier(self.ctx, self.ConnectionMode, uri, self.UserId, self.UserName, self.RootId)
-        if not isIdentifier(self.Statement.getConnection(), content):
-            print("ContentProvider.createContentIdentifier() isIdentifier ******* %s" % content.Id)
-            raise IllegalIdentifierException('Identifier is not valide: %s' % identifier, self)
-        msg = "Identifier: %s ... Done" % content.getContentIdentifier()
+            contentidentifier = ContentIdentifier(self.ctx, self.ConnectionMode, uri, self.UserId, self.UserName, self.RootId, name)
+            print("ContentProvider.createContentIdentifier() isIdentifier ******* %s %s" % (contentidentifier.Id, contentidentifier.Name))
+        msg = "Identifier: %s ... Done" % contentidentifier.getContentIdentifier()
         self.Logger.logp(level, "ContentProvider", "createContentIdentifier()", msg)
-        return content
+        return contentidentifier
 
     # XContentProvider
     def queryContent(self, identifier):
@@ -177,7 +175,6 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
             if property.Name == 'UserName' and property.Value:
                 self._UserName = property.Value
     def select(self):
-        print("ContentProvider.select()")
         pass
 
     def _isValide(self, identifier):
@@ -278,8 +275,10 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
             content = self.cachedContent[identifier.Id]
             # Same Content can have multiple parent...
             setContentProperties(content, {'Identifier': identifier})
-        else:
+        elif identifier.Name is None:
             ret, content = self._createContent(identifier)
+        else:
+            ret, content = self._createNewContent(identifier)
         return ret, content
 
     def _createContent(self, identifier):
@@ -302,6 +301,13 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
                 content.addPropertiesChangeListener(('IsWrite', 'IsRead', 'Name', 'Size'), self)
                 self.cachedContent[id] = content
         return ret, content
+
+    def _createNewContent(self, identifier):
+        item = {'Name': identifier.Name, 'Identifier': identifier}
+        content = createService('com.gmail.prrvchr.extensions.gDriveOOo.DriveOfficeContent', self.ctx, **item)
+        content.addPropertiesChangeListener(('IsWrite', 'IsRead', 'Name', 'Size'), self)
+        self.cachedContent[identifier.Id] = content
+        return True, content
 
     # XServiceInfo
     def supportsService(self, service):

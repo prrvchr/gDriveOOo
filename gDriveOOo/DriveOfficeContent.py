@@ -78,14 +78,15 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
             
             self.initialize(namedvalues)
             
-            
             self.ObjectId = self.Id
             self.CanCheckOut = True
             self.CanCheckIn = True
             self.CanCancelCheckOut = True
             self.TargetURL = self.Identifier.getContentIdentifier()
             self.BaseURI = self.Identifier.getContentIdentifier()
-            self.CasePreservingURL = self.Identifier.getContentIdentifier()
+            parent = self.Identifier.getParent()
+            baseuri = parent.getContentIdentifier()
+            self.CasePreservingURL = '%s%s' % (baseuri, parent.Id) if baseuri.endswith('/') else '%s/%s' % (baseuri, parent.Id)
             msg = "DriveOfficeContent loading Uri: %s ... Done" % self.Identifier.getContentIdentifier()
             self.Logger.logp(level, "DriveOfficeContent", "__init__()", msg)            
             print("DriveOfficeContent.__init__()")
@@ -112,7 +113,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
         return self._CmisProperties
     @property
     def Title(self):
-        return self.Id
+        return self.Name
     @Title.setter
     def Title(self, title):
         propertyChange(self, 'Name', self.Name, title)

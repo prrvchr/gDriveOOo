@@ -32,7 +32,7 @@ from .contenttools import getContent, getContentEvent, getCmisProperty, getComma
 from .contenttools import getContentProperties, setContentProperties, getContentInfo
 from .contenttools import mergeContent, propertyChange, uploadItem, createNewContent, getSession
 
-from .google import InputStream, getUser, getItem, g_folder, isNetworkUp
+from .google import InputStream, getUser, getItem, g_folder, getConnectionMode
 
 from .logger import getLogger, getLoggerSetting, setLoggerSetting, getLoggerUrl
 

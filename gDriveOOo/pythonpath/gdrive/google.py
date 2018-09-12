@@ -6,6 +6,7 @@ import unohelper
 
 from com.sun.star.io import XActiveDataSource, XActiveDataSink, XActiveDataControl
 from com.sun.star.io import XOutputStream, XInputStream, IOException
+from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
 from com.sun.star.connection import NoConnectException
 
 from .dbtools import parseDateTime
@@ -21,9 +22,10 @@ g_host = 'www.googleapis.com'
 g_url = 'https://%s/drive/v3/' % g_host
 g_upload = 'https://%s/upload/drive/v3/files' % g_host
 g_userfields = 'user(displayName,permissionId,emailAddress)'
-g_itemfields = 'id,parents,name,mimeType,size,createdTime,modifiedTime,capabilities(canEdit,canRename,canAddChildren, canReadRevisions)'
+g_capabilityfields = 'canEdit,canRename,canAddChildren,canReadRevisions'
+g_itemfields = 'id,parents,name,mimeType,size,createdTime,modifiedTime,capabilities(%s)' % g_capabilityfields
 g_childfields = 'kind,nextPageToken,files(%s)' % g_itemfields
-# Minimun chunk: 262144 no more upload if less...
+# Minimun chunk: 262144 no more upload if less... (must be a multiple of 64Ko)
 g_chunk = 262144
 g_pages = 100
 g_timeout = (15, 60)
@@ -32,16 +34,17 @@ g_link = 'application/vnd.google-apps.drive-sdk'
 g_doc = 'application/vnd.google-apps.'
 
 
-def isNetworkUp(ctx):
+def getConnectionMode(ctx):
+    mode, connection = OFFLINE, None
     connector = ctx.ServiceManager.createInstance('com.sun.star.connection.Connector')
     try:
         connection = connector.connect('socket,host=%s,port=80' % g_host)
-        if connection:
-            connection.close()
-            return True
-        return False
-    except NoConnectException as e:
-        return False
+    except NoConnectException:
+        pass
+    if connection:
+        connection.close()
+        mode = ONLINE
+    return mode
 
 def getUser(session):
     status, user = False, {}
