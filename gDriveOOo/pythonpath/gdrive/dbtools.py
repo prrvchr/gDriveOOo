@@ -228,13 +228,12 @@ def parseDateTime(timestr=None, format=u'%Y-%m-%dT%H:%M:%S.%fZ'):
     return _getDateTime(t.microsecond, t.second, t.minute, t.hour, t.day, t.month, t.year)
 
 def unparseDateTime(t):
+    millisecond = 0
     if hasattr(t, 'HundredthSeconds'):
         millisecond = t.HundredthSeconds * 10
     elif hasattr(t, 'NanoSeconds'):
         millisecond = t.NanoSeconds // 1000000
-    else:
-        millisecond = '000'
-    return '%s-%s-%sT%s:%s:%s.%sZ' % (t.Year, t.Month, t.Day, t.Hours, t.Minutes, t.Seconds, millisecond)
+    return '%s-%s-%sT%s:%s:%s.%03dZ' % (t.Year, t.Month, t.Day, t.Hours, t.Minutes, t.Seconds, millisecond)
 
 def _getDateTime(microsecond=0, second=0, minute=0, hour=0, day=1, month=1, year=1970, utc=True):
     t = uno.createUnoStruct('com.sun.star.util.DateTime')

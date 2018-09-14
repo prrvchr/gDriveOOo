@@ -74,11 +74,13 @@ def getItem(session, id):
 
 def getUploadLocation(session, id, data):
     location = None
-    url = '%s/%s' % (g_upload, id) if data is None else g_upload
+    #url = '%s/%s' % (g_upload, id) if data is None else g_upload
+    url = '%s/%s' % (g_upload, id)
     print("google.getUploadLocation()1: %s" % (id, ))
     params = {'uploadType': 'resumable'}
     r = session.patch(url, params=params, json=data)
     print("contenttools.getUploadLocation()2 %s - %s" % (r.status_code, r.headers))
+    print("contenttools.getUploadLocation()3 %s - %s" % (r.content, data))
     if r.status_code == requests.codes.ok and 'Location' in r.headers:
         location = r.headers['Location']
     return location

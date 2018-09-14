@@ -26,7 +26,7 @@ def getSession(ctx, scheme, username):
 def uploadItem(ctx, session, stream, content, id, size, new=False):
     data, headers = None, {'X-Upload-Content-Length': '%s' % size}
     if new:
-        data = {'id': id}
+        data = {}
         row = getContentProperties(content, ('Name', 'DateCreated', 'DateModified', 'MediaType'))
         headers['X-Upload-Content-Type'] = row.getString(4)
         data['name'] = row.getString(1)
