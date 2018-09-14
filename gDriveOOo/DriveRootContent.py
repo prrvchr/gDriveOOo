@@ -17,7 +17,7 @@ from gdrive import getDbConnection, parseDateTime, isChild, getChildSelect, getL
 from gdrive import updateChildren, createService, getSimpleFile, getResourceLocation
 from gdrive import getUcb, getCommandInfo, getProperty, getContentInfo, getContent
 from gdrive import propertyChange, getPropertiesValues, setPropertiesValues, uploadItem
-from gdrive import createNewContent, getContentProperties, setContentProperties, getSession
+from gdrive import createNewContent, setContentProperties, getSession
 
 #from gdrive import PyPropertiesChangeNotifier, PyPropertySetInfoChangeNotifier, PyCommandInfoChangeNotifier, PyPropertyContainer, PyDynamicResultSet
 import traceback
@@ -40,19 +40,23 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
             self.Identifier = None
             
             self.ContentType = 'application/vnd.google-apps.folder-root'
+            self.Name = 'Sans Nom'
             self.IsFolder = True
             self.IsDocument = False
-            self.Name = 'Sans Nom'
-            
+            self.DateCreated = parseDateTime()
+            self.DateModified = parseDateTime()
             self.MediaType = 'application/vnd.google-apps.folder'
             self.Size = 0
-            self.DateModified = parseDateTime()
-            self.DateCreated = parseDateTime()
+            
             self._IsRead = False
             self.IsWrite = False
+            
+            self.CanAddChild = False
             self.CanRename = False
+            self.IsReadOnly = True
             self.IsVersionable = False
-            self.CreatableContentsInfo = self._getCreatableContentsInfo()
+            
+            self._NewTitle = ''
             
             self.IsHidden = False
             self.IsVolume = False
@@ -71,6 +75,7 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
             
             self.Statement = None
             self.initialize(namedvalues)
+            self.CreatableContentsInfo = self._getCreatableContentsInfo()
             msg = "DriveRootContent loading Uri: %s ... Done" % self.Identifier.getContentIdentifier()
             self.Logger.logp(level, "DriveRootContent", "__init__()", msg)
             print("DriveRootContent.__init__()")
@@ -125,8 +130,8 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
         print("DriveRootContent.queryCreatableContentsInfo():*************************")
         return self.CreatableContentsInfo
     def createNewContent(self, contentinfo):
-        print("DriveRootContent.createNewContent():************************* %s" % contentinfo)
-        return createNewContent(self.ctx, self.Statement, self.Identifier.getContentIdentifier(), contentinfo)
+        print("DriveRootContent.createNewContent():************************* %s" % self._NewTitle)
+        return createNewContent(self.ctx, self.Statement, self.Identifier.getContentIdentifier(), contentinfo, self._NewTitle)
 
     # XContent
     def getIdentifier(self):
@@ -168,8 +173,8 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
             index, select = getChildSelect(connection, mode, self.Id, self.Identifier.getContentIdentifier(), True)
             return DynamicResultSet(self.ctx, self.Scheme, select, index)
         elif command.Name == 'createNewContent':
-            print("DriveRootContent.execute(): createNewContent %s" % command.Argument)
-            return createNewContent(self.ctx, self.Statement, self.Identifier.getContentIdentifier(), command.Argument)
+            print("DriveRootContent.execute(): createNewContent %s" % self._NewTitle)
+            return createNewContent(self.ctx, self.Statement, self.Identifier.getContentIdentifier(), command.Argument, self._NewTitle)
         elif command.Name == 'insert':
             print("DriveRootContent.execute() insert")
         elif command.Name == 'delete':
@@ -178,9 +183,12 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
             # Transfer command is only used for existing document (File Save)
             id = command.Argument.NewTitle
             source = command.Argument.SourceURL
+            #mri = self.ctx.ServiceManager.createInstance('mytools.Mri')
+            #mri.inspect(command.Argument)
             print("DriveRootContent.execute(): transfer: %s - %s" % (source, id))
             if not isChild(self.Statement.getConnection(), id, self.Id):
                 # For new document (File Save As) we use command: createNewContent and Insert
+                self._NewTitle = id
                 print("DriveRootContent.execute(): transfer copy: %s - %s" % (source, id))
                 raise InteractiveBadTransferURLException("Couln't handle Url: %s" % source, self)
             print("DriveRootContent.execute(): transfer: %s - %s" % (source, id))
@@ -266,14 +274,16 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
         return properties
 
     def _getCreatableContentsInfo(self):
-        bound = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.BOUND')
-        readonly = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.READONLY')
-        document = uno.getConstantByName('com.sun.star.ucb.ContentInfoAttribute.KIND_DOCUMENT')
-        folder = uno.getConstantByName('com.sun.star.ucb.ContentInfoAttribute.KIND_FOLDER')
-        foldertype = 'application/vnd.google-apps.folder'
-        documenttype = 'application/vnd.oasis.opendocument'
-        property = (getProperty('Title', 'string', bound), )
-        content = (getContentInfo(foldertype, folder, property), getContentInfo(documenttype, document, property))
+        content = ()
+        if self.CanAddChild:
+            bound = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.BOUND')
+            readonly = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.READONLY')
+            document = uno.getConstantByName('com.sun.star.ucb.ContentInfoAttribute.KIND_DOCUMENT')
+            folder = uno.getConstantByName('com.sun.star.ucb.ContentInfoAttribute.KIND_FOLDER')
+            foldertype = 'application/vnd.google-apps.folder'
+            documenttype = 'application/vnd.oasis.opendocument'
+            property = (getProperty('Title', 'string', bound), )
+            content = (getContentInfo(foldertype, folder, property), getContentInfo(documenttype, document, property))
         return content
 
     # XServiceInfo

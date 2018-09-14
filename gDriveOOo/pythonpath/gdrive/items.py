@@ -18,26 +18,17 @@ def selectRoot(connection, username):
     return retrived, root
 
 def mergeRoot(connection, user, item):
-    try:
-        print("items.mergeRoot(): 1")
-        merge = connection.prepareCall('CALL "mergeRoot"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-        print("items.mergeRoot(): 2")
-        merge.setString(1, user['Id'])
-        merge.setString(2, user['UserName'])
-        merge.setString(3, user['DisplayName'])
-        dummy = _setCallParameters(merge, item, 4)
-        print("items.mergeRoot(): 3")
-        result = merge.executeQuery()
-        print("items.mergeRoot(): 4")
-        retrived, root = False, {}
-        if result.next():
-            print("items.mergeRoot(): 5")
-            retrived, root = True, getItemFromResult(result)
-        merge.close()
-        print("items.mergeRoot(): 6")
-        return retrived, root
-    except Exception as e:
-        print("items.mergeRoot().Error: %s - %s" % (e, traceback.print_exc()))
+    merge = connection.prepareCall('CALL "mergeRoot"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    merge.setString(1, user['Id'])
+    merge.setString(2, user['UserName'])
+    merge.setString(3, user['DisplayName'])
+    dummy = _setCallParameters(merge, item, 4)
+    result = merge.executeQuery()
+    retrived, root = False, {}
+    if result.next():
+        retrived, root = True, getItemFromResult(result)
+    merge.close()
+    return retrived, root
 
 def selectItem(connection, userid, itemid):
     select = connection.prepareCall('CALL "selectItem"(?, ?)')

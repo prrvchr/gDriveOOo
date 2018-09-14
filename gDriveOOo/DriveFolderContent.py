@@ -42,19 +42,23 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
             self.Identifier = None
 
             self.ContentType = 'application/vnd.google-apps.folder'
+            self.Name = 'Sans Nom'
             self.IsFolder = True
             self.IsDocument = False
-            self.Name = 'Sans Nom'
-            
+            self.DateCreated = parseDateTime()
+            self.DateModified = parseDateTime()
             self.MediaType = 'application/vnd.google-apps.folder'
             self.Size = 0
-            self.DateModified = parseDateTime()
-            self.DateCreated = parseDateTime()
+            
             self._IsRead = False
-            self.IsWrite = False
+            self._IsWrite = False
+            
+            self.CanAddChild = False
             self.CanRename = False
+            self.IsReadOnly = True
             self.IsVersionable = False
-            self.CreatableContentsInfo = self._getCreatableContentsInfo()
+            
+            self._NewTitle = ''
 
             self.IsHidden = False
             self.IsVolume = False
@@ -62,7 +66,7 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
             self.IsRemoveable = False
             self.IsFloppy = False
             self.IsCompactDisc = False
-
+            
             self._commandInfo = self._getCommandInfo()
             self._propertySetInfo = self._getPropertySetInfo()
             self.listeners = []
@@ -73,6 +77,8 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
             
             self.Statement = None
             self.initialize(namedvalues)
+            
+            self.CreatableContentsInfo = self._getCreatableContentsInfo()
             msg = "DriveFolderContent loading Uri: %s ... Done" % self.Identifier.getContentIdentifier()
             self.Logger.logp(level, "DriveFolderContent", "__init__()", msg)
             print(msg)
@@ -126,8 +132,8 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
         print("DriveFolderContent.queryCreatableContentsInfo():*************************")
         return self.CreatableContentsInfo
     def createNewContent(self, contentinfo):
-        print("DriveFolderContent.createNewContent():************************* %s" % contentinfo)
-        return createNewContent(self.ctx, self.Statement, self.Identifier.getContentIdentifier(), contentinfo)
+        print("DriveFolderContent.createNewContent():************************* %s" % self._NewTitle)
+        return createNewContent(self.ctx, self.Statement, self.Identifier.getContentIdentifier(), contentinfo, self._NewTitle)
 
     # XChild
     def getParent(self):
@@ -177,7 +183,7 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
             return DynamicResultSet(self.ctx, self.Scheme, select, index)
         elif command.Name == 'createNewContent':
             print("DriveFolderContent.execute(): createNewContent %s" % command.Argument)
-            return createNewContent(self.ctx, self.Statement, self.Identifier.getContentIdentifier(), command.Argument)
+            return createNewContent(self.ctx, self.Statement, self.Identifier.getContentIdentifier(), command.Argument, self._NewTitle)
         elif command.Name == 'insert':
             print("DriveFolderContent.execute() insert")
             #identifier = self.Identifier.getParent()
@@ -198,6 +204,7 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
             print("DriveFolderContent.execute(): transfer: %s - %s" % (source, id))
             if not isChild(self.Statement.getConnection(), id, self.Id):
                 # For new document (File Save As) we use command: createNewContent and Insert
+                self._NewTitle = id
                 print("DriveFolderContent.execute(): transfer copy: %s - %s" % (source, id))
                 raise InteractiveBadTransferURLException("Couln't handle Url: %s" % source, self)
             print("DriveFolderContent.execute(): transfer: %s - %s" % (source, id))
@@ -276,13 +283,15 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
         return properties
 
     def _getCreatableContentsInfo(self):
-        bound = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.BOUND')
-        document = uno.getConstantByName('com.sun.star.ucb.ContentInfoAttribute.KIND_DOCUMENT')
-        folder = uno.getConstantByName('com.sun.star.ucb.ContentInfoAttribute.KIND_FOLDER')
-        foldertype = 'application/vnd.google-apps.folder'
-        documenttype = 'application/vnd.oasis.opendocument'
-        properties = (getProperty('Title', 'string', bound), )
-        content = (getContentInfo(foldertype, folder, properties), getContentInfo(documenttype, document, properties))
+        content = ()
+        if self.CanAddChild:
+            bound = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.BOUND')
+            document = uno.getConstantByName('com.sun.star.ucb.ContentInfoAttribute.KIND_DOCUMENT')
+            folder = uno.getConstantByName('com.sun.star.ucb.ContentInfoAttribute.KIND_FOLDER')
+            foldertype = 'application/vnd.google-apps.folder'
+            documenttype = 'application/vnd.oasis.opendocument'
+            properties = (getProperty('Title', 'string', bound), )
+            content = (getContentInfo(foldertype, folder, properties), getContentInfo(documenttype, document, properties))
         return content
 
 

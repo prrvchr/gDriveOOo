@@ -40,17 +40,28 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
             self.Identifier = None
             
             self.ContentType = 'application/vnd.oasis.opendocument'
+            self.Name = 'Sans Nom'
             self.IsFolder = False
             self.IsDocument = True
-            self.Name = 'Sans Nom'
-            
-            self.MediaType = None
-            self._Size = 0
-            self.DateModified = parseDateTime()
             self.DateCreated = parseDateTime()
+            self.DateModified = parseDateTime()
+            self.MediaType = 'application/octet-stream'
+            self._Size = 0
             
-            self.CreatableContentsInfo = self._getCreatableContentsInfo()
-            self.IsReadOnly = False
+            self._IsRead = False
+            self._IsWrite = False
+            
+            self.CanAddChild = False
+            self.CanRename = False
+            self.IsReadOnly = True
+            self.IsVersionable = False
+            
+            self.IsHidden = False
+            self.IsVolume = False
+            self.IsRemote = False
+            self.IsRemoveable = False
+            self.IsFloppy = False
+            self.IsCompactDisc = False
             
             self._commandInfo = self._getCommandInfo()
             self._propertySetInfo = self._getPropertySetInfo()
@@ -63,20 +74,10 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
             #self.Author = 'prrvchr'
             #self.Keywords = 'clefs de recherche'
             #self.Subject = 'Test de Google DriveOfficeContent'
-            self.IsVersionable = False
             self._CmisProperties = None
-            self.CanRename = False
-            self._IsWrite = False
-            self._IsRead = False
-            
-            self.IsHidden = False
-            self.IsVolume = False
-            self.IsRemote = False
-            self.IsRemoveable = False
-            self.IsFloppy = False
-            self.IsCompactDisc = False
             
             self.initialize(namedvalues)
+            self.CreatableContentsInfo = self._getCreatableContentsInfo()
             
             self.ObjectId = self.Id
             self.CanCheckOut = True
@@ -86,7 +87,9 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
             self.BaseURI = self.Identifier.getContentIdentifier()
             parent = self.Identifier.getParent()
             baseuri = parent.getContentIdentifier()
-            self.CasePreservingURL = '%s%s' % (baseuri, parent.Id) if baseuri.endswith('/') else '%s/%s' % (baseuri, parent.Id)
+            #self.CasePreservingURL = '%s%s' % (baseuri, parent.Id) if baseuri.endswith('/') else '%s/%s' % (baseuri, parent.Id)
+            #self.CasePreservingURL = self.Identifier.getContentIdentifier()
+            self.CasePreservingURL = False
             msg = "DriveOfficeContent loading Uri: %s ... Done" % self.Identifier.getContentIdentifier()
             self.Logger.logp(level, "DriveOfficeContent", "__init__()", msg)            
             print("DriveOfficeContent.__init__()")
@@ -113,7 +116,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
         return self._CmisProperties
     @property
     def Title(self):
-        return self.Name
+        return self.Identifier.Id
     @Title.setter
     def Title(self, title):
         propertyChange(self, 'Name', self.Name, title)
@@ -211,6 +214,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
             elif command.Name == 'insert':
                 # The Insert command is only used to create a new document (File Save As)
                 # it saves content from createNewContent from the parent folder
+                print("DriveDocumentContent.execute(): insert %s" % command.Argument)
                 stream = command.Argument.Data
                 replace = command.Argument.ReplaceExisting
                 if stream.queryInterface(uno.getTypeByName('com.sun.star.io.XInputStream')):
@@ -279,7 +283,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
         return url
 
     def _getMediaType(self, stream):
-        mediatype = "application/octet-stream"
+        mediatype = 'application/octet-stream'
         detection = self.ctx.ServiceManager.createInstance('com.sun.star.document.TypeDetection')
         descriptor = (getPropertyValue('InputStream', stream), )
         format, dummy = detection.queryTypeByDescriptor(descriptor, True)
@@ -338,7 +342,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
 #        properties['CanCheckIn'] = getProperty('CanCheckIn', 'boolean', bound)
 #        properties['CanCancelCheckOut'] = getProperty('CanCancelCheckOut', 'boolean', bound)
         properties['ObjectId'] = getProperty('ObjectId', 'string', bound | readonly)
-        properties['CasePreservingURL'] = getProperty('CasePreservingURL', 'string', bound | readonly)
+        properties['CasePreservingURL'] = getProperty('CasePreservingURL', 'boolean', bound | readonly)
         properties['CreatableContentsInfo'] = getProperty('CreatableContentsInfo', '[]com.sun.star.ucb.ContentInfo', bound | readonly)
 #        properties['Author'] = getProperty('Author', 'string', bound)
 #        properties['Keywords'] = getProperty('Keywords', 'string', bound)
@@ -378,15 +382,17 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
 #            listener.propertySetInfoChange(event)
 
     def _getCreatableContentsInfo(self):
-        bound = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.BOUND')
-        readonly = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.READONLY')
-        document = uno.getConstantByName('com.sun.star.ucb.ContentInfoAttribute.KIND_DOCUMENT')
-        folder = uno.getConstantByName('com.sun.star.ucb.ContentInfoAttribute.KIND_FOLDER')
-        foldertype = 'application/vnd.google-apps.folder'
-        documenttype = 'application/vnd.oasis.opendocument'
-        folderproperties = (getProperty('Title', 'string', bound), )
-        documentproperties = (getProperty('Title', 'string', bound), )
-        content = (getContentInfo(documenttype, document, documentproperties), )
+        content = ()
+        if self.CanAddChild:
+            bound = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.BOUND')
+            readonly = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.READONLY')
+            document = uno.getConstantByName('com.sun.star.ucb.ContentInfoAttribute.KIND_DOCUMENT')
+            folder = uno.getConstantByName('com.sun.star.ucb.ContentInfoAttribute.KIND_FOLDER')
+            foldertype = 'application/vnd.google-apps.folder'
+            documenttype = 'application/vnd.oasis.opendocument'
+            folderproperties = (getProperty('Title', 'string', bound), )
+            documentproperties = (getProperty('Title', 'string', bound), )
+            content = (getContentInfo(documenttype, document, documentproperties), )
         return content
 
     # XServiceInfo

@@ -27,12 +27,12 @@ def uploadItem(ctx, session, stream, content, id, size, new=False):
     data, headers = None, {'X-Upload-Content-Length': '%s' % size}
     if new:
         data = {'id': id}
-        row = getContentProperties(content, ('MediaType', 'Name', 'DateCreated', 'DateModified', 'Identifier'))
-        headers['X-Upload-Content-Type'] = row.getString(1)
-        data['name'] = row.getString(2)
-        data['createdTime'] = unparseDateTime(row.getTimestamp(3))
-        data['modifiedTime'] = unparseDateTime(row.getTimestamp(4))
-        data['parents'] = [row.getObject(5, None).getParent().Id]
+        row = getContentProperties(content, ('Name', 'DateCreated', 'DateModified', 'MediaType'))
+        headers['X-Upload-Content-Type'] = row.getString(4)
+        data['name'] = row.getString(1)
+        data['createdTime'] = unparseDateTime(row.getTimestamp(2))
+        data['modifiedTime'] = unparseDateTime(row.getTimestamp(3))
+        data['parents'] = [content.getIdentifier().getParent().Id]
     session.headers.update(headers)
     location = getUploadLocation(session, id, data)
     if location is not None:
@@ -41,65 +41,70 @@ def uploadItem(ctx, session, stream, content, id, size, new=False):
         pump.setOutputStream(OutputStream(session, location, size))
         pump.start()
 
-def createNewContent(ctx, statement, identifier, contentinfo):
-    print("contenttools._createNewContent()")
-    item = {'Identifier': getUcb(ctx).createContentIdentifier('%s#' % identifier)}
-    if contentinfo.Type == 'application/vnd.google-apps.folder':
-        item.update({'Statement': statement})
-        name = 'com.gmail.prrvchr.extensions.gDriveOOo.DriveFolderContent'
-    elif contentinfo.Type == 'application/vnd.oasis.opendocument':
-        name = 'com.gmail.prrvchr.extensions.gDriveOOo.DriveOfficeContent'
-    return createService(name, ctx, **item)
+def createNewContent(ctx, statement, identifier, contentinfo, title):
+    try:
+        print("contenttools._createNewContent() 1")
+        id = getUcb(ctx).createContentIdentifier('%s#' % identifier)
+        item = {'Identifier': id}
+        if contentinfo.Type == 'application/vnd.google-apps.folder':
+            item.update({'Statement': statement})
+            name = 'com.gmail.prrvchr.extensions.gDriveOOo.DriveFolderContent'
+        elif contentinfo.Type == 'application/vnd.oasis.opendocument':
+            item.update({'Name': title})
+            name = 'com.gmail.prrvchr.extensions.gDriveOOo.DriveOfficeContent'
+        content = createService(name, ctx, **item)
+        print("contenttools._createNewContent() 2")
+        return content
+    except Exception as e:
+        print("contenttools.createNewContent().Error: %s - %s" % (e, traceback.print_exc()))
 
 def mergeContent(ctx, connection, event, userid):
     result = False
     if event.PropertyName == 'Id':
-        properties = ('Identifier', 'Name', 'DateCreated', 'DateModified', 'MediaType',
-                      'IsReadOnly', 'CanRename', 'IsFolder', 'Size', 'IsVersionable')
+        properties = ('Name', 'DateCreated', 'DateModified', 'MediaType','Size',
+                      'CanAddChild', 'CanRename', 'IsReadOnly', 'IsVersionable')
         row = getContentProperties(event.Source, properties)
-        identifier = row.getObject(1, None)
         item = {'Id': event.NewValue}
-        item['Name'] = row.getString(2)
-        item['DateCreated'] = row.getTimestamp(3)
-        item['DateModified'] = row.getTimestamp(4)
-        item['MediaType'] = row.getString(5)
-        item['IsReadOnly'] = row.getBoolean(6)
+        item['Name'] = row.getString(1)
+        item['DateCreated'] = row.getTimestamp(2)
+        item['DateModified'] = row.getTimestamp(3)
+        item['MediaType'] = row.getString(4)
+        item['Size'] = row.getLong(5)
+        item['Parents'] = (event.Source.getIdentifier().getParent().Id, )
+        item['CanAddChild'] = row.getBoolean(6)
         item['CanRename'] = row.getBoolean(7)
-        item['IsFolder'] = row.getBoolean(8)
-        item['Size'] = row.getLong(9)
-        item['IsVersionable'] = row.getBoolean(10)
-        item['Parents'] = (identifier.getParent().Id, )
-        merge = connection.prepareCall('CALL "mergeItem"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+        item['IsReadOnly'] = row.getBoolean(8)
+        item['IsVersionable'] = row.getBoolean(9)
+        merge = connection.prepareCall('CALL "mergeItem"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
         insert = connection.prepareCall('CALL "insertChild"(?, ?, ?)')
-        result = all((mergeItem(merge, item), updateParent(insert, item), updateIdentifier(connection, userid, event.NewValue)))
+        result = all((mergeItem(merge, userid, item),
+                      updateParent(insert, item),
+                      updateIdentifier(connection, userid, event.NewValue)))
     elif event.PropertyName  == 'Name':
-        id = getContentProperties(event.Source, ('Id', )).getString(1)
         update = connection.prepareCall('CALL "updateName"(?, ?, ?)')
-        update.setString(1, id)
+        update.setString(1, event.Source.getIdentifier().Id)
         update.setString(2, event.NewValue)
         update.execute()
         result = update.getLong(3)
-    elif event.PropertyName == 'IsWrite':
-        id = getContentProperties(event.Source, ('Id', )).getString(1)
-        update = connection.prepareCall('CALL "updateIsWrite"(?, ?, ?)')
-        update.setString(1, userid)
-        update.setString(2, id)
-        update.execute()
-        result = update.getLong(3)
     elif event.PropertyName == 'Size':
-        id = getContentProperties(event.Source, ('Id', )).getString(1)
         update = connection.prepareCall('CALL "updateSize"(?, ?, ?)')
-        update.setString(1, id)
+        update.setString(1, event.Source.getIdentifier().Id)
         update.setLong(2, event.NewValue)
         update.execute()
         result = update.getLong(3)
     elif event.PropertyName  == 'IsRead':
-        id = getContentProperties(event.Source, ('Id', )).getString(1)
         update = connection.prepareCall('CALL "updateIsRead"(?, ?, ?)')
-        update.setString(1, id)
+        update.setString(1, event.Source.getIdentifier().Id)
         update.setBoolean(2, event.NewValue)
         update.execute()
         result = update.getLong(3)
+    elif event.PropertyName == 'IsWrite':
+        update = connection.prepareCall('CALL "updateIsWrite"(?, ?, ?, ?)')
+        update.setString(1, userid)
+        update.setString(2, event.Source.getIdentifier().Id)
+        update.setBoolean(3, event.NewValue)
+        update.execute()
+        result = update.getLong(4)
     return result
 
 def propertyChange(source, name, oldvalue, newvalue):
