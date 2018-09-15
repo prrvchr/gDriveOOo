@@ -23,18 +23,21 @@ def getSession(ctx, scheme, username):
     session.auth = OAuth2Ooo(ctx, scheme, username)
     return session
 
-def uploadItem(ctx, session, stream, content, id, size, new=False):
+def uploadItem(ctx, session, stream, content, size, new=False):
+    identifier = content.getIdentifier()
     data, headers = None, {'X-Upload-Content-Length': '%s' % size}
     if new:
         data = {}
         row = getContentProperties(content, ('Name', 'DateCreated', 'DateModified', 'MediaType'))
-        headers['X-Upload-Content-Type'] = row.getString(4)
+        data['id'] = identifier.Id
         data['name'] = row.getString(1)
         data['createdTime'] = unparseDateTime(row.getTimestamp(2))
         data['modifiedTime'] = unparseDateTime(row.getTimestamp(3))
-        data['parents'] = [content.getIdentifier().getParent().Id]
+        data['mimeType'] = row.getString(4)
+        data['parents'] = [identifier.getParent().Id]
+        headers['X-Upload-Content-Type'] = row.getString(4)
     session.headers.update(headers)
-    location = getUploadLocation(session, id, data)
+    location = getUploadLocation(session, identifier.Id, data)
     if location is not None:
         pump = getPump(ctx)
         pump.setInputStream(stream)

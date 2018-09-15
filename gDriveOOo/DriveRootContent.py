@@ -208,16 +208,18 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
                 print("DriveRootContent.execute(): transfer: 4")
                 size = sf.getSize(target)
                 print("DriveRootContent.execute(): transfer: 5")
+                updated = {'Size': size}
                 if self.Identifier.ConnectionMode == ONLINE:
                     print("DriveRootContent.execute(): transfer: 6")
-                    stream = sf.openFileRead(target)
-                    print("DriveRootContent.execute(): transfer: 7")
                     with getSession(self.ctx, self.Scheme, self.Identifier.UserName) as session:
+                        print("DriveRootContent.execute(): transfer: 7")
+                        stream = sf.openFileRead(target)
                         print("DriveRootContent.execute(): transfer: 8")
-                        uploadItem(self.ctx, session, stream, content, id, size, False)
+                        uploadItem(self.ctx, session, stream, content, size, False)
                 else:
                     print("DriveRootContent.execute(): transfer: 9")
-                    setContentProperties(content, {'Size': size, 'IsWrite': True})
+                    updated.update({'IsWrite': True})
+                setContentProperties(content, updated)
                 print("DriveRootContent.execute(): transfer: Fin")
                 if command.Argument.MoveData:
                     pass #must delete object

@@ -224,15 +224,16 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
                     self.MediaType = self._getMediaType(stream)
                     stream.closeInput()
                     self.Size = sf.getSize(target)
-                    self.IsWrite = True
                     self.IsRead = True
+                    if self.Identifier.ConnectionMode == ONLINE:
+                        with getSession(self.ctx, self.Scheme, self.Identifier.UserName) as session:
+                            stream = sf.openFileRead(target)
+                            uploadItem(self.ctx, session, stream, self, self.Size, True)
+                    else:
+                        self.IsWrite = True
                     ucp = getUcp(self.ctx, self.Identifier.getContentIdentifier())
                     self.addPropertiesChangeListener(('Id', 'IsWrite', 'IsRead', 'Title', 'Size'), ucp)
                     self.Id = self.Id
-                    if self.Identifier.ConnectionMode == ONLINE:
-                        stream = sf.openFileRead(target)
-                        with getSession(self.ctx, self.Scheme, self.Identifier.UserName) as session:
-                            uploadItem(self.ctx, session, stream, self, self.Id, self.Size, True)
             elif command.Name == 'addProperty':
                 print("DriveOfficeContent.addProperty():")
             elif command.Name == 'removeProperty':

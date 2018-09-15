@@ -219,12 +219,14 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
                 identifier = ucb.createContentIdentifier('%s/%s' % (self.Identifier.getContentIdentifier(), id))
                 content = ucb.queryContent(identifier)
                 size = sf.getSize(target)
+                updated = {'Size': size}
                 if self.Identifier.ConnectionMode == ONLINE:
-                    stream = sf.openFileRead(target)
                     with getSession(self.ctx, self.Scheme, self.Identifier.UserName) as session:
-                        uploadItem(self.ctx, session, stream, content, id, size, False)               
+                        stream = sf.openFileRead(target)
+                        uploadItem(self.ctx, session, stream, content, size, False)
                 else:
-                    setContentProperties(content, {'Size': size, 'IsWrite': True})
+                    updated.update({'IsWrite': True})
+                setContentProperties(content, updated)
                 print("DriveFolderContent.execute(): transfer: Fin")
                 if command.Argument.MoveData:
                     pass #must delete object
