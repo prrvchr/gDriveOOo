@@ -32,9 +32,11 @@ Edit or change "true" to "false" (set it to "false")
 
 ### Open your Google Drive:
 
-In File - Open - File name enter: vnd.google-apps://youraccount@gmail.com/
+In File - Open - File name enter: vnd.google-apps://youraccount@gmail.com/ or vnd.google-apps:///
 
-Normally Google Drive should open!!!
+If you don't give your Google account, you will be asked for...
+
+After authorizing the OAuthOOo application to access your Drive, your Google Drive should open!!! normally  ;-)
 
 ## Has been tested with:
 
