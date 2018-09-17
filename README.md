@@ -19,11 +19,15 @@ Restart LibreOffice / OpenOffice after installation.
 ### Configure Open / Save dialogs:
 
 #### For OpenOffice or LibreOffice V5.0 and before:
+
 In menu Tools - Options - Libre/OpenOffice - General: check use Libre/OpenOffice dialogs.
 
 #### For LibreOffice V6.0 and above:
+
 In menu Tools - Options - LibreOffice - Advanced - Open Expert Configuration
+
 Search for: UseSystemFileDialog (Found under: org.openoffice.Office.Common > Misc)
+
 Edit or change "true" to "false" (set it to "false")
 
 ### Open your Google Drive:
