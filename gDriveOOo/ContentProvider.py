@@ -275,14 +275,14 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
             if name:
                 service = 'com.gmail.prrvchr.extensions.gDriveOOo.%s' % name
                 content = createService(service, self.ctx, **item)
-                content.addPropertiesChangeListener(('IsWrite', 'IsRead', 'Name', 'Size'), self)
+                content.addPropertiesChangeListener(('IsWrite', 'ConnectionMode', 'Name', 'Size'), self)
                 self.cachedContent[id] = content
         return ret, content
 
     def _createNewContent(self, identifier):
         item = {'Name': identifier.Name, 'Identifier': identifier}
         content = createService('com.gmail.prrvchr.extensions.gDriveOOo.DriveOfficeContent', self.ctx, **item)
-        content.addPropertiesChangeListener(('IsWrite', 'IsRead', 'Name', 'Size'), self)
+        content.addPropertiesChangeListener(('IsWrite', 'ConnectionMode', 'Name', 'Size'), self)
         self.cachedContent[identifier.Id] = content
         return True, content
 

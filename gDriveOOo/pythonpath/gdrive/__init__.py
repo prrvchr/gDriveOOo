@@ -15,7 +15,7 @@
 
 from .cmislib import CmisDocument
 
-from .dbtools import getDbConnection, parseDateTime, registerDataBase
+from .dbtools import getDbConnection, parseDateTime, unparseDateTime, registerDataBase
 
 from .items import selectRoot, mergeRoot, selectItem, insertItem
 
@@ -32,7 +32,7 @@ from .contenttools import getContent, getContentEvent, getCmisProperty, getComma
 from .contenttools import setContentProperties, getContentInfo
 from .contenttools import mergeContent, propertyChange, uploadItem, createNewContent, getSession
 
-from .google import InputStream, getUser, getItem, g_folder, getConnectionMode
+from .google import InputStream, getUser, getItem, g_folder, getConnectionMode, updateItem
 
 from .logger import getLogger, getLoggerSetting, setLoggerSetting, getLoggerUrl
 

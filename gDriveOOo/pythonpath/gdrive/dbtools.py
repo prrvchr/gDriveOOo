@@ -211,7 +211,7 @@ def getItemFromResult(result):
             value = result.getTimestamp(index)
         elif dbtype == 'BOOLEAN':
             value = result.getBoolean(index)
-        elif dbtype == 'BIGINT':
+        elif dbtype == 'BIGINT' or dbtype == 'SMALLINT':
             value = result.getLong(index)
         else:
             value = result.getObject(index, None)

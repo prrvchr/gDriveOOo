@@ -3,7 +3,7 @@
 
 import uno
 
-from com.sun.star.ucb.ConnectionMode import OFFLINE
+from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
 
 from .items import mergeItem
 from .google import ChildGenerator, g_folder
@@ -23,13 +23,15 @@ def isChild(connection, id, parent):
     return ischild
 
 def updateChildren(connection, session, userid, id):
+    mode = ONLINE
     merge = connection.prepareCall('CALL "mergeItem"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
     insert = connection.prepareCall('CALL "insertChild"(?, ?, ?)')
-    result = all(updateChild(merge, insert, userid, item) for item in ChildGenerator(session, id))
+    if all(updateChild(merge, insert, userid, item) for item in ChildGenerator(session, id)):
+        mode = OFFLINE
     merge.close()
     insert.close()
     session.close()
-    return result
+    return mode
 
 def updateChild(merge, insert, userid, item):
     return all((mergeItem(merge, userid, item), updateParent(insert, item)))
@@ -56,7 +58,7 @@ def getChildSelect(connection, mode, id, uri, isroot):
         # select return RowCount as OUT parameter in select.getLong(index)!!!
         # Never managed to run the next line:
         #select.ResultSetType = uno.getConstantByName('com.sun.star.sdbc.ResultSetType.SCROLL_INSENSITIVE')
-        # selectChild(IN ID VARCHAR(100),IN URL VARCHAR(250),IN OFFLINE BOOLEAN,OUT ROWCOUNT SMALLINT)
+        # selectChild(IN ID VARCHAR(100),IN URL VARCHAR(250),IN MODE SMALLINT,OUT ROWCOUNT SMALLINT)
         select.setString(index, id)
         index += 1
         # "TargetURL" is done by CONCAT(uri,id)... The root uri already ends with a '/' ...
@@ -65,7 +67,7 @@ def getChildSelect(connection, mode, id, uri, isroot):
         # "IsFolder" is done by comparing MediaType with g_folder 'application/vnd.google-apps.folder' ...
         select.setString(index, g_folder)
         index += 1
-        select.setBoolean(index, mode == OFFLINE)
+        select.setLong(index, mode)
         index += 1
         return index, select
     except Exception as e:

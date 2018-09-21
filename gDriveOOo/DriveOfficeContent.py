@@ -48,7 +48,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
             self.MediaType = 'application/octet-stream'
             self._Size = 0
             
-            self._IsRead = False
+            self._ConnectionMode = ONLINE
             self._IsWrite = False
             
             self.CanAddChild = False
@@ -129,12 +129,12 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
         propertyChange(self, 'Size', self._Size, size)
         self._Size = size
     @property
-    def IsRead(self):
-        return self._IsRead
-    @IsRead.setter
-    def IsRead(self, isread):
-        propertyChange(self, 'IsRead', self._IsRead, isread)
-        self._IsRead = isread
+    def ConnectionMode(self):
+        return self._ConnectionMode
+    @ConnectionMode.setter
+    def ConnectionMode(self, mode):
+        propertyChange(self, 'ConnectionMode', self._ConnectionMode, mode)
+        self._ConnectionMode = mode
     @property
     def IsWrite(self):
         return self._IsWrite
@@ -224,7 +224,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
                     self.MediaType = self._getMediaType(stream)
                     stream.closeInput()
                     self.Size = sf.getSize(target)
-                    self.IsRead = True
+                    self.ConnectionMode = OFFLINE
                     if self.Identifier.ConnectionMode == ONLINE:
                         with getSession(self.ctx, self.Scheme, self.Identifier.UserName) as session:
                             stream = sf.openFileRead(target)
@@ -232,7 +232,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
                     else:
                         self.IsWrite = True
                     ucp = getUcp(self.ctx, self.Identifier.getContentIdentifier())
-                    self.addPropertiesChangeListener(('Id', 'IsWrite', 'IsRead', 'Title', 'Size'), ucp)
+                    self.addPropertiesChangeListener(('Id', 'IsWrite', 'ConnectionMode', 'Title', 'Size'), ucp)
                     self.Id = self.Id
             elif command.Name == 'addProperty':
                 print("DriveOfficeContent.addProperty():")
@@ -280,7 +280,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
             stream = InputStream(self.ctx, self.Scheme, self.Identifier.UserName, self.Id, self.Size)
             sf.writeFile(url, stream)
             stream.closeInput()
-            self.IsRead = True
+            self.ConnectionMode = OFFLINE
         return url
 
     def _getMediaType(self, stream):
@@ -336,7 +336,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
         properties['DateModified'] = getProperty('DateModified', 'com.sun.star.util.DateTime', bound | readonly)
         properties['DateCreated'] = getProperty('DateCreated', 'com.sun.star.util.DateTime', bound | readonly)
         properties['IsReadOnly'] = getProperty('IsReadOnly', 'boolean', bound | readonly)
-        properties['IsRead'] = getProperty('IsRead', 'boolean', bound)
+        properties['ConnectionMode'] = getProperty('ConnectionMode', 'long', bound)
         properties['BaseURI'] = getProperty('BaseURI', 'string', bound | readonly)
         properties['TargetURL'] = getProperty('TargetURL', 'string', bound | readonly)
         properties['TitleOnServer'] = getProperty('TitleOnServer', 'string', bound)

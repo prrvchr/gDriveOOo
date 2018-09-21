@@ -19,7 +19,7 @@ from gdrive import getDbConnection, propertyChange, getChildSelect, parseDateTim
 from gdrive import updateChildren, createService, getSimpleFile, getResourceLocation, isChild
 from gdrive import getUcb, getCommandInfo, getProperty, getContentInfo, setContentProperties
 from gdrive import getContent, getContentEvent, setPropertiesValues
-from gdrive import getUcp, createNewContent, uploadItem, getSession
+from gdrive import getUcp, createNewContent, uploadItem, getSession, unparseDateTime
 
 import requests
 import traceback
@@ -50,7 +50,7 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
             self.MediaType = 'application/vnd.google-apps.folder'
             self.Size = 0
             
-            self._IsRead = False
+            self._ConnectionMode = ONLINE
             self._IsWrite = False
             
             self.CanAddChild = False
@@ -102,12 +102,12 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
         propertyChange(self, 'Name', self.Name, title)
         self.Name = title
     @property
-    def IsRead(self):
-        return self._IsRead
-    @IsRead.setter
-    def IsRead(self, isread):
-        propertyChange(self, 'IsRead', self._IsRead, isread)
-        self._IsRead = isread
+    def ConnectionMode(self):
+        return self._ConnectionMode
+    @ConnectionMode.setter
+    def ConnectionMode(self, mode):
+        propertyChange(self, 'ConnectionMode', self._ConnectionMode, mode)
+        self._ConnectionMode = mode
     @property
     def IsWrite(self):
         return self._IsWrite
@@ -175,9 +175,9 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
         elif command.Name == 'open':
             connection = self.Statement.getConnection()
             mode = self.Identifier.ConnectionMode
-            if mode == ONLINE and not self.IsRead:
-                session = getSession(self.ctx, self.Scheme, self.Identifier.UserName)
-                self.IsRead = updateChildren(connection, session, self.Identifier.UserId, self.Id)
+            if mode == ONLINE and self.ConnectionMode == ONLINE:
+                with getSession(self.ctx, self.Scheme, self.Identifier.UserName) as session:
+                    self.ConnectionMode = updateChildren(connection, session, self.Identifier.UserId, self.Id)
             # Not Used: command.Argument.Properties - Implement me ;-)
             index, select = getChildSelect(connection, mode, self.Id, self.Identifier.getContentIdentifier(), False)
             return DynamicResultSet(self.ctx, self.Scheme, select, index)
@@ -189,12 +189,16 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
             #identifier = self.Identifier.getParent()
             #action = uno.getConstantByName('com.sun.star.ucb.ContentAction.INSERTED')
             #event = getContentEvent(action, self, identifier)
-            self.IsWrite = True
-            ucp = getUcp(self.ctx, self.Identifier.getContentIdentifier())
-            self.addPropertiesChangeListener(('Id', 'IsWrite', 'IsRead', 'Name', 'Size'), ucp)
-            self.Id = self.Id
             if self.Identifier.ConnectionMode == ONLINE:
-                pass
+                with getSession(self.ctx, self.Scheme, self.Identifier.UserName) as session:
+                    data = {'id': self.Id, 'name': self.Name, 'createdTime': unparseDateTime(self.DateCreated),
+                            'modifiedTime': unparseDateTime(self.DateModified), 'mimeType': self.MediaType}
+                    updateItem(session, None, data)
+            else:
+                self.IsWrite = True
+            ucp = getUcp(self.ctx, self.Identifier.getContentIdentifier())
+            self.addPropertiesChangeListener(('Id', 'IsWrite', 'ConnectionMode', 'Name', 'Size'), ucp)
+            self.Id = self.Id
         elif command.Name == 'delete':
             print("DriveFolderContent.execute(): delete")
         elif command.Name == 'transfer':
@@ -273,7 +277,7 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
         properties['Size'] = getProperty('Size', 'long', bound | readonly)
         properties['DateModified'] = getProperty('DateModified', 'com.sun.star.util.DateTime', bound | readonly)
         properties['DateCreated'] = getProperty('DateCreated', 'com.sun.star.util.DateTime', bound | readonly)
-        properties['IsRead'] = getProperty('IsRead', 'boolean', bound)
+        properties['ConnectionMode'] = getProperty('ConnectionMode', 'long', bound)
         properties['CreatableContentsInfo'] = getProperty('CreatableContentsInfo', '[]com.sun.star.ucb.ContentInfo', bound | readonly)
 
         properties['IsHidden'] = getProperty('IsHidden', 'boolean', bound | readonly)

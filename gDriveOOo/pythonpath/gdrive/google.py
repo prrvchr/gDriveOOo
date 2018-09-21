@@ -85,6 +85,15 @@ def getUploadLocation(session, id, data):
         location = r.headers['Location']
     return location
 
+def updateItem(session, id=None, data={}):
+    result = False
+    url = '%sfiles' % g_url if id is None else '%sfiles/%s' % (g_url, id)
+    method = 'POST' if id is None else 'PATCH'
+    r = session.request(method, url, json=data)
+    if r.status_code == requests.codes.ok:
+        result = True
+    return result
+
 
 class IdGenerator():
     def __init__(self, session, count, space='drive'):

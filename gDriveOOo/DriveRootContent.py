@@ -48,7 +48,7 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
             self.MediaType = 'application/vnd.google-apps.folder'
             self.Size = 0
             
-            self._IsRead = False
+            self._ConnectionMode = ONLINE
             self.IsWrite = False
             
             self.CanAddChild = False
@@ -92,12 +92,12 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
     def Title(self):
         return self.Name
     @property
-    def IsRead(self):
-        return self._IsRead
-    @IsRead.setter
-    def IsRead(self, isread):
-        propertyChange(self, 'IsRead', self._IsRead, isread)
-        self._IsRead = isread
+    def ConnectionMode(self):
+        return self._ConnectionMode
+    @ConnectionMode.setter
+    def ConnectionMode(self, mode):
+        propertyChange(self, 'ConnectionMode', self._ConnectionMode, mode)
+        self._ConnectionMode = mode
 
     # XPropertyContainer
     def addProperty(self, name, attribute, default):
@@ -166,9 +166,11 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
         elif command.Name == 'open':
             connection = self.Statement.getConnection()
             mode = self.Identifier.ConnectionMode
-            if mode == ONLINE and not self.IsRead:
-                session = getSession(self.ctx, self.Scheme, self.Identifier.UserName)
-                self.IsRead = updateChildren(connection, session, self.Identifier.UserId, self.Id)
+            if mode == ONLINE and self.ConnectionMode == ONLINE:
+                print("DriveRootContent.execute(): open 1")
+                with getSession(self.ctx, self.Scheme, self.Identifier.UserName) as session:
+                    print("DriveRootContent.execute(): open 2")
+                    self.ConnectionMode = updateChildren(connection, session, self.Identifier.UserId, self.Id)
             # Not Used: command.Argument.Properties - Implement me ;-)
             index, select = getChildSelect(connection, mode, self.Id, self.Identifier.getContentIdentifier(), True)
             return DynamicResultSet(self.ctx, self.Scheme, select, index)
@@ -264,7 +266,7 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
         properties['Size'] = getProperty('Size', 'long', bound | readonly)
         properties['DateModified'] = getProperty('DateModified', 'com.sun.star.util.DateTime', bound | readonly)
         properties['DateCreated'] = getProperty('DateCreated', 'com.sun.star.util.DateTime', bound | readonly)
-        properties['IsRead'] = getProperty('IsRead', 'boolean', bound)
+        properties['ConnectionMode'] = getProperty('ConnectionMode', 'long', bound)
         properties['CreatableContentsInfo'] = getProperty('CreatableContentsInfo', '[]com.sun.star.ucb.ContentInfo', bound | readonly)
 
         properties['IsHidden'] = getProperty('IsHidden', 'boolean', bound | readonly)

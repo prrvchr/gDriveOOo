@@ -95,10 +95,10 @@ def mergeContent(ctx, connection, event, userid):
         update.setLong(2, event.NewValue)
         update.execute()
         result = update.getLong(3)
-    elif event.PropertyName  == 'IsRead':
-        update = connection.prepareCall('CALL "updateIsRead"(?, ?, ?)')
+    elif event.PropertyName  == 'ConnectionMode':
+        update = connection.prepareCall('CALL "updateConnectionMode"(?, ?, ?)')
         update.setString(1, event.Source.getIdentifier().Id)
-        update.setBoolean(2, event.NewValue)
+        update.setLong(2, event.NewValue)
         update.execute()
         result = update.getLong(3)
     elif event.PropertyName == 'IsWrite':
