@@ -3,6 +3,8 @@
 
 from .google import IdGenerator
 
+import traceback
+
 g_IdentifierRange = (10, 50)
 
 
@@ -31,13 +33,6 @@ def getIdentifier(connection, userid):
         id = result.getString(1)
     select.close()
     return id
-
-def updateIdentifier(connection, userid, id):
-    update = connection.prepareCall('CALL "updateIdentifier"(?, ?, ?)')
-    update.setString(1, userid)
-    update.setString(2, id)
-    update.execute()
-    return update.getLong(3)
 
 def _countIdentifier(connection, userid):
     count = 0

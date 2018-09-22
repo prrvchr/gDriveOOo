@@ -13,7 +13,7 @@ from com.sun.star.frame import XTerminateListener, TerminationVetoException
 from com.sun.star.sdb import XInteractionSupplyParameters
 
 from gdrive import ContentIdentifier, InteractionRequest
-from gdrive import getDbConnection, selectRoot, mergeRoot, selectItem, insertItem
+from gdrive import getDbConnection, selectUser, mergeUser, selectItem, insertItem
 from gdrive import getItem, mergeContent, checkIdentifiers, getIdentifier
 
 from gdrive import getUcb, setContentProperties
@@ -38,8 +38,8 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
         self.Scheme = None          #'vnd.google-apps'
         self.Statement = None
         self.Session = None
+        self._User = {}
         self._UserName = ''
-        self._Root = {}
         self.cachedContent = {}
         self.Logger = getLogger(self.ctx)
         self.ConnectionMode = getConnectionMode(self.ctx)
@@ -50,22 +50,19 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
         self.Logger.logp(level, "ContentProvider", "__init__()", msg)
 
     @property
-    def Root(self):
-        return self._Root
-    @Root.setter
-    def Root(self, root):
-        if self.UserId != root['UserId']:
-            self._Root = root
+    def User(self):
+        return self._User
+    @User.setter
+    def User(self, user):
+        if self.UserId != user['UserId']:
+            self._User = user
             checkIdentifiers(self.Statement.getConnection(), self.Session, self.UserId)
     @property
-    def RootId(self):
-        return self.Root['Id'] if 'Id' in self.Root else ''
-    @property
     def UserId(self):
-        return self.Root['UserId'] if 'UserId' in self.Root else ''
+        return self.User['UserId'] if 'UserId' in self.User else ''
     @property
     def UserName(self):
-        return self.Root['UserName'] if 'UserName' in self.Root else None
+        return self.User['UserName'] if 'UserName' in self.User else None
 
     # XParameterizedContentProvider
     def registerInstance(self, template, arguments, replace):
@@ -131,7 +128,7 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
             newidentifier = '%s%s' % (baseuri, id) if baseuri.endswith('/') else '%s/%s' % (baseuri, id)
             uri = getUri(self.ctx, newidentifier)
             print("ContentProvider.createContentIdentifier() isIdentifier ******* %s" % (newidentifier, ))
-        contentidentifier = ContentIdentifier(self.ctx, self.ConnectionMode, uri, self.UserId, self.UserName, self.RootId)
+        contentidentifier = ContentIdentifier(self.ctx, self.ConnectionMode, self.User, uri)
         msg = "Identifier: %s ... Done" % contentidentifier.getContentIdentifier()
         self.Logger.logp(level, "ContentProvider", "createContentIdentifier()", msg)
         return contentidentifier
@@ -143,9 +140,9 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
         msg = "Identifier: %s..." % identifier
         if not isIdentifier(self.Statement.getConnection(), identifier):
             raise IllegalIdentifierException('Identifier has illegal Path: %s' % identifier.getContentIdentifier(), self)
-        ret, content = self._getContent(identifier)
-        if not ret:
-            raise IllegalIdentifierException('Identifier has not been retrived: %s' % identifier.getContentIdentifier(), self)
+        retrieved, content = self._getContent(identifier)
+        if not retrieved:
+            raise IllegalIdentifierException('Identifier has not been retrieved: %s' % identifier.getContentIdentifier(), self)
         msg += " Done"
         self.Logger.logp(level, "ContentProvider", "queryContent()", msg)
         return content
@@ -179,13 +176,11 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
         username = ''
         if uri.hasAuthority() and uri.getAuthority() != '' and uri.getAuthority() != self.UserName:
             username = uri.getAuthority()
-            print("ContentProvider._hasUserName() %s" % username)
         elif self.UserName is None:
             username = self._getUserFromHandler()
-            print("ContentProvider._hasUserName() %s" % username)
         else:
             return True
-        return self._getUser(username) if username else False
+        return self._setUser(username) if username else False
 
     def _getUserFromHandler(self):
         self._UserName = ''
@@ -193,77 +188,78 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
         window = self.ctx.ServiceManager.createInstance('com.sun.star.frame.Desktop').ActiveFrame.ComponentWindow
         args = (getPropertyValue('Parent', window), getPropertyValue('Context', message))
         interaction = self.ctx.ServiceManager.createInstanceWithArguments('com.sun.star.task.InteractionHandler', args)
-        ret = interaction.handleInteractionRequest(InteractionRequest(self, self.Statement.getConnection(), message))
+        retrieved = interaction.handleInteractionRequest(InteractionRequest(self, self.Statement.getConnection(), message))
         return self._UserName
 
-    def _getUser(self, username):
+    def _setUser(self, username):
         level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
         msg = "UserName have been changed ..."
-        self.Logger.logp(level, "ContentProvider", "_getUserName()", msg)
-        ret, root = selectRoot(self.Statement.getConnection(), username)
-        if ret:
-            level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
-            msg = "UserName retreive from database ... Done"
-            self.Logger.logp(level, "ContentProvider", "_getUserName()", msg)
-        elif self.ConnectionMode == ONLINE:
-            ret, root = self._getRoot(username)
-        if ret:
-            print("ContentProvider._getUser(): %s" % root)
-            self.Root = root
-        return ret
+        self.Logger.logp(level, "ContentProvider", "_setUser()", msg)
+        msg = "UserName retrieved from database ... "
+        retrieved, user = selectUser(self.Statement.getConnection(), username)
+        if not retrieved and self.ConnectionMode == ONLINE:
+            msg = "UserName retrieved from provider ... "
+            retrieved, user = self._getUser(username)
+        if retrieved:
+            self.User = user
+            msg += "Done"
+            self.Logger.logp(level, "ContentProvider", "_setUser()", msg)
+        else:
+            level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
+            msg = "Error: Cannot retrieve User... "
+            self.Logger.logp(level, "ContentProvider", "_setUser()", msg)
+        return retrieved
 
-    def _getRoot(self, username):
-        ret, root, self.Session = False, {}, getSession(self.ctx, self.Scheme, username)
+    def _getUser(self, username):
+        retrieved, root, self.Session = False, {}, getSession(self.ctx, self.Scheme, username)
         level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
         msg = None
         status1, user = getUser(self.Session)
         status2, item = getItem(self.Session, 'root')
         print("ContentProvider._getUserFromProvider(): %s" % username)
         if status1 == codes.ok and status2 == codes.ok:
-            ret, root = mergeRoot(self.Statement.getConnection(), user, item)
+            retrieved, root = mergeUser(self.Statement.getConnection(), user, item)
         elif status1 == codes.bad_request and status2 == codes.bad_request:
             level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
-            msg = "ERROR: Can't retreive Id from provider: %s" % id
+            msg = "ERROR: Can't retrieve Id from provider: %s" % id
         else:
-            msg = "ERROR: Can't retreive from provider UserName: %s" % username
+            msg = "ERROR: Can't retrieve from provider UserName: %s" % username
         if msg is not None:
             self.Logger.logp(level, "ContentProvider", "_getUser()", msg)
-        return ret, root
+        return retrieved, root
 
     def _getItem(self, id):
-        ret, item = False, {}
+        retrieved, item = False, {}
         msg = None
         status, json = getItem(self.Session, id)
         if status == codes.ok:
-            ret, item = insertItem(self.Statement.getConnection(), self.UserId, json)
+            retrieved, item = insertItem(self.Statement.getConnection(), self.UserId, json)
         elif status == codes.bad_request:
             level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
-            msg = "ERROR: Can't retreive Id from provider: %s" % id
+            msg = "ERROR: Can't retrieve Id from provider: %s" % id
         else:
             level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
-            msg = "ERROR: Can't retreive Id from provider: %s" % id
+            msg = "ERROR: Can't retrieve Id from provider: %s" % id
         if msg is not None:
             self.Logger.logp(level, "ContentProvider", "_getItem()", msg)            
-        return ret, item
+        return retrieved, item
 
     def _getContent(self, identifier):
-        ret = identifier.Id in self.cachedContent
-        if ret:
+        retrieved = identifier.Id in self.cachedContent
+        if retrieved:
             content = self.cachedContent[identifier.Id]
             # Same Content can have multiple parent...
             setContentProperties(content, {'Identifier': identifier})
-        elif identifier.Name is None:
-            ret, content = self._createContent(identifier)
         else:
-            ret, content = self._createNewContent(identifier)
-        return ret, content
+            retrieved, content = self._createContent(identifier)
+        return retrieved, content
 
     def _createContent(self, identifier):
         id, content = identifier.Id, None
-        ret, item = selectItem(self.Statement.getConnection(), self.UserId, id)
-        if not ret and self.ConnectionMode == ONLINE:
-            ret, item = self._getItem(id)
-        if ret:
+        retrieved, item = selectItem(self.Statement.getConnection(), self.UserId, id)
+        if not retrieved and self.ConnectionMode == ONLINE:
+            retrieved, item = self._getItem(id)
+        if retrieved:
             name = None
             item.update({'Identifier': identifier})
             media = item['MediaType']
@@ -277,14 +273,7 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
                 content = createService(service, self.ctx, **item)
                 content.addPropertiesChangeListener(('IsWrite', 'ConnectionMode', 'Name', 'Size'), self)
                 self.cachedContent[id] = content
-        return ret, content
-
-    def _createNewContent(self, identifier):
-        item = {'Name': identifier.Name, 'Identifier': identifier}
-        content = createService('com.gmail.prrvchr.extensions.gDriveOOo.DriveOfficeContent', self.ctx, **item)
-        content.addPropertiesChangeListener(('IsWrite', 'ConnectionMode', 'Name', 'Size'), self)
-        self.cachedContent[identifier.Id] = content
-        return True, content
+        return retrieved, content
 
     # XServiceInfo
     def supportsService(self, service):

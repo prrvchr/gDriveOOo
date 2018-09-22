@@ -9,7 +9,6 @@ from com.sun.star.uno import Exception as UnoException
 from .unotools import getProperty, getPropertyValue, createService
 from .items import mergeItem
 from .children import updateParent
-from .identifiers import updateIdentifier
 from .google import getUploadLocation, OutputStream, OAuth2Ooo
 from .dbtools import unparseDateTime
 
@@ -80,9 +79,7 @@ def mergeContent(ctx, connection, event, userid):
         item['IsVersionable'] = row.getBoolean(9)
         merge = connection.prepareCall('CALL "mergeItem"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
         insert = connection.prepareCall('CALL "insertChild"(?, ?, ?)')
-        result = all((mergeItem(merge, userid, item),
-                      updateParent(insert, item),
-                      updateIdentifier(connection, userid, event.NewValue)))
+        result = all((mergeItem(merge, userid, item), updateParent(insert, item)))
     elif event.PropertyName  == 'Name':
         update = connection.prepareCall('CALL "updateName"(?, ?, ?)')
         update.setString(1, event.Source.getIdentifier().Id)

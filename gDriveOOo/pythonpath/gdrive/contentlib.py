@@ -21,22 +21,20 @@ import traceback
 
 
 class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild):
-    def __init__(self, ctx, mode, uri, userid, username, root, name=None, url=None):
+    def __init__(self, ctx, mode, user, uri):
         self.ctx = ctx
-        self.root = root
         self.ConnectionMode = mode
-        self.UserId  = userid
-        self.UserName = username
+        self.RootId = user['Id']
+        self.UserId  = user['UserId']
+        self.UserName = user['UserName']
         self.Uri, self.Id = self._getId(uri)
-        self.IsRoot = self.Id == root
-        self.Name = name
-        self.Url = url
+        self.IsRoot = self.Id == self.RootId
 
     def _getId(self, uri):
-        id = getId(uri, self.root)
+        id = getId(uri, self.RootId)
         if id in ('', '.'):
             uri = getParentUri(self.ctx, uri)
-            id = getId(uri, self.root)
+            id = getId(uri, self.RootId)
         return uri, id
 
     def _getPropertySetInfo(self):
@@ -45,8 +43,6 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild)
         readonly = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.READONLY')
         properties['Id'] = getProperty('Id', 'string', bound | readonly)
         properties['Uri'] = getProperty('Uri', 'com.sun.star.uri.XUriReference', bound | readonly)
-        properties['Name'] = getProperty('Name', 'string', bound | readonly)
-        properties['Url'] = getProperty('Url', 'string', bound | readonly)
         properties['IsRoot'] = getProperty('IsRoot', 'boolean', bound | readonly)
         properties['UserId'] = getProperty('UserId', 'string', bound | readonly)
         properties['UserName'] = getProperty('UserName', 'string', bound | readonly)
@@ -61,8 +57,9 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild)
 
     # XChild
     def getParent(self):
-        parent = getParentUri(self.ctx, self.Uri)
-        return ContentIdentifier(self.ctx, self.ConnectionMode, parent, self.UserId, self.UserName, self.root)
+        user = {'Id': self.RootId, 'UserId': self.UserId, 'UserName': self.UserName}
+        uri = getParentUri(self.ctx, self.Uri)
+        return ContentIdentifier(self.ctx, self.ConnectionMode, user, uri)
     def setParent(self, parent):
         raise NoSupportException('Parent can not be set', self)
 

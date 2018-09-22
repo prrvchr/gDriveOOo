@@ -6,9 +6,9 @@ from .dbtools import getItemFromResult, SqlArray
 import traceback
 
 
-def selectRoot(connection, username):
-    select = connection.prepareCall('CALL "selectRoot"(?)')
-    # selectRoot(IN USERNAME VARCHAR(100))
+def selectUser(connection, username):
+    select = connection.prepareCall('CALL "selectUser"(?)')
+    # selectUser(IN USERNAME VARCHAR(100))
     select.setString(1, username)
     result = select.executeQuery()
     retrived, root = False, {}
@@ -17,8 +17,8 @@ def selectRoot(connection, username):
     select.close()
     return retrived, root
 
-def mergeRoot(connection, user, item):
-    merge = connection.prepareCall('CALL "mergeRoot"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+def mergeUser(connection, user, item):
+    merge = connection.prepareCall('CALL "mergeUser"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
     merge.setString(1, user['Id'])
     merge.setString(2, user['UserName'])
     merge.setString(3, user['DisplayName'])
@@ -67,7 +67,7 @@ def mergeItem(merge, userid, item):
     return merge.getLong(index)
 
 def _setCallParameters(call, item, index=1):
-    # IN Call Parameters for: mergeRoot(), insertItem(), mergeItem()
+    # IN Call Parameters for: mergeUser(), insertItem(), mergeItem()
     # Id, Title, DateCreated, DateModified, MediaType, Size, CanAddChild, CanRename, IsReadOnly, IsVersionable
     # OUT Call Parameters for: mergeItem()
     # RowCount

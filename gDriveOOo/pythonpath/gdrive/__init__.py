@@ -17,7 +17,7 @@ from .cmislib import CmisDocument
 
 from .dbtools import getDbConnection, parseDateTime, unparseDateTime, registerDataBase
 
-from .items import selectRoot, mergeRoot, selectItem, insertItem
+from .items import selectUser, mergeUser, selectItem, insertItem
 
 from .children import isChild, updateChildren, getChildSelect
 
@@ -29,8 +29,8 @@ from .contentlib import InteractionRequest
 
 from .contenttools import getUri, getUcb, getUcp, getPropertiesValues, setPropertiesValues
 from .contenttools import getContent, getContentEvent, getCmisProperty, getCommandInfo
-from .contenttools import setContentProperties, getContentInfo
-from .contenttools import mergeContent, propertyChange, uploadItem, createNewContent, getSession
+from .contenttools import setContentProperties, getContentInfo, mergeContent
+from .contenttools import propertyChange, uploadItem, createNewContent, getSession
 
 from .google import InputStream, getUser, getItem, g_folder, getConnectionMode, updateItem
 
