@@ -54,12 +54,12 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
         return self._User
     @User.setter
     def User(self, user):
-        if self.UserId != user['UserId']:
+        if self.UserId != user['Id']:
             self._User = user
             checkIdentifiers(self.Statement.getConnection(), self.Session, self.UserId)
     @property
     def UserId(self):
-        return self.User['UserId'] if 'UserId' in self.User else ''
+        return self.User['Id'] if 'Id' in self.User else ''
     @property
     def UserName(self):
         return self.User['UserName'] if 'UserName' in self.User else None
@@ -96,7 +96,7 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
             msg = "Item inserted new Id: %s ..." % event.NewValue if name == 'Id' else \
                   "Item updated Property: %s ..." % name
             self.Logger.logp(level, "ContentProvider", "propertiesChange()", msg)
-            if mergeContent(self.ctx, self.Statement.getConnection(), event, self.UserId):
+            if mergeContent(self.ctx, self.Statement.getConnection(), self.ConnectionMode, event, self.UserId):
                 msg = "Item inserted new Id: %s ... Done" % event.NewValue if name == 'Id' else \
                       "Item updated Property: %s ... Done" % event.PropertyName
             else:
@@ -123,7 +123,7 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
             self.Logger.logp(level, "ContentProvider", "createContentIdentifier()", msg)
             uri.clearFragment()
             baseuri = uri.getUriReference()
-            id = getIdentifier(self.Statement.getConnection(), self.UserId)
+            id = getIdentifier(self.Statement.getConnection())
             print("ContentProvider.createContentIdentifier() createNewId %s" % id)
             newidentifier = '%s%s' % (baseuri, id) if baseuri.endswith('/') else '%s/%s' % (baseuri, id)
             uri = getUri(self.ctx, newidentifier)
@@ -138,7 +138,7 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
         print("ContentProvider.queryContent() %s" % identifier.getContentIdentifier())
         level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
         msg = "Identifier: %s..." % identifier
-        if not isIdentifier(self.Statement.getConnection(), identifier):
+        if not isIdentifier(self.Statement.getConnection(), identifier.Id):
             raise IllegalIdentifierException('Identifier has illegal Path: %s' % identifier.getContentIdentifier(), self)
         retrieved, content = self._getContent(identifier)
         if not retrieved:
@@ -192,41 +192,40 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
         return self._UserName
 
     def _setUser(self, username):
-        level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
-        msg = "UserName have been changed ..."
-        self.Logger.logp(level, "ContentProvider", "_setUser()", msg)
-        msg = "UserName retrieved from database ... "
-        retrieved, user = selectUser(self.Statement.getConnection(), username)
-        if not retrieved and self.ConnectionMode == ONLINE:
-            msg = "UserName retrieved from provider ... "
-            retrieved, user = self._getUser(username)
-        if retrieved:
-            self.User = user
-            msg += "Done"
+        try:
+            level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
+            msg = "UserName have been changed ..."
             self.Logger.logp(level, "ContentProvider", "_setUser()", msg)
-        else:
-            level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
-            msg = "Error: Cannot retrieve User... "
-            self.Logger.logp(level, "ContentProvider", "_setUser()", msg)
-        return retrieved
+            msg = "UserName retrieved from database ... "
+            retrieved, user = selectUser(self.Statement.getConnection(), username, self.ConnectionMode)
+            if not retrieved and self.ConnectionMode == ONLINE:
+                msg = "UserName retrieved from provider ... "
+                retrieved, user = self._getUser(username)
+            if retrieved:
+                self.User = user
+                msg += "Done"
+                self.Logger.logp(level, "ContentProvider", "_setUser()", msg)
+            else:
+                level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
+                msg = "Error: Cannot retrieve User... "
+                self.Logger.logp(level, "ContentProvider", "_setUser()", msg)
+            return retrieved
+        except Exception as e:
+            print("ContentProvider._setUser().Error: %s - %s" % (e, traceback.print_exc()))
 
     def _getUser(self, username):
-        retrieved, root, self.Session = False, {}, getSession(self.ctx, self.Scheme, username)
-        level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
-        msg = None
-        status1, user = getUser(self.Session)
-        status2, item = getItem(self.Session, 'root')
+        retrieved, user, session = False, {}, getSession(self.ctx, self.Scheme, username)
+        status1, usr = getUser(session)
+        status2, root = getItem(session, 'root')
         print("ContentProvider._getUserFromProvider(): %s" % username)
         if status1 == codes.ok and status2 == codes.ok:
-            retrieved, root = mergeUser(self.Statement.getConnection(), user, item)
-        elif status1 == codes.bad_request and status2 == codes.bad_request:
-            level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
-            msg = "ERROR: Can't retrieve Id from provider: %s" % id
+            retrieved, user = mergeUser(self.Statement.getConnection(), usr, root, self.ConnectionMode)
+            self.Session = session
         else:
-            msg = "ERROR: Can't retrieve from provider UserName: %s" % username
-        if msg is not None:
+            level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
+            msg = "ERROR: Can't retrieve User: %s from provider" % username
             self.Logger.logp(level, "ContentProvider", "_getUser()", msg)
-        return retrieved, root
+        return retrieved, user
 
     def _getItem(self, id):
         retrieved, item = False, {}
@@ -256,7 +255,7 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
 
     def _createContent(self, identifier):
         id, content = identifier.Id, None
-        retrieved, item = selectItem(self.Statement.getConnection(), self.UserId, id)
+        retrieved, item = selectItem(self.Statement.getConnection(), id)
         if not retrieved and self.ConnectionMode == ONLINE:
             retrieved, item = self._getItem(id)
         if retrieved:
@@ -271,7 +270,7 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
             if name:
                 service = 'com.gmail.prrvchr.extensions.gDriveOOo.%s' % name
                 content = createService(service, self.ctx, **item)
-                content.addPropertiesChangeListener(('IsWrite', 'ConnectionMode', 'Name', 'Size'), self)
+                content.addPropertiesChangeListener(('SyncMode', 'Name', 'Size'), self)
                 self.cachedContent[id] = content
         return retrieved, content
 

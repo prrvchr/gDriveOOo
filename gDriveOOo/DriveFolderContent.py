@@ -50,8 +50,7 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
             self.MediaType = 'application/vnd.google-apps.folder'
             self.Size = 0
             
-            self._ConnectionMode = ONLINE
-            self._IsWrite = False
+            self._SyncMode = 0
             
             self.CanAddChild = False
             self.CanRename = False
@@ -102,19 +101,14 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
         propertyChange(self, 'Name', self.Name, title)
         self.Name = title
     @property
-    def ConnectionMode(self):
-        return self._ConnectionMode
-    @ConnectionMode.setter
-    def ConnectionMode(self, mode):
-        propertyChange(self, 'ConnectionMode', self._ConnectionMode, mode)
-        self._ConnectionMode = mode
-    @property
-    def IsWrite(self):
-        return self._IsWrite
-    @IsWrite.setter
-    def IsWrite(self, iswrite):
-        propertyChange(self, 'IsWrite', self._IsWrite, iswrite)
-        self._IsWrite = iswrite
+    def SyncMode(self):
+        return self._SyncMode
+    @SyncMode.setter
+    def SyncMode(self, mode):
+        old = self._SyncMode
+        self._SyncMode |= mode
+        if self._SyncMode != old:
+            propertyChange(self, 'SyncMode', old, self._SyncMode)
 
     # XPropertyContainer
     def addProperty(self, name, attribute, default):
@@ -175,9 +169,9 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
         elif command.Name == 'open':
             connection = self.Statement.getConnection()
             mode = self.Identifier.ConnectionMode
-            if mode == ONLINE and self.ConnectionMode == ONLINE:
+            if mode == ONLINE and self.SyncMode == ONLINE:
                 with getSession(self.ctx, self.Scheme, self.Identifier.UserName) as session:
-                    self.ConnectionMode = updateChildren(connection, session, self.Identifier.UserId, self.Id)
+                    self.SyncMode = updateChildren(connection, session, self.Identifier.UserId, self.Id)
             # Not Used: command.Argument.Properties - Implement me ;-)
             index, select = getChildSelect(connection, mode, self.Id, self.Identifier.getContentIdentifier(), False)
             return DynamicResultSet(self.ctx, self.Scheme, select, index)
@@ -195,9 +189,9 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
                             'modifiedTime': unparseDateTime(self.DateModified), 'mimeType': self.MediaType}
                     updateItem(session, None, data)
             else:
-                self.IsWrite = True
+                self.SyncMode = 8
             ucp = getUcp(self.ctx, self.Identifier.getContentIdentifier())
-            self.addPropertiesChangeListener(('Id', 'IsWrite', 'ConnectionMode', 'Name', 'Size'), ucp)
+            self.addPropertiesChangeListener(('Id', 'SyncMode', 'Name', 'Size'), ucp)
             self.Id = self.Id
         elif command.Name == 'delete':
             print("DriveFolderContent.execute(): delete")
@@ -229,7 +223,7 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
                         stream = sf.openFileRead(target)
                         uploadItem(self.ctx, session, stream, content, size, False)
                 else:
-                    updated.update({'IsWrite': True})
+                    updated.update({'SyncMode': 4})
                 setContentProperties(content, updated)
                 print("DriveFolderContent.execute(): transfer: Fin")
                 if command.Argument.MoveData:
@@ -277,7 +271,7 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
         properties['Size'] = getProperty('Size', 'long', bound | readonly)
         properties['DateModified'] = getProperty('DateModified', 'com.sun.star.util.DateTime', bound | readonly)
         properties['DateCreated'] = getProperty('DateCreated', 'com.sun.star.util.DateTime', bound | readonly)
-        properties['ConnectionMode'] = getProperty('ConnectionMode', 'long', bound)
+        properties['SyncMode'] = getProperty('SyncMode', 'long', bound)
         properties['CreatableContentsInfo'] = getProperty('CreatableContentsInfo', '[]com.sun.star.ucb.ContentInfo', bound | readonly)
 
         properties['IsHidden'] = getProperty('IsHidden', 'boolean', bound | readonly)

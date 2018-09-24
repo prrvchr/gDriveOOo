@@ -6,10 +6,11 @@ from .dbtools import getItemFromResult, SqlArray
 import traceback
 
 
-def selectUser(connection, username):
-    select = connection.prepareCall('CALL "selectUser"(?)')
-    # selectUser(IN USERNAME VARCHAR(100))
+def selectUser(connection, username, mode):
+    select = connection.prepareCall('CALL "selectUser"(?, ?)')
+    # selectUser(IN USERNAME VARCHAR(100),IN MODE SMALLINT)
     select.setString(1, username)
+    select.setLong(2, mode)
     result = select.executeQuery()
     retrived, root = False, {}
     if result.next():
@@ -17,12 +18,13 @@ def selectUser(connection, username):
     select.close()
     return retrived, root
 
-def mergeUser(connection, user, item):
-    merge = connection.prepareCall('CALL "mergeUser"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+def mergeUser(connection, user, item, mode):
+    merge = connection.prepareCall('CALL "mergeUser"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
     merge.setString(1, user['Id'])
     merge.setString(2, user['UserName'])
     merge.setString(3, user['DisplayName'])
-    dummy = _setCallParameters(merge, item, 4)
+    index = _setCallParameters(merge, item, 4)
+    merge.setLong(index, mode)
     result = merge.executeQuery()
     retrived, root = False, {}
     if result.next():
@@ -30,13 +32,12 @@ def mergeUser(connection, user, item):
     merge.close()
     return retrived, root
 
-def selectItem(connection, userid, itemid):
-    select = connection.prepareCall('CALL "selectItem"(?, ?)')
-    # selectItem(IN ID VARCHAR(100))
-    select.setString(1, userid)
-    select.setString(2, itemid)
-    result = select.executeQuery()
+def selectItem(connection, id):
     retrived, item = False, {}
+    select = connection.prepareCall('CALL "selectItem"(?)')
+    # selectItem(IN ID VARCHAR(100))
+    select.setString(1, id)
+    result = select.executeQuery()
     if result.next():
         retrived, item = True, getItemFromResult(result)
     select.close()

@@ -24,9 +24,9 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild)
     def __init__(self, ctx, mode, user, uri):
         self.ctx = ctx
         self.ConnectionMode = mode
-        self.RootId = user['Id']
-        self.UserId  = user['UserId']
+        self.UserId  = user['Id']
         self.UserName = user['UserName']
+        self.RootId = user['RootId']
         self.Uri, self.Id = self._getId(uri)
         self.IsRoot = self.Id == self.RootId
 
@@ -57,7 +57,7 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild)
 
     # XChild
     def getParent(self):
-        user = {'Id': self.RootId, 'UserId': self.UserId, 'UserName': self.UserName}
+        user = {'Id': self.UserId, 'UserName': self.UserName, 'RootId': self.RootId}
         uri = getParentUri(self.ctx, self.Uri)
         return ContentIdentifier(self.ctx, self.ConnectionMode, user, uri)
     def setParent(self, parent):

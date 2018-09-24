@@ -48,8 +48,7 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
             self.MediaType = 'application/vnd.google-apps.folder'
             self.Size = 0
             
-            self._ConnectionMode = ONLINE
-            self.IsWrite = False
+            self._SyncMode = 0
             
             self.CanAddChild = False
             self.CanRename = False
@@ -92,13 +91,14 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
     def Title(self):
         return self.Name
     @property
-    def ConnectionMode(self):
-        return self._ConnectionMode
-    @ConnectionMode.setter
-    def ConnectionMode(self, mode):
-        propertyChange(self, 'ConnectionMode', self._ConnectionMode, mode)
-        self._ConnectionMode = mode
-
+    def SyncMode(self):
+        return self._SyncMode
+    @SyncMode.setter
+    def SyncMode(self, mode):
+        old = self._SyncMode
+        self._SyncMode |= mode
+        if self._SyncMode != old:
+            propertyChange(self, 'SyncMode', old, self._SyncMode)
     # XPropertyContainer
     def addProperty(self, name, attribute, default):
         print("DriveRootContent.addProperty()")
@@ -166,11 +166,11 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
         elif command.Name == 'open':
             connection = self.Statement.getConnection()
             mode = self.Identifier.ConnectionMode
-            if mode == ONLINE and self.ConnectionMode == ONLINE:
+            if mode == ONLINE and self.SyncMode == ONLINE:
                 print("DriveRootContent.execute(): open 1")
                 with getSession(self.ctx, self.Scheme, self.Identifier.UserName) as session:
                     print("DriveRootContent.execute(): open 2")
-                    self.ConnectionMode = updateChildren(connection, session, self.Identifier.UserId, self.Id)
+                    self.SyncMode = updateChildren(connection, session, self.Identifier.UserId, self.Id)
             # Not Used: command.Argument.Properties - Implement me ;-)
             index, select = getChildSelect(connection, mode, self.Id, self.Identifier.getContentIdentifier(), True)
             return DynamicResultSet(self.ctx, self.Scheme, select, index)
@@ -220,7 +220,7 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
                         uploadItem(self.ctx, session, stream, content, size, False)
                 else:
                     print("DriveRootContent.execute(): transfer: 9")
-                    updated.update({'IsWrite': True})
+                    updated.update({'UpdateMode': 2})
                 setContentProperties(content, updated)
                 print("DriveRootContent.execute(): transfer: Fin")
                 if command.Argument.MoveData:
@@ -266,7 +266,7 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
         properties['Size'] = getProperty('Size', 'long', bound | readonly)
         properties['DateModified'] = getProperty('DateModified', 'com.sun.star.util.DateTime', bound | readonly)
         properties['DateCreated'] = getProperty('DateCreated', 'com.sun.star.util.DateTime', bound | readonly)
-        properties['ConnectionMode'] = getProperty('ConnectionMode', 'long', bound)
+        properties['SyncMode'] = getProperty('SyncMode', 'long', bound)
         properties['CreatableContentsInfo'] = getProperty('CreatableContentsInfo', '[]com.sun.star.ucb.ContentInfo', bound | readonly)
 
         properties['IsHidden'] = getProperty('IsHidden', 'boolean', bound | readonly)

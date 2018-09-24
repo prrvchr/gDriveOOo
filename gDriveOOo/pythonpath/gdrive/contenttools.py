@@ -60,13 +60,14 @@ def createNewContent(ctx, statement, identifier, contentinfo, title):
     except Exception as e:
         print("contenttools.createNewContent().Error: %s - %s" % (e, traceback.print_exc()))
 
-def mergeContent(ctx, connection, event, userid):
+def mergeContent(ctx, connection, mode, event, userid):
     result = False
     if event.PropertyName == 'Id':
+        id = event.NewValue
         properties = ('Name', 'DateCreated', 'DateModified', 'MediaType','Size',
                       'CanAddChild', 'CanRename', 'IsReadOnly', 'IsVersionable')
         row = getContentProperties(event.Source, properties)
-        item = {'Id': event.NewValue}
+        item = {'Id': id}
         item['Name'] = row.getString(1)
         item['DateCreated'] = row.getTimestamp(2)
         item['DateModified'] = row.getTimestamp(3)
@@ -92,20 +93,22 @@ def mergeContent(ctx, connection, event, userid):
         update.setLong(2, event.NewValue)
         update.execute()
         result = update.getLong(3)
-    elif event.PropertyName  == 'ConnectionMode':
-        update = connection.prepareCall('CALL "updateConnectionMode"(?, ?, ?)')
-        update.setString(1, event.Source.getIdentifier().Id)
-        update.setLong(2, event.NewValue)
-        update.execute()
-        result = update.getLong(3)
-    elif event.PropertyName == 'IsWrite':
-        update = connection.prepareCall('CALL "updateIsWrite"(?, ?, ?, ?)')
+    elif event.PropertyName == 'SyncMode':
+        update = connection.prepareCall('CALL "updateSyncMode"(?, ?, ?, ?)')
         update.setString(1, userid)
         update.setString(2, event.Source.getIdentifier().Id)
-        update.setBoolean(3, event.NewValue)
+        update.setLong(3, event.NewValue)
         update.execute()
         result = update.getLong(4)
     return result
+
+def _updateMode(connection, userid, id, mode):
+    update = connection.prepareCall('CALL "updateUpdateMode"(?, ?, ?, ?)')
+    update.setString(1, userid)
+    update.setString(2, id)
+    update.setLong(3, mode)
+    update.execute()
+    result = update.getLong(4)
 
 def propertyChange(source, name, oldvalue, newvalue):
     if name in source.propertiesListener:
