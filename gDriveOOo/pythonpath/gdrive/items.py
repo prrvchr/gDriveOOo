@@ -12,11 +12,11 @@ def selectUser(connection, username, mode):
     select.setString(1, username)
     select.setLong(2, mode)
     result = select.executeQuery()
-    retrived, root = False, {}
+    retrived, user = False, {}
     if result.next():
-        retrived, root = True, getItemFromResult(result)
+        retrived, user = True, getItemFromResult(result)
     select.close()
-    return retrived, root
+    return retrived, user
 
 def mergeUser(connection, user, item, mode):
     merge = connection.prepareCall('CALL "mergeUser"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
@@ -69,7 +69,7 @@ def mergeItem(merge, userid, item):
 
 def _setCallParameters(call, item, index=1):
     # IN Call Parameters for: mergeUser(), insertItem(), mergeItem()
-    # Id, Title, DateCreated, DateModified, MediaType, Size, CanAddChild, CanRename, IsReadOnly, IsVersionable
+    # Id, Name, DateCreated, DateModified, MediaType, Size, CanAddChild, CanRename, IsReadOnly, IsVersionable
     # OUT Call Parameters for: mergeItem()
     # RowCount
     call.setString(index, item['Id'])

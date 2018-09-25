@@ -13,9 +13,9 @@ from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
 from gdrive import Component, Initialization, PropertiesChangeNotifier, CmisDocument
 from gdrive import PropertySetInfoChangeNotifier, ContentIdentifier, CommandInfoChangeNotifier
 from gdrive import getContentInfo, getPropertiesValues, uploadItem, getSession
-from gdrive import CommandInfo, CmisPropertySetInfo, Row, InputStream
+from gdrive import CommandInfo, CmisPropertySetInfo, Row, InputStream, getMediaType
 from gdrive import createService, getResourceLocation, parseDateTime, getPropertySetInfoChangeEvent
-from gdrive import getContent, getSimpleFile, getCommandInfo, getProperty, getUcp
+from gdrive import getContent, getSimpleFile, getCommandInfo, getProperty, getUcp, getDataContent
 from gdrive import propertyChange, setPropertiesValues, getLogger, getCmisProperty, getPropertyValue
 #from gdrive import PyPropertiesChangeNotifier, PyPropertySetInfoChangeNotifier, PyCommandInfoChangeNotifier, PyPropertyContainer
 import requests
@@ -215,15 +215,14 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
                     sf = getSimpleFile(self.ctx)
                     target = getResourceLocation(self.ctx, '%s/%s' % (self.Scheme, self.Id))
                     sf.writeFile(target, stream)
-                    self.MediaType = self._getMediaType(stream)
+                    self.MediaType = getMediaType(self.ctx, stream)
                     stream.closeInput()
                     self.Size = sf.getSize(target)
                     if self.Identifier.ConnectionMode == ONLINE:
-                        with getSession(self.ctx, self.Scheme, self.Identifier.UserName) as session:
-                            stream = sf.openFileRead(target)
-                            uploadItem(self.ctx, session, stream, self, self.Size, True)
+                        stream = sf.openFileRead(target)
+                        updateData(self.ctx, self, 28, stream, self.Size)
                     else:
-                        self.SyncMode = 8
+                        self.SyncMode = 28
                     ucp = getUcp(self.ctx, self.Identifier.getContentIdentifier())
                     self.addPropertiesChangeListener(('Id', 'SyncMode', 'Name', 'Size'), ucp)
                     self.Id = self.Id
@@ -275,18 +274,6 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
             stream.closeInput()
             self.SyncMode = 1
         return url
-
-    def _getMediaType(self, stream):
-        mediatype = 'application/octet-stream'
-        detection = self.ctx.ServiceManager.createInstance('com.sun.star.document.TypeDetection')
-        descriptor = (getPropertyValue('InputStream', stream), )
-        format, dummy = detection.queryTypeByDescriptor(descriptor, True)
-        if detection.hasByName(format):
-            properties = detection.getByName(format)
-            for property in properties:
-                if property.Name == "MediaType":
-                    mediatype = property.Value
-        return mediatype
 
     def _getCommandInfo(self):
         commands = {}

@@ -5,11 +5,12 @@ import uno
 
 from com.sun.star.beans import UnknownPropertyException, IllegalTypeException
 from com.sun.star.uno import Exception as UnoException
+from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
 
-from .unotools import getProperty, getPropertyValue, createService
+from .unotools import getProperty, getPropertyValue, createService, getSimpleFile, getResourceLocation
 from .items import mergeItem
 from .children import updateParent
-from .google import getUploadLocation, OutputStream, OAuth2Ooo
+from .google import getUploadLocation, OutputStream, updateItem, OAuth2Ooo
 from .dbtools import unparseDateTime
 
 import datetime
@@ -22,26 +23,55 @@ def getSession(ctx, scheme, username):
     session.auth = OAuth2Ooo(ctx, scheme, username)
     return session
 
-def uploadItem(ctx, session, stream, content, size, new=False):
-    identifier = content.getIdentifier()
-    data, headers = None, {'X-Upload-Content-Length': '%s' % size}
-    if new:
-        data = {}
-        row = getContentProperties(content, ('Name', 'DateCreated', 'DateModified', 'MediaType'))
-        data['id'] = identifier.Id
-        data['name'] = row.getString(1)
-        data['createdTime'] = unparseDateTime(row.getTimestamp(2))
-        data['modifiedTime'] = unparseDateTime(row.getTimestamp(3))
-        data['mimeType'] = row.getString(4)
-        data['parents'] = [identifier.getParent().Id]
-        headers['X-Upload-Content-Type'] = row.getString(4)
-    session.headers.update(headers)
-    location = getUploadLocation(session, identifier.Id, data)
+def syncItem(ctx, scheme, session, item):
+    id, mode, parents, data = item['id'], item['mode'], item['parents'], _getItemData(item)
+    if mode & 8 == 8:
+        size, stream = _getInputStream(ctx, scheme, id)
+        if size != 0:
+            return uploadItem(ctx, session, id, mode, size, data, parents, stream)
+    elif mode & 4 == 4:
+        return updateItem(session, id, mode, data, parents)
+    return False
+
+def _getItemData(item, keys=('name', 'createdTime', 'modifiedTime', 'mimeType')):
+    return dict((k,v) for k,v in item.items() if k in keys)
+
+def uploadItem(ctx, session, id, mode, size, data, parents, stream):
+    location = getUploadLocation(session, id, mode, size, data, parents)
     if location is not None:
         pump = getPump(ctx)
         pump.setInputStream(stream)
         pump.setOutputStream(OutputStream(session, location, size))
         pump.start()
+        return True
+    return False
+    
+def updateData(ctx, content, mode, stream, size):
+    identifier = content.getIdentifier()
+    scheme = identifier.getContentProviderScheme()
+    data = getDataContent(content)
+    parents = [identifier.getParent().Id]
+    with getSession(ctx, scheme, identifier.UserName) as session:
+        return uploadItem(ctx, session, identifier.Id, mode, size, data, parents, stream)
+    return False
+
+def updateMetaData(ctx, content, mode):
+    identifier = content.getIdentifier()
+    scheme = identifier.getContentProviderScheme()
+    data = getDataContent(content)
+    parents = [identifier.getParent().Id]
+    with getSession(ctx, scheme, identifier.UserName) as session:
+        return updateItem(session, identifier.Id, mode, data, parents)
+    return False
+
+def getDataContent(content, properties=('Name', 'DateCreated', 'DateModified', 'MediaType')):
+    data, identifier = {}, content.getIdentifier()
+    row = getContentProperties(content, properties)
+    data['name'] = row.getString(1)
+    data['createdTime'] = unparseDateTime(row.getTimestamp(2))
+    data['modifiedTime'] = unparseDateTime(row.getTimestamp(3))
+    data['mimeType'] = row.getString(4)
+    return data
 
 def createNewContent(ctx, statement, identifier, contentinfo, title):
     try:
@@ -60,55 +90,53 @@ def createNewContent(ctx, statement, identifier, contentinfo, title):
     except Exception as e:
         print("contenttools.createNewContent().Error: %s - %s" % (e, traceback.print_exc()))
 
-def mergeContent(ctx, connection, mode, event, userid):
+def mergeContent(ctx, connection, event, mode):
     result = False
+    identifier = event.Source.getIdentifier()
     if event.PropertyName == 'Id':
-        id = event.NewValue
         properties = ('Name', 'DateCreated', 'DateModified', 'MediaType','Size',
                       'CanAddChild', 'CanRename', 'IsReadOnly', 'IsVersionable')
         row = getContentProperties(event.Source, properties)
-        item = {'Id': id}
+        item = {'Id': identifier.Id}
         item['Name'] = row.getString(1)
         item['DateCreated'] = row.getTimestamp(2)
         item['DateModified'] = row.getTimestamp(3)
         item['MediaType'] = row.getString(4)
         item['Size'] = row.getLong(5)
-        item['Parents'] = (event.Source.getIdentifier().getParent().Id, )
+        if not identifier.IsRoot:
+            item['Parents'] = (identifier.getParent().Id, )
         item['CanAddChild'] = row.getBoolean(6)
         item['CanRename'] = row.getBoolean(7)
         item['IsReadOnly'] = row.getBoolean(8)
         item['IsVersionable'] = row.getBoolean(9)
         merge = connection.prepareCall('CALL "mergeItem"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
         insert = connection.prepareCall('CALL "insertChild"(?, ?, ?)')
-        result = all((mergeItem(merge, userid, item), updateParent(insert, item)))
+        result = all((mergeItem(merge, identifier.UserId, item), updateParent(insert, item)))
     elif event.PropertyName  == 'Name':
-        update = connection.prepareCall('CALL "updateName"(?, ?, ?)')
-        update.setString(1, event.Source.getIdentifier().Id)
-        update.setString(2, event.NewValue)
+        update = connection.prepareCall('CALL "updateName"(?, ?, ?, ?)')
+        update.setString(1, identifier.UserId)
+        update.setString(2, identifier.Id)
+        update.setString(3, event.NewValue)
         update.execute()
-        result = update.getLong(3)
+        if update.getLong(4):
+            result = True
+            if mode == ONLINE:
+                result = updateMetaData(ctx, event.Source, 4)
     elif event.PropertyName == 'Size':
-        update = connection.prepareCall('CALL "updateSize"(?, ?, ?)')
-        update.setString(1, event.Source.getIdentifier().Id)
-        update.setLong(2, event.NewValue)
+        update = connection.prepareCall('CALL "updateSize"(?, ?, ?, ?)')
+        update.setString(1, identifier.UserId)
+        update.setString(2, identifier.Id)
+        update.setLong(3, event.NewValue)
         update.execute()
-        result = update.getLong(3)
+        result = update.getLong(4)
     elif event.PropertyName == 'SyncMode':
         update = connection.prepareCall('CALL "updateSyncMode"(?, ?, ?, ?)')
-        update.setString(1, userid)
-        update.setString(2, event.Source.getIdentifier().Id)
+        update.setString(1, identifier.UserId)
+        update.setString(2, identifier.Id)
         update.setLong(3, event.NewValue)
         update.execute()
         result = update.getLong(4)
     return result
-
-def _updateMode(connection, userid, id, mode):
-    update = connection.prepareCall('CALL "updateUpdateMode"(?, ?, ?, ?)')
-    update.setString(1, userid)
-    update.setString(2, id)
-    update.setLong(3, mode)
-    update.execute()
-    result = update.getLong(4)
 
 def propertyChange(source, name, oldvalue, newvalue):
     if name in source.propertiesListener:
@@ -276,3 +304,22 @@ def getUcb(ctx, arguments=None):
 
 def getUcp(ctx, identifier):
     return getUcb(ctx).queryContentProvider(identifier)
+
+def getMediaType(ctx, stream):
+    mediatype = 'application/octet-stream'
+    detection = ctx.ServiceManager.createInstance('com.sun.star.document.TypeDetection')
+    descriptor = (getPropertyValue('InputStream', stream), )
+    format, dummy = detection.queryTypeByDescriptor(descriptor, True)
+    if detection.hasByName(format):
+        properties = detection.getByName(format)
+        for property in properties:
+            if property.Name == "MediaType":
+                mediatype = property.Value
+    return mediatype
+
+def _getInputStream(ctx, scheme, id):
+    sf = getSimpleFile(ctx)
+    url = getResourceLocation(ctx, '%s/%s' % (scheme, id))
+    if sf.exists(url):
+        return sf.getSize(url), sf.openFileRead(url)
+    return 0, None

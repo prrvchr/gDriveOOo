@@ -213,14 +213,11 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
                 updated = {'Size': size}
                 if self.Identifier.ConnectionMode == ONLINE:
                     print("DriveRootContent.execute(): transfer: 6")
-                    with getSession(self.ctx, self.Scheme, self.Identifier.UserName) as session:
-                        print("DriveRootContent.execute(): transfer: 7")
-                        stream = sf.openFileRead(target)
-                        print("DriveRootContent.execute(): transfer: 8")
-                        uploadItem(self.ctx, session, stream, content, size, False)
+                    stream = sf.openFileRead(target)
+                    updateData(self.ctx, self, 8, stream, size)
                 else:
                     print("DriveRootContent.execute(): transfer: 9")
-                    updated.update({'UpdateMode': 2})
+                    updated.update({'SyncMode': 8})
                 setContentProperties(content, updated)
                 print("DriveRootContent.execute(): transfer: Fin")
                 if command.Argument.MoveData:

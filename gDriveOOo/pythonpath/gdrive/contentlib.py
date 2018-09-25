@@ -21,32 +21,48 @@ import traceback
 
 
 class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild):
-    def __init__(self, ctx, mode, user, uri):
+    def __init__(self, ctx, mode, uri, user):
         self.ctx = ctx
         self.ConnectionMode = mode
-        self.UserId  = user['Id']
-        self.UserName = user['UserName']
-        self.RootId = user['RootId']
-        self.Uri, self.Id = self._getId(uri)
-        self.IsRoot = self.Id == self.RootId
+        self.Uri = uri
+        self.user = user
+        self.Id = self._getId() if self.IsValidUser else None
+        
+    @property
+    def UserId(self):
+        return self.user['Id'] if self.IsValidUser else None
+    @property
+    def UserName(self):
+        return self.user['UserName'] if self.IsValidUser else None
+    @property
+    def RootId(self):
+        return self.user['RootId'] if self.IsValidUser else None
+    @property
+    def IsRoot(self):
+        return self.Id == self.RootId
+    @property
+    def IsValidUser(self):
+        return self.user is not None
 
-    def _getId(self, uri):
-        id = getId(uri, self.RootId)
+    def _getId(self):
+        id = getId(self.Uri, self.RootId)
         if id in ('', '.'):
-            uri = getParentUri(self.ctx, uri)
-            id = getId(uri, self.RootId)
-        return uri, id
+            self.Uri = getParentUri(self.ctx, self.Uri)
+            id = getId(self.Uri, self.RootId)
+        return id
 
     def _getPropertySetInfo(self):
         properties = {}
+        maybevoid = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.MAYBEVOID')
         bound = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.BOUND')
         readonly = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.READONLY')
-        properties['Id'] = getProperty('Id', 'string', bound | readonly)
-        properties['Uri'] = getProperty('Uri', 'com.sun.star.uri.XUriReference', bound | readonly)
-        properties['IsRoot'] = getProperty('IsRoot', 'boolean', bound | readonly)
-        properties['UserId'] = getProperty('UserId', 'string', bound | readonly)
-        properties['UserName'] = getProperty('UserName', 'string', bound | readonly)
         properties['ConnectionMode'] = getProperty('ConnectionMode', 'short', bound | readonly)
+        properties['Uri'] = getProperty('Uri', 'com.sun.star.uri.XUriReference', bound | readonly)
+        properties['IsValidUser'] = getProperty('IsValidUser', 'boolean', bound | readonly)
+        properties['IsRoot'] = getProperty('IsRoot', 'boolean', bound | readonly)
+        properties['Id'] = getProperty('Id', 'string', maybevoid | bound | readonly)
+        properties['UserId'] = getProperty('UserId', 'string', maybevoid | bound | readonly)
+        properties['UserName'] = getProperty('UserName', 'string', maybevoid | bound | readonly)
         return properties
 
     # XContentIdentifier
@@ -59,7 +75,7 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild)
     def getParent(self):
         user = {'Id': self.UserId, 'UserName': self.UserName, 'RootId': self.RootId}
         uri = getParentUri(self.ctx, self.Uri)
-        return ContentIdentifier(self.ctx, self.ConnectionMode, user, uri)
+        return ContentIdentifier(self.ctx, self.ConnectionMode, uri, user)
     def setParent(self, parent):
         raise NoSupportException('Parent can not be set', self)
 

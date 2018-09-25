@@ -35,16 +35,15 @@ g_doc = 'application/vnd.google-apps.'
 
 
 def getConnectionMode(ctx):
-    mode, connection = OFFLINE, None
-    connector = ctx.ServiceManager.createInstance('com.sun.star.connection.Connector')
+    connection, connector = None, ctx.ServiceManager.createInstance('com.sun.star.connection.Connector')
     try:
         connection = connector.connect('socket,host=%s,port=80' % g_host)
     except NoConnectException:
         pass
-    if connection:
+    if connection is not None:
         connection.close()
-        mode = ONLINE
-    return mode
+        return ONLINE
+    return OFFLINE
 
 def getUser(session):
     status, user = False, {}
@@ -72,27 +71,38 @@ def getItem(session, id):
             item = _parseItem(r.json(), parseDateTime())
     return status, item
 
-def getUploadLocation(session, id, data):
-    location = None
-    url = '%s/%s' % (g_upload, id) if data is None else g_upload
-    method = 'PATCH' if data is None else 'POST'
-    print("google.getUploadLocation()1: %s - %s" % (url, id))
+def getUploadLocation(session, id, mode, size, data, parents):
+    new, updated = mode & 16 == 16, mode & 4 == 4
+    method = 'POST' if new else 'PATCH'
+    url = g_upload  if new else '%s/%s' % (g_upload, id)
     params = {'uploadType': 'resumable'}
-    r = session.request(method, url, params=params, json=data)
+    headers = {'X-Upload-Content-Length': '%s' % size}
+    if not new and not updated:
+        data = None
+    elif new:
+        headers['X-Upload-Content-Type'] = data['mimeType']
+        data.update({'id': id, 'parents': parents})
+    #session.headers.update(headers)
+    print("google.getUploadLocation()1: %s - %s" % (url, id))
+    r = session.request(method, url, params=params, headers=headers, json=data)
     print("contenttools.getUploadLocation()2 %s - %s" % (r.status_code, r.headers))
     print("contenttools.getUploadLocation()3 %s - %s" % (r.content, data))
     if r.status_code == requests.codes.ok and 'Location' in r.headers:
-        location = r.headers['Location']
-    return location
+        return r.headers['Location']
+    return None
 
-def updateItem(session, id=None, data={}):
-    result = False
-    url = '%sfiles' % g_url if id is None else '%sfiles/%s' % (g_url, id)
-    method = 'POST' if id is None else 'PATCH'
+def updateItem(session, id, mode, data, parents):
+    new = mode & 16 == 16
+    method = 'POST' if new else 'PATCH'
+    url = '%sfiles' % g_url if new else '%sfiles/%s' % (g_url, id)
+    if new:
+        data.update({'id': id, 'parents': parents})
     r = session.request(method, url, json=data)
+    print("contenttools.updateItem()1 %s - %s" % (r.status_code, r.headers))
+    print("contenttools.updateItem()2 %s - %s" % (r.content, data))
     if r.status_code == requests.codes.ok:
-        result = True
-    return result
+        return True
+    return False
 
 
 class IdGenerator():

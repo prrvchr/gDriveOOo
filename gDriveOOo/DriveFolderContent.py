@@ -18,7 +18,7 @@ from gdrive import getDbConnection, propertyChange, getChildSelect, parseDateTim
 
 from gdrive import updateChildren, createService, getSimpleFile, getResourceLocation, isChild
 from gdrive import getUcb, getCommandInfo, getProperty, getContentInfo, setContentProperties
-from gdrive import getContent, getContentEvent, setPropertiesValues
+from gdrive import getContent, getContentEvent, setPropertiesValues, updateMetaData
 from gdrive import getUcp, createNewContent, uploadItem, getSession, unparseDateTime
 
 import requests
@@ -184,12 +184,9 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
             #action = uno.getConstantByName('com.sun.star.ucb.ContentAction.INSERTED')
             #event = getContentEvent(action, self, identifier)
             if self.Identifier.ConnectionMode == ONLINE:
-                with getSession(self.ctx, self.Scheme, self.Identifier.UserName) as session:
-                    data = {'id': self.Id, 'name': self.Name, 'createdTime': unparseDateTime(self.DateCreated),
-                            'modifiedTime': unparseDateTime(self.DateModified), 'mimeType': self.MediaType}
-                    updateItem(session, None, data)
+                updateMetaData(self.ctx, self, 20)
             else:
-                self.SyncMode = 8
+                self.SyncMode = 20
             ucp = getUcp(self.ctx, self.Identifier.getContentIdentifier())
             self.addPropertiesChangeListener(('Id', 'SyncMode', 'Name', 'Size'), ucp)
             self.Id = self.Id
@@ -219,11 +216,10 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
                 size = sf.getSize(target)
                 updated = {'Size': size}
                 if self.Identifier.ConnectionMode == ONLINE:
-                    with getSession(self.ctx, self.Scheme, self.Identifier.UserName) as session:
-                        stream = sf.openFileRead(target)
-                        uploadItem(self.ctx, session, stream, content, size, False)
+                    stream = sf.openFileRead(target)
+                    updateData(self.ctx, self, 8, stream, size)
                 else:
-                    updated.update({'SyncMode': 4})
+                    updated.update({'SyncMode': 8})
                 setContentProperties(content, updated)
                 print("DriveFolderContent.execute(): transfer: Fin")
                 if command.Argument.MoveData:
