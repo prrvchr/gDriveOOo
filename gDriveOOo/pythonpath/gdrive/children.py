@@ -22,12 +22,12 @@ def isChild(connection, id, parent):
     call.close()
     return ischild
 
-def updateChildren(connection, session, userid, id):
-    mode = ONLINE
+def updateChildren(connection, session, identifier):
+    mode, userid = 0, identifier.UserId
     merge = connection.prepareCall('CALL "mergeItem"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
     insert = connection.prepareCall('CALL "insertChild"(?, ?, ?)')
-    if all(updateChild(merge, insert, userid, item) for item in ChildGenerator(session, id)):
-        mode = OFFLINE
+    if all(updateChild(merge, insert, userid, item) for item in ChildGenerator(session, identifier.Id)):
+        mode = 1
     merge.close()
     insert.close()
     session.close()
@@ -50,7 +50,7 @@ def insertParent(insert, id, parent):
     insert.execute()
     return insert.getLong(3)
 
-def getChildSelect(connection, mode, id, uri, isroot):
+def getChildSelect(connection, identifier):
     try:
         # LibreOffice Columns: ['Title', 'Size', 'DateModified', 'DateCreated', 'IsFolder', 'TargetURL', 'IsHidden', 'IsVolume', 'IsRemote', 'IsRemoveable', 'IsFloppy', 'IsCompactDisc']
         # OpenOffice Columns: ['Title', 'Size', 'DateModified', 'DateCreated', 'IsFolder', 'TargetURL', 'IsHidden', 'IsVolume', 'IsRemote', 'IsRemoveable', 'IsFloppy', 'IsCompactDisc']
@@ -59,15 +59,16 @@ def getChildSelect(connection, mode, id, uri, isroot):
         # Never managed to run the next line:
         #select.ResultSetType = uno.getConstantByName('com.sun.star.sdbc.ResultSetType.SCROLL_INSENSITIVE')
         # selectChild(IN ID VARCHAR(100),IN URL VARCHAR(250),IN MODE SMALLINT,OUT ROWCOUNT SMALLINT)
-        select.setString(index, id)
+        select.setString(index, identifier.Id)
         index += 1
         # "TargetURL" is done by CONCAT(uri,id)... The root uri already ends with a '/' ...
-        select.setString(index, uri if isroot else '%s/' % uri)
+        uri = identifier.getContentIdentifier()
+        select.setString(index, uri if identifier.IsRoot else '%s/' % uri)
         index += 1
         # "IsFolder" is done by comparing MediaType with g_folder 'application/vnd.google-apps.folder' ...
         select.setString(index, g_folder)
         index += 1
-        select.setLong(index, mode)
+        select.setLong(index, identifier.ConnectionMode)
         index += 1
         return index, select
     except Exception as e:

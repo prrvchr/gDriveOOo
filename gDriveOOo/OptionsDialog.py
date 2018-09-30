@@ -10,9 +10,10 @@ from com.sun.star.ucb import URLAuthenticationRequest
 
 from gdrive import getStringResource, getFileSequence, createService
 from gdrive import getLoggerUrl, getLoggerSetting, setLoggerSetting, getLogger
-from gdrive import getPropertyValue, registerDataBase
+from gdrive import getPropertyValue, registerDataBase, getUcp, needSync
 
-from gdrive import getDbConnection
+from gdrive import g_scheme, getDbConnection, getItemFromResult, getSession
+
 import traceback
 
 # pythonloader looks for a static g_ImplementationHelper variable
@@ -26,8 +27,21 @@ class OptionsDialog(unohelper.Base, XServiceInfo, XContainerWindowEventHandler):
         try:
             self.ctx = ctx
             self.stringResource = getStringResource(self.ctx, None, 'OptionsDialog')
+            ucp = getUcp(self.ctx)
+            if ucp.supportsService('com.sun.star.ucb.ContentProviderProxy'):
+                print("PyOptionsDialog.__init__() 1")
+                ucp = ucp.getContentProvider()
+            self.ucp = ucp
+            #mri = self.ctx.ServiceManager.createInstance('mytools.Mri')
+            #mri.inspect(ucp)
+            #self.Connection = getDbConnection(self.ctx, g_scheme, False)
+            print("PyOptionsDialog.__init__() 2")
         except Exception as e:
             print("PyOptionsDialog.__init__().Error: %s - %s" % (e, traceback.print_exc()))
+
+    def __del__(self):
+        #self.Connection.close()
+        print("PyOptionsDialog.__del__()***********************")
 
     # XContainerWindowEventHandler
     def callHandlerMethod(self, dialog, event, method):
@@ -40,7 +54,7 @@ class OptionsDialog(unohelper.Base, XServiceInfo, XContainerWindowEventHandler):
                 self._loadSetting(dialog)
                 handled = True
             elif event == 'initialize':
-                self._loadSetting(dialog)
+                self._initialize(dialog)
                 handled = True
         elif method == 'Logger':
             self._doLogger(dialog, bool(event.Source.State))
@@ -71,13 +85,26 @@ class OptionsDialog(unohelper.Base, XServiceInfo, XContainerWindowEventHandler):
             print("PyOptionsDialog._doConnect().Error: %s - %s" % (e, traceback.print_exc()))
 
     def _doViewFile(self, dialog):
-        pass
+        try:
+            user = getUcp(self.ctx).UserName
+            doSync(self.ctx, self.Connection, user)
+        except Exception as e:
+            print("PyOptionsDialog._doViewFile().Error: %s - %s" % (e, traceback.print_exc()))
+
+    def _initialize(self, dialog):
+        print("PyOptionsDialog._initialize()")
+        user = getUcp(self.ctx).UserName
+        self._toogleSync(dialog, needSync(self.Connection) and user is not None)
+        self._loadLoggerSetting(dialog)
 
     def _loadSetting(self, dialog):
         self._loadLoggerSetting(dialog)
 
     def _saveSetting(self, dialog):
         self._saveLoggerSetting(dialog)
+
+    def _toogleSync(self, dialog, enabled):
+        dialog.getControl('CommandButton3').Model.Enabled = enabled
 
     def _doLogger(self, dialog, enabled):
         dialog.getControl('Label2').Model.Enabled = enabled

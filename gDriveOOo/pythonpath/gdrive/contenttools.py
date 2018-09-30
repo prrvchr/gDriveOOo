@@ -10,62 +10,76 @@ from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
 from .unotools import getProperty, getPropertyValue, createService, getSimpleFile, getResourceLocation
 from .items import mergeItem
 from .children import updateParent
-from .google import getUploadLocation, OutputStream, updateItem, OAuth2Ooo
-from .dbtools import unparseDateTime
+from .google import g_scheme, getUploadLocation, OutputStream, updateItem, OAuth2Ooo
+from .dbtools import unparseDateTime, getItemFromResult
 
 import datetime
 import requests
 import traceback
 
 
-def getSession(ctx, scheme, username):
+def getSession(ctx, username):
     session = requests.Session()
-    session.auth = OAuth2Ooo(ctx, scheme, username)
+    session.auth = OAuth2Ooo(ctx, username)
     return session
 
-def syncItem(ctx, scheme, session, item):
-    id, mode, parents, data = item['id'], item['mode'], item['parents'], _getItemData(item)
+def doSync(ctx, connection, username):
+    items = []
+    data = ('name', 'createdTime', 'modifiedTime', 'mimeType')
+    transform = {'parents': lambda value: value.split(',') if value else None}
+    select = connection.prepareCall('CALL "selectSync"(?)')
+    select.setLong(1, 4)
+    result = select.executeQuery()
+    with getSession(ctx, username) as session:
+        while result.next():
+            items.append(_syncItem(ctx, session, getItemFromResult(result, data, transform)))
+    select.close()
+    if all(items):
+        print("contenttools.doSync(): all -> Ok")
+    else:
+        print("contenttools.doSync(): all -> Error")
+    print("doSync: %s" % items)
+
+def _syncItem(ctx, session, item):
+    mode = item['mode']
     if mode & 8 == 8:
-        size, stream = _getInputStream(ctx, scheme, id)
+        size, stream = _getInputStream(ctx, item['id'])
         if size != 0:
-            return uploadItem(ctx, session, id, mode, size, data, parents, stream)
+            return uploadItem(ctx, session, item, size, stream)
     elif mode & 4 == 4:
-        return updateItem(session, id, mode, data, parents)
+        return updateItem(session, item)
     return False
 
-def _getItemData(item, keys=('name', 'createdTime', 'modifiedTime', 'mimeType')):
-    return dict((k,v) for k,v in item.items() if k in keys)
-
-def uploadItem(ctx, session, id, mode, size, data, parents, stream):
-    location = getUploadLocation(session, id, mode, size, data, parents)
+def uploadItem(ctx, session, item, size, stream):
+    location = getUploadLocation(session, item, size)
     if location is not None:
         pump = getPump(ctx)
         pump.setInputStream(stream)
         pump.setOutputStream(OutputStream(session, location, size))
         pump.start()
-        return True
+        return item['id']
     return False
     
 def updateData(ctx, content, mode, stream, size):
     identifier = content.getIdentifier()
     scheme = identifier.getContentProviderScheme()
-    data = getDataContent(content)
-    parents = [identifier.getParent().Id]
-    with getSession(ctx, scheme, identifier.UserName) as session:
-        return uploadItem(ctx, session, identifier.Id, mode, size, data, parents, stream)
+    item = {'id': identifier.Id, 'parents': [identifier.getParent().Id], 'mode': mode}
+    item.update({'Data': getDataContent(content)})
+    with getSession(ctx, identifier.UserName) as session:
+        return uploadItem(ctx, session, item, size, stream)
     return False
 
 def updateMetaData(ctx, content, mode):
     identifier = content.getIdentifier()
     scheme = identifier.getContentProviderScheme()
-    data = getDataContent(content)
-    parents = [identifier.getParent().Id]
-    with getSession(ctx, scheme, identifier.UserName) as session:
-        return updateItem(session, identifier.Id, mode, data, parents)
+    item = {'id': identifier.Id, 'parents': [identifier.getParent().Id], 'mode': mode}
+    item.update({'Data': getDataContent(content)})
+    with getSession(ctx, identifier.UserName) as session:
+        return updateItem(session, item)
     return False
 
 def getDataContent(content, properties=('Name', 'DateCreated', 'DateModified', 'MediaType')):
-    data, identifier = {}, content.getIdentifier()
+    data = {}
     row = getContentProperties(content, properties)
     data['name'] = row.getString(1)
     data['createdTime'] = unparseDateTime(row.getTimestamp(2))
@@ -73,13 +87,13 @@ def getDataContent(content, properties=('Name', 'DateCreated', 'DateModified', '
     data['mimeType'] = row.getString(4)
     return data
 
-def createNewContent(ctx, statement, identifier, contentinfo, title):
+def createNewContent(ctx, connection, identifier, contentinfo, title):
     try:
         print("contenttools._createNewContent() 1")
         id = getUcb(ctx).createContentIdentifier('%s#' % identifier)
         item = {'Identifier': id}
         if contentinfo.Type == 'application/vnd.google-apps.folder':
-            item.update({'Statement': statement})
+            item.update({'Connection': connection})
             name = 'com.gmail.prrvchr.extensions.gDriveOOo.DriveFolderContent'
         elif contentinfo.Type == 'application/vnd.oasis.opendocument':
             item.update({'Name': title})
@@ -302,8 +316,8 @@ def getUcb(ctx, arguments=None):
     name = 'com.sun.star.ucb.UniversalContentBroker'
     return ctx.ServiceManager.createInstanceWithArguments(name, (arguments, ))
 
-def getUcp(ctx, identifier):
-    return getUcb(ctx).queryContentProvider(identifier)
+def getUcp(ctx):
+    return getUcb(ctx).queryContentProvider('%s://' % g_scheme)
 
 def getMediaType(ctx, stream):
     mediatype = 'application/octet-stream'
@@ -317,9 +331,9 @@ def getMediaType(ctx, stream):
                 mediatype = property.Value
     return mediatype
 
-def _getInputStream(ctx, scheme, id):
+def _getInputStream(ctx, id):
     sf = getSimpleFile(ctx)
-    url = getResourceLocation(ctx, '%s/%s' % (scheme, id))
+    url = getResourceLocation(ctx, '%s/%s' % (g_scheme, id))
     if sf.exists(url):
         return sf.getSize(url), sf.openFileRead(url)
     return 0, None

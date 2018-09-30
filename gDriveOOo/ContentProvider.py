@@ -12,12 +12,13 @@ from com.sun.star.beans import XPropertiesChangeListener
 from com.sun.star.frame import XTerminateListener, TerminationVetoException
 from com.sun.star.sdb import XInteractionSupplyParameters
 
-from gdrive import ContentIdentifier, InteractionRequest
+from gdrive import ContentIdentifier, InteractionRequest, PropertySet
 from gdrive import getDbConnection, selectUser, mergeUser, selectItem, insertItem
 from gdrive import getItem, mergeContent, checkIdentifiers, getIdentifier
 
 from gdrive import getUcb, setContentProperties
-from gdrive import createService, getUri, getProperty, g_folder, getSession
+from gdrive import createService, getUri, getProperty, getSession
+from gdrive import g_scheme, g_folder, g_link, g_doc
 from gdrive import getLogger, getPropertyValue, getUser, isIdentifier, getConnectionMode
 
 from requests import Session, codes
@@ -28,21 +29,20 @@ g_ImplementationHelper = unohelper.ImplementationHelper()
 g_ImplementationName = 'com.gmail.prrvchr.extensions.gDriveOOo.ContentProvider'
 
 
-class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
+class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory, PropertySet,
                       XContentProvider, XPropertiesChangeListener, XParameterizedContentProvider,
                       XTerminateListener, XInteractionSupplyParameters):
     def __init__(self, ctx):
         level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
         msg = "ContentProvider loading ..."
         self.ctx = ctx
-        self.Scheme = None          #'vnd.google-apps'
-        self.Statement = None
+        self._Statement = None
         self.Session = None
         self._User = None
         self._UserName = ''
         self.cachedContent = {}
         self.Logger = getLogger(self.ctx)
-        self.ConnectionMode = getConnectionMode(self.ctx)
+        self._ConnectionMode = getConnectionMode(self.ctx)
         print("ContentProvider.__init__() %s" % self.ConnectionMode)
         msg += " Done"
         desktop = self.ctx.ServiceManager.createInstance('com.sun.star.frame.Desktop')
@@ -56,22 +56,38 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
     def User(self, user):
         if self.UserId != user['Id']:
             self._User = user
-            checkIdentifiers(self.Statement.getConnection(), self.Session, self.UserId)
+            checkIdentifiers(self.Connection, self.Session, self.UserId)
     @property
     def UserId(self):
         return None if self._User is None else self._User['Id']
     @property
     def UserName(self):
         return None if self._User is None else self._User['UserName']
+    @property
+    def ConnectionMode(self):
+        return self._ConnectionMode
+    @ConnectionMode.setter
+    def ConnectionMode(self, mode):
+        if mode == getConnectionMode(self.ctx):
+            self._ConnectionMode = mode
+    @property
+    def Connection(self):
+        return self._Statement.getConnection()
 
     # XParameterizedContentProvider
     def registerInstance(self, template, arguments, replace):
-        self.Scheme = template
-        # Piggyback DataBase Connections (easy and clean ShutDown ;-) )
-        self.Statement = getDbConnection(self.ctx, self.Scheme, True).createStatement()
-        return getUcb(self.ctx).registerContentProvider(self, self.Scheme, replace)
+        print("ContentProvider.registerInstance() 1 %s" % template)
+        if g_scheme == template:
+            print("ContentProvider.registerInstance() 2 %s - %s" % (g_scheme, template))
+            # Piggyback DataBase Connections (easy and clean ShutDown ;-) )
+            self._Statement = getDbConnection(self.ctx, g_scheme, True).createStatement()
+            #self.Connection = getDbConnection(self.ctx, g_scheme, True)
+            #mri = self.ctx.ServiceManager.createInstance('mytools.Mri')
+            #mri.inspect(self._Statement)
+            print("ContentProvider.registerInstance() 3")
+            return getUcb(self.ctx).registerContentProvider(self, g_scheme, replace)
     def deregisterInstance(self, template, argument):
-        getUcb(self.ctx).deregisterContentProvider(self, self.Scheme)
+        getUcb(self.ctx).deregisterContentProvider(self, g_scheme)
 
     # XTerminateListener
     def queryTermination(self, event):
@@ -80,8 +96,8 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
     def notifyTermination(self, event):
         level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
         self.Logger.logp(level, "ContentProvider", "notifyTermination()", "Shutdown database ...")
-        if self.Statement and not self.Statement.getConnection().isClosed():
-            self.Statement.execute('SHUTDOWN COMPACT;')
+        if self._Statement and not self.Connection.isClosed():
+            self._Statement.execute('SHUTDOWN COMPACT;')
             msg = "Shutdown database ... closing connection ... Done"
         else:
             level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
@@ -96,7 +112,7 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
             msg = "Item inserted new Id: %s ..." % event.NewValue if name == 'Id' else \
                   "Item updated Property: %s ..." % name
             self.Logger.logp(level, "ContentProvider", "propertiesChange()", msg)
-            if mergeContent(self.ctx, self.Statement.getConnection(), event, self.ConnectionMode):
+            if mergeContent(self.ctx, self.Connection, event, self.ConnectionMode):
                 msg = "Item inserted new Id: %s ... Done" % event.NewValue if name == 'Id' else \
                       "Item updated Property: %s ... Done" % event.PropertyName
             else:
@@ -119,7 +135,7 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
             self.Logger.logp(level, "ContentProvider", "createContentIdentifier()", msg)
             uri.clearFragment()
             baseuri = uri.getUriReference()
-            id = getIdentifier(self.Statement.getConnection())
+            id = getIdentifier(self.Connection)
             print("ContentProvider.createContentIdentifier() createNewId %s" % id)
             newidentifier = '%s%s' % (baseuri, id) if baseuri.endswith('/') else '%s/%s' % (baseuri, id)
             uri = getUri(self.ctx, newidentifier)
@@ -131,16 +147,15 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
 
     # XContentProvider
     def queryContent(self, identifier):
-        print("ContentProvider.queryContent() 1 %s" % identifier.getContentIdentifier())
+        print("ContentProvider.queryContent() %s" % identifier.getContentIdentifier())
         level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
         msg = "Identifier: %s..." % identifier.getContentIdentifier()
         if not identifier.IsValidUser:
-            print("ContentProvider.queryContent() 2 %s" % identifier.getContentIdentifier())
             raise IllegalIdentifierException('Identifier need a UserName: %s' % identifier.getContentIdentifier(), None)
-        if not isIdentifier(self.Statement.getConnection(), identifier.Id):
+        if not isIdentifier(self.Connection, identifier.Id):
             raise IllegalIdentifierException('Identifier has illegal Path: %s' % identifier.getContentIdentifier(), self)
-        retrieved, content = self._getContent(identifier)
-        if not retrieved:
+        content = self._getContent(identifier)
+        if content is None:
             raise IllegalIdentifierException('Identifier has not been retrieved: %s' % identifier.getContentIdentifier(), self)
         msg += " Done"
         self.Logger.logp(level, "ContentProvider", "queryContent()", msg)
@@ -187,7 +202,7 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
         window = self.ctx.ServiceManager.createInstance('com.sun.star.frame.Desktop').ActiveFrame.ComponentWindow
         args = (getPropertyValue('Parent', window), getPropertyValue('Context', message))
         interaction = self.ctx.ServiceManager.createInstanceWithArguments('com.sun.star.task.InteractionHandler', args)
-        retrieved = interaction.handleInteractionRequest(InteractionRequest(self, self.Statement.getConnection(), message))
+        retrieved = interaction.handleInteractionRequest(InteractionRequest(self, self.Connection, message))
         return self._UserName
 
     def _setUser(self, username):
@@ -196,91 +211,101 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory,
             msg = "UserName have been changed ..."
             self.Logger.logp(level, "ContentProvider", "_setUser()", msg)
             msg = "UserName retrieved from database ... "
-            retrieved, user = selectUser(self.Statement.getConnection(), username, self.ConnectionMode)
-            if not retrieved and self.ConnectionMode == ONLINE:
+            user = selectUser(self.Connection, username, self.ConnectionMode)
+            if user is None and self.ConnectionMode == ONLINE:
                 msg = "UserName retrieved from provider ... "
-                retrieved, user = self._getUser(username)
-            if retrieved:
+                user = self._getUser(username)
+            if user is not None:
                 self.User = user
                 msg += "Done"
                 self.Logger.logp(level, "ContentProvider", "_setUser()", msg)
-            elif self.ConnectionMode == OFFLINE:
-                self._User = None
-                level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
-                msg = "Error: Cannot retrieve User from provider... Network is down..."
-                self.Logger.logp(level, "ContentProvider", "_setUser()", msg)
+                return True
+            self._User = None
+            msg = "Error: Cannot retrieve User... "
+            if self.ConnectionMode == OFFLINE:
+                msg += "Network is down... "
             else:
-                self._User = None
                 level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
-                msg = "Error: Cannot retrieve User... "
-                self.Logger.logp(level, "ContentProvider", "_setUser()", msg)
-            return retrieved
+            self.Logger.logp(level, "ContentProvider", "_setUser()", msg)
+            return False
         except Exception as e:
             print("ContentProvider._setUser().Error: %s - %s" % (e, traceback.print_exc()))
 
     def _getUser(self, username):
         try:
-            retrieved, user, session = False, {}, getSession(self.ctx, self.Scheme, username)
-            status1, usr = getUser(session)
-            status2, root = getItem(session, 'root')
-            print("ContentProvider._getUserFromProvider(): %s" % username)
-            if status1 == codes.ok and status2 == codes.ok:
-                retrieved, user = mergeUser(self.Statement.getConnection(), usr, root, self.ConnectionMode)
-                self.Session = session
-            else:
-                level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
-                msg = "ERROR: Can't retrieve User: %s from provider" % username
-                self.Logger.logp(level, "ContentProvider", "_getUser()", msg)
-            return retrieved, user
+            user = None
+            with getSession(self.ctx, username) as session:
+                data, root = getUser(session)
+                print("ContentProvider._getUserFromProvider(): %s" % username)
+                if root is not None:
+                    user = mergeUser(self.Connection, data, root, self.ConnectionMode)
+                    self.Session = session
+                else:
+                    level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
+                    msg = "ERROR: Can't retrieve User: %s from provider" % username
+                    self.Logger.logp(level, "ContentProvider", "_getUser()", msg)
+            return user
         except Exception as e:
             print("ContentProvider._getUser().Error: %s - %s" % (e, traceback.print_exc()))
 
     def _getItem(self, id):
-        retrieved, item = False, {}
-        msg = None
-        status, json = getItem(self.Session, id)
-        if status == codes.ok:
-            retrieved, item = insertItem(self.Statement.getConnection(), self.UserId, json)
-        elif status == codes.bad_request:
-            level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
-            msg = "ERROR: Can't retrieve Id from provider: %s" % id
+        item = None
+        data = getItem(self.Session, id)
+        if data is not None:
+            item = insertItem(self.Connection, self.UserId, data)
         else:
             level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
             msg = "ERROR: Can't retrieve Id from provider: %s" % id
-        if msg is not None:
             self.Logger.logp(level, "ContentProvider", "_getItem()", msg)            
-        return retrieved, item
+        return item
 
     def _getContent(self, identifier):
-        retrieved = identifier.Id in self.cachedContent
-        if retrieved:
+        if identifier.Id in self.cachedContent:
             content = self.cachedContent[identifier.Id]
             # Same Content can have multiple parent... and user...
             setContentProperties(content, {'Identifier': identifier})
         else:
-            retrieved, content = self._createContent(identifier)
-        return retrieved, content
+            content = self._createContent(identifier)
+        return content
 
     def _createContent(self, identifier):
-        id, content = identifier.Id, None
-        retrieved, item = selectItem(self.Statement.getConnection(), id)
-        if not retrieved and self.ConnectionMode == ONLINE:
-            retrieved, item = self._getItem(id)
-        if retrieved:
-            name = None
-            item.update({'Identifier': identifier})
-            media = item['MediaType']
-            if media == g_folder:
-                name = 'DriveRootContent' if identifier.IsRoot else 'DriveFolderContent'
-                item.update({'Statement': self.Statement})
-            else:
-                name = 'DriveOfficeContent'
-            if name:
-                service = 'com.gmail.prrvchr.extensions.gDriveOOo.%s' % name
-                content = createService(service, self.ctx, **item)
-                content.addPropertiesChangeListener(('SyncMode', 'Name', 'Size'), self)
-                self.cachedContent[id] = content
-        return retrieved, content
+        try:
+            content = None
+            item = selectItem(self.Connection, identifier.Id)
+            if item is None and self.ConnectionMode == ONLINE:
+                item = self._getItem(identifier.Id)
+            if item is not None:
+                name = None
+                data = item['Data']
+                media = data['MediaType']
+                data.update({'Identifier': identifier})
+                if media == g_folder:
+                    name = 'DriveRootContent' if item['IsRoot'] else 'DriveFolderContent'
+                    data.update({'Connection': self.Connection})
+                elif media == g_link:
+                    pass
+                elif media.startswith(g_doc):
+                    pass
+                else:
+                    name = 'DriveOfficeContent'
+                if name is not None:
+                    service = 'com.gmail.prrvchr.extensions.gDriveOOo.%s' % name
+                    content = createService(service, self.ctx, **data)
+                    content.addPropertiesChangeListener(('SyncMode', 'Name', 'Size'), self)
+                    self.cachedContent[identifier.Id] = content
+            return content
+        except Exception as e:
+            print("ContentProvider._createContent().Error: %s - %s" % (e, traceback.print_exc()))
+
+    # PropertySet
+    def _getPropertySetInfo(self):
+        properties = {}
+        bound = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.BOUND')
+        maybevoid = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.MAYBEVOID')
+        readonly = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.READONLY')
+        properties['ConnectionMode'] = getProperty('ConnectionMode', 'short', bound)
+        properties['UserName'] = getProperty('UserName', 'string', maybevoid | readonly)
+        return properties
 
     # XServiceInfo
     def supportsService(self, service):

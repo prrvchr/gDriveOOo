@@ -72,12 +72,12 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
             self.propertyInfoListeners = []
             self.commandInfoListeners = []
             
-            self.Statement = None
+            self.Connection = None
             self.initialize(namedvalues)
             self.CreatableContentsInfo = self._getCreatableContentsInfo()
             msg = "DriveRootContent loading Uri: %s ... Done" % self.Identifier.getContentIdentifier()
             self.Logger.logp(level, "DriveRootContent", "__init__()", msg)
-            print("DriveRootContent.__init__()")
+            print("DriveRootContent.__init__() %s" % self.Connection)
         except Exception as e:
             print("DriveRootContent.__init__().Error: %s - %s" % (e, traceback.print_exc()))
 
@@ -131,7 +131,7 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
         return self.CreatableContentsInfo
     def createNewContent(self, contentinfo):
         print("DriveRootContent.createNewContent():************************* %s" % self._NewTitle)
-        return createNewContent(self.ctx, self.Statement, self.Identifier.getContentIdentifier(), contentinfo, self._NewTitle)
+        return createNewContent(self.ctx, self.Connection, self.Identifier.getContentIdentifier(), contentinfo, self._NewTitle)
 
     # XContent
     def getIdentifier(self):
@@ -164,19 +164,18 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
         elif command.Name == 'setPropertyValues':
             return setPropertiesValues(self, command.Argument, self.Logger)
         elif command.Name == 'open':
-            connection = self.Statement.getConnection()
             mode = self.Identifier.ConnectionMode
             if mode == ONLINE and self.SyncMode == ONLINE:
                 print("DriveRootContent.execute(): open 1")
-                with getSession(self.ctx, self.Scheme, self.Identifier.UserName) as session:
+                with getSession(self.ctx, self.Identifier.UserName) as session:
                     print("DriveRootContent.execute(): open 2")
-                    self.SyncMode = updateChildren(connection, session, self.Identifier.UserId, self.Id)
+                    self.SyncMode = updateChildren(self.Connection, session, self.Identifier)
             # Not Used: command.Argument.Properties - Implement me ;-)
-            index, select = getChildSelect(connection, mode, self.Id, self.Identifier.getContentIdentifier(), True)
+            index, select = getChildSelect(self.Connection, self.Identifier)
             return DynamicResultSet(self.ctx, self.Scheme, select, index)
         elif command.Name == 'createNewContent':
             print("DriveRootContent.execute(): createNewContent %s" % self._NewTitle)
-            return createNewContent(self.ctx, self.Statement, self.Identifier.getContentIdentifier(), command.Argument, self._NewTitle)
+            return createNewContent(self.ctx, self.Connection, self.Identifier.getContentIdentifier(), command.Argument, self._NewTitle)
         elif command.Name == 'insert':
             print("DriveRootContent.execute() insert")
         elif command.Name == 'delete':
@@ -188,7 +187,7 @@ class DriveRootContent(unohelper.Base, XServiceInfo, XComponent, Initialization,
             #mri = self.ctx.ServiceManager.createInstance('mytools.Mri')
             #mri.inspect(command.Argument)
             print("DriveRootContent.execute(): transfer: %s - %s" % (source, id))
-            if not isChild(self.Statement.getConnection(), id, self.Id):
+            if not isChild(self.Connection, id, self.Id):
                 # For new document (File Save As) we use command: createNewContent and Insert
                 self._NewTitle = id
                 print("DriveRootContent.execute(): transfer copy: %s - %s" % (source, id))

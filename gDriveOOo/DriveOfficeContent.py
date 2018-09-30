@@ -12,7 +12,7 @@ from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
 
 from gdrive import Component, Initialization, PropertiesChangeNotifier, CmisDocument
 from gdrive import PropertySetInfoChangeNotifier, ContentIdentifier, CommandInfoChangeNotifier
-from gdrive import getContentInfo, getPropertiesValues, uploadItem, getSession
+from gdrive import getContentInfo, getPropertiesValues, uploadItem
 from gdrive import CommandInfo, CmisPropertySetInfo, Row, InputStream, getMediaType
 from gdrive import createService, getResourceLocation, parseDateTime, getPropertySetInfoChangeEvent
 from gdrive import getContent, getSimpleFile, getCommandInfo, getProperty, getUcp, getDataContent
@@ -223,8 +223,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
                         updateData(self.ctx, self, 28, stream, self.Size)
                     else:
                         self.SyncMode = 28
-                    ucp = getUcp(self.ctx, self.Identifier.getContentIdentifier())
-                    self.addPropertiesChangeListener(('Id', 'SyncMode', 'Name', 'Size'), ucp)
+                    self.addPropertiesChangeListener(('Id', 'SyncMode', 'Name', 'Size'), getUcp(self.ctx))
                     self.Id = self.Id
             elif command.Name == 'addProperty':
                 print("DriveOfficeContent.addProperty():")
@@ -269,7 +268,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Component, Initialization
     def _getUrl(self, sf):
         url = getResourceLocation(self.ctx, '%s/%s' % (self.Scheme, self.Id))
         if not sf.exists(url):
-            stream = InputStream(self.ctx, self.Scheme, self.Identifier.UserName, self.Id, self.Size)
+            stream = InputStream(self.ctx, self.Identifier.UserName, self.Id, self.Size)
             sf.writeFile(url, stream)
             stream.closeInput()
             self.SyncMode = 1

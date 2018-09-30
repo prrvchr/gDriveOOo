@@ -19,10 +19,13 @@ def isIdentifier(connection, id):
     return retreived
 
 def checkIdentifiers(connection, session, userid):
-    result = True
-    if _countIdentifier(connection) < min(g_IdentifierRange):
-        result = _insertIdentifier(connection, session, userid, max(g_IdentifierRange))
-    return result
+    try:
+        result = True
+        if _countIdentifier(connection) < min(g_IdentifierRange):
+            result = _insertIdentifier(connection, session, userid, max(g_IdentifierRange))
+        return result
+    except Exception as e:
+        print("identifiers.checkIdentifiers().Error: %s - %s" % (e, traceback.print_exc()))
 
 def getIdentifier(connection):
     select = connection.prepareCall('CALL "selectIdentifier"()')

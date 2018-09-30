@@ -6,6 +6,7 @@ import unohelper
 
 from com.sun.star.sdbc import XDataSource, XArray, XRow, XResultSet
 from com.sun.star.lang import IllegalArgumentException
+from com.sun.star.container import XNameAccess, NoSuchElementException
 
 from .unotools import getResourceLocation, getPropertyValue, getSimpleFile
 
@@ -78,6 +79,31 @@ class SqlArray(unohelper.Base, XArray):
     def getResultSetAtIndex(self, index, count, map):
         values = self.getArrayAtIndex(index, count, map)
         return ArrayResultSet(values)
+
+
+class SqlTypeMap(unohelper.Base, XNameAccess):
+    def __init__(self, map='VARCHAR'):
+        self.map = map
+        self.maps = {'VARCHAR': 'string'}
+
+    # XNameAccess
+    def getByName(self, name):
+        print("dbtools.SqlTypeMap.getByName() %s" % name)
+        if name in self.maps:
+            return uno.getTypeByName(self.maps[name])
+        raise NoSuchElementException()
+    def getElementNames(self):
+        names = tuple(self.maps.keys())
+        print("dbtools.SqlTypeMap.getElementNames() %s" % (names, ))
+        return names
+    def hasByName(self, name):
+        print("dbtools.SqlTypeMap.hasByName() %s" % name)
+        return name in self.maps
+    # XElementAccess
+    def getElementType(self):
+        return uno.getTypeByName(self.maps[self.map])
+    def hasElements(self):
+        return True
 
 
 class ArrayResultSet(unohelper.Base, XResultSet, XRow):
@@ -201,10 +227,12 @@ class ArrayResultSet(unohelper.Base, XResultSet, XRow):
             return self.value
 
 
-def getItemFromResult(result):
-    item = {}
+def getItemFromResult(result, data=None, transform=None):
+    item = {} if data is None else {'Data':{k: None for k in data}}
     for index in range(1, result.MetaData.ColumnCount +1):
         dbtype = result.MetaData.getColumnTypeName(index)
+        name = result.MetaData.getColumnName(index)
+        print("dbtools.getItemFromResult(): %s - %s" %(dbtype, name))
         if dbtype == 'VARCHAR':
             value = result.getString(index)
         elif dbtype == 'TIMESTAMP':
@@ -214,10 +242,16 @@ def getItemFromResult(result):
         elif dbtype == 'BIGINT' or dbtype == 'SMALLINT':
             value = result.getLong(index)
         else:
-            value = result.getObject(index, None)
-        if result.wasNull():
-            value = None
-        item[result.MetaData.getColumnName(index)] = value
+            continue
+        if transform is not None and name in transform:
+            value = transform[name](value)
+        if value is None or result.wasNull():
+            continue
+        if data is not None and name in data:
+            item['Data'][name] = value
+        else:
+            item[name] = value
+    print("dbtools.getItemFromResult(): OK: %s" % item)
     return item
 
 def parseDateTime(timestr=None, format=u'%Y-%m-%dT%H:%M:%S.%fZ'):

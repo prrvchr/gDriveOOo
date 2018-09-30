@@ -74,7 +74,7 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
             self.propertyInfoListeners = []
             self.commandInfoListeners = []
             
-            self.Statement = None
+            self.Connection = None
             self.initialize(namedvalues)
             
             self.CreatableContentsInfo = self._getCreatableContentsInfo()
@@ -127,7 +127,7 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
         return self.CreatableContentsInfo
     def createNewContent(self, contentinfo):
         print("DriveFolderContent.createNewContent():************************* %s" % self._NewTitle)
-        return createNewContent(self.ctx, self.Statement, self.Identifier.getContentIdentifier(), contentinfo, self._NewTitle)
+        return createNewContent(self.ctx, self.Connection, self.Identifier.getContentIdentifier(), contentinfo, self._NewTitle)
 
     # XChild
     def getParent(self):
@@ -167,17 +167,16 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
         elif command.Name == 'setPropertyValues':
             return setPropertiesValues(self, command.Argument, self.Logger)
         elif command.Name == 'open':
-            connection = self.Statement.getConnection()
             mode = self.Identifier.ConnectionMode
             if mode == ONLINE and self.SyncMode == ONLINE:
-                with getSession(self.ctx, self.Scheme, self.Identifier.UserName) as session:
-                    self.SyncMode = updateChildren(connection, session, self.Identifier.UserId, self.Id)
+                with getSession(self.ctx, self.Identifier.UserName) as session:
+                    self.SyncMode = updateChildren(self.Connection, session, self.Identifier)
             # Not Used: command.Argument.Properties - Implement me ;-)
-            index, select = getChildSelect(connection, mode, self.Id, self.Identifier.getContentIdentifier(), False)
+            index, select = getChildSelect(self.Connection, self.Identifier)
             return DynamicResultSet(self.ctx, self.Scheme, select, index)
         elif command.Name == 'createNewContent':
             print("DriveFolderContent.execute(): createNewContent %s" % command.Argument)
-            return createNewContent(self.ctx, self.Statement, self.Identifier.getContentIdentifier(), command.Argument, self._NewTitle)
+            return createNewContent(self.ctx, self.Connection, self.Identifier.getContentIdentifier(), command.Argument, self._NewTitle)
         elif command.Name == 'insert':
             print("DriveFolderContent.execute() insert")
             #identifier = self.Identifier.getParent()
@@ -187,8 +186,7 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
                 updateMetaData(self.ctx, self, 20)
             else:
                 self.SyncMode = 20
-            ucp = getUcp(self.ctx, self.Identifier.getContentIdentifier())
-            self.addPropertiesChangeListener(('Id', 'SyncMode', 'Name', 'Size'), ucp)
+            self.addPropertiesChangeListener(('Id', 'SyncMode', 'Name', 'Size'), getUcp(self.ctx))
             self.Id = self.Id
         elif command.Name == 'delete':
             print("DriveFolderContent.execute(): delete")
@@ -197,7 +195,7 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Component, Initialization
             id = command.Argument.NewTitle
             source = command.Argument.SourceURL
             print("DriveFolderContent.execute(): transfer: %s - %s" % (source, id))
-            if not isChild(self.Statement.getConnection(), id, self.Id):
+            if not isChild(self.Connection, id, self.Id):
                 # For new document (File Save As) we use command: createNewContent and Insert
                 self._NewTitle = id
                 print("DriveFolderContent.execute(): transfer copy: %s - %s" % (source, id))

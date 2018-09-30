@@ -1,13 +1,15 @@
 #!
 # -*- coding: utf_8 -*-
 
+import uno
 import unohelper
 
 from com.sun.star.lang import XServiceInfo
 from com.sun.star.ucb import XContentProvider, XContentIdentifierFactory
 from com.sun.star.ucb import XContentProviderSupplier, XParameterizedContentProvider
 
-from gdrive import createService, getUcp
+from gdrive import PropertySet
+from gdrive import createService, getUcp, getProperty
 
 # pythonloader looks for a static g_ImplementationHelper variable
 g_ImplementationHelper = unohelper.ImplementationHelper()
@@ -15,26 +17,31 @@ g_ImplementationName = 'com.gmail.prrvchr.extensions.gDriveOOo.ContentProviderPr
 
 
 class ContentProviderProxy(unohelper.Base, XServiceInfo, XContentProvider, XContentIdentifierFactory,
-                           XContentProviderSupplier, XParameterizedContentProvider):
+                           XContentProviderSupplier, XParameterizedContentProvider, PropertySet):
     def __init__(self, ctx):
         self.ctx = ctx
-        self.registered = False
+        self.registred = False
         self.template = ''
         self.arguments = ''
         self.replace = True
+        self.UserName = None
 
     # XContentProviderSupplier
     def getContentProvider(self):
-        if not self.registered:
-            provider = createService('com.gmail.prrvchr.extensions.gDriveOOo.ContentProvider', self.ctx)
-            provider.registerInstance(self.template, self.arguments, self.replace)
-            self.registered = True
+        print("ContentProviderProxy.getContentProvider() 1")
+        if not self.registred:
+            name = 'com.gmail.prrvchr.extensions.gDriveOOo.ContentProvider'
+            print("ContentProviderProxy.getContentProvider() 2")
+            provider = createService(name, self.ctx).registerInstance(self.template, self.arguments, self.replace)
+            print("ContentProviderProxy.getContentProvider() 3")
+            self.registred = True
         else:
-            provider = getUcp(self.ctx, self.template)
+            provider = getUcp(self.ctx)
         return provider
 
     # XParameterizedContentProvider
     def registerInstance(self, template, arguments, replace):
+        print("ContentProviderProxy.registerInstance() 1")
         self.template = template
         self.arguments = arguments
         self.replace = replace
@@ -51,6 +58,15 @@ class ContentProviderProxy(unohelper.Base, XServiceInfo, XContentProvider, XCont
         return self.getContentProvider().queryContent(identifier)
     def compareContentIds(self, identifier1, identifier2):
         return self.getContentProvider().compareContentIds(identifier1, identifier2)
+
+    # PropertySet
+    def _getPropertySetInfo(self):
+        properties = {}
+        bound = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.BOUND')
+        maybevoid = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.MAYBEVOID')
+        readonly = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.READONLY')
+        properties['UserName'] = getProperty('UserName', 'string', maybevoid | readonly)
+        return properties
 
     # XServiceInfo
     def supportsService(self, service):

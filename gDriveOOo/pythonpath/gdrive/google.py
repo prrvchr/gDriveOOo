@@ -18,6 +18,7 @@ import sys
 if sys.version_info[0] < 3:
     requests.packages.urllib3.disable_warnings()
 
+g_scheme = 'vnd.google-apps'
 g_host = 'www.googleapis.com'
 g_url = 'https://%s/drive/v3/' % g_host
 g_upload = 'https://%s/upload/drive/v3/files' % g_host
@@ -46,62 +47,66 @@ def getConnectionMode(ctx):
     return OFFLINE
 
 def getUser(session):
-    status, user = False, {}
+    user, root = None, None
     url = '%sabout' % g_url
-    params = {}
-    params['fields'] = g_userfields
-    r = session.get(url, params=params, timeout=g_timeout)
-    print("google.getUser(): %s - %s" % (r.status_code, r.json()))
-    status = r.status_code
-    if status == requests.codes.ok:
-        result = r.json()
-        if 'user' in result:
-            user = _parseUser(result['user'])
-    return status, user
+    params = {'fields': g_userfields}
+    try:
+        with session.get(url, params=params, timeout=g_timeout) as r:
+            print("google.getUser(): %s - %s" % (r.status_code, r.json()))
+            status = r.status_code
+            if r.status_code == requests.codes.ok:
+                result = r.json()
+                if 'user' in result:
+                    user = _parseUser(result['user'])
+                    root = getItem(session, 'root')
+    except RequestException as e:
+        print("google.getUser(): ERROR: %s" % (e.message,))
+    return user, root
 
 def getItem(session, id):
-    status, item = False, {}
+    item = None
     url = '%sfiles/%s' % (g_url, id)
     params = {}
     params['fields'] = g_itemfields
     with session.get(url, params=params, timeout=g_timeout) as r:
         print("google.getItem(): %s - %s" % (r.status_code, r.json()))
-        status = r.status_code
-        if status == requests.codes.ok:
+        if r.status_code == requests.codes.ok:
             item = _parseItem(r.json(), parseDateTime())
-    return status, item
+    return item
 
-def getUploadLocation(session, id, mode, size, data, parents):
-    new, updated = mode & 16 == 16, mode & 4 == 4
+def getUploadLocation(session, item, size):
+    id = item['id']
+    new = item['mode'] & 16 == 16
+    data = item['Data']
     method = 'POST' if new else 'PATCH'
     url = g_upload  if new else '%s/%s' % (g_upload, id)
     params = {'uploadType': 'resumable'}
     headers = {'X-Upload-Content-Length': '%s' % size}
-    if not new and not updated:
-        data = None
-    elif new:
+    if new:
         headers['X-Upload-Content-Type'] = data['mimeType']
-        data.update({'id': id, 'parents': parents})
+        data.update({'id': id, 'parents': item['parents']})
     #session.headers.update(headers)
     print("google.getUploadLocation()1: %s - %s" % (url, id))
-    r = session.request(method, url, params=params, headers=headers, json=data)
-    print("contenttools.getUploadLocation()2 %s - %s" % (r.status_code, r.headers))
-    print("contenttools.getUploadLocation()3 %s - %s" % (r.content, data))
-    if r.status_code == requests.codes.ok and 'Location' in r.headers:
-        return r.headers['Location']
+    with session.request(method, url, params=params, headers=headers, json=data) as r:
+        print("contenttools.getUploadLocation()2 %s - %s" % (r.status_code, r.headers))
+        print("contenttools.getUploadLocation()3 %s - %s" % (r.content, data))
+        if r.status_code == requests.codes.ok and 'Location' in r.headers:
+            return r.headers['Location']
     return None
 
-def updateItem(session, id, mode, data, parents):
-    new = mode & 16 == 16
+def updateItem(session, item):
+    id = item['id']
+    new = item['mode'] & 16 == 16
+    data = item['Data']
     method = 'POST' if new else 'PATCH'
     url = '%sfiles' % g_url if new else '%sfiles/%s' % (g_url, id)
     if new:
-        data.update({'id': id, 'parents': parents})
-    r = session.request(method, url, json=data)
-    print("contenttools.updateItem()1 %s - %s" % (r.status_code, r.headers))
-    print("contenttools.updateItem()2 %s - %s" % (r.content, data))
-    if r.status_code == requests.codes.ok:
-        return True
+        data.update({'id': id, 'parents': item['parents']})
+    with session.request(method, url, json=data) as r:
+        print("contenttools.updateItem()1 %s - %s" % (r.status_code, r.headers))
+        print("contenttools.updateItem()2 %s - %s" % (r.content, data))
+        if r.status_code == requests.codes.ok:
+            return id
     return False
 
 
@@ -171,9 +176,9 @@ class ChildGenerator():
 
 
 class InputStream(unohelper.Base, XInputStream):
-    def __init__(self, ctx, scheme, username, id, size):
+    def __init__(self, ctx, username, id, size):
         self.session = requests.Session()
-        self.session.auth = OAuth2Ooo(ctx, scheme, username)
+        self.session.auth = OAuth2Ooo(ctx, username)
         self.url = '%sfiles/%s' % (g_url, id)
         self.size = size
         self.start, self.sequences = 0, None
@@ -304,14 +309,13 @@ class OutputStream(unohelper.Base, XOutputStream):
 
 
 class OAuth2Ooo(object):
-    def __init__(self, ctx, scheme=None, username=None):
+    def __init__(self, ctx, username=None):
         name = 'com.gmail.prrvchr.extensions.OAuth2OOo.OAuth2Service'
         self.service = ctx.ServiceManager.createInstanceWithContext(name, ctx)
-        if scheme is not None:
-            self.service.ResourceUrl = scheme
+        self.service.ResourceUrl = g_scheme
         if username is not None:
             self.service.UserName = username
-    
+
     @property
     def UserName(self):
         return self.service.UserName
@@ -321,9 +325,6 @@ class OAuth2Ooo(object):
     @property
     def Scheme(self):
         return self.service.ResourceUrl
-    @Scheme.setter
-    def Scheme(self, url):
-        self.service.ResourceUrl = url
 
     def __call__(self, request):
         request.headers['Authorization'] = 'Bearer %s' % self.service.Token

@@ -47,7 +47,7 @@ class InteractionHandler(unohelper.Base, XInteractionHandler):
 
 class PropertySet(XPropertySet):
     def _getPropertySetInfo(self):
-        raise NotImplementedError
+        return {}
 
     # XPropertySet
     def getPropertySetInfo(self):
