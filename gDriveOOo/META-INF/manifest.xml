@@ -1,25 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE manifest:manifest PUBLIC "-//OpenOffice.org//DTD Manifest 1.0//EN" "Manifest.dtd">
-<manifest:manifest
-  xmlns:manifest="http://openoffice.org/2001/manifest">
-    <manifest:file-entry manifest:media-type="application/vnd.sun.star.basic-library"
-        manifest:full-path="gDriveOOo/"/>
-    <manifest:file-entry manifest:media-type="application/vnd.sun.star.uno-component;type=Python"
-        manifest:full-path="OptionsDialog.py"/>
-    <manifest:file-entry manifest:media-type="application/vnd.sun.star.uno-component;type=Python"
-        manifest:full-path="ContentProvider.py"/>
-    <manifest:file-entry manifest:media-type="application/vnd.sun.star.uno-component;type=Python"
-        manifest:full-path="ContentProviderProxy.py"/>
-    <manifest:file-entry manifest:media-type="application/vnd.sun.star.uno-component;type=Python"
-        manifest:full-path="DriveRootContent.py"/>
-    <manifest:file-entry manifest:media-type="application/vnd.sun.star.uno-component;type=Python"
-        manifest:full-path="DriveFolderContent.py"/>
-    <manifest:file-entry manifest:media-type="application/vnd.sun.star.uno-component;type=Python"
-        manifest:full-path="DriveOfficeContent.py"/>
-    <manifest:file-entry manifest:media-type="application/vnd.sun.star.configuration-data"
-        manifest:full-path="OptionsDialog.xcu"/>
-    <manifest:file-entry manifest:media-type="application/vnd.sun.star.configuration-data"
-        manifest:full-path="OAuth2Ooo.xcu"/>
-    <manifest:file-entry manifest:media-type="application/vnd.sun.star.configuration-data"
-        manifest:full-path="gDriveOoo.xcu"/>
+<manifest:manifest xmlns:manifest="http://openoffice.org/2001/manifest">
+    <manifest:file-entry manifest:media-type="application/vnd.sun.star.basic-library" manifest:full-path="gDriveOOo/"/>
+    <manifest:file-entry manifest:media-type="application/vnd.sun.star.uno-component;type=Python" manifest:full-path="OptionsDialog.py"/>
+    <manifest:file-entry manifest:media-type="application/vnd.sun.star.uno-component;type=Python" manifest:full-path="ContentProvider.py"/>
+    <manifest:file-entry manifest:media-type="application/vnd.sun.star.uno-component;type=Python" manifest:full-path="ContentProviderProxy.py"/>
+    <manifest:file-entry manifest:media-type="application/vnd.sun.star.uno-component;type=Python" manifest:full-path="DriveFolderContent.py"/>
+    <manifest:file-entry manifest:media-type="application/vnd.sun.star.uno-component;type=Python" manifest:full-path="DriveOfficeContent.py"/>
+    <manifest:file-entry manifest:media-type="application/vnd.sun.star.uno-component;type=Python" manifest:full-path="DriveDocumentContent.py"/>
+    <manifest:file-entry manifest:media-type="application/vnd.sun.star.configuration-data" manifest:full-path="OptionsDialog.xcu"/>
+    <manifest:file-entry manifest:media-type="application/vnd.sun.star.configuration-data" manifest:full-path="OAuth2Ooo.xcu"/>
+    <manifest:file-entry manifest:media-type="application/vnd.sun.star.configuration-data" manifest:full-path="gDriveOoo.xcu"/>
 </manifest:manifest>

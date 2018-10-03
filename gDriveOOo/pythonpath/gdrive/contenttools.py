@@ -62,7 +62,6 @@ def uploadItem(ctx, session, item, size, stream):
     
 def updateData(ctx, content, mode, stream, size):
     identifier = content.getIdentifier()
-    scheme = identifier.getContentProviderScheme()
     item = {'id': identifier.Id, 'parents': [identifier.getParent().Id], 'mode': mode}
     item.update({'Data': getDataContent(content)})
     with getSession(ctx, identifier.UserName) as session:
@@ -71,14 +70,13 @@ def updateData(ctx, content, mode, stream, size):
 
 def updateMetaData(ctx, content, mode):
     identifier = content.getIdentifier()
-    scheme = identifier.getContentProviderScheme()
     item = {'id': identifier.Id, 'parents': [identifier.getParent().Id], 'mode': mode}
     item.update({'Data': getDataContent(content)})
     with getSession(ctx, identifier.UserName) as session:
         return updateItem(session, item)
     return False
 
-def getDataContent(content, properties=('Name', 'DateCreated', 'DateModified', 'MediaType')):
+def getDataContent(content, properties=('Name', 'DateCreated', 'DateModified', 'MimeType')):
     data = {}
     row = getContentProperties(content, properties)
     data['name'] = row.getString(1)
@@ -87,35 +85,18 @@ def getDataContent(content, properties=('Name', 'DateCreated', 'DateModified', '
     data['mimeType'] = row.getString(4)
     return data
 
-def createNewContent(ctx, connection, identifier, contentinfo, title):
-    try:
-        print("contenttools._createNewContent() 1")
-        id = getUcb(ctx).createContentIdentifier('%s#' % identifier)
-        item = {'Identifier': id}
-        if contentinfo.Type == 'application/vnd.google-apps.folder':
-            item.update({'Connection': connection})
-            name = 'com.gmail.prrvchr.extensions.gDriveOOo.DriveFolderContent'
-        elif contentinfo.Type == 'application/vnd.oasis.opendocument':
-            item.update({'Name': title})
-            name = 'com.gmail.prrvchr.extensions.gDriveOOo.DriveOfficeContent'
-        content = createService(name, ctx, **item)
-        print("contenttools._createNewContent() 2")
-        return content
-    except Exception as e:
-        print("contenttools.createNewContent().Error: %s - %s" % (e, traceback.print_exc()))
-
 def mergeContent(ctx, connection, event, mode):
     result = False
     identifier = event.Source.getIdentifier()
     if event.PropertyName == 'Id':
-        properties = ('Name', 'DateCreated', 'DateModified', 'MediaType','Size',
+        properties = ('Name', 'DateCreated', 'DateModified', 'MimeType','Size',
                       'CanAddChild', 'CanRename', 'IsReadOnly', 'IsVersionable')
         row = getContentProperties(event.Source, properties)
         item = {'Id': identifier.Id}
         item['Name'] = row.getString(1)
         item['DateCreated'] = row.getTimestamp(2)
         item['DateModified'] = row.getTimestamp(3)
-        item['MediaType'] = row.getString(4)
+        item['MimeType'] = row.getString(4)
         item['Size'] = row.getLong(5)
         if not identifier.IsRoot:
             item['Parents'] = (identifier.getParent().Id, )
@@ -150,6 +131,7 @@ def mergeContent(ctx, connection, event, mode):
         update.setLong(3, event.NewValue)
         update.execute()
         result = update.getLong(4)
+        print("contenttools.mergeContent() %s" % result)
     return result
 
 def propertyChange(source, name, oldvalue, newvalue):
@@ -265,7 +247,7 @@ def getCmisProperty(id, name, unotype, updatable, required, multivalued, opencho
 
 def getTempFile(ctx):
     tmp = ctx.ServiceManager.createInstance('com.sun.star.io.TempFile')
-    tmp.RemoveFile = False
+    #tmp.RemoveFile = False
     return tmp
 
 def getPump(ctx):
@@ -273,9 +255,6 @@ def getPump(ctx):
 
 def getPipe(ctx):
     return ctx.ServiceManager.createInstance('com.sun.star.io.Pipe')
-
-def getContent(ctx, identifier):
-    return getUcb(ctx).queryContent(identifier)
 
 def getContentEvent(action, content, id):
     event = uno.createUnoStruct('com.sun.star.ucb.ContentEvent')
@@ -319,8 +298,8 @@ def getUcb(ctx, arguments=None):
 def getUcp(ctx):
     return getUcb(ctx).queryContentProvider('%s://' % g_scheme)
 
-def getMediaType(ctx, stream):
-    mediatype = 'application/octet-stream'
+def getMimeType(ctx, stream):
+    mimetype = 'application/octet-stream'
     detection = ctx.ServiceManager.createInstance('com.sun.star.document.TypeDetection')
     descriptor = (getPropertyValue('InputStream', stream), )
     format, dummy = detection.queryTypeByDescriptor(descriptor, True)
@@ -328,8 +307,8 @@ def getMediaType(ctx, stream):
         properties = detection.getByName(format)
         for property in properties:
             if property.Name == "MediaType":
-                mediatype = property.Value
-    return mediatype
+                mimetype = property.Value
+    return mimetype
 
 def _getInputStream(ctx, id):
     sf = getSimpleFile(ctx)

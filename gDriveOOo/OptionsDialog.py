@@ -10,7 +10,7 @@ from com.sun.star.ucb import URLAuthenticationRequest
 
 from gdrive import getStringResource, getFileSequence, createService
 from gdrive import getLoggerUrl, getLoggerSetting, setLoggerSetting, getLogger
-from gdrive import getPropertyValue, registerDataBase, getUcp, needSync
+from gdrive import getPropertyValue, registerDataBase, getUcp, getUcb, needSync, doSync
 
 from gdrive import g_scheme, getDbConnection, getItemFromResult, getSession
 
@@ -27,15 +27,11 @@ class OptionsDialog(unohelper.Base, XServiceInfo, XContainerWindowEventHandler):
         try:
             self.ctx = ctx
             self.stringResource = getStringResource(self.ctx, None, 'OptionsDialog')
-            ucp = getUcp(self.ctx)
-            if ucp.supportsService('com.sun.star.ucb.ContentProviderProxy'):
-                print("PyOptionsDialog.__init__() 1")
-                ucp = ucp.getContentProvider()
-            self.ucp = ucp
-            #mri = self.ctx.ServiceManager.createInstance('mytools.Mri')
-            #mri.inspect(ucp)
-            #self.Connection = getDbConnection(self.ctx, g_scheme, False)
-            print("PyOptionsDialog.__init__() 2")
+            print("PyOptionsDialog.__init__() 1")
+            identifier = getUcb(self.ctx).createContentIdentifier('%s:///' % g_scheme)
+            print("PyOptionsDialog.__init__() 2 %s" % identifier.getContentIdentifier())
+            self.Connection = getUcp(self.ctx).Connection
+            print("PyOptionsDialog.__init__() 3")
         except Exception as e:
             print("PyOptionsDialog.__init__().Error: %s - %s" % (e, traceback.print_exc()))
 
@@ -93,8 +89,7 @@ class OptionsDialog(unohelper.Base, XServiceInfo, XContainerWindowEventHandler):
 
     def _initialize(self, dialog):
         print("PyOptionsDialog._initialize()")
-        user = getUcp(self.ctx).UserName
-        self._toogleSync(dialog, needSync(self.Connection) and user is not None)
+        self._toogleSync(dialog, needSync(self.Connection))
         self._loadLoggerSetting(dialog)
 
     def _loadSetting(self, dialog):

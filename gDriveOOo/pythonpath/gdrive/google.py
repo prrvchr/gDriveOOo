@@ -50,17 +50,14 @@ def getUser(session):
     user, root = None, None
     url = '%sabout' % g_url
     params = {'fields': g_userfields}
-    try:
-        with session.get(url, params=params, timeout=g_timeout) as r:
-            print("google.getUser(): %s - %s" % (r.status_code, r.json()))
-            status = r.status_code
-            if r.status_code == requests.codes.ok:
-                result = r.json()
-                if 'user' in result:
-                    user = _parseUser(result['user'])
-                    root = getItem(session, 'root')
-    except RequestException as e:
-        print("google.getUser(): ERROR: %s" % (e.message,))
+    with session.get(url, params=params, timeout=g_timeout) as r:
+        print("google.getUser(): %s - %s" % (r.status_code, r.json()))
+        status = r.status_code
+        if r.status_code == requests.codes.ok:
+            result = r.json()
+            if 'user' in result:
+                user = _parseUser(result['user'])
+                root = getItem(session, 'root')
     return user, root
 
 def getItem(session, id):
@@ -77,14 +74,15 @@ def getItem(session, id):
 def getUploadLocation(session, item, size):
     id = item['id']
     new = item['mode'] & 16 == 16
-    data = item['Data']
+    data = None
     method = 'POST' if new else 'PATCH'
     url = g_upload  if new else '%s/%s' % (g_upload, id)
     params = {'uploadType': 'resumable'}
     headers = {'X-Upload-Content-Length': '%s' % size}
     if new:
-        headers['X-Upload-Content-Type'] = data['mimeType']
+        data = item['Data']
         data.update({'id': id, 'parents': item['parents']})
+        headers['X-Upload-Content-Type'] = data['mimeType']
     #session.headers.update(headers)
     print("google.getUploadLocation()1: %s - %s" % (url, id))
     with session.request(method, url, params=params, headers=headers, json=data) as r:
@@ -176,71 +174,74 @@ class ChildGenerator():
 
 
 class InputStream(unohelper.Base, XInputStream):
-    def __init__(self, ctx, username, id, size):
-        self.session = requests.Session()
-        self.session.auth = OAuth2Ooo(ctx, username)
-        self.url = '%sfiles/%s' % (g_url, id)
+    def __init__(self, session, id, size, mimetype=None):
+        self.session = session
+        self.url = '%sfiles/%s' % (g_url, id) if size else '%sfiles/%s/export' % (g_url, id)
         self.size = size
-        self.start, self.sequences = 0, None
+        self.length = 32768
+        self.mimetype = mimetype
+        self.chunks = None
+        print("google.InputStream.__init__()")
 
     #XInputStream
     def readBytes(self, sequence, length):
         # I assume that length is constant...
-        if self.sequences is None:
-            self.sequences = (s for chunks in ChunksDownloader(self.session, self.url, self.size, length) for s in chunks)
-        print("google.InputStream.readBytes() 4")
-        sequence = uno.ByteSequence(next(self.sequences, b''))
+        if self.chunks is None:
+            self.chunks = (s for c in ChunksDownloader(self.session, self.url, length, self.size, self.mimetype) for s in c)
+        print("google.InputStream.readBytes() 1")
+        sequence = uno.ByteSequence(next(self.chunks, b''))
         length = len(sequence)
-        self.start += length
-        print("google.InputStream.readBytes() 6 %s - %s" % (length, self.start))
+        print("google.InputStream.readBytes() 2 %s" % (length, ))
         return length, sequence
     def readSomeBytes(self, sequence, length):
         return self.readBytes(sequence, length)
     def skipBytes(self, length):
-        if length <= self.available():
-            self.start += length
+        pass
     def available(self):
-        return self.size - self.start
+        return g_chunk
     def closeInput(self):
         self.session.close()
-        self.start, self.sequences = 0, None
 
 
 class ChunksDownloader():
-    def __init__(self, session, url, size, length):
+    def __init__(self, session, url, length, size, mimetype=None):
         print("google.ChunkDownloader.__init__()")
         self.session = session
         self.url = url
         self.size = size
-        self.length = min(length, size)
-        self.start = 0
+        self.length = length
+        self.start, self.closed = 0, False
         self.headers = {}
-        self.headers['Content-Type'] = None
         self.headers['Accept-Encoding'] = 'gzip'
-        self.params = {'alt': 'media'}
+        self.params = {'alt': 'media'} if mimetype is None else {'mimeType': mimetype}
         print("google.ChunkDownloader.__init__()")
     def __iter__(self):
         return self
     def __next__(self):
-        if self._available():
-            print("google.ChunkDownloader.__next__() 1")
-            chunk = min(self.size, g_chunk)
-            self.headers['Range'] = 'bytes=%s-%s' % (self.start, self.start + chunk -1)
-            print("google.ChunkDownloader.__next__() 2: %s" % (self.headers['Range'], ))
-            r = self.session.get(self.url, headers=self.headers, params=self.params, timeout=g_timeout, stream=True)
-            print("google.ChunkDownloader.__next__() 3: %s - %s" % (r.status_code, r.headers))
-            if r.status_code == requests.codes.partial_content or r.status_code == requests.codes.ok:
-                iterator = r.iter_content(self.length)
-                self.start += chunk
-                print("google.ChunkDownloader.__next__() 4 %s" % self.start)
-                return iterator
+        if self.closed:
+            raise StopIteration
+        print("google.ChunkDownloader.__next__() 1")
+        end = g_chunk
+        if self.size:
+            end = min(self.start + g_chunk, self.size - self.start)
+            self.headers['Range'] = 'bytes=%s-%s' % (self.start, end -1)
+        print("google.ChunkDownloader.__next__() 2: %s" % (self.headers, ))
+        r = self.session.get(self.url, headers=self.headers, params=self.params, timeout=g_timeout, stream=True)
+        print("google.ChunkDownloader.__next__() 3: %s - %s" % (r.status_code, r.headers))
+        if r.status_code == requests.codes.partial_content:
+            self.start += int(r.headers.get('Content-Length', end))
+            self.closed = self.start == self.size
+            print("google.ChunkDownloader.__next__() 4 %s - %s" % (self.closed, self.start))
+        elif  r.status_code == requests.codes.ok:
+            self.start += int(r.headers.get('Content-Length', end))
+            self.closed = True
+            print("google.ChunkDownloader.__next__() 5 %s - %s" % (self.closed, self.start))
+        else:
             raise IOException('Error Downloading file...', self)
-        raise StopIteration
+        return r.iter_content(self.length)
     # for python v2.xx
     def next(self):
         return self.__next__()
-    def _available(self):
-        return self.size - self.start
 
 
 class OutputStream(unohelper.Base, XOutputStream):
@@ -250,7 +251,6 @@ class OutputStream(unohelper.Base, XOutputStream):
         self.size = size
         self.buffers = uno.ByteSequence(b'')
         self.start = 0
-        self.headers = {'Content-Type': 'application/octet-stream'}
         self.closed, self.flushed, self.chunked = False, False, size >= g_chunk
         #self.headers['Content-Range'] = 'bytes */%s' % self.size
         #with self.session.put(self.url, headers=self.headers, timeout=g_timeout, auth=self.authentication) as r:
@@ -289,10 +289,11 @@ class OutputStream(unohelper.Base, XOutputStream):
         return self._isWrite(length)
     def _isWrite(self, length):
         print("google.OutputStream._write() 1: %s" % (self.start, ))
+        headers = None
         if self.chunked:
             end = self.start + length -1
-            self.headers['Content-Range'] = 'bytes %s-%s/%s' % (self.start, end, self.size)
-        r = self.session.put(self.url, headers=self.headers, data=self.buffers.value)
+            headers = {'Content-Range': 'bytes %s-%s/%s' % (self.start, end, self.size)}
+        r = self.session.put(self.url, headers=headers, data=self.buffers.value)
         print("google.OutputStream._write() 2: %s" % (r.request.headers, ))
         print("google.OutputStream._write() 3: %s - %s" % (r.status_code, r.headers))
         print("google.OutputStream._write() 4: %s" % (r.content, ))
@@ -337,7 +338,7 @@ def _parseItem(data, timestamp):
     item['Name'] = data['name']
     item['DateCreated'] = parseDateTime(data['createdTime']) if 'createdTime' in data else timestamp
     item['DateModified'] = parseDateTime(data['modifiedTime']) if 'modifiedTime' in data else timestamp
-    item['MediaType'] = data['mimeType']
+    item['MimeType'] = data['mimeType']
     item['Size'] = int(data['size']) if 'size' in data else 0
     item['Parents'] = tuple(data['parents']) if 'parents' in data else ()
     item['CanAddChild'] = _parseCapabilities(data, 'canAddChildren', False)

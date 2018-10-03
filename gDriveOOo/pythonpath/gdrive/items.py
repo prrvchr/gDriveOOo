@@ -41,8 +41,8 @@ def mergeUser(connection, user, item, mode):
 
 def selectItem(connection, id):
     item = None
-    data = ('Name', 'DateCreated', 'DateModified', 'MediaType', 'Size',
-            'CanAddChild', 'CanRename', 'IsReadOnly', 'IsVersionable')
+    data = ('Name', 'DateCreated', 'DateModified', 'MimeType', 'Size',
+            'CanAddChild', 'CanRename', 'IsReadOnly', 'IsVersionable', 'SyncMode')
     select = connection.prepareCall('CALL "selectItem"(?)')
     # selectItem(IN ID VARCHAR(100))
     select.setString(1, id)
@@ -55,8 +55,8 @@ def selectItem(connection, id):
 def insertItem(connection, userid, item):
     try:
         item = None
-        data = ('Name', 'DateCreated', 'DateModified', 'MediaType', 'Size',
-                'CanAddChild', 'CanRename', 'IsReadOnly', 'IsVersionable')
+        data = ('Name', 'DateCreated', 'DateModified', 'MimeType', 'Size',
+                'CanAddChild', 'CanRename', 'IsReadOnly', 'IsVersionable', 'SyncMode')
         insert = connection.prepareCall('CALL "insertItem"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
         insert.setString(1, userid)
         index = _setCallParameters(insert, item['Id'], item['Data'], 2)
@@ -80,7 +80,7 @@ def mergeItem(merge, userid, item):
 
 def _setCallParameters(call, id, data, index=1):
     # IN Call Parameters for: mergeUser(), insertItem(), mergeItem()
-    # Id, Name, DateCreated, DateModified, MediaType, Size, CanAddChild, CanRename, IsReadOnly, IsVersionable
+    # Id, Name, DateCreated, DateModified, MimeType, Size, CanAddChild, CanRename, IsReadOnly, IsVersionable
     # OUT Call Parameters for: mergeItem()
     # RowCount
     call.setString(index, id)
@@ -91,7 +91,7 @@ def _setCallParameters(call, id, data, index=1):
     index += 1
     call.setTimestamp(index, data['DateModified'])
     index += 1
-    call.setString(index, data['MediaType'])
+    call.setString(index, data['MimeType'])
     index += 1
     call.setLong(index, data['Size'])
     index += 1

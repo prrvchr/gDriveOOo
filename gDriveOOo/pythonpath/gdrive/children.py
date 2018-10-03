@@ -23,15 +23,18 @@ def isChild(connection, id, parent):
     return ischild
 
 def updateChildren(connection, session, identifier):
-    mode, userid = 0, identifier.UserId
-    merge = connection.prepareCall('CALL "mergeItem"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-    insert = connection.prepareCall('CALL "insertChild"(?, ?, ?)')
-    if all(updateChild(merge, insert, userid, item) for item in ChildGenerator(session, identifier.Id)):
-        mode = 1
-    merge.close()
-    insert.close()
-    session.close()
-    return mode
+    try:
+        mode, userid = 0, identifier.UserId
+        merge = connection.prepareCall('CALL "mergeItem"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+        insert = connection.prepareCall('CALL "insertChild"(?, ?, ?)')
+        if all(updateChild(merge, insert, userid, item) for item in ChildGenerator(session, identifier.Id)):
+            mode = 1
+        merge.close()
+        insert.close()
+        session.close()
+        return mode
+    except Exception as e:
+        print("children.updateChildren().Error: %s - %s" % (e, traceback.print_exc()))
 
 def updateChild(merge, insert, userid, item):
     return all((mergeItem(merge, userid, item), updateParent(insert, item)))
@@ -57,15 +60,15 @@ def getChildSelect(connection, identifier):
         index, select = 1, connection.prepareCall('CALL "selectChild"(?, ?, ?, ?, ?)')
         # select return RowCount as OUT parameter in select.getLong(index)!!!
         # Never managed to run the next line:
-        #select.ResultSetType = uno.getConstantByName('com.sun.star.sdbc.ResultSetType.SCROLL_INSENSITIVE')
+        # select.ResultSetType = uno.getConstantByName('com.sun.star.sdbc.ResultSetType.SCROLL_INSENSITIVE')
         # selectChild(IN ID VARCHAR(100),IN URL VARCHAR(250),IN MODE SMALLINT,OUT ROWCOUNT SMALLINT)
         select.setString(index, identifier.Id)
         index += 1
         # "TargetURL" is done by CONCAT(uri,id)... The root uri already ends with a '/' ...
         uri = identifier.getContentIdentifier()
-        select.setString(index, uri if identifier.IsRoot else '%s/' % uri)
+        select.setString(index, uri if uri.endswith('/') else '%s/' % uri)
         index += 1
-        # "IsFolder" is done by comparing MediaType with g_folder 'application/vnd.google-apps.folder' ...
+        # "IsFolder" is done by comparing MimeType with g_folder 'application/vnd.google-apps.folder' ...
         select.setString(index, g_folder)
         index += 1
         select.setLong(index, identifier.ConnectionMode)

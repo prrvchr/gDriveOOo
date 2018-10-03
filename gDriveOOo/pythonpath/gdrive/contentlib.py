@@ -11,11 +11,12 @@ from com.sun.star.sdbc import XRow, XResultSet, XResultSetMetaDataSupplier
 from com.sun.star.sdb import ParametersRequest
 from com.sun.star.container import XIndexAccess, XChild
 from com.sun.star.task import XInteractionRequest
+from com.sun.star.io import XStreamListener
 #from com.sun.star.document import XCmisDocument
 
 from .unolib import PropertySet
 from .unotools import getProperty
-from .contenttools import getContent, getId, getParentUri
+from .contenttools import getUcb, getId, getParentUri
 
 import traceback
 
@@ -374,4 +375,4 @@ class ContentResultSet(unohelper.Base, PropertySet, XResultSet, XRow,
         return ContentIdentifier(self.scheme, identifier)
     def queryContent(self):
         identifier = self.queryContentIdentifier()
-        return getContent(self.ctx, identifier)
+        return getUcb(self.ctx).queryContent(identifier)

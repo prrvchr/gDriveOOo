@@ -20,23 +20,23 @@ class ContentProviderProxy(unohelper.Base, XServiceInfo, XContentProvider, XCont
                            XContentProviderSupplier, XParameterizedContentProvider, PropertySet):
     def __init__(self, ctx):
         self.ctx = ctx
-        self.registred = False
         self.template = ''
         self.arguments = ''
         self.replace = True
         self.UserName = None
 
+    def __del__(self):
+        print("ContentProviderProxy.__del__()***********************")
+
     # XContentProviderSupplier
     def getContentProvider(self):
+        provider = getUcp(self.ctx)
         print("ContentProviderProxy.getContentProvider() 1")
-        if not self.registred:
-            name = 'com.gmail.prrvchr.extensions.gDriveOOo.ContentProvider'
+        if provider.supportsService('com.sun.star.ucb.ContentProviderProxy'):
             print("ContentProviderProxy.getContentProvider() 2")
-            provider = createService(name, self.ctx).registerInstance(self.template, self.arguments, self.replace)
+            ucp = createService('com.gmail.prrvchr.extensions.gDriveOOo.ContentProvider', self.ctx)
+            provider = ucp.registerInstance(self.template, self.arguments, self.replace)
             print("ContentProviderProxy.getContentProvider() 3")
-            self.registred = True
-        else:
-            provider = getUcp(self.ctx)
         return provider
 
     # XParameterizedContentProvider
