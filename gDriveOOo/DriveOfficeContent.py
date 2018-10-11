@@ -4,18 +4,22 @@
 import uno
 import unohelper
 
+from com.sun.star.awt import XCallback
 from com.sun.star.container import XChild
 from com.sun.star.lang import XServiceInfo, NoSupportException
 from com.sun.star.ucb import XContent, XCommandProcessor2, CommandAbortedException
 from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
+from com.sun.star.ucb.ContentAction import INSERTED, REMOVED, DELETED, EXCHANGED
 
 from gdrive import Initialization, CommandInfo, CmisPropertySetInfo, Row, CmisDocument, InputStream
 from gdrive import PropertiesChangeNotifier, PropertySetInfoChangeNotifier, CommandInfoChangeNotifier
 from gdrive import getContentInfo, getPropertiesValues, uploadItem, getUcb, getMimeType, updateData
 from gdrive import createService, getResourceLocation, parseDateTime, getPropertySetInfoChangeEvent
-from gdrive import getSimpleFile, getCommandInfo, getProperty, getUcp, getDataContent, getSession
+from gdrive import getSimpleFile, getCommandInfo, getProperty, getUcp, getDataContent, getSession, notifyContentListener
 from gdrive import propertyChange, setPropertiesValues, getLogger, getCmisProperty, getPropertyValue
+from gdrive import ACQUIRED, CREATED, RENAMED, REWRITED, MODIFIED, TRASHED
 #from gdrive import PyPropertiesChangeNotifier, PyPropertySetInfoChangeNotifier, PyCommandInfoChangeNotifier, PyPropertyContainer
+
 import requests
 import traceback
 
@@ -25,7 +29,7 @@ g_ImplementationName = 'com.gmail.prrvchr.extensions.gDriveOOo.DriveOfficeConten
 
 
 class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent, XChild, XCommandProcessor2,
-                         PropertiesChangeNotifier, PropertySetInfoChangeNotifier, CommandInfoChangeNotifier):
+                         PropertiesChangeNotifier, PropertySetInfoChangeNotifier, CommandInfoChangeNotifier, XCallback):
 #                         PyPropertyContainer, PyPropertiesChangeNotifier, PyPropertySetInfoChangeNotifier, PyCommandInfoChangeNotifier):
     def __init__(self, ctx, *namedvalues):
         try:
@@ -44,13 +48,13 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
             self.DateModified = parseDateTime()
             self.MimeType = 'application/octet-stream'
             self._Size = 0
-            
-            self._SyncMode = 0
+            self._Trashed = False
             
             self.CanAddChild = False
-            self.CanRename = False
-            self.IsReadOnly = True
+            self.CanRename = True
+            self.IsReadOnly = False
             self.IsVersionable = False
+            self._Loaded = 1
             
             self.IsHidden = False
             self.IsVolume = False
@@ -110,6 +114,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
     def Title(self, title):
         propertyChange(self, 'Name', self.Name, title)
         self.Name = title
+        notifyContentListener(self.ctx, self, EXCHANGED)
     @property
     def Size(self):
         return self._Size
@@ -118,14 +123,11 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         propertyChange(self, 'Size', self._Size, size)
         self._Size = size
     @property
-    def SyncMode(self):
-        return self._SyncMode
-    @SyncMode.setter
-    def SyncMode(self, mode):
-        old = self._SyncMode
-        self._SyncMode |= mode
-        if self._SyncMode != old:
-            propertyChange(self, 'SyncMode', old, self._SyncMode)
+    def Trashed(self):
+        return self._Trashed
+    @Trashed.setter
+    def Trashed(self, trashed):
+        propertyChange(self, 'Trashed', self._Trashed, trashed)
     @property
     def MediaType(self):
         return self.MimeType
@@ -135,6 +137,18 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         if self._CmisProperties is None:
             self._CmisProperties = self._getCmisProperties()
         return self._CmisProperties
+    @property
+    def Loaded(self):
+        return self._Loaded
+    @Loaded.setter
+    def Loaded(self, loaded):
+        propertyChange(self, 'Loaded', self._Loaded, loaded)
+        self._Loaded = loaded
+
+    # XCallback
+    def notify(self, event):
+        for listener in self.contentListeners:
+            listener.contentEvent(event)
 
      # XChild
     def getParent(self):
@@ -200,13 +214,13 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
                     self.MimeType = getMimeType(self.ctx, stream)
                     stream.closeInput()
                     self.Size = sf.getSize(target)
-                    if self.Identifier.ConnectionMode == ONLINE:
-                        stream = sf.openFileRead(target)
-                        updateData(self.ctx, self, 28, stream, self.Size)
-                    else:
-                        self.SyncMode = 28
-                    self.addPropertiesChangeListener(('Id', 'SyncMode', 'Name', 'Size'), getUcp(self.ctx))
-                    self.Id = self.Id
+                    self.addPropertiesChangeListener(('Id', 'Name', 'Size', 'Trashed', 'Loaded'), getUcp(self.ctx))
+                    self.Id = CREATED+REWRITED
+                    notifyContentListener(self.ctx, self, INSERTED)
+            elif command.Name == 'delete':
+                print("DriveOfficeContent.execute(): delete")
+                self.Trashed = True
+                notifyContentListener(self.ctx, self, DELETED)
             elif command.Name == 'addProperty':
                 print("DriveOfficeContent.addProperty():")
             elif command.Name == 'removeProperty':
@@ -253,7 +267,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
 
     def _getUrl(self, sf):
         url = getResourceLocation(self.ctx, '%s/%s' % (self.Scheme, self.Id))
-        if not self.SyncMode or not sf.exists(url):
+        if self.Loaded == ONLINE or not sf.exists(url):
             with getSession(self.ctx, self.Identifier.UserName) as session:
                 stream = InputStream(session, self.Id, self.Size)
                 try:
@@ -261,7 +275,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
                 except:
                     return None
                 else:
-                    self.SyncMode = 1
+                    self.Loaded == OFFLINE
                 finally:
                     stream.closeInput()
         return url
@@ -275,6 +289,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         commands['open'] = getCommandInfo('open', 'com.sun.star.ucb.OpenCommandArgument2')
         commands['insert'] = getCommandInfo('insert', 'com.sun.star.ucb.InsertCommandArgument')
 #        commands['insert'] = getCommandInfo('insert', 'com.sun.star.ucb.InsertCommandArgument2')
+        commands['delete'] = getCommandInfo('delete', 'boolean')
 #        commands['lock'] = getCommandInfo('lock')
 #        commands['unlock'] = getCommandInfo('unlock')
         commands['close'] = getCommandInfo('close')
@@ -305,7 +320,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         properties['DateModified'] = getProperty('DateModified', 'com.sun.star.util.DateTime', bound | readonly)
         properties['DateCreated'] = getProperty('DateCreated', 'com.sun.star.util.DateTime', bound | readonly)
         properties['IsReadOnly'] = getProperty('IsReadOnly', 'boolean', bound | readonly)
-        properties['SyncMode'] = getProperty('SyncMode', 'long', bound)
+        properties['Loaded'] = getProperty('Loaded', 'long', bound)
 
         properties['BaseURI'] = getProperty('BaseURI', 'string', bound | readonly)
         properties['TargetURL'] = getProperty('TargetURL', 'string', bound | readonly)

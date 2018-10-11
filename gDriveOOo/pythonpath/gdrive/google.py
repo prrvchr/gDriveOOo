@@ -9,31 +9,60 @@ from com.sun.star.io import XOutputStream, XInputStream, IOException
 from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
 from com.sun.star.connection import NoConnectException
 
-from .dbtools import parseDateTime
 
 import requests
 import sys
+import datetime
+import traceback
 
 
 if sys.version_info[0] < 3:
     requests.packages.urllib3.disable_warnings()
 
-g_scheme = 'vnd.google-apps'
+g_scheme = 'vnd.google-apps'    #vnd.google-apps
 g_host = 'www.googleapis.com'
+
 g_url = 'https://%s/drive/v3/' % g_host
 g_upload = 'https://%s/upload/drive/v3/files' % g_host
+
 g_userfields = 'user(displayName,permissionId,emailAddress)'
 g_capabilityfields = 'canEdit,canRename,canAddChildren,canReadRevisions'
-g_itemfields = 'id,parents,name,mimeType,size,createdTime,modifiedTime,capabilities(%s)' % g_capabilityfields
+g_itemfields = 'id,parents,name,mimeType,size,createdTime,modifiedTime,trashed,capabilities(%s)' % g_capabilityfields
 g_childfields = 'kind,nextPageToken,files(%s)' % g_itemfields
-# Minimun chunk: 262144 no more upload if less... (must be a multiple of 64Ko)
+
+# Minimun chunk: 262144 (256Ko) no more uploads if less... (must be a multiple of 64Ko)
 g_chunk = 262144
 g_pages = 100
 g_timeout = (15, 60)
+
 g_folder = 'application/vnd.google-apps.folder'
 g_link = 'application/vnd.google-apps.drive-sdk'
 g_doc = 'application/vnd.google-apps.'
 
+g_datetime = '%Y-%m-%dT%H:%M:%S.%fZ'
+
+ACQUIRED = 0
+CREATED = 1
+RENAMED = 4
+REWRITED = 16
+MODIFIED = 64
+TRASHED = 256
+
+
+def getDataFromItem(item):
+    mode = item.get('mode')
+    id = item.get('id')
+    data = None
+    if mode & CREATED:
+        data = {'id': id,
+                'parents': item.get('parents').split(','),
+                'name': item.get('name'),
+                'mimeType': item.get('mimeType')}
+    elif mode & MODIFIED:
+        data = {}
+        if mode & RENAMED:
+            data['name'] = item.get('name')
+    return mode, id, data
 
 def getConnectionMode(ctx):
     connection, connector = None, ctx.ServiceManager.createInstance('com.sun.star.connection.Connector')
@@ -52,55 +81,40 @@ def getUser(session):
     params = {'fields': g_userfields}
     with session.get(url, params=params, timeout=g_timeout) as r:
         print("google.getUser(): %s - %s" % (r.status_code, r.json()))
-        status = r.status_code
         if r.status_code == requests.codes.ok:
-            result = r.json()
-            if 'user' in result:
-                user = _parseUser(result['user'])
-                root = getItem(session, 'root')
+            user = r.json().get('user')
+            root = getItem(session, 'root')
     return user, root
 
 def getItem(session, id):
-    item = None
     url = '%sfiles/%s' % (g_url, id)
-    params = {}
-    params['fields'] = g_itemfields
+    params = {'fields': g_itemfields}
     with session.get(url, params=params, timeout=g_timeout) as r:
         print("google.getItem(): %s - %s" % (r.status_code, r.json()))
         if r.status_code == requests.codes.ok:
-            item = _parseItem(r.json(), parseDateTime())
-    return item
+            return r.json()
+    return None
 
-def getUploadLocation(session, item, size):
-    id = item['id']
-    new = item['mode'] & 16 == 16
-    data = None
-    method = 'POST' if new else 'PATCH'
+def getUploadLocation(session, id, data, size):
+    new = data is not None and 'id' in data
     url = g_upload  if new else '%s/%s' % (g_upload, id)
     params = {'uploadType': 'resumable'}
     headers = {'X-Upload-Content-Length': '%s' % size}
     if new:
-        data = item['Data']
-        data.update({'id': id, 'parents': item['parents']})
-        headers['X-Upload-Content-Type'] = data['mimeType']
+        headers['X-Upload-Content-Type'] = data.get('mimeType')
     #session.headers.update(headers)
     print("google.getUploadLocation()1: %s - %s" % (url, id))
-    with session.request(method, url, params=params, headers=headers, json=data) as r:
+    with session.request('POST' if new else 'PATCH', url, params=params, headers=headers, json=data) as r:
         print("contenttools.getUploadLocation()2 %s - %s" % (r.status_code, r.headers))
         print("contenttools.getUploadLocation()3 %s - %s" % (r.content, data))
         if r.status_code == requests.codes.ok and 'Location' in r.headers:
             return r.headers['Location']
     return None
 
-def updateItem(session, item):
-    id = item['id']
-    new = item['mode'] & 16 == 16
-    data = item['Data']
-    method = 'POST' if new else 'PATCH'
+def updateItem(session, id, data):
+    new = data is not None and 'id' in data
     url = '%sfiles' % g_url if new else '%sfiles/%s' % (g_url, id)
-    if new:
-        data.update({'id': id, 'parents': item['parents']})
-    with session.request(method, url, json=data) as r:
+    with session.request('POST' if new else 'PATCH', url, json=data) as r:
         print("contenttools.updateItem()1 %s - %s" % (r.status_code, r.headers))
         print("contenttools.updateItem()2 %s - %s" % (r.content, data))
         if r.status_code == requests.codes.ok:
@@ -111,11 +125,15 @@ def updateItem(session, item):
 class IdGenerator():
     def __init__(self, session, count, space='drive'):
         print("google.IdGenerator.__init__()")
-        self.session = session
-        self.params = {'count': count, 'space': space}
+        self.ids = []
+        url = '%sfiles/generateIds' % g_url
+        params = {'count': count, 'space': space}
+        with session.get(url, params=params, timeout=g_timeout) as r:
+            print("google.IdGenerator(): %s" % r.json())
+            if r.status_code == requests.codes.ok:
+                self.ids = r.json().get('ids', [])
         print("google.IdGenerator.__init__()")
     def __iter__(self):
-        self.ids = self._getIds()
         return self
     def __next__(self):
         if self.ids:
@@ -124,16 +142,6 @@ class IdGenerator():
     # for python v2.xx
     def next(self):
         return self.__next__()
-    def _getIds(self):
-        ids = []
-        url = '%sfiles/generateIds' % g_url
-        with self.session.get(url, params=self.params, timeout=g_timeout) as r:
-            print("google.IdGenerator(): %s" % r.json())
-            if r.status_code == requests.codes.ok:
-                result = r.json()
-                if 'ids' in result:
-                    ids = result['ids']
-        return ids
 
 
 class ChildGenerator():
@@ -142,7 +150,7 @@ class ChildGenerator():
         self.session = session
         self.params = {'fields': g_childfields, 'pageSize': g_pages}
         self.params['q'] = "'%s' in parents" % id
-        self.timestamp = parseDateTime()
+        self.timestamp = unparseDateTime()
         self.url = '%sfiles' % g_url
         print("google.ChildGenerator.__init__()")
     def __iter__(self):
@@ -165,11 +173,8 @@ class ChildGenerator():
         r = self.session.get(self.url, params=self.params, timeout=g_timeout)
         print("google.ChildGenerator(): %s" % r.json())
         if r.status_code == requests.codes.ok:
-            result = r.json()
-            if 'files' in result:
-                rows = [_parseItem(data, self.timestamp) for data in result['files']]
-            if 'nextPageToken' in result:
-                token = result['nextPageToken']
+            rows = r.json().get('files', [])
+            token = r.json().get('nextPageToken', None)
         return rows, token
 
 
@@ -332,32 +337,35 @@ class OAuth2Ooo(object):
         return request
 
 
-def _parseItem(data, timestamp):
-    item = {}
-    item['Id'] = data['id']
-    item['Name'] = data['name']
-    item['DateCreated'] = parseDateTime(data['createdTime']) if 'createdTime' in data else timestamp
-    item['DateModified'] = parseDateTime(data['modifiedTime']) if 'modifiedTime' in data else timestamp
-    item['MimeType'] = data['mimeType']
-    item['Size'] = int(data['size']) if 'size' in data else 0
-    item['Parents'] = tuple(data['parents']) if 'parents' in data else ()
-    item['CanAddChild'] = _parseCapabilities(data, 'canAddChildren', False)
-    item['CanRename'] = _parseCapabilities(data, 'canRename', False)
-    item['IsReadOnly'] = not _parseCapabilities(data, 'canEdit', True)
-    item['IsVersionable'] = _parseCapabilities(data, 'canReadRevisions', False)
-    return item
+def parseDateTime(timestr=None):
+    if timestr is None:
+        t = datetime.datetime.now()
+    else:
+        t = datetime.datetime.strptime(timestr, g_datetime)
+    return _getDateTime(t.microsecond, t.second, t.minute, t.hour, t.day, t.month, t.year)
 
-def _parseUser(data):
-    user = {}
-    user['Id'] = data['permissionId']
-    user['UserName'] = data['emailAddress']
-    user['DisplayName'] = data['displayName']
-    return user
+def unparseDateTime(t=None):
+    if t is None:
+        return datetime.datetime.now().strftime(g_datetime)
+    millisecond = 0
+    if hasattr(t, 'HundredthSeconds'):
+        millisecond = t.HundredthSeconds * 10
+    elif hasattr(t, 'NanoSeconds'):
+        millisecond = t.NanoSeconds // 1000000
+    return '%s-%s-%sT%s:%s:%s.%03dZ' % (t.Year, t.Month, t.Day, t.Hours, t.Minutes, t.Seconds, millisecond)
 
-def _parseCapabilities(data, capability, default):
-    capacity = default
-    if 'capabilities' in data:
-        capabilities = data['capabilities']
-        if capability in capabilities:
-            capacity = capabilities[capability]
-    return capacity
+def _getDateTime(microsecond=0, second=0, minute=0, hour=0, day=1, month=1, year=1970, utc=True):
+    t = uno.createUnoStruct('com.sun.star.util.DateTime')
+    t.Year = year
+    t.Month = month
+    t.Day = day
+    t.Hours = hour
+    t.Minutes = minute
+    t.Seconds = second
+    if hasattr(t, 'HundredthSeconds'):
+        t.HundredthSeconds = microsecond // 10000
+    elif hasattr(t, 'NanoSeconds'):
+        t.NanoSeconds = microsecond * 1000
+    if hasattr(t, 'IsUTC'):
+        t.IsUTC = utc
+    return t

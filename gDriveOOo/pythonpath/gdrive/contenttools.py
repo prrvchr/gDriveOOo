@@ -6,17 +6,35 @@ import uno
 from com.sun.star.beans import UnknownPropertyException, IllegalTypeException
 from com.sun.star.uno import Exception as UnoException
 from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
+from com.sun.star.ucb.ContentAction import INSERTED, REMOVED, DELETED, EXCHANGED
 
 from .unotools import getProperty, getPropertyValue, createService, getSimpleFile, getResourceLocation
-from .items import mergeItem
-from .children import updateParent
-from .google import g_scheme, getUploadLocation, OutputStream, updateItem, OAuth2Ooo
-from .dbtools import unparseDateTime, getItemFromResult
+#from .items import getMergeCall, mergeItem, setContentCall
+from .google import unparseDateTime, g_scheme, getUploadLocation, OutputStream, updateItem, OAuth2Ooo
+from .google import ACQUIRED, CREATED, RENAMED, REWRITED, MODIFIED, TRASHED
+from .google import getDataFromItem
+from .dbtools import getItemFromResult
 
 import datetime
 import requests
 import traceback
 
+
+def notifyContentListener(ctx, content, action):
+    identifier = content.getIdentifier()
+    if action == INSERTED or action == REMOVED:
+        parent = identifier.getParent()
+        event = getContentEvent(action, content, parent)
+        getUcb(ctx).queryContent(parent).notify(event)
+    elif action == DELETED:
+        event = getContentEvent(action, content, identifier)
+        content.notify(event)
+        notifyContentListener(ctx, content, REMOVED)
+    elif action == EXCHANGED:
+        #event = getContentEvent(action, content, identifier)
+        #content.notify(event)
+        notifyContentListener(ctx, content, DELETED)
+        notifyContentListener(ctx, content, INSERTED)
 
 def getSession(ctx, username):
     session = requests.Session()
@@ -25,41 +43,50 @@ def getSession(ctx, username):
 
 def doSync(ctx, connection, username):
     items = []
-    data = ('name', 'createdTime', 'modifiedTime', 'mimeType')
+    #data = ('name', 'createdTime', 'modifiedTime', 'mimeType')
     transform = {'parents': lambda value: value.split(',') if value else None}
     select = connection.prepareCall('CALL "selectSync"(?)')
-    select.setLong(1, 4)
+    select.setLong(1, ACQUIRED)
     result = select.executeQuery()
     with getSession(ctx, username) as session:
         while result.next():
-            items.append(_syncItem(ctx, session, getItemFromResult(result, data, transform)))
+            items.append(_syncItem(ctx, session, getItemFromResult(result, None, transform)))
     select.close()
-    if all(items):
-        print("contenttools.doSync(): all -> Ok")
+    if items and all(items):
+        update = connection.prepareCall('CALL "updateSync"(?, ?, ?)')
+        update.setString(1, ','.join(items))
+        update.setLong(2, ACQUIRED)
+        update.execute()
+        r = update.getLong(3)
+        print("contenttools.doSync(): all -> Ok %s" % r)
     else:
         print("contenttools.doSync(): all -> Error")
     print("doSync: %s" % items)
+    return all(items)
 
 def _syncItem(ctx, session, item):
-    mode = item['mode']
-    if mode & 8 == 8:
-        size, stream = _getInputStream(ctx, item['id'])
+    result = False
+    mode, id, data = getDataFromItem(item)
+    if mode & REWRITED:
+        size, stream = _getInputStream(ctx, id)
         if size != 0:
-            return uploadItem(ctx, session, item, size, stream)
-    elif mode & 4 == 4:
-        return updateItem(session, item)
-    return False
+            result = uploadItem(ctx, session, id, data, size, stream)
+    elif mode & MODIFIED:
+        result = updateItem(session, id, data)
+    if result and mode & TRASHED:
+        result = updateItem(session, id, {'trashed': True})
+    return result
 
-def uploadItem(ctx, session, item, size, stream):
-    location = getUploadLocation(session, item, size)
+def uploadItem(ctx, session, id, data, size, stream):
+    location = getUploadLocation(session, id, data, size)
     if location is not None:
         pump = getPump(ctx)
         pump.setInputStream(stream)
         pump.setOutputStream(OutputStream(session, location, size))
         pump.start()
-        return item['id']
+        return id
     return False
-    
+
 def updateData(ctx, content, mode, stream, size):
     identifier = content.getIdentifier()
     item = {'id': identifier.Id, 'parents': [identifier.getParent().Id], 'mode': mode}
@@ -86,52 +113,54 @@ def getDataContent(content, properties=('Name', 'DateCreated', 'DateModified', '
     return data
 
 def mergeContent(ctx, connection, event, mode):
+    print("contenttools.mergeContent() %s - %s" % (event.PropertyName, event.NewValue))
     result = False
     identifier = event.Source.getIdentifier()
     if event.PropertyName == 'Id':
-        properties = ('Name', 'DateCreated', 'DateModified', 'MimeType','Size',
-                      'CanAddChild', 'CanRename', 'IsReadOnly', 'IsVersionable')
+        properties = ('Name', 'DateCreated', 'DateModified', 'MimeType', 'Size', 'Trashed',
+                      'CanAddChild', 'CanRename', 'IsReadOnly', 'IsVersionable', 'Loaded')
         row = getContentProperties(event.Source, properties)
-        item = {'Id': identifier.Id}
-        item['Name'] = row.getString(1)
-        item['DateCreated'] = row.getTimestamp(2)
-        item['DateModified'] = row.getTimestamp(3)
-        item['MimeType'] = row.getString(4)
-        item['Size'] = row.getLong(5)
-        if not identifier.IsRoot:
-            item['Parents'] = (identifier.getParent().Id, )
-        item['CanAddChild'] = row.getBoolean(6)
-        item['CanRename'] = row.getBoolean(7)
-        item['IsReadOnly'] = row.getBoolean(8)
-        item['IsVersionable'] = row.getBoolean(9)
-        merge = connection.prepareCall('CALL "mergeItem"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-        insert = connection.prepareCall('CALL "insertChild"(?, ?, ?)')
-        result = all((mergeItem(merge, identifier.UserId, item), updateParent(insert, item)))
+        mode = event.NewValue
+        insert = insertContentItemCall(connection)
+        insert.setString(1, identifier.UserId)
+        insert.setString(2, identifier.Id)
+        insert.setString(3, identifier.getParent().Id)
+        insert.setString(4, mode)
+        result = insertContentItem(insert, row, properties, 5)
     elif event.PropertyName  == 'Name':
-        update = connection.prepareCall('CALL "updateName"(?, ?, ?, ?)')
+        update = connection.prepareCall('CALL "updateName"(?, ?, ?, ?, ?)')
         update.setString(1, identifier.UserId)
         update.setString(2, identifier.Id)
         update.setString(3, event.NewValue)
+        update.setLong(4, RENAMED+MODIFIED)
         update.execute()
-        if update.getLong(4):
-            result = True
-            if mode == ONLINE:
-                result = updateMetaData(ctx, event.Source, 4)
+        result = update.getLong(5)
     elif event.PropertyName == 'Size':
-        update = connection.prepareCall('CALL "updateSize"(?, ?, ?, ?)')
+        update = connection.prepareCall('CALL "updateSize"(?, ?, ?, ?, ?)')
+        update.setString(1, identifier.UserId)
+        update.setString(2, identifier.Id)
+        update.setLong(3, event.NewValue)
+        update.setLong(4, REWRITED)
+        update.execute()
+        result = update.getLong(5)
+    elif event.PropertyName == 'Trashed':
+        update = connection.prepareCall('CALL "updateTrashed"(?, ?, ?, ?, ?)')
+        update.setString(1, identifier.UserId)
+        update.setString(2, identifier.Id)
+        update.setLong(3, event.NewValue)
+        update.setLong(4, TRASHED)
+        update.execute()
+        result = update.getLong(5)
+    elif event.PropertyName == 'Loaded':
+        update = connection.prepareCall('CALL "updateLoaded"(?, ?, ?, ?)')
         update.setString(1, identifier.UserId)
         update.setString(2, identifier.Id)
         update.setLong(3, event.NewValue)
         update.execute()
-        result = update.getLong(4)
-    elif event.PropertyName == 'SyncMode':
-        update = connection.prepareCall('CALL "updateSyncMode"(?, ?, ?, ?)')
-        update.setString(1, identifier.UserId)
-        update.setString(2, identifier.Id)
-        update.setLong(3, event.NewValue)
-        update.execute()
-        result = update.getLong(4)
-        print("contenttools.mergeContent() %s" % result)
+        return update.getLong(4)
+    if result and mode == ONLINE:
+        result = doSync(ctx, connection, identifier.UserName)
+    print("contenttools.mergeContent() %s" % result)
     return result
 
 def propertyChange(source, name, oldvalue, newvalue):
@@ -178,12 +207,20 @@ def setPropertiesValues(source, properties, logger):
         results.append(result)
     return tuple(results)
 
-def getContentProperties(content, names):
+def getContentProperties(content, properties):
     properties = []
-    for name in names:
+    for name in properties:
         properties.append(getProperty(name))
     command = getCommand('getPropertyValues', tuple(properties))
     return content.execute(command, 0, None)
+
+def getContentData(content, properties):
+    rows = getContentProperties(content, properties)
+    index, data = 1, {}
+    for name in properties:
+        data[name] = rows.getObject(index, None)
+        index += 1
+    return data
 
 def setContentProperties(content, arguments):
     properties = []

@@ -5,11 +5,11 @@ import uno
 import unohelper
 
 from com.sun.star.lang import XServiceInfo
-from com.sun.star.ucb import XContentProvider, XContentIdentifierFactory
+from com.sun.star.ucb import XContentProvider, XContentIdentifierFactory, XContentProviderFactory
 from com.sun.star.ucb import XContentProviderSupplier, XParameterizedContentProvider
 
 from gdrive import PropertySet
-from gdrive import createService, getUcp, getProperty
+from gdrive import createService, getUcp, getProperty, g_scheme
 
 # pythonloader looks for a static g_ImplementationHelper variable
 g_ImplementationHelper = unohelper.ImplementationHelper()
@@ -28,6 +28,10 @@ class ContentProviderProxy(unohelper.Base, XServiceInfo, XContentProvider, XCont
     def __del__(self):
         print("ContentProviderProxy.__del__()***********************")
 
+    # XContentProviderFactory
+    def createContentProvider(self, service):
+        print("ContentProviderProxy.createContentProvider() %s" % service)
+
     # XContentProviderSupplier
     def getContentProvider(self):
         provider = getUcp(self.ctx)
@@ -35,7 +39,7 @@ class ContentProviderProxy(unohelper.Base, XServiceInfo, XContentProvider, XCont
         if provider.supportsService('com.sun.star.ucb.ContentProviderProxy'):
             print("ContentProviderProxy.getContentProvider() 2")
             ucp = createService('com.gmail.prrvchr.extensions.gDriveOOo.ContentProvider', self.ctx)
-            provider = ucp.registerInstance(self.template, self.arguments, self.replace)
+            provider = ucp.registerInstance(g_scheme, self.arguments, self.replace)
             print("ContentProviderProxy.getContentProvider() 3")
         return provider
 
@@ -43,6 +47,7 @@ class ContentProviderProxy(unohelper.Base, XServiceInfo, XContentProvider, XCont
     def registerInstance(self, template, arguments, replace):
         print("ContentProviderProxy.registerInstance() 1")
         self.template = template
+        g_scheme = template
         self.arguments = arguments
         self.replace = replace
         return self

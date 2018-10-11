@@ -8,13 +8,14 @@ from com.sun.star.lang import XServiceInfo
 from com.sun.star.ucb import XContentProvider, XContentIdentifierFactory
 from com.sun.star.ucb import XParameterizedContentProvider
 from com.sun.star.ucb import ContentCreationException, IllegalIdentifierException
+from com.sun.star.ucb import InteractiveNetworkOffLineException
 from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
 from com.sun.star.beans import XPropertiesChangeListener
 from com.sun.star.frame import XTerminateListener, TerminationVetoException
 from com.sun.star.sdb import XInteractionSupplyParameters
 
 from gdrive import ContentIdentifier, InteractionRequest, PropertySet
-from gdrive import getDbConnection, selectUser, mergeUser, selectItem, insertItem
+from gdrive import getDbConnection, selectUser, mergeJsonUser, selectItem, insertJsonItem
 from gdrive import getItem, mergeContent, checkIdentifiers, getIdentifier
 from gdrive import getUcb, setContentProperties
 from gdrive import createService, getUri, getProperty, getSession
@@ -100,7 +101,7 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory, P
         level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
         self.Logger.logp(level, "ContentProvider", "notifyTermination()", "Shutdown database ...")
         if self._Statement and not self.Connection.isClosed():
-            self._Statement.execute('SHUTDOWN COMPACT;')
+            self._Statement.execute('SHUTDOWN;')
             msg = "Shutdown database ... closing connection ... Done"
         else:
             level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
@@ -116,11 +117,11 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory, P
                   "Item updated Property: %s ..." % name
             self.Logger.logp(level, "ContentProvider", "propertiesChange()", msg)
             if mergeContent(self.ctx, self.Connection, event, self.ConnectionMode):
-                msg = "Item inserted new Id: %s ... Done" % event.NewValue if name == 'Id' else \
+                msg = "Item inserted new Id: %s ... Done" % event.OldValue if name == 'Id' else \
                       "Item updated Property: %s ... Done" % event.PropertyName
             else:
                 level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
-                msg = "ERROR: Can't insert new Id: %s" % event.NewValue if name == 'Id' else \
+                msg = "ERROR: Can't insert new Id: %s" % event.OldValue if name == 'Id' else \
                       "ERROR: Can't update Property: %s" % name
             self.Logger.logp(level, "ContentProvider", "propertiesChange()", msg)
     def disposing(self, source):
@@ -234,9 +235,13 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory, P
         msg = "Error: Cannot retrieve User... "
         if self.ConnectionMode == OFFLINE:
             msg += "Network is down... "
-        else:
             level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
-        self.Logger.logp(level, "ContentProvider", "_setUser()", msg)
+            self.Logger.logp(level, "ContentProvider", "_setUser()", msg)
+            error = InteractiveNetworkOffLineException()
+            error.Message = 'NetWork is Offline...'
+            error.Context = self
+            error.Classification = uno.Enum('com.sun.star.task.InteractionClassification', 'QUERY')
+            raise error
         return False
 
     def _getUser(self, username):
@@ -245,7 +250,7 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory, P
             data, root = getUser(session)
             print("ContentProvider._getUserFromProvider(): %s" % username)
             if root is not None:
-                user = mergeUser(self.Connection, data, root, self.ConnectionMode)
+                user = mergeJsonUser(self.Connection, data, root, self.ConnectionMode)
                 self.Session = session
             else:
                 level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
@@ -257,23 +262,23 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory, P
         item = None
         data = getItem(self.Session, id)
         if data is not None:
-            item = insertItem(self.Connection, self.UserId, data)
+            item = insertJsonItem(self.Connection, self.UserId, data)
         else:
             level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
             msg = "ERROR: Can't retrieve Id from provider: %s" % id
             self.Logger.logp(level, "ContentProvider", "_getItem()", msg)            
         return item
 
-    def _getContent(self, identifier):
+    def _getCachedContent(self, identifier):
         if identifier.Id in self.cachedContent:
             content = self.cachedContent[identifier.Id]
             # Same Content can have multiple parent... and user...
             setContentProperties(content, {'Identifier': identifier})
         else:
-            content = self._createContent(identifier)
+            content = self._getContent(identifier)
         return content
 
-    def _createContent(self, identifier):
+    def _getContent(self, identifier):
         content = None
         item = selectItem(self.Connection, identifier.Id)
         if item is None and self.ConnectionMode == ONLINE:
@@ -295,8 +300,7 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory, P
         if name is not None:
             service = 'com.gmail.prrvchr.extensions.gDriveOOo.%s' % name
             content = createService(service, self.ctx, **data)
-            content.addPropertiesChangeListener(('SyncMode', 'Name', 'Size'), self)
-            self.cachedContent[identifier.Id] = content
+            content.addPropertiesChangeListener(('Name', 'Size', 'Trashed', 'Loaded', 'SyncMode'), self)
         return content
 
     # PropertySet

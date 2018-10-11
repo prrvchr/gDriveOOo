@@ -4,21 +4,21 @@
 import uno
 import unohelper
 
+from com.sun.star.awt import XCallback
 from com.sun.star.container import XChild
 from com.sun.star.lang import XServiceInfo, NoSupportException
 from com.sun.star.ucb import XContent, XCommandProcessor2, XContentCreator
 from com.sun.star.ucb import InteractiveBadTransferURLException, CommandAbortedException
 from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
+from com.sun.star.ucb.ContentAction import INSERTED, REMOVED, DELETED, EXCHANGED
 
 from gdrive import Initialization, CommandInfo, PropertySetInfo, Row, DynamicResultSet
 from gdrive import PropertiesChangeNotifier, PropertySetInfoChangeNotifier, CommandInfoChangeNotifier
-from gdrive import getDbConnection, propertyChange, getChildSelect, parseDateTime, getPropertiesValues, getLogger
-
+from gdrive import getDbConnection, propertyChange, getChildSelect, parseDateTime, getLogger, getUcp
 from gdrive import updateChildren, createService, getSimpleFile, getResourceLocation, isChild
 from gdrive import getUcb, getCommandInfo, getProperty, getContentInfo, setContentProperties
-from gdrive import getContentEvent, setPropertiesValues, updateMetaData, updateData
-from gdrive import getUcp, uploadItem, getSession, unparseDateTime
-from gdrive import g_folder
+from gdrive import getPropertiesValues, setPropertiesValues, getSession, g_folder, notifyContentListener
+from gdrive import ACQUIRED, CREATED, RENAMED, REWRITED, MODIFIED, TRASHED
 
 import requests
 import traceback
@@ -28,8 +28,8 @@ g_ImplementationHelper = unohelper.ImplementationHelper()
 g_ImplementationName = 'com.gmail.prrvchr.extensions.gDriveOOo.DriveFolderContent'
 
 
-class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent, XChild, XCommandProcessor2,
-                         XContentCreator, PropertiesChangeNotifier, PropertySetInfoChangeNotifier, CommandInfoChangeNotifier):
+class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent, XChild, XCommandProcessor2, XContentCreator,
+                         PropertiesChangeNotifier, PropertySetInfoChangeNotifier, CommandInfoChangeNotifier, XCallback):
     def __init__(self, ctx, *namedvalues):
         try:
             self.ctx = ctx
@@ -48,13 +48,13 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
             self.DateModified = parseDateTime()
             self.MimeType = 'application/vnd.google-apps.folder'
             self.Size = 0
+            self._Trashed = False
             
-            self._SyncMode = 0
-            
-            self.CanAddChild = False
-            self.CanRename = False
-            self.IsReadOnly = True
+            self.CanAddChild = True
+            self.CanRename = True
+            self.IsReadOnly = False
             self.IsVersionable = False
+            self._Loaded = 1
             
             self._NewTitle = ''
 
@@ -99,18 +99,28 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
     def Title(self, title):
         propertyChange(self, 'Name', self.Name, title)
         self.Name = title
+        notifyContentListener(self.ctx, self, EXCHANGED)
     @property
-    def SyncMode(self):
-        return self._SyncMode
-    @SyncMode.setter
-    def SyncMode(self, mode):
-        old = self._SyncMode
-        self._SyncMode |= mode
-        if self._SyncMode != old:
-            propertyChange(self, 'SyncMode', old, self._SyncMode)
+    def Trashed(self):
+        return self._Trashed
+    @Trashed.setter
+    def Trashed(self, trashed):
+        propertyChange(self, 'Trashed', self._Trashed, trashed)
     @property
     def MediaType(self):
         return self.MimeType
+    @property
+    def Loaded(self):
+        return self._Loaded
+    @Loaded.setter
+    def Loaded(self, loaded):
+        propertyChange(self, 'Loaded', self._Loaded, loaded)
+        self._Loaded = loaded
+
+    # XCallback
+    def notify(self, event):
+        for listener in self.contentListeners:
+            listener.contentEvent(event)
 
     # XContentCreator
     def queryCreatableContentsInfo(self):
@@ -174,28 +184,25 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
             return setPropertiesValues(self, command.Argument, self.Logger)
         elif command.Name == 'open':
             mode = self.Identifier.ConnectionMode
-            if mode == ONLINE and self.SyncMode == ONLINE:
+            if mode == ONLINE and self.Loaded == ONLINE:
                 with getSession(self.ctx, self.Identifier.UserName) as session:
-                    self.SyncMode = updateChildren(self.Connection, session, self.Identifier)
+                    if updateChildren(self.Connection, session, self.Identifier):
+                        self.Loaded = OFFLINE
             # Not Used: command.Argument.Properties - Implement me ;-)
             index, select = getChildSelect(self.Connection, self.Identifier)
             return DynamicResultSet(self.ctx, self.Scheme, select, index)
+        elif command.Name == 'insert':
+            print("DriveFolderContent.execute() insert")
+            self.addPropertiesChangeListener(('Id', 'Name', 'Size', 'Trashed', 'Loaded'), getUcp(self.ctx))
+            self.Id = CREATED
+            notifyContentListener(self.ctx, self, INSERTED)
+        elif command.Name == 'delete':
+            print("DriveFolderContent.execute(): delete")
+            self.Trashed = True
+            notifyContentListener(self.ctx, self, DELETED)
         elif command.Name == 'createNewContent':
             print("DriveFolderContent.execute(): createNewContent %s" % command.Argument)
             return self.createNewContent(command.Argument)
-        elif command.Name == 'insert':
-            print("DriveFolderContent.execute() insert")
-            #identifier = self.Identifier.getParent()
-            #action = uno.getConstantByName('com.sun.star.ucb.ContentAction.INSERTED')
-            #event = getContentEvent(action, self, identifier)
-            if self.Identifier.ConnectionMode == ONLINE:
-                updateMetaData(self.ctx, self, 20)
-            else:
-                self.SyncMode = 20
-            self.addPropertiesChangeListener(('Id', 'SyncMode', 'Name', 'Size'), getUcp(self.ctx))
-            self.Id = self.Id
-        elif command.Name == 'delete':
-            print("DriveFolderContent.execute(): delete")
         elif command.Name == 'transfer':
             # Transfer command is only used for existing document (File Save)
             id = command.Argument.NewTitle
@@ -214,20 +221,14 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
             stream = sf.openFileRead(source)
             sf.writeFile(target, stream)
             stream.closeInput()
+            data = {'Size': sf.getSize(target)}
             ucb = getUcb(self.ctx)
             # Folder Uri end whith it's Id: ie: 'scheme://authority/.../parentId/folderId'
             identifier = self.Identifier.getContentIdentifier()
             identifier = '%s%s' % (identifier, id) if identifier.endswith('/') else '%s/%s' % (identifier, id)
             identifier = ucb.createContentIdentifier(identifier)
             content = ucb.queryContent(identifier)
-            size = sf.getSize(target)
-            updated = {'Size': size}
-            if self.Identifier.ConnectionMode == ONLINE:
-                stream = sf.openFileRead(target)
-                updateData(self.ctx, content, 8, stream, size)
-            else:
-                updated.update({'SyncMode': 8})
-            setContentProperties(content, updated)
+            setContentProperties(content, data)
             print("DriveFolderContent.execute(): transfer: Fin")
             if command.Argument.MoveData:
                 pass #must delete object
@@ -253,7 +254,8 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         commands['createNewContent'] = getCommandInfo('createNewContent', 'com.sun.star.ucb.ContentInfo')
         commands['insert'] = getCommandInfo('insert', 'com.sun.star.ucb.InsertCommandArgument')
 #        commands['insert'] = getCommandInfo('insert', 'com.sun.star.ucb.InsertCommandArgument2')
-        commands['delete'] = getCommandInfo('delete', 'boolean')
+        if not self.IsRoot:
+            commands['delete'] = getCommandInfo('delete', 'boolean')
         commands['transfer'] = getCommandInfo('transfer', 'com.sun.star.ucb.TransferInfo')
         commands['close'] = getCommandInfo('close')
         commands['flush'] = getCommandInfo('flush')
@@ -271,11 +273,11 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         properties['MediaType'] = getProperty('MediaType', 'string', bound | readonly)
         properties['IsDocument'] = getProperty('IsDocument', 'boolean', bound | readonly)
         properties['IsFolder'] = getProperty('IsFolder', 'boolean', bound | readonly)
-        properties['Title'] = getProperty('Title', 'string', bound)
+        properties['Title'] = getProperty('Title', 'string', bound if self.CanRename else bound |readonly)
         properties['Size'] = getProperty('Size', 'long', bound | readonly)
         properties['DateModified'] = getProperty('DateModified', 'com.sun.star.util.DateTime', bound | readonly)
         properties['DateCreated'] = getProperty('DateCreated', 'com.sun.star.util.DateTime', bound | readonly)
-        properties['SyncMode'] = getProperty('SyncMode', 'long', bound)
+        properties['Loaded'] = getProperty('Loaded', 'long', bound)
         properties['CreatableContentsInfo'] = getProperty('CreatableContentsInfo', '[]com.sun.star.ucb.ContentInfo', bound | readonly)
 
         properties['IsHidden'] = getProperty('IsHidden', 'boolean', bound | readonly)

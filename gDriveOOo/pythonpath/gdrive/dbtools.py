@@ -10,7 +10,6 @@ from com.sun.star.container import XNameAccess, NoSuchElementException
 
 from .unotools import getResourceLocation, getPropertyValue, getSimpleFile
 
-import datetime
 import traceback
 
 g_protocol = 'jdbc:hsqldb:'
@@ -232,7 +231,6 @@ def getItemFromResult(result, data=None, transform=None):
     for index in range(1, result.MetaData.ColumnCount +1):
         dbtype = result.MetaData.getColumnTypeName(index)
         name = result.MetaData.getColumnName(index)
-        print("dbtools.getItemFromResult(): %s - %s" %(dbtype, name))
         if dbtype == 'VARCHAR':
             value = result.getString(index)
         elif dbtype == 'TIMESTAMP':
@@ -251,36 +249,4 @@ def getItemFromResult(result, data=None, transform=None):
             item['Data'][name] = value
         else:
             item[name] = value
-    print("dbtools.getItemFromResult(): OK: %s" % item)
     return item
-
-def parseDateTime(timestr=None, format=u'%Y-%m-%dT%H:%M:%S.%fZ'):
-    if timestr is None:
-        t = datetime.datetime.now()
-    else:
-        t = datetime.datetime.strptime(timestr, format)
-    return _getDateTime(t.microsecond, t.second, t.minute, t.hour, t.day, t.month, t.year)
-
-def unparseDateTime(t):
-    millisecond = 0
-    if hasattr(t, 'HundredthSeconds'):
-        millisecond = t.HundredthSeconds * 10
-    elif hasattr(t, 'NanoSeconds'):
-        millisecond = t.NanoSeconds // 1000000
-    return '%s-%s-%sT%s:%s:%s.%03dZ' % (t.Year, t.Month, t.Day, t.Hours, t.Minutes, t.Seconds, millisecond)
-
-def _getDateTime(microsecond=0, second=0, minute=0, hour=0, day=1, month=1, year=1970, utc=True):
-    t = uno.createUnoStruct('com.sun.star.util.DateTime')
-    t.Year = year
-    t.Month = month
-    t.Day = day
-    t.Hours = hour
-    t.Minutes = minute
-    t.Seconds = second
-    if hasattr(t, 'HundredthSeconds'):
-        t.HundredthSeconds = microsecond // 10000
-    elif hasattr(t, 'NanoSeconds'):
-        t.NanoSeconds = microsecond * 1000
-    if hasattr(t, 'IsUTC'):
-        t.IsUTC = utc
-    return t

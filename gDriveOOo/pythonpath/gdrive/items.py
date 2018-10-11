@@ -1,14 +1,18 @@
 #!
 # -*- coding: utf_8 -*-
 
+import uno
+
 from .dbtools import getItemFromResult, SqlArray
+from .google import parseDateTime, unparseDateTime
+from .google import ACQUIRED, CREATED, RENAMED, REWRITED, MODIFIED, TRASHED
 
 import traceback
 
 
 def needSync(connection):
     call = connection.prepareCall('CALL "needSync"(?, ?)')
-    call.setLong(1, 4)
+    call.setLong(1, ACQUIRED)
     call.execute()
     sync = call.getBoolean(2)
     call.close()
@@ -25,24 +29,10 @@ def selectUser(connection, username, mode):
     select.close()
     return user
 
-def mergeUser(connection, user, item, mode):
-    root = None
-    merge = connection.prepareCall('CALL "mergeUser"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-    merge.setString(1, user['Id'])
-    merge.setString(2, user['UserName'])
-    merge.setString(3, user['DisplayName'])
-    index = _setCallParameters(merge, item['Id'], item, 4)
-    merge.setLong(index, mode)
-    result = merge.executeQuery()
-    if result.next():
-        root = getItemFromResult(result)
-    merge.close()
-    return root
-
 def selectItem(connection, id):
     item = None
-    data = ('Name', 'DateCreated', 'DateModified', 'MimeType', 'Size',
-            'CanAddChild', 'CanRename', 'IsReadOnly', 'IsVersionable', 'SyncMode')
+    data = ('Name', 'DateCreated', 'DateModified', 'MimeType', 'Size', 'Trashed',
+            'CanAddChild', 'CanRename', 'IsReadOnly', 'IsVersionable', 'Loaded')
     select = connection.prepareCall('CALL "selectItem"(?)')
     # selectItem(IN ID VARCHAR(100))
     select.setString(1, id)
@@ -52,56 +42,100 @@ def selectItem(connection, id):
     select.close()
     return item
 
-def insertItem(connection, userid, item):
-    try:
-        item = None
-        data = ('Name', 'DateCreated', 'DateModified', 'MimeType', 'Size',
-                'CanAddChild', 'CanRename', 'IsReadOnly', 'IsVersionable', 'SyncMode')
-        insert = connection.prepareCall('CALL "insertItem"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-        insert.setString(1, userid)
-        index = _setCallParameters(insert, item['Id'], item['Data'], 2)
-        # Never managed to run the next line: Implement me ;-)
-        #insert.setArray(index, SqlArray(item['Parents'], 'VARCHAR'))
-        result = insert.executeQuery()
-        if result.next():
-            item = getItemFromResult(result, data)
-        insert.close()
-        return item
-    except Exception as e:
-        print("items.insertItem().Error: %s - %s" % (e, traceback.print_exc()))
+def mergeJsonUser(connection, user, data, mode):
+    root = None
+    merge = connection.prepareCall('CALL "mergeJsonUser"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    merge.setString(1, user.get('permissionId'))
+    merge.setString(2, user.get('emailAddress'))
+    merge.setString(3, user.get('displayName'))
+    index = _setJsonData(merge, data, unparseDateTime(), 4)
+    merge.setLong(index, mode)
+    #ctx = uno.getComponentContext()
+    #mri = ctx.ServiceManager.createInstance('mytools.Mri')
+    #mri.inspect(merge1)
+    result = merge.executeQuery()
+    if result.next():
+        root = getItemFromResult(result)
+    merge.close()
+    return root
 
-def mergeItem(merge, userid, item):
+def insertJsonItem(connection, userid, data):
+    item = None
+    fields = ('Name', 'DateCreated', 'DateModified', 'MimeType', 'Size', 'Trashed',
+              'CanAddChild', 'CanRename', 'IsReadOnly', 'IsVersionable', 'Loaded')
+    insert = connection.prepareCall('CALL "insertJsonItem"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    insert.setString(1, userid)
+    index = _setJsonData(insert, data, unparseDateTime(), 2)
+    insert.setString(index, ','.join(data.get('parents', ())))
+    # Never managed to run the next line: Implement me ;-)
+    #insert.setArray(index, SqlArray(item['Parents'], 'VARCHAR'))
+    result = insert.executeQuery()
+    if result.next():
+        item = getItemFromResult(result, fields)
+    insert.close()
+    return item
+
+def mergeJsonItemCall(connection, userid):
+    merge = connection.prepareCall('CALL "mergeJsonItem"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
     merge.setString(1, userid)
-    index = _setCallParameters(merge, item['Id'], item, 2)
+    return merge, 2
+
+def mergeJsonItem(merge, data, index=1):
+    index = _setJsonData(merge, data, unparseDateTime(), index)
+    merge.setString(index, ','.join(data.get('parents', ())))
     # Never managed to run the next line: Implement me ;-)
     #merge.setArray(index, SqlArray(item['Parents'], 'VARCHAR'))
     merge.execute()
-    return merge.getLong(index)
+    return merge.getLong(index +1)
 
-def _setCallParameters(call, id, data, index=1):
-    # IN Call Parameters for: mergeUser(), insertItem(), mergeItem()
-    # Id, Name, DateCreated, DateModified, MimeType, Size, CanAddChild, CanRename, IsReadOnly, IsVersionable
-    # OUT Call Parameters for: mergeItem()
+def insertContentItemCall(connection):
+    return connection.prepareCall('CALL "insertContentItem"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+
+def insertContentItem(insert, row, properties, index=1):
+    index = _setContentData(insert, row, properties, index)
+    # Never managed to run the next line: Implement me ;-)
+    #merge.setArray(index, SqlArray(item['Parents'], 'VARCHAR'))
+    insert.execute()
+    return insert.getLong(index)
+
+def _setJsonData(call, data, timestamp, index=1):
+    # IN Call Parameters for: mergeJsonUser(), insertJsonItem(), mergeJsonItem()
+    # Id, Name, DateCreated, DateModified, MimeType, Size, CanAddChild, CanRename, IsReadOnly, IsVersionable, SyncMode, ParentsId
+    # OUT Call Parameters for: mergeJsonItem()
     # RowCount
-    call.setString(index, id)
+    call.setString(index, data.get('id'))
     index += 1
-    call.setString(index, data['Name'])
+    call.setString(index, data.get('name'))
     index += 1
-    call.setTimestamp(index, data['DateCreated'])
+    call.setTimestamp(index, parseDateTime(data.get('createdTime', timestamp)))
     index += 1
-    call.setTimestamp(index, data['DateModified'])
+    call.setTimestamp(index, parseDateTime(data.get('modifiedTime', timestamp)))
     index += 1
-    call.setString(index, data['MimeType'])
+    call.setString(index, data.get('mimeType', 'application/octet-stream'))
     index += 1
-    call.setLong(index, data['Size'])
+    call.setLong(index, int(data.get('size', 0)))
     index += 1
-    call.setBoolean(index, data['CanAddChild'])
+    call.setBoolean(index, data.get('trashed', False))
     index += 1
-    call.setBoolean(index, data['CanRename'])
+    call.setBoolean(index, data.get('capabilities', False).get('canAddChildren', False))
     index += 1
-    call.setBoolean(index, data['IsReadOnly'])
+    call.setBoolean(index, data.get('capabilities', False).get('canRename', False))
     index += 1
-    call.setBoolean(index, data['IsVersionable'])
+    call.setBoolean(index, not data.get('capabilities', False).get('canEdit', False))
+    index += 1
+    call.setBoolean(index, data.get('capabilities', False).get('canReadRevisions', False))
     index += 1
     return index
 
+def _setContentData(call, row, properties, index=1):
+    for i, name in enumerate(properties, start=1):
+        if name in ('Name', 'MimeType'):
+            call.setString(index, row.getObject(i, None))
+        elif name in ('DateCreated', 'DateModified'):
+            call.setTimestamp(index, row.getObject(i, None))
+        elif name in ('Trashed', 'CanAddChild', 'CanRename', 'IsReadOnly', 'IsVersionable'):
+            call.setBoolean(index, row.getObject(i, None))
+        elif name in ('Size', 'Loaded', 'SyncMode'):
+            call.setLong(index, row.getObject(i, None))
+        index += 1
+    return index

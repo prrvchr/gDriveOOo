@@ -28,9 +28,9 @@ class OptionsDialog(unohelper.Base, XServiceInfo, XContainerWindowEventHandler):
             self.ctx = ctx
             self.stringResource = getStringResource(self.ctx, None, 'OptionsDialog')
             print("PyOptionsDialog.__init__() 1")
-            identifier = getUcb(self.ctx).createContentIdentifier('%s:///' % g_scheme)
-            print("PyOptionsDialog.__init__() 2 %s" % identifier.getContentIdentifier())
-            self.Connection = getUcp(self.ctx).Connection
+            #identifier = getUcb(self.ctx).createContentIdentifier('%s:///' % g_scheme)
+            #print("PyOptionsDialog.__init__() 2 %s" % identifier.getContentIdentifier())
+            #self.Connection = getUcp(self.ctx).Connection
             print("PyOptionsDialog.__init__() 3")
         except Exception as e:
             print("PyOptionsDialog.__init__().Error: %s - %s" % (e, traceback.print_exc()))
@@ -58,15 +58,15 @@ class OptionsDialog(unohelper.Base, XServiceInfo, XContainerWindowEventHandler):
         elif method == 'ViewLog':
             self._doViewLog(dialog)
             handled = True
-        elif method == 'ViewDataBase':
-            self._doViewDataBase(dialog)
+        elif method == 'LoadUcp':
+            self._doLoadUcp(dialog)
             handled = True
         elif method == 'ViewFile':
             self._doViewFile(dialog)
             handled = True
         return handled
     def getSupportedMethodNames(self):
-        return ('external_event', 'Logger', 'ViewLog', 'ViewDataBase', 'ViewFile')
+        return ('external_event', 'Logger', 'ViewLog', 'LoadUcp', 'ViewFile')
 
     def _doViewDataBase(self, dialog):
         try:
@@ -89,7 +89,10 @@ class OptionsDialog(unohelper.Base, XServiceInfo, XContainerWindowEventHandler):
 
     def _initialize(self, dialog):
         print("PyOptionsDialog._initialize()")
-        self._toogleSync(dialog, needSync(self.Connection))
+        provider = getUcp(self.ctx)
+        loaded = provider.supportsService('com.sun.star.ucb.ContentProvider')
+        print("OptionsDialog._initialize() %s" % loaded) 
+        self._toogleSync(dialog, loaded)
         self._loadLoggerSetting(dialog)
 
     def _loadSetting(self, dialog):
@@ -99,7 +102,7 @@ class OptionsDialog(unohelper.Base, XServiceInfo, XContainerWindowEventHandler):
         self._saveLoggerSetting(dialog)
 
     def _toogleSync(self, dialog, enabled):
-        dialog.getControl('CommandButton3').Model.Enabled = enabled
+        dialog.getControl('CommandButton2').Model.Enabled = not enabled
 
     def _doLogger(self, dialog, enabled):
         dialog.getControl('Label2').Model.Enabled = enabled
@@ -117,6 +120,20 @@ class OptionsDialog(unohelper.Base, XServiceInfo, XContainerWindowEventHandler):
         dialog.getControl('TextField1').Text = text
         dialog.execute()
         dialog.dispose()
+
+    def _doLoadUcp(self, dialog):
+        try:
+            print("PyOptionsDialog._doLoadUcp() 1")
+            provider = getUcp(self.ctx)
+            if provider.supportsService('com.sun.star.ucb.ContentProviderProxy'):
+                #ucp = provider.getContentProvider()
+                ucp = createService('com.gmail.prrvchr.extensions.gDriveOOo.ContentProvider', self.ctx)
+                provider = ucp.registerInstance(g_scheme, '', True)
+                self._toogleSync(dialog, True)
+            print("PyOptionsDialog._doLoadUcp() 2")
+            #identifier = getUcb(self.ctx).createContentIdentifier('%s:///' % g_scheme)
+        except Exception as e:
+            print("PyOptionsDialog._doLoadUcp().Error: %s - %s" % (e, traceback.print_exc()))
 
     def _getLogDialog(self):
         url = 'vnd.sun.star.script:gDriveOOo.LogDialog?location=application'

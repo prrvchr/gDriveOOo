@@ -5,7 +5,7 @@ import uno
 
 from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
 
-from .items import mergeItem
+from .items import mergeJsonItemCall, mergeJsonItem
 from .google import ChildGenerator, g_folder
 
 import traceback
@@ -23,35 +23,11 @@ def isChild(connection, id, parent):
     return ischild
 
 def updateChildren(connection, session, identifier):
-    try:
-        mode, userid = 0, identifier.UserId
-        merge = connection.prepareCall('CALL "mergeItem"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-        insert = connection.prepareCall('CALL "insertChild"(?, ?, ?)')
-        if all(updateChild(merge, insert, userid, item) for item in ChildGenerator(session, identifier.Id)):
-            mode = 1
-        merge.close()
-        insert.close()
-        session.close()
-        return mode
-    except Exception as e:
-        print("children.updateChildren().Error: %s - %s" % (e, traceback.print_exc()))
-
-def updateChild(merge, insert, userid, item):
-    return all((mergeItem(merge, userid, item), updateParent(insert, item)))
-
-def updateParent(insert, item):
-    result = True
-    if 'Parents' in item:
-        id = item['Id']
-        result = all(insertParent(insert, id, parent) for parent in item['Parents'])
-    return result
-
-def insertParent(insert, id, parent):
-    # insertChild(IN CHILDID VARCHAR(100),IN ITEMID VARCHAR(100),OUT ROWCOUNT SMALLINT)
-    insert.setString(1, id)
-    insert.setString(2, parent)
-    insert.execute()
-    return insert.getLong(3)
+    merge, index = mergeJsonItemCall(connection, identifier.UserId)
+    update = all(mergeJsonItem(merge, item, index) for item in ChildGenerator(session, identifier.Id))
+    merge.close()
+    session.close()
+    return update
 
 def getChildSelect(connection, identifier):
     try:
