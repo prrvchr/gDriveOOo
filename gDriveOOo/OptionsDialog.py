@@ -82,8 +82,10 @@ class OptionsDialog(unohelper.Base, XServiceInfo, XContainerWindowEventHandler):
 
     def _doViewFile(self, dialog):
         try:
-            user = getUcp(self.ctx).UserName
-            doSync(self.ctx, self.Connection, user)
+            mri = self.ctx.ServiceManager.createInstance('mytools.Mri')
+            mri.inspect(uno)
+            #user = getUcp(self.ctx).UserName
+            #doSync(self.ctx, self.Connection, user)
         except Exception as e:
             print("PyOptionsDialog._doViewFile().Error: %s - %s" % (e, traceback.print_exc()))
 

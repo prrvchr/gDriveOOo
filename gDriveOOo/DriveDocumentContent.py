@@ -17,7 +17,7 @@ from gdrive import getDbConnection, parseDateTime, isChild, getChildSelect, getL
 from gdrive import createService, getSimpleFile, getResourceLocation
 from gdrive import getUcb, getCommandInfo, getProperty, getContentInfo
 from gdrive import propertyChange, getPropertiesValues, setPropertiesValues, uploadItem
-from gdrive import setContentProperties, getSession, updateData, notifyContentListener
+from gdrive import setContentProperties, getSession, notifyContentListener
 from gdrive import ACQUIRED, CREATED, RENAMED, REWRITED, MODIFIED, TRASHED
 
 #from gdrive import PyPropertiesChangeNotifier, PyPropertySetInfoChangeNotifier, PyCommandInfoChangeNotifier, PyPropertyContainer, PyDynamicResultSet
@@ -179,13 +179,17 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
             result = setPropertiesValues(self, command.Argument, self.Logger)
         elif command.Name == 'open':
             print ("DriveDocumentContent.open(): %s" % command.Argument.Mode)
+            sf = getSimpleFile(self.ctx)
+            url = self._getUrl(sf)
+            if url is None:
+                raise CommandAbortedException("Error while downloading file: %s" % self.Name, self)
             sink = command.Argument.Sink
             if sink.queryInterface(uno.getTypeByName('com.sun.star.io.XActiveDataSink')):
                 msg += " ReadOnly mode selected ..."
-                self._setInputStream(sink)
+                sink.setInputStream(sf.openFileRead(url))
             elif not self.IsReadOnly and sink.queryInterface(uno.getTypeByName('com.sun.star.io.XActiveDataStreamer')):
                 msg += " ReadWrite mode selected ..."
-                self._setStream(sink)
+                sink.setStream(sf.openFileReadWrite(url))
         elif command.Name == 'insert':
             # The Insert command is only used to create a new document (File Save As)
             # it saves content from createNewContent from the parent folder
@@ -225,33 +229,20 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
                 return
         self.MimeType = mimetype
 
-    def _setInputStream(self, sink):
-        sf = getSimpleFile(self.ctx)
-        url = self._getUrl(sf)
-        if url is None:
-            raise CommandAbortedException("Error while downloading file: %s" % self.Name, self)
-        sink.setInputStream(sf.openFileRead(url))
-
-    def _setStream(self, sink):
-        sf = getSimpleFile(self.ctx)
-        url = self._getUrl(sf)
-        if url is None:
-            raise CommandAbortedException("Error while downloading file: %s" % self.Name, self)
-        sink.setStream(sf.openFileReadWrite(url))
-
     def _getUrl(self, sf):
         url = getResourceLocation(self.ctx, '%s/%s' % (self.Scheme, self.Id))
-        if self.Loaded == ONLINE or not sf.exists(url):
-            with getSession(self.ctx, self.Identifier.UserName) as session:
+        if self.Loaded == OFFLINE and sf.exists(url):
+            return url
+        with getSession(self.ctx, self.Identifier.UserName) as session:
+            try:
                 stream = InputStream(session, self.Id, self.Size, self.MediaType)
-                try:
-                    sf.writeFile(url, stream)
-                except:
-                    return None
-                else:
-                    self.Loaded == OFFLINE
-                finally:
-                    stream.closeInput()
+                sf.writeFile(url, stream)
+            except:
+                return None
+            else:
+                self.Loaded == OFFLINE
+            finally:
+                stream.closeInput()
         return url
 
     def _getCommandInfo(self):
@@ -270,6 +261,7 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
     def _getPropertySetInfo(self):
         properties = {}
         bound = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.BOUND')
+        constrained = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.CONSTRAINED')
         readonly = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.READONLY')
         transient = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.TRANSIENT')
         properties['Id'] = getProperty('Id', 'string', bound | readonly)
@@ -278,7 +270,7 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
         properties['MediaType'] = getProperty('MediaType', 'string', bound | readonly)
         properties['IsDocument'] = getProperty('IsDocument', 'boolean', bound | readonly)
         properties['IsFolder'] = getProperty('IsFolder', 'boolean', bound | readonly)
-        properties['Title'] = getProperty('Title', 'string', bound | readonly)
+        properties['Title'] = getProperty('Title', 'string', bound | constrained)
         properties['Size'] = getProperty('Size', 'long', bound | readonly)
         properties['DateModified'] = getProperty('DateModified', 'com.sun.star.util.DateTime', bound | readonly)
         properties['DateCreated'] = getProperty('DateCreated', 'com.sun.star.util.DateTime', bound | readonly)

@@ -28,9 +28,9 @@ from .contentlib import ContentIdentifier, Row, DynamicResultSet, CommandInfo, C
 from .contentlib import InteractionRequest
 
 from .contenttools import getUri, getUcb, getUcp, getPropertiesValues, setPropertiesValues, doSync
-from .contenttools import getContentEvent, getCmisProperty, getCommandInfo, updateMetaData
-from .contenttools import setContentProperties, getContentInfo, mergeContent, getMimeType, updateData
-from .contenttools import propertyChange, uploadItem, getSession, getDataContent, notifyContentListener
+from .contenttools import getContentEvent, getCmisProperty, getCommandInfo
+from .contenttools import setContentProperties, getContentInfo, mergeContent, getMimeType
+from .contenttools import propertyChange, uploadItem, getSession, notifyContentListener
 
 from .google import InputStream, getUser, getItem, getConnectionMode, updateItem, parseDateTime
 from .google import g_scheme, g_folder, g_link, g_doc

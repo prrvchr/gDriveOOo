@@ -33,10 +33,12 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
     def __init__(self, ctx, *namedvalues):
         try:
             self.ctx = ctx
+            
             self.Logger = getLogger(self.ctx)
             level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
             msg = "DriveFolderContent loading ..."
             self.Logger.logp(level, "DriveFolderContent", "__init__()", msg)
+            
             self.Identifier = None
 
             self.ContentType = 'application/vnd.google-apps.folder'
@@ -264,6 +266,7 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
     def _getPropertySetInfo(self):
         properties = {}
         bound = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.BOUND')
+        constrained = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.CONSTRAINED')
         readonly = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.READONLY')
         transient = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.TRANSIENT')
         properties['Id'] = getProperty('Id', 'string', bound | readonly)
@@ -273,7 +276,7 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         properties['MediaType'] = getProperty('MediaType', 'string', bound | readonly)
         properties['IsDocument'] = getProperty('IsDocument', 'boolean', bound | readonly)
         properties['IsFolder'] = getProperty('IsFolder', 'boolean', bound | readonly)
-        properties['Title'] = getProperty('Title', 'string', bound if self.CanRename else bound |readonly)
+        properties['Title'] = getProperty('Title', 'string', bound | constrained)
         properties['Size'] = getProperty('Size', 'long', bound | readonly)
         properties['DateModified'] = getProperty('DateModified', 'com.sun.star.util.DateTime', bound | readonly)
         properties['DateCreated'] = getProperty('DateCreated', 'com.sun.star.util.DateTime', bound | readonly)

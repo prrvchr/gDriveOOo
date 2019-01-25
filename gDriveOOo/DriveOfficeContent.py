@@ -8,14 +8,15 @@ from com.sun.star.awt import XCallback
 from com.sun.star.container import XChild
 from com.sun.star.lang import XServiceInfo, NoSupportException
 from com.sun.star.ucb import XContent, XCommandProcessor2, CommandAbortedException
+from com.sun.star.ucb import NameClashResolveRequest
 from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
 from com.sun.star.ucb.ContentAction import INSERTED, REMOVED, DELETED, EXCHANGED
 
 from gdrive import Initialization, CommandInfo, CmisPropertySetInfo, Row, CmisDocument, InputStream
 from gdrive import PropertiesChangeNotifier, PropertySetInfoChangeNotifier, CommandInfoChangeNotifier
-from gdrive import getContentInfo, getPropertiesValues, uploadItem, getUcb, getMimeType, updateData
+from gdrive import getContentInfo, getPropertiesValues, uploadItem, getUcb, getMimeType
 from gdrive import createService, getResourceLocation, parseDateTime, getPropertySetInfoChangeEvent
-from gdrive import getSimpleFile, getCommandInfo, getProperty, getUcp, getDataContent, getSession, notifyContentListener
+from gdrive import getSimpleFile, getCommandInfo, getProperty, getUcp, getSession, notifyContentListener
 from gdrive import propertyChange, setPropertiesValues, getLogger, getCmisProperty, getPropertyValue
 from gdrive import ACQUIRED, CREATED, RENAMED, REWRITED, MODIFIED, TRASHED
 #from gdrive import PyPropertiesChangeNotifier, PyPropertySetInfoChangeNotifier, PyCommandInfoChangeNotifier, PyPropertyContainer
@@ -112,8 +113,11 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         return self.Id
     @Title.setter
     def Title(self, title):
-        propertyChange(self, 'Name', self.Name, title)
+        old = self.Name
         self.Name = title
+        print("DriveOfficeContent.Title.setter() 1")
+        propertyChange(self, 'Name', old, title)
+        print("DriveOfficeContent.Title.setter() 2")
         notifyContentListener(self.ctx, self, EXCHANGED)
     @property
     def Size(self):
@@ -128,6 +132,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
     @Trashed.setter
     def Trashed(self, trashed):
         propertyChange(self, 'Trashed', self._Trashed, trashed)
+        self._Trashed = trashed
     @property
     def MediaType(self):
         return self.MimeType
@@ -191,16 +196,21 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
                 print("DriveOfficeContent.getPropertyValues(): %s" % (namedvalues, ))
                 result = Row(namedvalues)
             elif command.Name == 'setPropertyValues':
+                print("DriveOfficeContent.setPropertyValues(): %s" % (command.Argument, ))
                 result = setPropertiesValues(self, command.Argument, self.Logger)
             elif command.Name == 'open':
                 print ("DriveOfficeContent.open(): %s" % command.Argument.Mode)
+                sf = getSimpleFile(self.ctx)
+                url = self._getUrl(sf)
+                if url is None:
+                    raise CommandAbortedException("Error while downloading file: %s" % self.Name, self)
                 sink = command.Argument.Sink
                 if sink.queryInterface(uno.getTypeByName('com.sun.star.io.XActiveDataSink')):
                     msg += " ReadOnly mode selected ..."
-                    self._setInputStream(sink)
+                    sink.setInputStream(sf.openFileRead(url))
                 elif not self.IsReadOnly and sink.queryInterface(uno.getTypeByName('com.sun.star.io.XActiveDataStreamer')):
                     msg += " ReadWrite mode selected ..."
-                    self._setStream(sink)
+                    sink.setStream(sf.openFileReadWrite(url))
             elif command.Name == 'insert':
                 # The Insert command is only used to create a new document (File Save As)
                 # it saves content from createNewContent from the parent folder
@@ -244,6 +254,8 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
             msg += " Done"
             self.Logger.logp(level, "DriveOfficeContent", "execute()", msg)
             return result
+        except CommandAbortedException as e:
+            raise e
         except Exception as e:
             print("DriveOfficeContent.execute().Error: %s - %e" % (e, traceback.print_exc()))
     def abort(self, id):
@@ -251,33 +263,20 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
     def releaseCommandIdentifier(self, id):
         pass
 
-    def _setInputStream(self, sink):
-        sf = getSimpleFile(self.ctx)
-        url = self._getUrl(sf)
-        if url is None:
-            raise CommandAbortedException("Error while downloading file: %s" % self.Name, self)
-        sink.setInputStream(sf.openFileRead(url))
-
-    def _setStream(self, sink):
-        sf = getSimpleFile(self.ctx)
-        url = self._getUrl(sf)
-        if url is None:
-            raise CommandAbortedException("Error while downloading file: %s" % self.Name, self)
-        sink.setStream(sf.openFileReadWrite(url))
-
     def _getUrl(self, sf):
         url = getResourceLocation(self.ctx, '%s/%s' % (self.Scheme, self.Id))
-        if self.Loaded == ONLINE or not sf.exists(url):
-            with getSession(self.ctx, self.Identifier.UserName) as session:
+        if self.Loaded == OFFLINE and sf.exists(url):
+            return url
+        with getSession(self.ctx, self.Identifier.UserName) as session:
+            try:
                 stream = InputStream(session, self.Id, self.Size)
-                try:
-                    sf.writeFile(url, stream)
-                except:
-                    return None
-                else:
-                    self.Loaded == OFFLINE
-                finally:
-                    stream.closeInput()
+                sf.writeFile(url, stream)
+            except:
+                return None
+            else:
+                self.Loaded == OFFLINE
+            finally:
+                stream.closeInput()
         return url
 
     def _getCommandInfo(self):
@@ -308,6 +307,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
     def _getPropertySetInfo(self):
         properties = {}
         bound = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.BOUND')
+        constrained = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.CONSTRAINED')
         readonly = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.READONLY')
         properties['Id'] = getProperty('Id', 'string', bound | readonly)
         properties['ContentType'] = getProperty('ContentType', 'string', bound | readonly)
@@ -315,7 +315,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         properties['MediaType'] = getProperty('MediaType', 'string', bound | readonly)
         properties['IsDocument'] = getProperty('IsDocument', 'boolean', bound | readonly)
         properties['IsFolder'] = getProperty('IsFolder', 'boolean', bound | readonly)
-        properties['Title'] = getProperty('Title', 'string', bound)
+        properties['Title'] = getProperty('Title', 'string', bound | constrained)
         properties['Size'] = getProperty('Size', 'long', bound | readonly)
         properties['DateModified'] = getProperty('DateModified', 'com.sun.star.util.DateTime', bound | readonly)
         properties['DateCreated'] = getProperty('DateCreated', 'com.sun.star.util.DateTime', bound | readonly)

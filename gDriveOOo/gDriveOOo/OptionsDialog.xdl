@@ -32,10 +32,11 @@
   <dlg:button dlg:id="CommandButton1" dlg:tab-index="7" dlg:disabled="true" dlg:left="200" dlg:top="35" dlg:width="45" dlg:height="14" dlg:help-text="&amp;OptionsDialog.CommandButton1.HelpText" dlg:value="&amp;OptionsDialog.CommandButton1.Label">
    <script:event script:event-name="on-performaction" script:macro-name="vnd.sun.star.UNO:ViewLog" script:language="UNO"/>
   </dlg:button>
-  <dlg:button dlg:id="CommandButton2" dlg:tab-index="8" dlg:left="205" dlg:top="75" dlg:width="45" dlg:height="14" dlg:help-text="&amp;OptionsDialog.CommandButton2.HelpText" dlg:value="&amp;OptionsDialog.CommandButton2.Label">
+  <dlg:text dlg:id="Label3" dlg:tab-index="8" dlg:left="10" dlg:top="75" dlg:width="190" dlg:height="14" dlg:help-text="&amp;OptionsDialog.Label3.HelpText" dlg:value="&amp;OptionsDialog.Label3.Label" dlg:valign="center"/>
+  <dlg:button dlg:id="CommandButton2" dlg:tab-index="9" dlg:left="200" dlg:top="75" dlg:width="45" dlg:height="14" dlg:help-text="&amp;OptionsDialog.CommandButton2.HelpText" dlg:value="&amp;OptionsDialog.CommandButton2.Label">
    <script:event script:event-name="on-performaction" script:macro-name="vnd.sun.star.UNO:LoadUcp" script:language="UNO"/>
   </dlg:button>
-  <dlg:button dlg:id="CommandButton3" dlg:tab-index="9" dlg:left="205" dlg:top="125" dlg:width="45" dlg:height="14" dlg:help-text="&amp;OptionsDialog.CommandButton3.HelpText" dlg:value="&amp;OptionsDialog.CommandButton3.Label">
+  <dlg:button dlg:id="CommandButton3" dlg:tab-index="10" dlg:left="200" dlg:top="125" dlg:width="45" dlg:height="14" dlg:help-text="&amp;OptionsDialog.CommandButton3.HelpText" dlg:value="&amp;OptionsDialog.CommandButton3.Label">
    <script:event script:event-name="on-performaction" script:macro-name="vnd.sun.star.UNO:ViewFile" script:language="UNO"/>
   </dlg:button>
  </dlg:bulletinboard>

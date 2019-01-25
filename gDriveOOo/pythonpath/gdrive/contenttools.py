@@ -3,7 +3,9 @@
 
 import uno
 
-from com.sun.star.beans import UnknownPropertyException, IllegalTypeException
+from com.sun.star.beans import UnknownPropertyException, IllegalTypeException, PropertyVetoException
+from com.sun.star.lang import IllegalAccessException
+from com.sun.star.ucb import NameClashResolveRequest
 from com.sun.star.uno import Exception as UnoException
 from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
 from com.sun.star.ucb.ContentAction import INSERTED, REMOVED, DELETED, EXCHANGED
@@ -86,31 +88,6 @@ def uploadItem(ctx, session, id, data, size, stream):
         pump.start()
         return id
     return False
-
-def updateData(ctx, content, mode, stream, size):
-    identifier = content.getIdentifier()
-    item = {'id': identifier.Id, 'parents': [identifier.getParent().Id], 'mode': mode}
-    item.update({'Data': getDataContent(content)})
-    with getSession(ctx, identifier.UserName) as session:
-        return uploadItem(ctx, session, item, size, stream)
-    return False
-
-def updateMetaData(ctx, content, mode):
-    identifier = content.getIdentifier()
-    item = {'id': identifier.Id, 'parents': [identifier.getParent().Id], 'mode': mode}
-    item.update({'Data': getDataContent(content)})
-    with getSession(ctx, identifier.UserName) as session:
-        return updateItem(session, item)
-    return False
-
-def getDataContent(content, properties=('Name', 'DateCreated', 'DateModified', 'MimeType')):
-    data = {}
-    row = getContentProperties(content, properties)
-    data['name'] = row.getString(1)
-    data['createdTime'] = unparseDateTime(row.getTimestamp(2))
-    data['modifiedTime'] = unparseDateTime(row.getTimestamp(3))
-    data['mimeType'] = row.getString(4)
-    return data
 
 def mergeContent(ctx, connection, event, mode):
     print("contenttools.mergeContent() %s - %s" % (event.PropertyName, event.NewValue))
@@ -326,9 +303,9 @@ def getUri(ctx, identifier):
     factory = ctx.ServiceManager.createInstance('com.sun.star.uri.UriReferenceFactory')
     return factory.parse(identifier)
 
-def getUcb(ctx, arguments=None):
-    if arguments is None:
-        arguments = ('Local', 'Office')
+def getUcb(ctx=None, arguments=None):
+    ctx = uno.getComponentContext() if ctx is None else ctx
+    arguments = ('Local', 'Office') if arguments is None else arguments
     name = 'com.sun.star.ucb.UniversalContentBroker'
     return ctx.ServiceManager.createInstanceWithArguments(name, (arguments, ))
 

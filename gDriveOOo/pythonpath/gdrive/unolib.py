@@ -83,7 +83,7 @@ class PropertiesChangeNotifier(XPropertiesChangeNotifier):
 
     #XPropertiesChangeNotifier
     def addPropertiesChangeListener(self, names, listener):
-        print("PyPropertiesChangeNotifier.addPropertiesChangeListener()")
+        print("PyPropertiesChangeNotifier.addPropertiesChangeListener() %s" % self.__class__.__name__)
         for name in names:
             if name not in self.propertiesListener:
                 self.propertiesListener[name] = []
