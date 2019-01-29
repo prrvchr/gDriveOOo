@@ -40,7 +40,7 @@ def getChildSelect(connection, identifier):
         # selectChild(IN ID VARCHAR(100),IN URL VARCHAR(250),IN MODE SMALLINT,OUT ROWCOUNT SMALLINT)
         select.setString(index, identifier.Id)
         index += 1
-        # "TargetURL" is done by CONCAT(uri,id)... The root uri already ends with a '/' ...
+        # "TargetURL" is done by CONCAT(uri,id,'/',title)... The root uri already ends with a '/' ...
         uri = identifier.getContentIdentifier()
         select.setString(index, uri if uri.endswith('/') else '%s/' % uri)
         index += 1

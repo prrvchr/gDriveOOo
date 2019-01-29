@@ -91,52 +91,55 @@ def uploadItem(ctx, session, id, data, size, stream):
 
 def mergeContent(ctx, connection, event, mode):
     print("contenttools.mergeContent() %s - %s" % (event.PropertyName, event.NewValue))
-    result = False
-    identifier = event.Source.getIdentifier()
-    if event.PropertyName == 'Id':
-        properties = ('Name', 'DateCreated', 'DateModified', 'MimeType', 'Size', 'Trashed',
-                      'CanAddChild', 'CanRename', 'IsReadOnly', 'IsVersionable', 'Loaded')
-        row = getContentProperties(event.Source, properties)
-        mode = event.NewValue
-        insert = insertContentItemCall(connection)
-        insert.setString(1, identifier.UserId)
-        insert.setString(2, identifier.Id)
-        insert.setString(3, identifier.getParent().Id)
-        insert.setString(4, mode)
-        result = insertContentItem(insert, row, properties, 5)
-    elif event.PropertyName  == 'Name':
-        update = connection.prepareCall('CALL "updateName"(?, ?, ?, ?, ?)')
-        update.setString(1, identifier.UserId)
-        update.setString(2, identifier.Id)
-        update.setString(3, event.NewValue)
-        update.setLong(4, RENAMED+MODIFIED)
-        update.execute()
-        result = update.getLong(5)
-    elif event.PropertyName == 'Size':
-        update = connection.prepareCall('CALL "updateSize"(?, ?, ?, ?, ?)')
-        update.setString(1, identifier.UserId)
-        update.setString(2, identifier.Id)
-        update.setLong(3, event.NewValue)
-        update.setLong(4, REWRITED)
-        update.execute()
-        result = update.getLong(5)
-    elif event.PropertyName == 'Trashed':
-        update = connection.prepareCall('CALL "updateTrashed"(?, ?, ?, ?, ?)')
-        update.setString(1, identifier.UserId)
-        update.setString(2, identifier.Id)
-        update.setLong(3, event.NewValue)
-        update.setLong(4, TRASHED)
-        update.execute()
-        result = update.getLong(5)
-    elif event.PropertyName == 'Loaded':
-        update = connection.prepareCall('CALL "updateLoaded"(?, ?, ?, ?)')
-        update.setString(1, identifier.UserId)
-        update.setString(2, identifier.Id)
-        update.setLong(3, event.NewValue)
-        update.execute()
-        return update.getLong(4)
-    if result and mode == ONLINE:
-        result = doSync(ctx, connection, identifier.UserName)
+    try:
+        result = False
+        identifier = event.Source.getIdentifier()
+        if event.PropertyName == 'Id':
+            properties = ('Name', 'DateCreated', 'DateModified', 'MimeType', 'Size', 'Trashed',
+                          'CanAddChild', 'CanRename', 'IsReadOnly', 'IsVersionable', 'Loaded')
+            row = getContentProperties(event.Source, properties)
+            mode = event.NewValue
+            insert = insertContentItemCall(connection)
+            insert.setString(1, identifier.UserId)
+            insert.setString(2, identifier.Id)
+            insert.setString(3, identifier.getParent().Id)
+            insert.setString(4, mode)
+            result = insertContentItem(insert, row, properties, 5)
+        elif event.PropertyName  == 'Name':
+            update = connection.prepareCall('CALL "updateName"(?, ?, ?, ?, ?)')
+            update.setString(1, identifier.UserId)
+            update.setString(2, identifier.Id)
+            update.setString(3, event.NewValue)
+            update.setLong(4, RENAMED+MODIFIED)
+            update.execute()
+            result = update.getLong(5)
+        elif event.PropertyName == 'Size':
+            update = connection.prepareCall('CALL "updateSize"(?, ?, ?, ?, ?)')
+            update.setString(1, identifier.UserId)
+            update.setString(2, identifier.Id)
+            update.setLong(3, event.NewValue)
+            update.setLong(4, REWRITED)
+            update.execute()
+            result = update.getLong(5)
+        elif event.PropertyName == 'Trashed':
+            update = connection.prepareCall('CALL "updateTrashed"(?, ?, ?, ?, ?)')
+            update.setString(1, identifier.UserId)
+            update.setString(2, identifier.Id)
+            update.setLong(3, event.NewValue)
+            update.setLong(4, TRASHED)
+            update.execute()
+            result = update.getLong(5)
+        elif event.PropertyName == 'Loaded':
+            update = connection.prepareCall('CALL "updateLoaded"(?, ?, ?, ?)')
+            update.setString(1, identifier.UserId)
+            update.setString(2, identifier.Id)
+            update.setLong(3, event.NewValue)
+            update.execute()
+            return update.getLong(4)
+        if result and mode == ONLINE:
+            result = doSync(ctx, connection, identifier.UserName)
+    except Exception as e:
+        print("contenttools.mergeContent().Error: %s - %e" % (e, traceback.print_exc()))
     print("contenttools.mergeContent() %s" % result)
     return result
 
@@ -209,32 +212,20 @@ def setContentProperties(content, arguments):
 def getId(uri, root=''):
     id = ''
     count = uri.getPathSegmentCount()
-    if count > 0:
-        id = uri.getPathSegment(count -1).strip()
-    if count < 2 and id == "":
+    if count > 1:
+        id = uri.getPathSegment(count -2).strip()
+    if id == '':
         id = root
     return id
 
 def getParentUri(ctx, uri):
-    path = _getParentPath(uri)
-    identifier = '%s://%s/%s' % (uri.getScheme(), uri.getAuthority(), '/'.join(path))
-    return getUri(ctx, identifier)
-
-def getParentId(identifier):
-    paths = []
-    while not identifier.IsRoot:
-        paths.append(identifier.Id)
-        identifier = identifier.getParent()
-    paths.append(identifier.Id)
-    return tuple(paths)
-
-def _getParentPath(uri):
     paths = []
     count = uri.getPathSegmentCount()
-    if count > 0:
-        for i in range(count -1):
+    if count > 1:
+        for i in range(count -2):
             paths.append(uri.getPathSegment(i).strip())
-    return tuple(paths)
+    identifier = '%s://%s/%s' % (uri.getScheme(), uri.getAuthority(), '/'.join(paths))
+    return getUri(ctx, identifier)
 
 def _getPropertyChangeEvent(source, name, oldvalue, newvalue, further=False, handle=-1):
     event = uno.createUnoStruct('com.sun.star.beans.PropertyChangeEvent')

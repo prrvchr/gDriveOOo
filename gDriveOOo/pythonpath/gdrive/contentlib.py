@@ -16,7 +16,7 @@ from com.sun.star.io import XStreamListener
 
 from .unolib import PropertySet
 from .unotools import getProperty
-from .contenttools import getUcb, getId, getParentUri
+from .contenttools import getUcb, getId, getParentUri, getUri
 
 import traceback
 
@@ -62,6 +62,7 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild)
         properties['IsValidUser'] = getProperty('IsValidUser', 'boolean', bound | readonly)
         properties['IsRoot'] = getProperty('IsRoot', 'boolean', bound | readonly)
         properties['Id'] = getProperty('Id', 'string', maybevoid | bound | readonly)
+        properties['RootId'] = getProperty('RootId', 'string', maybevoid | bound | readonly)
         properties['UserId'] = getProperty('UserId', 'string', maybevoid | bound | readonly)
         properties['UserName'] = getProperty('UserName', 'string', maybevoid | bound | readonly)
         return properties
@@ -246,15 +247,17 @@ class Row(unohelper.Base, XRow):
         
 
 class DynamicResultSet(unohelper.Base, XDynamicResultSet):
-    def __init__(self, ctx, scheme, select, index):
+    def __init__(self, ctx, identifier, select, index):
+        print("DynamicResultSet.__init__(): 1")
         self.ctx = ctx
-        self.scheme = scheme
+        self.identifier = identifier
         self.select = select
         self.index = index
+        print("DynamicResultSet.__init__(): 2")
 
     # XDynamicResultSet
     def getStaticResultSet(self):
-        return ContentResultSet(self.ctx, self.scheme, self.select, self.index)
+        return ContentResultSet(self.ctx, self.identifier, self.select, self.index)
     def setListener(self, listener):
         print("DynamicResultSet.setListener():")
         pass
@@ -268,10 +271,15 @@ class DynamicResultSet(unohelper.Base, XDynamicResultSet):
 
 class ContentResultSet(unohelper.Base, PropertySet, XResultSet, XRow,
                        XResultSetMetaDataSupplier, XContentAccess):
-    def __init__(self, ctx, scheme, select, index):
+    def __init__(self, ctx, identifier, select, index):
+        print("ContentResultSet.__init__(): 1")
         self.ctx = ctx
-        self.scheme = scheme
+        self.mode = identifier.ConnectionMode
+        print("ContentResultSet.__init__(): 2")
+        self.user = {'Id': identifier.UserId, 'UserName': identifier.UserName, 'RootId': identifier.RootId}
+        print("ContentResultSet.__init__(): 3")
         self.resultset = select.executeQuery()
+        print("ContentResultSet.__init__(): 4")
         self.RowCount = select.getLong(index)
         self.IsRowCountFinal = not select.MoreResults
         print("ContentResultSet.__init__(): %s" % self.RowCount)
@@ -372,7 +380,8 @@ class ContentResultSet(unohelper.Base, PropertySet, XResultSet, XRow,
         return self.resultset.getString(self.resultset.findColumn('TargetURL'))
     def queryContentIdentifier(self):
         identifier = self.queryContentIdentifierString()
-        return ContentIdentifier(self.scheme, identifier)
+        uri = getUri(self.ctx, identifier)
+        return ContentIdentifier(self.ctx, self.mode, uri, self.user)
     def queryContent(self):
         identifier = self.queryContentIdentifier()
         return getUcb(self.ctx).queryContent(identifier)

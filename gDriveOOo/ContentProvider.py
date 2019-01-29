@@ -137,11 +137,12 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory, P
         if self._hasUserName(uri) and uri.hasFragment():
             msg = "New Identifier: %s ..." % identifier
             self.Logger.logp(level, "ContentProvider", "createContentIdentifier()", msg)
+            fragment = uri.getFragment()
             uri.clearFragment()
             baseuri = uri.getUriReference()
             id = getIdentifier(self.Connection)
             print("ContentProvider.createContentIdentifier() createNewId %s" % id)
-            newidentifier = '%s%s' % (baseuri, id) if baseuri.endswith('/') else '%s/%s' % (baseuri, id)
+            newidentifier = '%s%s/%s' % (baseuri, id, fragment) if baseuri.endswith('/') else '%s/%s/%s' % (baseuri, id, fragment)
             uri = getUri(self.ctx, newidentifier)
             print("ContentProvider.createContentIdentifier() isIdentifier ******* %s" % (newidentifier, ))
         contentidentifier = ContentIdentifier(self.ctx, self.ConnectionMode, uri, self.User)

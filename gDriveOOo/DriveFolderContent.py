@@ -130,7 +130,7 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         return self.CreatableContentsInfo
     def createNewContent(self, contentinfo):
         print("DriveFolderContent.createNewContent(): 1 - %s" % self._NewTitle)
-        id = getUcb(self.ctx).createContentIdentifier('%s#' % self.Identifier.getContentIdentifier())
+        id = getUcb(self.ctx).createContentIdentifier('%s#%s' % (self.Identifier.getContentIdentifier(), self._NewTitle))
         data = {'Identifier': id}
         if contentinfo.Type == g_folder:
             data.update({'Connection': self.Connection})
@@ -185,14 +185,18 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         elif command.Name == 'setPropertyValues':
             return setPropertiesValues(self, command.Argument, self.Logger)
         elif command.Name == 'open':
+            print("DriveFolderContent.execute() open 1")
             mode = self.Identifier.ConnectionMode
             if mode == ONLINE and self.Loaded == ONLINE:
                 with getSession(self.ctx, self.Identifier.UserName) as session:
                     if updateChildren(self.Connection, session, self.Identifier):
                         self.Loaded = OFFLINE
+            print("DriveFolderContent.execute() open 2")
             # Not Used: command.Argument.Properties - Implement me ;-)
             index, select = getChildSelect(self.Connection, self.Identifier)
-            return DynamicResultSet(self.ctx, self.Scheme, select, index)
+            print("DriveFolderContent.execute() open 3")
+            return DynamicResultSet(self.ctx, self.Identifier, select, index)
+            print("DriveFolderContent.execute() open 4")
         elif command.Name == 'insert':
             print("DriveFolderContent.execute() insert")
             self.addPropertiesChangeListener(('Id', 'Name', 'Size', 'Trashed', 'Loaded'), getUcp(self.ctx))
