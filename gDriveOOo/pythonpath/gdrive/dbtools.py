@@ -242,7 +242,9 @@ def getItemFromResult(result, data=None, transform=None):
         else:
             continue
         if transform is not None and name in transform:
+            print("dbtools.getItemFromResult() 1: %s: %s" % (name, value))
             value = transform[name](value)
+            print("dbtools.getItemFromResult() 2: %s: %s" % (name, value))
         if value is None or result.wasNull():
             continue
         if data is not None and name in data:

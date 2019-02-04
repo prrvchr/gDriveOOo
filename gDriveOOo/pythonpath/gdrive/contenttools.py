@@ -13,14 +13,32 @@ from com.sun.star.ucb.ContentAction import INSERTED, REMOVED, DELETED, EXCHANGED
 from .unotools import getProperty, getPropertyValue, createService, getSimpleFile, getResourceLocation
 #from .items import getMergeCall, mergeItem, setContentCall
 from .google import unparseDateTime, g_scheme, getUploadLocation, OutputStream, updateItem, OAuth2Ooo
-from .google import ACQUIRED, CREATED, RENAMED, REWRITED, MODIFIED, TRASHED
-from .google import getDataFromItem
+from .google import ACQUIRED, CREATED, RENAMED, REWRITED, TRASHED
+from .google import g_folder, g_link, g_doc
 from .dbtools import getItemFromResult
+from .items import insertContentItemCall, insertContentItem
 
 import datetime
 import requests
 import traceback
 
+g_OfficeDocument = 'application/vnd.oasis.opendocument'
+
+
+def createContent(ctx, data):
+    name, content = None, None
+    mime = data.get('MimeType', 'application/octet-stream')
+    if mime == g_folder:
+        name = 'DriveFolderContent'
+    elif mime == g_link:
+        pass
+    elif mime.startswith(g_doc):
+        name = 'DriveDocumentContent'
+    elif mime.startswith(g_OfficeDocument):
+        name = 'DriveOfficeContent'
+    if name is not None:
+        content = createService('com.gmail.prrvchr.extensions.gDriveOOo.%s' % name, ctx, **data)
+    return content
 
 def notifyContentListener(ctx, content, action):
     identifier = content.getIdentifier()
@@ -46,13 +64,15 @@ def getSession(ctx, username):
 def doSync(ctx, connection, username):
     items = []
     #data = ('name', 'createdTime', 'modifiedTime', 'mimeType')
-    transform = {'parents': lambda value: value.split(',') if value else None}
+    transform = {'parents': lambda value: value.split(',')}
     select = connection.prepareCall('CALL "selectSync"(?)')
     select.setLong(1, ACQUIRED)
     result = select.executeQuery()
     with getSession(ctx, username) as session:
         while result.next():
-            items.append(_syncItem(ctx, session, getItemFromResult(result, None, transform)))
+            item = getItemFromResult(result, None, transform)
+            print("contenttools.doSync(): %s" % (item, ))
+            items.append(_syncItem(ctx, session, item))
     select.close()
     if items and all(items):
         update = connection.prepareCall('CALL "updateSync"(?, ?, ?)')
@@ -68,15 +88,27 @@ def doSync(ctx, connection, username):
 
 def _syncItem(ctx, session, item):
     result = False
-    mode, id, data = getDataFromItem(item)
+    id = item.get('id')
+    mode = item.get('mode')
+    data = None
+    #mode, id, data = getDataFromItem(item)
+    print("contenttools._syncItem(): data:\n%s" % (data, ))
+    if mode & CREATED:
+        data = {'id': id,
+                'parents': item.get('parents'),
+                'name': item.get('name'),
+                'mimeType': item.get('mimeType')}
+        print("contenttools._syncItem(): created\n%s" % (data, ))
     if mode & REWRITED:
         size, stream = _getInputStream(ctx, id)
         if size != 0:
             result = uploadItem(ctx, session, id, data, size, stream)
-    elif mode & MODIFIED:
+    if mode & RENAMED:
+        data = {'name': item.get('name')}
         result = updateItem(session, id, data)
     if result and mode & TRASHED:
-        result = updateItem(session, id, {'trashed': True})
+        data = {'trashed': True}
+        result = updateItem(session, id, data)
     return result
 
 def uploadItem(ctx, session, id, data, size, stream):
@@ -91,55 +123,58 @@ def uploadItem(ctx, session, id, data, size, stream):
 
 def mergeContent(ctx, connection, event, mode):
     print("contenttools.mergeContent() %s - %s" % (event.PropertyName, event.NewValue))
-    try:
-        result = False
-        identifier = event.Source.getIdentifier()
-        if event.PropertyName == 'Id':
-            properties = ('Name', 'DateCreated', 'DateModified', 'MimeType', 'Size', 'Trashed',
-                          'CanAddChild', 'CanRename', 'IsReadOnly', 'IsVersionable', 'Loaded')
-            row = getContentProperties(event.Source, properties)
-            mode = event.NewValue
-            insert = insertContentItemCall(connection)
-            insert.setString(1, identifier.UserId)
-            insert.setString(2, identifier.Id)
-            insert.setString(3, identifier.getParent().Id)
-            insert.setString(4, mode)
-            result = insertContentItem(insert, row, properties, 5)
-        elif event.PropertyName  == 'Name':
-            update = connection.prepareCall('CALL "updateName"(?, ?, ?, ?, ?)')
-            update.setString(1, identifier.UserId)
-            update.setString(2, identifier.Id)
-            update.setString(3, event.NewValue)
-            update.setLong(4, RENAMED+MODIFIED)
-            update.execute()
-            result = update.getLong(5)
-        elif event.PropertyName == 'Size':
-            update = connection.prepareCall('CALL "updateSize"(?, ?, ?, ?, ?)')
-            update.setString(1, identifier.UserId)
-            update.setString(2, identifier.Id)
-            update.setLong(3, event.NewValue)
-            update.setLong(4, REWRITED)
-            update.execute()
-            result = update.getLong(5)
-        elif event.PropertyName == 'Trashed':
-            update = connection.prepareCall('CALL "updateTrashed"(?, ?, ?, ?, ?)')
-            update.setString(1, identifier.UserId)
-            update.setString(2, identifier.Id)
-            update.setLong(3, event.NewValue)
-            update.setLong(4, TRASHED)
-            update.execute()
-            result = update.getLong(5)
-        elif event.PropertyName == 'Loaded':
-            update = connection.prepareCall('CALL "updateLoaded"(?, ?, ?, ?)')
-            update.setString(1, identifier.UserId)
-            update.setString(2, identifier.Id)
-            update.setLong(3, event.NewValue)
-            update.execute()
-            return update.getLong(4)
-        if result and mode == ONLINE:
-            result = doSync(ctx, connection, identifier.UserName)
-    except Exception as e:
-        print("contenttools.mergeContent().Error: %s - %e" % (e, traceback.print_exc()))
+    result, sync = False, True
+    identifier = event.Source.getIdentifier()
+    if event.PropertyName == 'Id':
+        properties = ('Name', 'DateCreated', 'DateModified', 'MimeType', 'Size', 'Trashed',
+                      'CanAddChild', 'CanRename', 'IsReadOnly', 'IsVersionable', 'Loaded')
+        row = getContentProperties(event.Source, properties)
+        insert = insertContentItemCall(connection)
+        insert.setString(1, identifier.User.Id)
+        insert.setString(2, identifier.Id)
+        insert.setString(3, identifier.getParent().Id)
+        insert.setString(4, event.NewValue)
+        result = insertContentItem(insert, row, properties, 5)
+        if result:
+            notifyContentListener(ctx, event.Source, INSERTED)
+    elif event.PropertyName  == 'Name':
+        update = connection.prepareCall('CALL "updateName"(?, ?, ?, ?, ?)')
+        update.setString(1, identifier.User.Id)
+        update.setString(2, identifier.Id)
+        update.setString(3, event.NewValue)
+        update.setLong(4, RENAMED)
+        update.execute()
+        result = update.getLong(5)
+        if result:
+            notifyContentListener(ctx, event.Source, EXCHANGED)
+    elif event.PropertyName == 'Size':
+        update = connection.prepareCall('CALL "updateSize"(?, ?, ?, ?, ?)')
+        update.setString(1, identifier.User.Id)
+        update.setString(2, identifier.Id)
+        update.setLong(3, event.NewValue)
+        update.setLong(4, REWRITED)
+        update.execute()
+        result = update.getLong(5)
+    elif event.PropertyName == 'Trashed':
+        update = connection.prepareCall('CALL "updateTrashed"(?, ?, ?, ?, ?)')
+        update.setString(1, identifier.User.Id)
+        update.setString(2, identifier.Id)
+        update.setLong(3, event.NewValue)
+        update.setLong(4, TRASHED)
+        update.execute()
+        result = update.getLong(5)
+        if result:
+            notifyContentListener(ctx, event.Source, DELETED)
+    elif event.PropertyName == 'Loaded':
+        update = connection.prepareCall('CALL "updateLoaded"(?, ?, ?, ?)')
+        update.setString(1, identifier.User.Id)
+        update.setString(2, identifier.Id)
+        update.setLong(3, event.NewValue)
+        update.execute()
+        result = update.getLong(4)
+        sync = False
+    if sync and result and mode == ONLINE:
+        result = doSync(ctx, connection, identifier.User.Name)
     print("contenttools.mergeContent() %s" % result)
     return result
 
@@ -188,10 +223,10 @@ def setPropertiesValues(source, properties, logger):
     return tuple(results)
 
 def getContentProperties(content, properties):
-    properties = []
+    namedvalues = []
     for name in properties:
-        properties.append(getProperty(name))
-    command = getCommand('getPropertyValues', tuple(properties))
+        namedvalues.append(getProperty(name))
+    command = getCommand('getPropertyValues', tuple(namedvalues))
     return content.execute(command, 0, None)
 
 def getContentData(content, properties):
@@ -208,24 +243,6 @@ def setContentProperties(content, arguments):
         properties.append(getPropertyValue(name, value))
     command = getCommand('setPropertyValues', tuple(properties))
     return content.execute(command, 0, None)
-
-def getId(uri, root=''):
-    id = ''
-    count = uri.getPathSegmentCount()
-    if count > 1:
-        id = uri.getPathSegment(count -2).strip()
-    if id == '':
-        id = root
-    return id
-
-def getParentUri(ctx, uri):
-    paths = []
-    count = uri.getPathSegmentCount()
-    if count > 1:
-        for i in range(count -2):
-            paths.append(uri.getPathSegment(i).strip())
-    identifier = '%s://%s/%s' % (uri.getScheme(), uri.getAuthority(), '/'.join(paths))
-    return getUri(ctx, identifier)
 
 def _getPropertyChangeEvent(source, name, oldvalue, newvalue, further=False, handle=-1):
     event = uno.createUnoStruct('com.sun.star.beans.PropertyChangeEvent')
@@ -292,7 +309,8 @@ def getContentInfo(ctype, attributes, properties):
 
 def getUri(ctx, identifier):
     factory = ctx.ServiceManager.createInstance('com.sun.star.uri.UriReferenceFactory')
-    return factory.parse(identifier)
+    uri = factory.parse(identifier)
+    return uri
 
 def getUcb(ctx=None, arguments=None):
     ctx = uno.getComponentContext() if ctx is None else ctx

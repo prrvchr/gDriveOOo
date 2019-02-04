@@ -30,7 +30,7 @@ class OptionsDialog(unohelper.Base, XServiceInfo, XContainerWindowEventHandler):
             print("PyOptionsDialog.__init__() 1")
             #identifier = getUcb(self.ctx).createContentIdentifier('%s:///' % g_scheme)
             #print("PyOptionsDialog.__init__() 2 %s" % identifier.getContentIdentifier())
-            #self.Connection = getUcp(self.ctx).Connection
+            self.Connection = getDbConnection(self.ctx, g_scheme, True)
             print("PyOptionsDialog.__init__() 3")
         except Exception as e:
             print("PyOptionsDialog.__init__().Error: %s - %s" % (e, traceback.print_exc()))
@@ -82,9 +82,15 @@ class OptionsDialog(unohelper.Base, XServiceInfo, XContainerWindowEventHandler):
 
     def _doViewFile(self, dialog):
         try:
-            mri = self.ctx.ServiceManager.createInstance('mytools.Mri')
-            mri.inspect(uno)
-            #user = getUcp(self.ctx).UserName
+            #mri = self.ctx.ServiceManager.createInstance('mytools.Mri')
+            #mri.inspect(uno)
+            #insert = self.Connection.prepareCall('CALL "insertChild"(?, ?, ?)')
+            #insert.setString(1, 'child')
+            #insert.setString(2, 'parent-1,parent-2,parent_3,parent_4')
+            #insert.execute()
+            #result = insert.getLong(3)
+            #insert.close()
+            pass
             #doSync(self.ctx, self.Connection, user)
         except Exception as e:
             print("PyOptionsDialog._doViewFile().Error: %s - %s" % (e, traceback.print_exc()))

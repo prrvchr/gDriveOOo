@@ -37,32 +37,16 @@ g_timeout = (15, 60)
 
 g_folder = 'application/vnd.google-apps.folder'
 g_link = 'application/vnd.google-apps.drive-sdk'
-g_doc = 'application/vnd.google-apps.'
+g_doc = 'application/vnd.google-apps'
 
 g_datetime = '%Y-%m-%dT%H:%M:%S.%fZ'
 
 ACQUIRED = 0
-CREATED = 1
-RENAMED = 4
-REWRITED = 16
-MODIFIED = 64
-TRASHED = 256
+CREATED = 2
+RENAMED = 8
+REWRITED = 32
+TRASHED = 128
 
-
-def getDataFromItem(item):
-    mode = item.get('mode')
-    id = item.get('id')
-    data = None
-    if mode & CREATED:
-        data = {'id': id,
-                'parents': item.get('parents').split(','),
-                'name': item.get('name'),
-                'mimeType': item.get('mimeType')}
-    elif mode & MODIFIED:
-        data = {}
-        if mode & RENAMED:
-            data['name'] = item.get('name')
-    return mode, id, data
 
 def getConnectionMode(ctx):
     connection, connector = None, ctx.ServiceManager.createInstance('com.sun.star.connection.Connector')

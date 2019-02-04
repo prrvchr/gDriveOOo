@@ -27,7 +27,7 @@ def checkIdentifiers(connection, session, userid):
     except Exception as e:
         print("identifiers.checkIdentifiers().Error: %s - %s" % (e, traceback.print_exc()))
 
-def getIdentifier(connection):
+def getNewIdentifier(connection):
     select = connection.prepareCall('CALL "selectIdentifier"()')
     result = select.executeQuery()
     if result.next():

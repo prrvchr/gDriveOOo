@@ -22,33 +22,29 @@ def isChild(connection, id, parent):
     call.close()
     return ischild
 
-def updateChildren(connection, session, identifier):
-    merge, index = mergeJsonItemCall(connection, identifier.UserId)
+def updateChildren(session, identifier):
+    merge, index = mergeJsonItemCall(identifier.Connection, identifier.User.Id)
     update = all(mergeJsonItem(merge, item, index) for item in ChildGenerator(session, identifier.Id))
     merge.close()
-    session.close()
     return update
 
-def getChildSelect(connection, identifier):
-    try:
-        # LibreOffice Columns: ['Title', 'Size', 'DateModified', 'DateCreated', 'IsFolder', 'TargetURL', 'IsHidden', 'IsVolume', 'IsRemote', 'IsRemoveable', 'IsFloppy', 'IsCompactDisc']
-        # OpenOffice Columns: ['Title', 'Size', 'DateModified', 'DateCreated', 'IsFolder', 'TargetURL', 'IsHidden', 'IsVolume', 'IsRemote', 'IsRemoveable', 'IsFloppy', 'IsCompactDisc']
-        index, select = 1, connection.prepareCall('CALL "selectChild"(?, ?, ?, ?, ?)')
-        # select return RowCount as OUT parameter in select.getLong(index)!!!
-        # Never managed to run the next line:
-        # select.ResultSetType = uno.getConstantByName('com.sun.star.sdbc.ResultSetType.SCROLL_INSENSITIVE')
-        # selectChild(IN ID VARCHAR(100),IN URL VARCHAR(250),IN MODE SMALLINT,OUT ROWCOUNT SMALLINT)
-        select.setString(index, identifier.Id)
-        index += 1
-        # "TargetURL" is done by CONCAT(uri,id,'/',title)... The root uri already ends with a '/' ...
-        uri = identifier.getContentIdentifier()
-        select.setString(index, uri if uri.endswith('/') else '%s/' % uri)
-        index += 1
-        # "IsFolder" is done by comparing MimeType with g_folder 'application/vnd.google-apps.folder' ...
-        select.setString(index, g_folder)
-        index += 1
-        select.setLong(index, identifier.ConnectionMode)
-        index += 1
-        return index, select
-    except Exception as e:
-        print("children.getChildSelect().Error: %s - %s" % (e, traceback.print_exc()))
+def getChildSelect(identifier):
+    # LibreOffice Columns: ['Title', 'Size', 'DateModified', 'DateCreated', 'IsFolder', 'TargetURL', 'IsHidden', 'IsVolume', 'IsRemote', 'IsRemoveable', 'IsFloppy', 'IsCompactDisc']
+    # OpenOffice Columns: ['Title', 'Size', 'DateModified', 'DateCreated', 'IsFolder', 'TargetURL', 'IsHidden', 'IsVolume', 'IsRemote', 'IsRemoveable', 'IsFloppy', 'IsCompactDisc']
+    index, select = 1, identifier.Connection.prepareCall('CALL "selectChild"(?, ?, ?, ?, ?)')
+    # select return RowCount as OUT parameter in select.getLong(index)!!!
+    # Never managed to run the next line:
+    # select.ResultSetType = uno.getConstantByName('com.sun.star.sdbc.ResultSetType.SCROLL_INSENSITIVE')
+    # selectChild(IN ID VARCHAR(100),IN URL VARCHAR(250),IN MODE SMALLINT,OUT ROWCOUNT SMALLINT)
+    select.setString(index, identifier.Id)
+    index += 1
+    # "TargetURL" is done by CONCAT(BaseURL,id,'/../',id)... The root uri already ends with a '/' ...
+    uri = identifier.BaseURL
+    select.setString(index, uri if uri.endswith('/') else '%s/' % uri)
+    index += 1
+    # "IsFolder" is done by comparing MimeType with g_folder 'application/vnd.google-apps.folder' ...
+    select.setString(index, g_folder)
+    index += 1
+    select.setLong(index, identifier.Mode)
+    index += 1
+    return index, select

@@ -21,20 +21,20 @@ from .items import selectUser, mergeJsonUser, selectItem, insertJsonItem, needSy
 
 from .children import isChild, updateChildren, getChildSelect
 
-from .identifiers import checkIdentifiers, getIdentifier, isIdentifier
+from .identifiers import checkIdentifiers, getNewIdentifier, isIdentifier
 
 
-from .contentlib import ContentIdentifier, Row, DynamicResultSet, CommandInfo, CommandInfoChangeNotifier
-from .contentlib import InteractionRequest
+from .contentlib import ContentUser, ContentIdentifier, CommandInfo, CommandInfoChangeNotifier
+from .contentlib import InteractionRequest, Row, DynamicResultSet
 
-from .contenttools import getUri, getUcb, getUcp, getPropertiesValues, setPropertiesValues, doSync
-from .contenttools import getContentEvent, getCmisProperty, getCommandInfo
-from .contenttools import setContentProperties, getContentInfo, mergeContent, getMimeType
-from .contenttools import propertyChange, uploadItem, getSession, notifyContentListener
+from .contenttools import getUcb, getUcp, getUri, getPropertiesValues, getMimeType
+from .contenttools import getContentEvent, getCmisProperty, getCommandInfo, getContentInfo
+from .contenttools import setContentProperties, setPropertiesValues, propertyChange, doSync
+from .contenttools import uploadItem, getSession, mergeContent, createContent
 
 from .google import InputStream, getUser, getItem, getConnectionMode, updateItem, parseDateTime
-from .google import g_scheme, g_folder, g_link, g_doc
-from .google import ACQUIRED, CREATED, RENAMED, REWRITED, MODIFIED, TRASHED
+from .google import g_scheme, g_folder
+from .google import ACQUIRED, CREATED, RENAMED, REWRITED, TRASHED
 
 from .logger import getLogger, getLoggerSetting, setLoggerSetting, getLoggerUrl
 

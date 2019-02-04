@@ -10,15 +10,14 @@ from com.sun.star.lang import XServiceInfo, NoSupportException
 from com.sun.star.ucb import XContent, XCommandProcessor2, XContentCreator
 from com.sun.star.ucb import InteractiveBadTransferURLException, CommandAbortedException
 from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
-from com.sun.star.ucb.ContentAction import INSERTED, REMOVED, DELETED, EXCHANGED
 
 from gdrive import Initialization, CommandInfo, PropertySetInfo, Row, DynamicResultSet
 from gdrive import PropertiesChangeNotifier, PropertySetInfoChangeNotifier, CommandInfoChangeNotifier
-from gdrive import getDbConnection, propertyChange, getChildSelect, parseDateTime, getLogger, getUcp
+from gdrive import getDbConnection, getNewIdentifier, propertyChange, getChildSelect, parseDateTime, getLogger, getUcp
 from gdrive import updateChildren, createService, getSimpleFile, getResourceLocation, isChild
-from gdrive import getUcb, getCommandInfo, getProperty, getContentInfo, setContentProperties
-from gdrive import getPropertiesValues, setPropertiesValues, getSession, g_folder, notifyContentListener
-from gdrive import ACQUIRED, CREATED, RENAMED, REWRITED, MODIFIED, TRASHED
+from gdrive import getUcb, getCommandInfo, getProperty, getContentInfo, setContentProperties, createContent
+from gdrive import getPropertiesValues, setPropertiesValues, getSession, g_folder
+from gdrive import ACQUIRED, CREATED, RENAMED, REWRITED, TRASHED
 
 import requests
 import traceback
@@ -33,17 +32,16 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
     def __init__(self, ctx, *namedvalues):
         try:
             self.ctx = ctx
-            
+
             self.Logger = getLogger(self.ctx)
             level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
             msg = "DriveFolderContent loading ..."
             self.Logger.logp(level, "DriveFolderContent", "__init__()", msg)
-            
+
             self.Identifier = None
 
             self.ContentType = 'application/vnd.google-apps.folder'
             self.Name = 'Sans Nom'
-            self.IsRoot = False
             self.IsFolder = True
             self.IsDocument = False
             self.DateCreated = parseDateTime()
@@ -51,14 +49,12 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
             self.MimeType = 'application/vnd.google-apps.folder'
             self.Size = 0
             self._Trashed = False
-            
+
             self.CanAddChild = True
             self.CanRename = True
             self.IsReadOnly = False
             self.IsVersionable = False
             self._Loaded = 1
-            
-            self._NewTitle = ''
 
             self.IsHidden = False
             self.IsVolume = False
@@ -66,19 +62,17 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
             self.IsRemoveable = False
             self.IsFloppy = False
             self.IsCompactDisc = False
-            
-            self._commandInfo = self._getCommandInfo()
-            self._propertySetInfo = self._getPropertySetInfo()
+
             self.listeners = []
             self.contentListeners = []
             self.propertiesListener = {}
             self.propertyInfoListeners = []
             self.commandInfoListeners = []
-            
-            self.Connection = None
+
             self.initialize(namedvalues)
-            
-            self.CreatableContentsInfo = self._getCreatableContentsInfo()
+
+            self._commandInfo = self._getCommandInfo()
+            self._propertySetInfo = self._getPropertySetInfo()
             msg = "DriveFolderContent loading Uri: %s ... Done" % self.Identifier.getContentIdentifier()
             self.Logger.logp(level, "DriveFolderContent", "__init__()", msg)
             print(msg)
@@ -101,7 +95,6 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
     def Title(self, title):
         propertyChange(self, 'Name', self.Name, title)
         self.Name = title
-        notifyContentListener(self.ctx, self, EXCHANGED)
     @property
     def Trashed(self):
         return self._Trashed
@@ -118,6 +111,22 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
     def Loaded(self, loaded):
         propertyChange(self, 'Loaded', self._Loaded, loaded)
         self._Loaded = loaded
+    @property
+    def CreatableContentsInfo(self):
+        content = ()
+        if self.CanAddChild:
+            bound = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.BOUND')
+            document = uno.getConstantByName('com.sun.star.ucb.ContentInfoAttribute.KIND_DOCUMENT')
+            folder = uno.getConstantByName('com.sun.star.ucb.ContentInfoAttribute.KIND_FOLDER')
+            foldertype = 'application/vnd.google-apps.folder'
+            officetype = 'application/vnd.oasis.opendocument'
+            documenttype = 'application/vnd.google-apps.document'
+            properties = (getProperty('Title', 'string', bound), )
+            content = (getContentInfo(foldertype, folder, properties),
+                       getContentInfo(officetype, document, properties),
+                       getContentInfo(documenttype, document, properties))
+        return content
+
 
     # XCallback
     def notify(self, event):
@@ -129,25 +138,17 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         print("DriveFolderContent.queryCreatableContentsInfo():*************************")
         return self.CreatableContentsInfo
     def createNewContent(self, contentinfo):
-        print("DriveFolderContent.createNewContent(): 1 - %s" % self._NewTitle)
-        id = getUcb(self.ctx).createContentIdentifier('%s#%s' % (self.Identifier.getContentIdentifier(), self._NewTitle))
-        data = {'Identifier': id}
-        if contentinfo.Type == g_folder:
-            data.update({'Connection': self.Connection})
-            name = 'com.gmail.prrvchr.extensions.gDriveOOo.DriveFolderContent'
-        elif contentinfo.Type == 'application/vnd.oasis.opendocument':
-            data.update({'Name': self._NewTitle})
-            name = 'com.gmail.prrvchr.extensions.gDriveOOo.DriveOfficeContent'
-        elif contentinfo.Type == 'application/vnd.google-apps.document':
-            data.update({'Name': self._NewTitle})
-            name = 'com.gmail.prrvchr.extensions.gDriveOOo.DriveDocumentContent'            
-        content = createService(name, self.ctx, **data)
-        print("DriveFolderContent.createNewContent(): 2")
+        id = self.Identifier.NewIdentifier
+        print("DriveFolderContent.createNewContent():\n    New Id: %s" % id)
+        uri = '%s/%s/../%s' % (self.Identifier.BaseURL, id, id)
+        identifier = getUcb(self.ctx).createContentIdentifier(uri)
+        data = {'Identifier': identifier, 'MimeType': contentinfo.Type}
+        content = createContent(self.ctx, data)
         return content
 
     # XChild
     def getParent(self):
-        if self.IsRoot:
+        if self.Identifier.IsRoot:
             raise NoSupportException('Root Folder as no Parent', self)
         print("DriveFolderContent.getParent()")
         identifier = self.Identifier.getParent()
@@ -186,14 +187,15 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
             return setPropertiesValues(self, command.Argument, self.Logger)
         elif command.Name == 'open':
             print("DriveFolderContent.execute() open 1")
-            mode = self.Identifier.ConnectionMode
+            mode = self.Identifier.Mode
             if mode == ONLINE and self.Loaded == ONLINE:
-                with getSession(self.ctx, self.Identifier.UserName) as session:
-                    if updateChildren(self.Connection, session, self.Identifier):
+                with getSession(self.ctx, self.Identifier.User.Name) as session:
+                    if updateChildren(session, self.Identifier):
                         self.Loaded = OFFLINE
+                    session.close()
             print("DriveFolderContent.execute() open 2")
             # Not Used: command.Argument.Properties - Implement me ;-)
-            index, select = getChildSelect(self.Connection, self.Identifier)
+            index, select = getChildSelect(self.Identifier)
             print("DriveFolderContent.execute() open 3")
             return DynamicResultSet(self.ctx, self.Identifier, select, index)
             print("DriveFolderContent.execute() open 4")
@@ -201,25 +203,25 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
             print("DriveFolderContent.execute() insert")
             self.addPropertiesChangeListener(('Id', 'Name', 'Size', 'Trashed', 'Loaded'), getUcp(self.ctx))
             self.Id = CREATED
-            notifyContentListener(self.ctx, self, INSERTED)
         elif command.Name == 'delete':
             print("DriveFolderContent.execute(): delete")
             self.Trashed = True
-            notifyContentListener(self.ctx, self, DELETED)
         elif command.Name == 'createNewContent':
             print("DriveFolderContent.execute(): createNewContent %s" % command.Argument)
             return self.createNewContent(command.Argument)
         elif command.Name == 'transfer':
             # Transfer command is only used for existing document (File Save)
+            # NewTitle come from last segment path of "XContent.getIdentifier().getContentIdentifier()"
             id = command.Argument.NewTitle
             source = command.Argument.SourceURL
-            print("DriveFolderContent.execute(): transfer: %s - %s" % (source, id))
-            if not isChild(self.Connection, id, self.Id):
-                # For new document (File Save As) we use command: createNewContent and Insert
-                self._NewTitle = id
-                print("DriveFolderContent.execute(): transfer copy: %s - %s" % (source, id))
+            print("DriveFolderContent.execute(): transfer 1:\n    %s - %s" % (source, id))
+            if not isChild(self.Identifier.Connection, id, self.Id):
+                # For new document (File Save As) we use commands:
+                # createNewContent: for creating an empty new Content
+                # Insert at new Content for committing change
+                # For accessing this commands we must trow an "InteractiveBadTransferURLException"
                 raise InteractiveBadTransferURLException("Couln't handle Url: %s" % source, self)
-            print("DriveFolderContent.execute(): transfer: %s - %s" % (source, id))
+            print("DriveFolderContent.execute(): transfer 2:\n    transfer: %s - %s" % (source, id))
             sf = getSimpleFile(self.ctx)
             if not sf.exists(source):
                 raise CommandAbortedException("Error while saving file: %s" % source, self)
@@ -229,13 +231,11 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
             stream.closeInput()
             data = {'Size': sf.getSize(target)}
             ucb = getUcb(self.ctx)
-            # Folder Uri end whith it's Id: ie: 'scheme://authority/.../parentId/folderId'
-            identifier = self.Identifier.getContentIdentifier()
-            identifier = '%s%s' % (identifier, id) if identifier.endswith('/') else '%s/%s' % (identifier, id)
-            identifier = ucb.createContentIdentifier(identifier)
+            uri = '%s/%s/../%s' % (self.Identifier.BaseURL, id, id)
+            identifier = ucb.createContentIdentifier(uri)
             content = ucb.queryContent(identifier)
             setContentProperties(content, data)
-            print("DriveFolderContent.execute(): transfer: Fin")
+            print("DriveFolderContent.execute(): transfer 3: Fin")
             if command.Argument.MoveData:
                 pass #must delete object
         elif command.Name == 'close':
@@ -260,7 +260,7 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         commands['createNewContent'] = getCommandInfo('createNewContent', 'com.sun.star.ucb.ContentInfo')
         commands['insert'] = getCommandInfo('insert', 'com.sun.star.ucb.InsertCommandArgument')
 #        commands['insert'] = getCommandInfo('insert', 'com.sun.star.ucb.InsertCommandArgument2')
-        if not self.IsRoot:
+        if not self.Identifier.IsRoot:
             commands['delete'] = getCommandInfo('delete', 'boolean')
         commands['transfer'] = getCommandInfo('transfer', 'com.sun.star.ucb.TransferInfo')
         commands['close'] = getCommandInfo('close')
@@ -294,22 +294,6 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         properties['IsFloppy'] = getProperty('IsFloppy', 'boolean', bound | readonly)
         properties['IsCompactDisc'] = getProperty('IsCompactDisc', 'boolean', bound | readonly)
         return properties
-
-    def _getCreatableContentsInfo(self):
-        content = ()
-        if self.CanAddChild:
-            bound = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.BOUND')
-            document = uno.getConstantByName('com.sun.star.ucb.ContentInfoAttribute.KIND_DOCUMENT')
-            folder = uno.getConstantByName('com.sun.star.ucb.ContentInfoAttribute.KIND_FOLDER')
-            foldertype = 'application/vnd.google-apps.folder'
-            officetype = 'application/vnd.oasis.opendocument'
-            documenttype = 'application/vnd.google-apps.document'
-            properties = (getProperty('Title', 'string', bound), )
-            content = (getContentInfo(foldertype, folder, properties),
-                       getContentInfo(officetype, document, properties),
-                       getContentInfo(documenttype, document, properties))
-        return content
-
 
     # XServiceInfo
     def supportsService(self, service):

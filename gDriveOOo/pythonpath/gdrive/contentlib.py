@@ -16,56 +16,59 @@ from com.sun.star.io import XStreamListener
 
 from .unolib import PropertySet
 from .unotools import getProperty
-from .contenttools import getUcb, getId, getParentUri, getUri
+from .contenttools import getUcb, getUri
+from .identifiers import isIdentifier, getNewIdentifier
 
 import traceback
 
 
-class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild):
-    def __init__(self, ctx, mode, uri, user):
-        self.ctx = ctx
-        self.ConnectionMode = mode
-        self.Uri = uri
-        self.user = user
-        self.Id = self._getId() if self.IsValidUser else None
-        
+class ContentUser(unohelper.Base, PropertySet):
+    def __init__(self, user=None):
+        self.user = {} if user is None else user
+
     @property
-    def UserId(self):
-        return self.user['Id'] if self.IsValidUser else None
+    def Id(self):
+        return self.user.get('Id', None)
     @property
-    def UserName(self):
-        return self.user['UserName'] if self.IsValidUser else None
+    def Name(self):
+        return self.user.get('UserName', None)
     @property
     def RootId(self):
-        return self.user['RootId'] if self.IsValidUser else None
+        return self.user.get('RootId', None)
     @property
-    def IsRoot(self):
-        return self.Id == self.RootId
-    @property
-    def IsValidUser(self):
-        return self.user is not None
-
-    def _getId(self):
-        id = getId(self.Uri, self.RootId)
-        if id in ('', '.'):
-            self.Uri = getParentUri(self.ctx, self.Uri)
-            id = getId(self.Uri, self.RootId)
-        return id
+    def IsValid(self):
+        return all((self.Id, self.Name, self.RootId))
 
     def _getPropertySetInfo(self):
         properties = {}
         maybevoid = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.MAYBEVOID')
         bound = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.BOUND')
         readonly = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.READONLY')
-        properties['ConnectionMode'] = getProperty('ConnectionMode', 'short', bound | readonly)
-        properties['Uri'] = getProperty('Uri', 'com.sun.star.uri.XUriReference', bound | readonly)
-        properties['IsValidUser'] = getProperty('IsValidUser', 'boolean', bound | readonly)
-        properties['IsRoot'] = getProperty('IsRoot', 'boolean', bound | readonly)
         properties['Id'] = getProperty('Id', 'string', maybevoid | bound | readonly)
+        properties['Name'] = getProperty('Name', 'string', maybevoid | bound | readonly)
         properties['RootId'] = getProperty('RootId', 'string', maybevoid | bound | readonly)
-        properties['UserId'] = getProperty('UserId', 'string', maybevoid | bound | readonly)
-        properties['UserName'] = getProperty('UserName', 'string', maybevoid | bound | readonly)
+        properties['IsValid'] = getProperty('IsValid', 'boolean', bound | readonly)
         return properties
+
+
+class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild):
+    def __init__(self, ctx, connection, mode, user, uri):
+        self.ctx = ctx
+        self.Connection = connection
+        self.Mode = mode
+        self.User = user
+        self.Uri = uri
+        self.Id, self.BaseURL = self._getIdAndUrl() if self.User.IsValid else (None, None)
+
+    @property
+    def IsRoot(self):
+        return self.Id == self.User.RootId
+    @property
+    def IsValid(self):
+        return self.User.IsValid and isIdentifier(self.Connection, self.Id)
+    @property
+    def NewIdentifier(self):
+        return getNewIdentifier(self.Connection)
 
     # XContentIdentifier
     def getContentIdentifier(self):
@@ -75,11 +78,56 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild)
 
     # XChild
     def getParent(self):
-        user = {'Id': self.UserId, 'UserName': self.UserName, 'RootId': self.RootId}
-        uri = getParentUri(self.ctx, self.Uri)
-        return ContentIdentifier(self.ctx, self.ConnectionMode, uri, user)
+        if self.IsRoot:
+            return None
+        segments = []
+        for i in range(self.Uri.getPathSegmentCount()):
+            segment = self.Uri.getPathSegment(i).strip()
+            if segment == '..':
+                segments.pop()
+                break
+            segments.append(segment)
+        identifier = '%s://%s/%s' % (self.Uri.getScheme(), self.Uri.getAuthority(), '/'.join(segments))
+        uri = getUri(self.ctx, identifier)
+        return ContentIdentifier(self.ctx, self.Connection, self.Mode, self.User, uri)
     def setParent(self, parent):
         raise NoSupportException('Parent can not be set', self)
+
+    def _getIdAndUrl(self):
+        id = self.User.RootId
+        segments = []
+        count = self.Uri.getPathSegmentCount()
+        if count > 0:
+            last = self.Uri.getPathSegment(count -1).strip()
+            for i in range(count):
+                segment = self.Uri.getPathSegment(i).strip()
+                if segment == '..':
+                    if last == '' or last == '..':
+                        segments.pop()
+                    id = segments[-1]
+                    break
+                elif segment != '':
+                    segments.append(segment)
+                    id = segment
+        url = '%s://%s/%s' % (self.Uri.getScheme(), self.Uri.getAuthority(), '/'.join(segments))
+        print("ContentIdentifier._getIdAndUrl():\n    Id: %s\n    Url: %s\n    Identifier: %s" % (id, url, self.getContentIdentifier()))
+        return id, url
+
+    def _getPropertySetInfo(self):
+        properties = {}
+        maybevoid = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.MAYBEVOID')
+        bound = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.BOUND')
+        readonly = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.READONLY')
+        properties['Connection'] = getProperty('Connection', 'com.sun.star.sdbc.XConnection', maybevoid | readonly)
+        properties['Mode'] = getProperty('Mode', 'short', bound | readonly)
+        properties['User'] = getProperty('User', 'com.sun.star.uno.XInterface', maybevoid | bound | readonly)
+        properties['Uri'] = getProperty('Uri', 'com.sun.star.uri.XUriReference', bound | readonly)
+        properties['Id'] = getProperty('Id', 'string', maybevoid | bound | readonly)
+        properties['IsRoot'] = getProperty('IsRoot', 'boolean', bound | readonly)
+        properties['IsValid'] = getProperty('IsValid', 'boolean', bound | readonly)
+        properties['BaseURL'] = getProperty('BaseURL', 'string', bound | readonly)
+        properties['NewIdentifier'] = getProperty('NewIdentifier', 'string', maybevoid | bound | readonly)
+        return properties
 
 
 class InteractionRequest(unohelper.Base, XInteractionRequest):
@@ -248,12 +296,10 @@ class Row(unohelper.Base, XRow):
 
 class DynamicResultSet(unohelper.Base, XDynamicResultSet):
     def __init__(self, ctx, identifier, select, index):
-        print("DynamicResultSet.__init__(): 1")
         self.ctx = ctx
         self.identifier = identifier
         self.select = select
         self.index = index
-        print("DynamicResultSet.__init__(): 2")
 
     # XDynamicResultSet
     def getStaticResultSet(self):
@@ -272,14 +318,9 @@ class DynamicResultSet(unohelper.Base, XDynamicResultSet):
 class ContentResultSet(unohelper.Base, PropertySet, XResultSet, XRow,
                        XResultSetMetaDataSupplier, XContentAccess):
     def __init__(self, ctx, identifier, select, index):
-        print("ContentResultSet.__init__(): 1")
         self.ctx = ctx
-        self.mode = identifier.ConnectionMode
-        print("ContentResultSet.__init__(): 2")
-        self.user = {'Id': identifier.UserId, 'UserName': identifier.UserName, 'RootId': identifier.RootId}
-        print("ContentResultSet.__init__(): 3")
+        self.identifier = identifier
         self.resultset = select.executeQuery()
-        print("ContentResultSet.__init__(): 4")
         self.RowCount = select.getLong(index)
         self.IsRowCountFinal = not select.MoreResults
         print("ContentResultSet.__init__(): %s" % self.RowCount)
@@ -333,7 +374,8 @@ class ContentResultSet(unohelper.Base, PropertySet, XResultSet, XRow,
     def wasNull(self):
         return self.resultset.wasNull()
     def getString(self, index):
-        return self.resultset.getString(index)
+        result = self.resultset.getString(index)
+        return result
     def getBoolean(self, index):
         return self.resultset.getBoolean(index)
     def getByte(self, index):
@@ -361,7 +403,8 @@ class ContentResultSet(unohelper.Base, PropertySet, XResultSet, XRow,
     def getCharacterStream(self, index):
         return self.resultset.getCharacterStream(index)
     def getObject(self, index, map):
-        return self.resultset.getObject(index, map)
+        result = self.resultset.getObject(index, map)
+        return result
     def getRef(self, index):
         return self.resultset.getRef(index)
     def getBlob(self, index):
@@ -377,11 +420,12 @@ class ContentResultSet(unohelper.Base, PropertySet, XResultSet, XRow,
 
     # XContentAccess
     def queryContentIdentifierString(self):
-        return self.resultset.getString(self.resultset.findColumn('TargetURL'))
+        identifier = self.resultset.getString(self.resultset.findColumn('TargetURL'))
+        return identifier
     def queryContentIdentifier(self):
         identifier = self.queryContentIdentifierString()
         uri = getUri(self.ctx, identifier)
-        return ContentIdentifier(self.ctx, self.mode, uri, self.user)
+        return ContentIdentifier(self.ctx, self.identifier.Connection, self.identifier.Mode, self.identifier.User, uri)
     def queryContent(self):
         identifier = self.queryContentIdentifier()
         return getUcb(self.ctx).queryContent(identifier)

@@ -5,7 +5,7 @@ import uno
 
 from .dbtools import getItemFromResult, SqlArray
 from .google import parseDateTime, unparseDateTime
-from .google import ACQUIRED, CREATED, RENAMED, REWRITED, MODIFIED, TRASHED
+from .google import ACQUIRED, CREATED, RENAMED, REWRITED, TRASHED
 
 import traceback
 
@@ -59,14 +59,15 @@ def mergeJsonUser(connection, user, data, mode):
     merge.close()
     return root
 
-def insertJsonItem(connection, userid, data):
+def insertJsonItem(connection, identifier, data):
     item = None
     fields = ('Name', 'DateCreated', 'DateModified', 'MimeType', 'Size', 'Trashed',
               'CanAddChild', 'CanRename', 'IsReadOnly', 'IsVersionable', 'Loaded')
     insert = connection.prepareCall('CALL "insertJsonItem"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-    insert.setString(1, userid)
+    insert.setString(1, identifier.User.Id)
     index = _setJsonData(insert, data, unparseDateTime(), 2)
-    insert.setString(index, ','.join(data.get('parents', ())))
+    parents = ','.join(data.get('parents', ()))
+    insert.setString(index, parents)
     # Never managed to run the next line: Implement me ;-)
     #insert.setArray(index, SqlArray(item['Parents'], 'VARCHAR'))
     result = insert.executeQuery()
@@ -82,13 +83,15 @@ def mergeJsonItemCall(connection, userid):
 
 def mergeJsonItem(merge, data, index=1):
     index = _setJsonData(merge, data, unparseDateTime(), index)
-    merge.setString(index, ','.join(data.get('parents', ())))
+    parents = ','.join(data.get('parents', ()))
+    merge.setString(index, parents)
     # Never managed to run the next line: Implement me ;-)
     #merge.setArray(index, SqlArray(item['Parents'], 'VARCHAR'))
     merge.execute()
     return merge.getLong(index +1)
 
 def insertContentItemCall(connection):
+    # (IN USERID VARCHAR(100),IN ITEMID VARCHAR(100),IN PARENTSID VARCHAR(1000),IN SYNC SMALLINT,IN NAME VARCHAR(100),IN DATECREATED TIMESTAMP(3),IN DATEMODIFIED TIMESTAMP(3),IN MEDIATYPE VARCHAR(100),IN SIZE BIGINT,IN TRASHED BOOLEAN,IN CANADDCHILD BOOLEAN,IN CANRENAME BOOLEAN,IN ISREADONLY BOOLEAN,IN ISVERSIONABLE BOOLEAN,IN LOADED SMALLINT,OUT ROWCOUNT SMALLINT)
     return connection.prepareCall('CALL "insertContentItem"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
 
 def insertContentItem(insert, row, properties, index=1):
@@ -117,25 +120,29 @@ def _setJsonData(call, data, timestamp, index=1):
     index += 1
     call.setBoolean(index, data.get('trashed', False))
     index += 1
-    call.setBoolean(index, data.get('capabilities', False).get('canAddChildren', False))
+    call.setBoolean(index, data.get('capabilities', {}).get('canAddChildren', False))
     index += 1
-    call.setBoolean(index, data.get('capabilities', False).get('canRename', False))
+    call.setBoolean(index, data.get('capabilities', {}).get('canRename', False))
     index += 1
-    call.setBoolean(index, not data.get('capabilities', False).get('canEdit', False))
+    call.setBoolean(index, not data.get('capabilities', {}).get('canEdit', False))
     index += 1
-    call.setBoolean(index, data.get('capabilities', False).get('canReadRevisions', False))
+    call.setBoolean(index, data.get('capabilities', {}).get('canReadRevisions', False))
     index += 1
     return index
 
 def _setContentData(call, row, properties, index=1):
     for i, name in enumerate(properties, start=1):
+        value = row.getObject(i, None)
+        print ("items._setContentData(): name:%s - value:%s" % (name, value))
+        if value is None:
+            continue
         if name in ('Name', 'MimeType'):
-            call.setString(index, row.getObject(i, None))
+            call.setString(index, value)
         elif name in ('DateCreated', 'DateModified'):
-            call.setTimestamp(index, row.getObject(i, None))
+            call.setTimestamp(index, value)
         elif name in ('Trashed', 'CanAddChild', 'CanRename', 'IsReadOnly', 'IsVersionable'):
-            call.setBoolean(index, row.getObject(i, None))
+            call.setBoolean(index, value)
         elif name in ('Size', 'Loaded', 'SyncMode'):
-            call.setLong(index, row.getObject(i, None))
+            call.setLong(index, value)
         index += 1
     return index

@@ -10,15 +10,14 @@ from com.sun.star.lang import XServiceInfo, NoSupportException
 from com.sun.star.ucb import XContent, XCommandProcessor2, CommandAbortedException
 from com.sun.star.ucb import NameClashResolveRequest
 from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
-from com.sun.star.ucb.ContentAction import INSERTED, REMOVED, DELETED, EXCHANGED
 
-from gdrive import Initialization, CommandInfo, CmisPropertySetInfo, Row, CmisDocument, InputStream
+from gdrive import Initialization, CommandInfo, CmisPropertySetInfo, Row, CmisDocument, InputStream, ContentIdentifier
 from gdrive import PropertiesChangeNotifier, PropertySetInfoChangeNotifier, CommandInfoChangeNotifier
-from gdrive import getContentInfo, getPropertiesValues, uploadItem, getUcb, getMimeType
-from gdrive import createService, getResourceLocation, parseDateTime, getPropertySetInfoChangeEvent
-from gdrive import getSimpleFile, getCommandInfo, getProperty, getUcp, getSession, notifyContentListener
+from gdrive import getContentInfo, getPropertiesValues, uploadItem, getUcb, getMimeType, getUri
+from gdrive import createService, getResourceLocation, parseDateTime, getPropertySetInfoChangeEvent, getNewIdentifier
+from gdrive import getSimpleFile, getCommandInfo, getProperty, getUcp, getSession
 from gdrive import propertyChange, setPropertiesValues, getLogger, getCmisProperty, getPropertyValue
-from gdrive import ACQUIRED, CREATED, RENAMED, REWRITED, MODIFIED, TRASHED
+from gdrive import ACQUIRED, CREATED, RENAMED, REWRITED, TRASHED
 #from gdrive import PyPropertiesChangeNotifier, PyPropertySetInfoChangeNotifier, PyCommandInfoChangeNotifier, PyPropertyContainer
 
 import requests
@@ -40,7 +39,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
             msg = "DriveOfficeContent loading ..."
             self.Logger.logp(level, "DriveOfficeContent", "__init__()", msg)
             self.Identifier = None
-            
+
             self.ContentType = 'application/vnd.oasis.opendocument'
             self.Name = 'Sans Nom'
             self.IsFolder = False
@@ -50,20 +49,20 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
             self.MimeType = 'application/octet-stream'
             self._Size = 0
             self._Trashed = False
-            
+
             self.CanAddChild = False
             self.CanRename = True
             self.IsReadOnly = False
             self.IsVersionable = False
             self._Loaded = 1
-            
+
             self.IsHidden = False
             self.IsVolume = False
             self.IsRemote = False
             self.IsRemoveable = False
             self.IsFloppy = False
             self.IsCompactDisc = False
-            
+
             self._commandInfo = self._getCommandInfo()
             self._propertySetInfo = self._getPropertySetInfo()
             self.listeners = []
@@ -71,25 +70,24 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
             self.propertiesListener = {}
             self.propertyInfoListeners = []
             self.commandInfoListeners = []
-            
+
             #self.Author = 'prrvchr'
             #self.Keywords = 'clefs de recherche'
             #self.Subject = 'Test de Google DriveOfficeContent'
             self._CmisProperties = None
-            
+
             self.initialize(namedvalues)
-            
+
             self.ObjectId = self.Id
             self.CanCheckOut = True
             self.CanCheckIn = True
             self.CanCancelCheckOut = True
             self.TargetURL = self.Identifier.getContentIdentifier()
-            self.BaseURI = self.Identifier.getContentIdentifier()
-            parent = self.Identifier.getParent()
-            baseuri = parent.getContentIdentifier()
+            self.BaseURI = self.Identifier.BaseURL
+            #parent = self.Identifier.getParent()
+            #baseuri = parent.getContentIdentifier()
             #self.CasePreservingURL = '%s%s' % (baseuri, parent.Id) if baseuri.endswith('/') else '%s/%s' % (baseuri, parent.Id)
             #self.CasePreservingURL = self.Identifier.getContentIdentifier()
-            self.CasePreservingURL = ''
             msg = "DriveOfficeContent loading Uri: %s ... Done" % self.Identifier.getContentIdentifier()
             self.Logger.logp(level, "DriveOfficeContent", "__init__()", msg)            
             print("DriveOfficeContent.__init__()")
@@ -118,7 +116,6 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         print("DriveOfficeContent.Title.setter() 1")
         propertyChange(self, 'Name', old, title)
         print("DriveOfficeContent.Title.setter() 2")
-        notifyContentListener(self.ctx, self, EXCHANGED)
     @property
     def Size(self):
         return self._Size
@@ -149,6 +146,19 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
     def Loaded(self, loaded):
         propertyChange(self, 'Loaded', self._Loaded, loaded)
         self._Loaded = loaded
+
+    @property
+    def CasePreservingURL(self):
+        return self.Identifier.getContentIdentifier()
+    @CasePreservingURL.setter
+    def CasePreservingURL(self, url):
+        pass
+    @property
+    def CreatableContentsInfo(self):
+        return ()
+    @CreatableContentsInfo.setter
+    def CreatableContentsInfo(self, contentinfo):
+        pass
 
     # XCallback
     def notify(self, event):
@@ -192,8 +202,9 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
             elif command.Name == 'getPropertySetInfo':
                 result = CmisPropertySetInfo(self._propertySetInfo, self._getCmisPropertySetInfo)
             elif command.Name == 'getPropertyValues':
+                print("DriveOfficeContent.getPropertyValues() 1: %s" % (command.Argument, ))
                 namedvalues = getPropertiesValues(self, command.Argument, self.Logger)
-                print("DriveOfficeContent.getPropertyValues(): %s" % (namedvalues, ))
+                print("DriveOfficeContent.getPropertyValues() 2: %s" % (namedvalues, ))
                 result = Row(namedvalues)
             elif command.Name == 'setPropertyValues':
                 print("DriveOfficeContent.setPropertyValues(): %s" % (command.Argument, ))
@@ -216,21 +227,21 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
                 # it saves content from createNewContent from the parent folder
                 print("DriveOfficeContent.execute(): insert %s" % command.Argument)
                 stream = command.Argument.Data
-                replace = command.Argument.ReplaceExisting
-                if stream.queryInterface(uno.getTypeByName('com.sun.star.io.XInputStream')):
-                    sf = getSimpleFile(self.ctx)
-                    target = getResourceLocation(self.ctx, '%s/%s' % (self.Scheme, self.Id))
+                sf = getSimpleFile(self.ctx)
+                target = getResourceLocation(self.ctx, '%s/%s' % (self.Scheme, self.Id))
+                if sf.exists(target) and not command.Argument.ReplaceExisting:
+                    pass
+                elif stream.queryInterface(uno.getTypeByName('com.sun.star.io.XInputStream')):
                     sf.writeFile(target, stream)
                     self.MimeType = getMimeType(self.ctx, stream)
                     stream.closeInput()
                     self.Size = sf.getSize(target)
                     self.addPropertiesChangeListener(('Id', 'Name', 'Size', 'Trashed', 'Loaded'), getUcp(self.ctx))
                     self.Id = CREATED+REWRITED
-                    notifyContentListener(self.ctx, self, INSERTED)
+                print("DriveOfficeContent.execute(): insert FIN")
             elif command.Name == 'delete':
                 print("DriveOfficeContent.execute(): delete")
                 self.Trashed = True
-                notifyContentListener(self.ctx, self, DELETED)
             elif command.Name == 'addProperty':
                 print("DriveOfficeContent.addProperty():")
             elif command.Name == 'removeProperty':
@@ -257,7 +268,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         except CommandAbortedException as e:
             raise e
         except Exception as e:
-            print("DriveOfficeContent.execute().Error: %s - %e" % (e, traceback.print_exc()))
+            print("DriveOfficeContent.execute().Error: %s - %s" % (e, traceback.print_exc()))
     def abort(self, id):
         pass
     def releaseCommandIdentifier(self, id):
@@ -267,14 +278,14 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         url = getResourceLocation(self.ctx, '%s/%s' % (self.Scheme, self.Id))
         if self.Loaded == OFFLINE and sf.exists(url):
             return url
-        with getSession(self.ctx, self.Identifier.UserName) as session:
+        with getSession(self.ctx, self.Identifier.User.Name) as session:
             try:
                 stream = InputStream(session, self.Id, self.Size)
                 sf.writeFile(url, stream)
             except:
                 return None
             else:
-                self.Loaded == OFFLINE
+                self.Loaded = OFFLINE
             finally:
                 stream.closeInput()
         return url
@@ -328,7 +339,8 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
 #        properties['CanCheckIn'] = getProperty('CanCheckIn', 'boolean', bound)
 #        properties['CanCancelCheckOut'] = getProperty('CanCancelCheckOut', 'boolean', bound)
         properties['ObjectId'] = getProperty('ObjectId', 'string', bound | readonly)
-        properties['CasePreservingURL'] = getProperty('CasePreservingURL', 'boolean', bound | readonly)
+        properties['CasePreservingURL'] = getProperty('CasePreservingURL', 'string', bound)
+        properties['CreatableContentsInfo'] = getProperty('CreatableContentsInfo', '[]com.sun.star.ucb.ContentInfo', bound)
 #        properties['Author'] = getProperty('Author', 'string', bound)
 #        properties['Keywords'] = getProperty('Keywords', 'string', bound)
 #        properties['Subject'] = getProperty('Subject', 'string', bound)

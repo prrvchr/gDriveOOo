@@ -9,7 +9,6 @@ from com.sun.star.container import XChild
 from com.sun.star.lang import XServiceInfo, NoSupportException
 from com.sun.star.ucb import XContent, XCommandProcessor2, CommandAbortedException
 from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
-from com.sun.star.ucb.ContentAction import INSERTED, REMOVED, DELETED, EXCHANGED
 
 from gdrive import Initialization, CommandInfo, PropertySetInfo, Row, InputStream
 from gdrive import PropertiesChangeNotifier, PropertySetInfoChangeNotifier, CommandInfoChangeNotifier
@@ -17,8 +16,8 @@ from gdrive import getDbConnection, parseDateTime, isChild, getChildSelect, getL
 from gdrive import createService, getSimpleFile, getResourceLocation
 from gdrive import getUcb, getCommandInfo, getProperty, getContentInfo
 from gdrive import propertyChange, getPropertiesValues, setPropertiesValues, uploadItem
-from gdrive import setContentProperties, getSession, notifyContentListener
-from gdrive import ACQUIRED, CREATED, RENAMED, REWRITED, MODIFIED, TRASHED
+from gdrive import setContentProperties, getSession
+from gdrive import ACQUIRED, CREATED, RENAMED, REWRITED, TRASHED
 
 #from gdrive import PyPropertiesChangeNotifier, PyPropertySetInfoChangeNotifier, PyCommandInfoChangeNotifier, PyPropertyContainer, PyDynamicResultSet
 import traceback
@@ -38,7 +37,7 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
             msg = "DriveDocumentContent loading ..."
             self.Logger.logp(level, "DriveDocumentContent", "__init__()", msg)
             self.Identifier = None
-            
+
             self.ContentType = 'application/vnd.google-apps.document'
             self.Name = 'Sans Nom'
             self.IsFolder = False
@@ -48,15 +47,13 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
             self.MimeType = 'application/octet-stream'
             self._Size = 0
             self._Trashed = False
-            
+
             self.CanAddChild = False
             self.CanRename = True
             self.IsReadOnly = False
             self.IsVersionable = False
             self._Loaded = 1
-            
-            self._NewTitle = ''
-            
+
             self.IsHidden = False
             self.IsVolume = False
             self.IsRemote = False
@@ -71,16 +68,17 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
             self.propertiesListener = {}
             self.propertyInfoListeners = []
             self.commandInfoListeners = []
-            
+
             self.typeMaps = {}
             self.typeMaps['application/vnd.google-apps.document'] = 'application/vnd.oasis.opendocument.text'
             self.typeMaps['application/vnd.google-apps.spreadsheet'] = 'application/x-vnd.oasis.opendocument.spreadsheet'
             self.typeMaps['application/vnd.google-apps.presentation'] = 'application/vnd.oasis.opendocument.presentation'
             self.typeMaps['application/vnd.google-apps.drawing'] = 'application/pdf'
-            
+
             self.initialize(namedvalues)
+
             self.ObjectId = self.Id
-            self.CasePreservingURL = ''
+            self.CasePreservingURL = self.Identifier.getContentIdentifier() + 'TEST'
             msg = "DriveDocumentContent loading Uri: %s ... Done" % self.Identifier.getContentIdentifier()
             self.Logger.logp(level, "DriveDocumentContent", "__init__()", msg)
             print("DriveDocumentContent.__init__()")
@@ -106,7 +104,6 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
     def Title(self, title):
         propertyChange(self, 'Name', self.Name, title)
         self.Name = title
-        notifyContentListener(self.ctx, self, EXCHANGED)
     @property
     def Size(self):
         return 0
@@ -205,11 +202,9 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
                 self.Size = sf.getSize(target)
                 self.addPropertiesChangeListener(('Id', 'Name', 'Size', 'Trashed', 'Loaded'), getUcp(self.ctx))
                 self.Id = CREATED+REWRITED
-                notifyContentListener(self.ctx, self, INSERTED)
         elif command.Name == 'delete':
             print("DriveDocumentContent.execute(): delete")
             self.Trashed = True
-            notifyContentListener(self.ctx, self, DELETED)
         elif command.Name == 'close':
             print("DriveDocumentContent.execute(): close")
         elif command.Name == 'flush':
@@ -233,14 +228,14 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
         url = getResourceLocation(self.ctx, '%s/%s' % (self.Scheme, self.Id))
         if self.Loaded == OFFLINE and sf.exists(url):
             return url
-        with getSession(self.ctx, self.Identifier.UserName) as session:
+        with getSession(self.ctx, self.Identifier.User.Name) as session:
             try:
                 stream = InputStream(session, self.Id, self.Size, self.MediaType)
                 sf.writeFile(url, stream)
             except:
                 return None
             else:
-                self.Loaded == OFFLINE
+                self.Loaded = OFFLINE
             finally:
                 stream.closeInput()
         return url
@@ -277,7 +272,7 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
         properties['IsReadOnly'] = getProperty('IsReadOnly', 'boolean', bound | readonly)
         properties['Loaded'] = getProperty('Loaded', 'long', bound)
         properties['ObjectId'] = getProperty('ObjectId', 'string', bound | readonly)
-        properties['CasePreservingURL'] = getProperty('CasePreservingURL', 'boolean', bound | readonly)
+        properties['CasePreservingURL'] = getProperty('CasePreservingURL', 'string', bound | readonly)
 
         properties['IsHidden'] = getProperty('IsHidden', 'boolean', bound | readonly)
         properties['IsVolume'] = getProperty('IsVolume', 'boolean', bound | readonly)
