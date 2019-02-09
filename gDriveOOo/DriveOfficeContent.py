@@ -8,17 +8,17 @@ from com.sun.star.awt import XCallback
 from com.sun.star.container import XChild
 from com.sun.star.lang import XServiceInfo, NoSupportException
 from com.sun.star.ucb import XContent, XCommandProcessor2, CommandAbortedException
-from com.sun.star.ucb import NameClashResolveRequest
 from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
 
-from gdrive import Initialization, CommandInfo, CmisPropertySetInfo, Row, CmisDocument, InputStream, ContentIdentifier
+from gdrive import Initialization, CommandInfo, CmisPropertySetInfo, Row, CmisDocument, InputStream
 from gdrive import PropertiesChangeNotifier, PropertySetInfoChangeNotifier, CommandInfoChangeNotifier
-from gdrive import getContentInfo, getPropertiesValues, uploadItem, getUcb, getMimeType, getUri
+from gdrive import ContentIdentifier, PropertyContainer, InteractionRequestName, countChildTitle
+from gdrive import getContentInfo, getPropertiesValues, uploadItem, getUcb, getMimeType, getUri, getInteractionHandler
+from gdrive import getUnsupportedNameClashException
 from gdrive import createService, getResourceLocation, parseDateTime, getPropertySetInfoChangeEvent, getNewIdentifier
-from gdrive import getSimpleFile, getCommandInfo, getProperty, getUcp, getSession
+from gdrive import getSimpleFile, getCommandInfo, getProperty, getUcp, getSession, selectChildId
 from gdrive import propertyChange, setPropertiesValues, getLogger, getCmisProperty, getPropertyValue
 from gdrive import ACQUIRED, CREATED, RENAMED, REWRITED, TRASHED
-#from gdrive import PyPropertiesChangeNotifier, PyPropertySetInfoChangeNotifier, PyCommandInfoChangeNotifier, PyPropertyContainer
 
 import requests
 import traceback
@@ -28,9 +28,8 @@ g_ImplementationHelper = unohelper.ImplementationHelper()
 g_ImplementationName = 'com.gmail.prrvchr.extensions.gDriveOOo.DriveOfficeContent'
 
 
-class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent, XChild, XCommandProcessor2,
+class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent, XChild, XCommandProcessor2, PropertyContainer,
                          PropertiesChangeNotifier, PropertySetInfoChangeNotifier, CommandInfoChangeNotifier, XCallback):
-#                         PyPropertyContainer, PyPropertiesChangeNotifier, PyPropertySetInfoChangeNotifier, PyCommandInfoChangeNotifier):
     def __init__(self, ctx, *namedvalues):
         try:
             self.ctx = ctx
@@ -112,8 +111,12 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
     @Title.setter
     def Title(self, title):
         old = self.Name
-        self.Name = title
+        #old = self.Identifier
+        #url = '%s/../%s' % (self.Identifier.BaseURL, self.Id)
+        #uri = getUri(self.ctx, url)
+        #self.Identifier = ContentIdentifier(self.ctx, self.Identifier.Connection, self.Identifier.Mode, self.Identifier.User, uri)
         print("DriveOfficeContent.Title.setter() 1")
+        self.Name = title
         propertyChange(self, 'Name', old, title)
         print("DriveOfficeContent.Title.setter() 2")
     @property
@@ -163,6 +166,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
     # XCallback
     def notify(self, event):
         for listener in self.contentListeners:
+            print("DriveOfficeContent.notify() ***********************************************")
             listener.contentEvent(event)
 
      # XChild
@@ -180,9 +184,11 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
     def getContentType(self):
         return self.ContentType
     def addContentEventListener(self, listener):
+        print("DriveOfficeContent.addContentEventListener()")
         if listener not in self.contentListeners:
             self.contentListeners.append(listener)
     def removeContentEventListener(self, listener):
+        print("DriveOfficeContent.removeContentEventListener()")
         if listener in self.contentListeners:
             self.contentListeners.remove(listener)
 

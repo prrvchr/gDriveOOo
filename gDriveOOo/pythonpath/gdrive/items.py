@@ -6,6 +6,7 @@ import uno
 from .dbtools import getItemFromResult, SqlArray
 from .google import parseDateTime, unparseDateTime
 from .google import ACQUIRED, CREATED, RENAMED, REWRITED, TRASHED
+from .contenttools import setContentData
 
 import traceback
 
@@ -90,12 +91,63 @@ def mergeJsonItem(merge, data, index=1):
     merge.execute()
     return merge.getLong(index +1)
 
-def insertContentItemCall(connection):
-    # (IN USERID VARCHAR(100),IN ITEMID VARCHAR(100),IN PARENTSID VARCHAR(1000),IN SYNC SMALLINT,IN NAME VARCHAR(100),IN DATECREATED TIMESTAMP(3),IN DATEMODIFIED TIMESTAMP(3),IN MEDIATYPE VARCHAR(100),IN SIZE BIGINT,IN TRASHED BOOLEAN,IN CANADDCHILD BOOLEAN,IN CANRENAME BOOLEAN,IN ISREADONLY BOOLEAN,IN ISVERSIONABLE BOOLEAN,IN LOADED SMALLINT,OUT ROWCOUNT SMALLINT)
-    return connection.prepareCall('CALL "insertContentItem"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+def insertContentItem(content, identifier, value):
+    properties = ('Name', 'DateCreated', 'DateModified', 'MimeType', 'Size', 'Trashed',
+                  'CanAddChild', 'CanRename', 'IsReadOnly', 'IsVersionable', 'Loaded')
+    insert = identifier.Connection.prepareCall('CALL "insertContentItem"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    insert.setString(1, identifier.User.Id)
+    insert.setString(2, identifier.Id)
+    insert.setString(3, identifier.getParent().Id)
+    insert.setString(4, value)
+    result = _insertContentItem(content, insert, properties, 5)
+    insert.close()
+    return result
 
-def insertContentItem(insert, row, properties, index=1):
-    index = _setContentData(insert, row, properties, index)
+def updateName(identifier, value):
+    update = identifier.Connection.prepareCall('CALL "updateName"(?, ?, ?, ?, ?)')
+    update.setString(1, identifier.User.Id)
+    update.setString(2, identifier.Id)
+    update.setString(3, value)
+    update.setLong(4, RENAMED)
+    update.execute()
+    result = update.getLong(5)
+    update.close()
+    return result
+
+def updateSize(identifier, value):
+    update = identifier.Connection.prepareCall('CALL "updateSize"(?, ?, ?, ?, ?)')
+    update.setString(1, identifier.User.Id)
+    update.setString(2, identifier.Id)
+    update.setLong(3, value)
+    update.setLong(4, REWRITED)
+    update.execute()
+    result = update.getLong(5)
+    update.close()
+    return result
+
+def updateTrashed(identifier, value):
+    update = identifier.Connection.prepareCall('CALL "updateTrashed"(?, ?, ?, ?, ?)')
+    update.setString(1, identifier.User.Id)
+    update.setString(2, identifier.Id)
+    update.setLong(3, value)
+    update.setLong(4, TRASHED)
+    update.execute()
+    result = update.getLong(5)
+    update.close()
+    return result
+
+def updateLoaded(identifier, value):
+    update = identifier.Connection.prepareCall('CALL "updateLoaded"(?, ?, ?, ?)')
+    update.setString(1, identifier.User.Id)
+    update.setString(2, identifier.Id)
+    update.setLong(3, value)
+    update.execute()
+    result = update.getLong(4)
+    update.close()
+    return result
+
+def _insertContentItem(content, insert, properties, index=1):
+    index = setContentData(content, insert, properties, index)
     # Never managed to run the next line: Implement me ;-)
     #merge.setArray(index, SqlArray(item['Parents'], 'VARCHAR'))
     insert.execute()
@@ -128,21 +180,4 @@ def _setJsonData(call, data, timestamp, index=1):
     index += 1
     call.setBoolean(index, data.get('capabilities', {}).get('canReadRevisions', False))
     index += 1
-    return index
-
-def _setContentData(call, row, properties, index=1):
-    for i, name in enumerate(properties, start=1):
-        value = row.getObject(i, None)
-        print ("items._setContentData(): name:%s - value:%s" % (name, value))
-        if value is None:
-            continue
-        if name in ('Name', 'MimeType'):
-            call.setString(index, value)
-        elif name in ('DateCreated', 'DateModified'):
-            call.setTimestamp(index, value)
-        elif name in ('Trashed', 'CanAddChild', 'CanRename', 'IsReadOnly', 'IsVersionable'):
-            call.setBoolean(index, value)
-        elif name in ('Size', 'Loaded', 'SyncMode'):
-            call.setLong(index, value)
-        index += 1
     return index

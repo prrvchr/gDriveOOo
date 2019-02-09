@@ -5,7 +5,7 @@ import uno
 import unohelper
 
 from com.sun.star.lang import XComponent, XInitialization
-from com.sun.star.beans import XPropertyContainer, XPropertySet, XPropertySetInfo
+from com.sun.star.beans import XPropertySet, XPropertySetInfo
 from com.sun.star.beans import XPropertiesChangeNotifier, XPropertySetInfoChangeNotifier, UnknownPropertyException
 from com.sun.star.task import XInteractionHandler
 

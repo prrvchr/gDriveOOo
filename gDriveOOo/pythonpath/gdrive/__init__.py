@@ -19,18 +19,22 @@ from .dbtools import getDbConnection, registerDataBase, getItemFromResult
 
 from .items import selectUser, mergeJsonUser, selectItem, insertJsonItem, needSync
 
-from .children import isChild, updateChildren, getChildSelect
+from .children import isChildId, selectChildId, updateChildren, getChildSelect, countChildTitle
 
 from .identifiers import checkIdentifiers, getNewIdentifier, isIdentifier
 
 
 from .contentlib import ContentUser, ContentIdentifier, CommandInfo, CommandInfoChangeNotifier
-from .contentlib import InteractionRequest, Row, DynamicResultSet
+from .contentlib import InteractionRequest, Row, DynamicResultSet, InteractionRequestName
 
-from .contenttools import getUcb, getUcp, getUri, getPropertiesValues, getMimeType
+from .contenttools import getUcb, getUcp, getUri, getMimeType
 from .contenttools import getContentEvent, getCmisProperty, getCommandInfo, getContentInfo
-from .contenttools import setContentProperties, setPropertiesValues, propertyChange, doSync
-from .contenttools import uploadItem, getSession, mergeContent, createContent
+from .contenttools import setContentProperties, propertyChange, doSync
+from .contenttools import uploadItem, getSession, createContent, getIllegalIdentifierException
+from .contenttools import getInteractiveNetworkOffLineException, getInteractiveNetworkReadException
+from .contenttools import getUnsupportedNameClashException
+
+from .contentcore import updateContent, setPropertiesValues, getPropertiesValues
 
 from .google import InputStream, getUser, getItem, getConnectionMode, updateItem, parseDateTime
 from .google import g_scheme, g_folder
@@ -40,6 +44,9 @@ from .logger import getLogger, getLoggerSetting, setLoggerSetting, getLoggerUrl
 
 from .unotools import getResourceLocation, createService, getStringResource, getPropertyValue
 from .unotools import getFileSequence, getProperty, getPropertySetInfoChangeEvent, getSimpleFile
+from .unotools import getInteractionHandler
 
 from .unolib import Component, Initialization, InteractionHandler, PropertiesChangeNotifier
 from .unolib import PropertySetInfo, CmisPropertySetInfo, PropertySet, PropertySetInfoChangeNotifier
+
+from .unocore import PropertyContainer

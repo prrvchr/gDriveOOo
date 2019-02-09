@@ -10,16 +10,15 @@ from com.sun.star.lang import XServiceInfo, NoSupportException
 from com.sun.star.ucb import XContent, XCommandProcessor2, CommandAbortedException
 from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
 
-from gdrive import Initialization, CommandInfo, PropertySetInfo, Row, InputStream
+from gdrive import Initialization, CommandInfo, PropertySetInfo, Row, InputStream, PropertyContainer
 from gdrive import PropertiesChangeNotifier, PropertySetInfoChangeNotifier, CommandInfoChangeNotifier
-from gdrive import getDbConnection, parseDateTime, isChild, getChildSelect, getLogger
+from gdrive import getDbConnection, parseDateTime, getChildSelect, getLogger
 from gdrive import createService, getSimpleFile, getResourceLocation
 from gdrive import getUcb, getCommandInfo, getProperty, getContentInfo
 from gdrive import propertyChange, getPropertiesValues, setPropertiesValues, uploadItem
-from gdrive import setContentProperties, getSession
+from gdrive import getSession
 from gdrive import ACQUIRED, CREATED, RENAMED, REWRITED, TRASHED
 
-#from gdrive import PyPropertiesChangeNotifier, PyPropertySetInfoChangeNotifier, PyCommandInfoChangeNotifier, PyPropertyContainer, PyDynamicResultSet
 import traceback
 
 # pythonloader looks for a static g_ImplementationHelper variable
@@ -27,7 +26,7 @@ g_ImplementationHelper = unohelper.ImplementationHelper()
 g_ImplementationName = 'com.gmail.prrvchr.extensions.gDriveOOo.DriveDocumentContent'
 
 
-class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XContent, XChild, XCommandProcessor2,
+class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XContent, XChild, XCommandProcessor2, PropertyContainer,
                            PropertiesChangeNotifier, PropertySetInfoChangeNotifier, CommandInfoChangeNotifier, XCallback):
     def __init__(self, ctx, *namedvalues):
         try:
@@ -130,6 +129,7 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
     # XCallback
     def notify(self, event):
         for listener in self.contentListeners:
+            print("DriveDocumentContent.notify() ***********************************************")
             listener.contentEvent(event)
 
     # XChild

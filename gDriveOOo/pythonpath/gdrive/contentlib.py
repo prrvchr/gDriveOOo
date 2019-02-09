@@ -7,6 +7,8 @@ import unohelper
 from com.sun.star.lang import NoSupportException
 from com.sun.star.ucb import XContentIdentifier, XContentAccess, XDynamicResultSet
 from com.sun.star.ucb import XCommandInfo, XCommandInfoChangeNotifier, UnsupportedCommandException
+from com.sun.star.task import XInteractionContinuation, XInteractionAbort
+from com.sun.star.ucb import XInteractionSupplyName, XInteractionReplaceExistingData
 from com.sun.star.sdbc import XRow, XResultSet, XResultSetMetaDataSupplier
 from com.sun.star.sdb import ParametersRequest
 from com.sun.star.container import XIndexAccess, XChild
@@ -16,7 +18,7 @@ from com.sun.star.io import XStreamListener
 
 from .unolib import PropertySet
 from .unotools import getProperty
-from .contenttools import getUcb, getUri
+from .contenttools import getUcb, getUri, getNameClashResolveRequest
 from .identifiers import isIdentifier, getNewIdentifier
 
 import traceback
@@ -37,7 +39,10 @@ class ContentUser(unohelper.Base, PropertySet):
         return self.user.get('RootId', None)
     @property
     def IsValid(self):
-        return all((self.Id, self.Name, self.RootId))
+        return all((self.Id, self.Name, self.RootId, self.Error is None))
+    @property
+    def Error(self):
+        return self.user.get('Error', None)
 
     def _getPropertySetInfo(self):
         properties = {}
@@ -48,6 +53,7 @@ class ContentUser(unohelper.Base, PropertySet):
         properties['Name'] = getProperty('Name', 'string', maybevoid | bound | readonly)
         properties['RootId'] = getProperty('RootId', 'string', maybevoid | bound | readonly)
         properties['IsValid'] = getProperty('IsValid', 'boolean', bound | readonly)
+        properties['Error'] = getProperty('Error', 'com.sun.star.uno.Exception', maybevoid | bound | readonly)    
         return properties
 
 
@@ -58,14 +64,14 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild)
         self.Mode = mode
         self.User = user
         self.Uri = uri
-        self.Id, self.BaseURL = self._getIdAndUrl() if self.User.IsValid else (None, None)
+        self.Id, self.BaseURL = self._initUri(uri) if self.User.IsValid else (None, None)
 
     @property
     def IsRoot(self):
         return self.Id == self.User.RootId
     @property
     def IsValid(self):
-        return self.User.IsValid and isIdentifier(self.Connection, self.Id)
+        return self.Id is not None
     @property
     def NewIdentifier(self):
         return getNewIdentifier(self.Connection)
@@ -79,7 +85,7 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild)
     # XChild
     def getParent(self):
         if self.IsRoot:
-            return None
+            raise NoSupportException('Root of the content has no parent', self)
         segments = []
         for i in range(self.Uri.getPathSegmentCount()):
             segment = self.Uri.getPathSegment(i).strip()
@@ -93,24 +99,33 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild)
     def setParent(self, parent):
         raise NoSupportException('Parent can not be set', self)
 
-    def _getIdAndUrl(self):
+    def _initUri(self, uri):
+        olduri = uri.getUriReference()
         id = self.User.RootId
         segments = []
-        count = self.Uri.getPathSegmentCount()
+        count = uri.getPathSegmentCount()
+        rewrite = False
         if count > 0:
-            last = self.Uri.getPathSegment(count -1).strip()
+            last = uri.getPathSegment(count -1).strip()
             for i in range(count):
-                segment = self.Uri.getPathSegment(i).strip()
+                segment = uri.getPathSegment(i).strip()
                 if segment == '..':
-                    if last == '' or last == '..':
+                    if last in ('', '.', '..'):
                         segments.pop()
-                    id = segments[-1]
+                        rewrite = True
+                    elif last == id:
+                        rewrite = False
+                    id = segments[-1] if segments else self.User.RootId
                     break
                 elif segment != '':
                     segments.append(segment)
                     id = segment
-        url = '%s://%s/%s' % (self.Uri.getScheme(), self.Uri.getAuthority(), '/'.join(segments))
-        print("ContentIdentifier._getIdAndUrl():\n    Id: %s\n    Url: %s\n    Identifier: %s" % (id, url, self.getContentIdentifier()))
+                    rewrite = True
+        url = '%s://%s/%s' % (uri.getScheme(), uri.getAuthority(), '/'.join(segments))
+        #if rewrite and segments:
+        #    identifier = '%s/../%s' % (url, id)
+        #    uri = getUri(self.ctx, identifier)
+        print("ContentIdentifier._initUri():\n    Uri: %s\n    Id: %s\n    Url: %s\n    Uri: %s" % (olduri, id, url, uri.getUriReference()))
         return id, url
 
     def _getPropertySetInfo(self):
@@ -128,6 +143,47 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild)
         properties['BaseURL'] = getProperty('BaseURL', 'string', bound | readonly)
         properties['NewIdentifier'] = getProperty('NewIdentifier', 'string', maybevoid | bound | readonly)
         return properties
+
+
+
+class InteractionRequestName(unohelper.Base, XInteractionRequest):
+    def __init__(self, source, message, url, name, newname, result):
+        print("InteractionRequestName.__init__(): %s %s %s %s %s" % (source, message, url, name, newname))
+        self._request = getNameClashResolveRequest(source, message, url, name, newname)
+        self._continuations = (InteractionSupplyName(result), InteractionAbort(name, result))
+
+    def getRequest(self):
+        return self._request
+    def getContinuations(self):
+        return self._continuations
+
+class InteractionSupplyName(unohelper.Base, XInteractionSupplyName):
+    def __init__(self, result):
+        self.result = result
+        self.newtitle = ''
+
+    def setName(self, name):
+        print("InteractionSupplyName.setName(): %s" % name)
+        self.newtitle = name
+    def select(self):
+        print("InteractionSupplyName.select()")
+        self.result.update({'Retrieved': True, 'Title': self.newtitle})
+
+class InteractionReplaceExistingData(unohelper.Base, XInteractionReplaceExistingData):
+    def __init__(self, callback):
+        self.callback = callback
+
+    def select(self):
+        print("InteractionReplaceExistingData.select()")
+
+class InteractionAbort(unohelper.Base, XInteractionAbort):
+    def __init__(self, name, result):
+        self.name = name
+        self.result = result
+
+    def select(self):
+        print("InteractionAbort.select()")
+        self.result.update({'Retrieved': False, 'Title': self.name})
 
 
 class InteractionRequest(unohelper.Base, XInteractionRequest):

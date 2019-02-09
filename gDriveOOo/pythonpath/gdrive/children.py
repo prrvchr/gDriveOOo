@@ -11,16 +11,38 @@ from .google import ChildGenerator, g_folder
 import traceback
 
 
-def isChild(connection, id, parent):
+def isChildId(identifier, id):
     ischild = False
-    call = connection.prepareCall('CALL "isChild"(?, ?)')
-    call.setString(1, id)
-    call.setString(2, parent)
+    call = identifier.Connection.prepareCall('CALL "isChildId"(?, ?)')
+    call.setString(1, identifier.Id)
+    call.setString(2, id)
     result = call.executeQuery()
     if result.next():
         ischild = result.getBoolean(1)
     call.close()
     return ischild
+
+def selectChildId(identifier, title):
+    id = None
+    call = identifier.Connection.prepareCall('CALL "selectChildId"(?, ?)')
+    call.setString(1, identifier.Id)
+    call.setString(2, title)
+    result = call.executeQuery()
+    if result.next():
+        id = result.getString(1)
+    call.close()
+    return id
+
+def countChildTitle(identifier, title):
+    count = None
+    call = identifier.Connection.prepareCall('CALL "countChildTitle"(?, ?)')
+    call.setString(1, identifier.Id)
+    call.setString(2, title)
+    result = call.executeQuery()
+    if result.next():
+        count = result.getLong(1)
+    call.close()
+    return count
 
 def updateChildren(session, identifier):
     merge, index = mergeJsonItemCall(identifier.Connection, identifier.User.Id)

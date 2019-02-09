@@ -84,13 +84,15 @@ class OptionsDialog(unohelper.Base, XServiceInfo, XContainerWindowEventHandler):
         try:
             #mri = self.ctx.ServiceManager.createInstance('mytools.Mri')
             #mri.inspect(uno)
-            #insert = self.Connection.prepareCall('CALL "insertChild"(?, ?, ?)')
-            #insert.setString(1, 'child')
-            #insert.setString(2, 'parent-1,parent-2,parent_3,parent_4')
-            #insert.execute()
-            #result = insert.getLong(3)
-            #insert.close()
-            pass
+            id = None
+            #select = self.Connection.prepareCall('CALL "selectChildId"(?, ?)')
+            #select.setString(1, '15HyYbehzPMCVFnjqcGRIGr5DjrjWzsTI')
+            #select.setString(2, 'Facture Shanghai.odt')
+            #result = select.executeQuery()
+            #if result.next():
+            #    id = result.getString(1)
+            #select.close()
+            print("PyOptionsDialog._doViewFile() Id: %s" % id)
             #doSync(self.ctx, self.Connection, user)
         except Exception as e:
             print("PyOptionsDialog._doViewFile().Error: %s - %s" % (e, traceback.print_exc()))

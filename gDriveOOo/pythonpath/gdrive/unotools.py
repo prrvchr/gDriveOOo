@@ -36,12 +36,14 @@ def getSequence(inputstream, length):
     inputstream.closeInput()
     return length, sequence
 
-def getProperty(name, typename=None, attributes=None, handle=-1):
+def getProperty(name, type=None, attributes=None, handle=-1):
     property = uno.createUnoStruct('com.sun.star.beans.Property')
     property.Name = name
     property.Handle = handle
-    if typename is not None:
-        property.Type = uno.getTypeByName(typename)
+    if isinstance(type, uno.Type):
+        property.Type = type
+    elif type is not None:
+        property.Type = uno.getTypeByName(type)
     if attributes is not None:
         property.Attributes = attributes
     return property
@@ -60,6 +62,12 @@ def getPropertyValue(name, value, state=None, handle=-1):
     property.Value = value
     property.State = uno.Enum('com.sun.star.beans.PropertyState', 'DIRECT_VALUE') if state is None else state
     return property
+
+def getNamedValue(name, value):
+    namedvalue = uno.createUnoStruct('com.sun.star.beans.NamedValue')
+    namedvalue.Name = name
+    namedvalue.Value = value
+    return namedvalue
 
 def getResourceLocation(ctx, path='gDriveOOo'):
     identifier = 'com.gmail.prrvchr.extensions.gDriveOOo'
@@ -127,3 +135,9 @@ def getNamedValueFromArguments(arguments={}):
     for key, value in arguments.items():
         namedvalues.append(uno.createUnoStruct('com.sun.star.beans.NamedValue', key, value))
     return tuple(namedvalues)
+
+def getInteractionHandler(ctx, message):
+    window = ctx.ServiceManager.createInstance('com.sun.star.frame.Desktop').ActiveFrame.ComponentWindow
+    args = (getPropertyValue('Parent', window), getPropertyValue('Context', message))
+    interaction = ctx.ServiceManager.createInstanceWithArguments('com.sun.star.task.InteractionHandler', args)
+    return interaction

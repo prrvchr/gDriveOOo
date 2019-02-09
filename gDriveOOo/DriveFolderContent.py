@@ -11,10 +11,10 @@ from com.sun.star.ucb import XContent, XCommandProcessor2, XContentCreator
 from com.sun.star.ucb import InteractiveBadTransferURLException, CommandAbortedException
 from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
 
-from gdrive import Initialization, CommandInfo, PropertySetInfo, Row, DynamicResultSet
+from gdrive import Initialization, CommandInfo, PropertySetInfo, Row, DynamicResultSet, PropertyContainer
 from gdrive import PropertiesChangeNotifier, PropertySetInfoChangeNotifier, CommandInfoChangeNotifier
 from gdrive import getDbConnection, getNewIdentifier, propertyChange, getChildSelect, parseDateTime, getLogger, getUcp
-from gdrive import updateChildren, createService, getSimpleFile, getResourceLocation, isChild
+from gdrive import updateChildren, createService, getSimpleFile, getResourceLocation, isChildId, selectChildId
 from gdrive import getUcb, getCommandInfo, getProperty, getContentInfo, setContentProperties, createContent
 from gdrive import getPropertiesValues, setPropertiesValues, getSession, g_folder
 from gdrive import ACQUIRED, CREATED, RENAMED, REWRITED, TRASHED
@@ -27,8 +27,9 @@ g_ImplementationHelper = unohelper.ImplementationHelper()
 g_ImplementationName = 'com.gmail.prrvchr.extensions.gDriveOOo.DriveFolderContent'
 
 
-class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent, XChild, XCommandProcessor2, XContentCreator,
-                         PropertiesChangeNotifier, PropertySetInfoChangeNotifier, CommandInfoChangeNotifier, XCallback):
+class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent, XChild,
+                         XCommandProcessor2, XContentCreator, PropertyContainer, PropertiesChangeNotifier,
+                         PropertySetInfoChangeNotifier, CommandInfoChangeNotifier, XCallback):
     def __init__(self, ctx, *namedvalues):
         try:
             self.ctx = ctx
@@ -131,6 +132,7 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
     # XCallback
     def notify(self, event):
         for listener in self.contentListeners:
+            print("DriveFolderContent.notify() ***********************************************")
             listener.contentEvent(event)
 
     # XContentCreator
@@ -163,10 +165,10 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
     def getContentType(self):
         return self.ContentType
     def addContentEventListener(self, listener):
-        #print("DriveFolderContent.addContentEventListener():*************************")
+        print("DriveFolderContent.addContentEventListener():*************************")
         self.contentListeners.append(listener)
     def removeContentEventListener(self, listener):
-        #print("DriveFolderContent.removeContentEventListener():*************************")
+        print("DriveFolderContent.removeContentEventListener():*************************")
         if listener in self.contentListeners:
             self.contentListeners.remove(listener)
 
@@ -212,15 +214,23 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         elif command.Name == 'transfer':
             # Transfer command is only used for existing document (File Save)
             # NewTitle come from last segment path of "XContent.getIdentifier().getContentIdentifier()"
+            # If the content has been renamed, the last segment is the new Title of the content
+            # We assume 'command.Argument.NewTitle' as an id
             id = command.Argument.NewTitle
             source = command.Argument.SourceURL
-            print("DriveFolderContent.execute(): transfer 1:\n    %s - %s" % (source, id))
-            if not isChild(self.Identifier.Connection, id, self.Id):
-                # For new document (File Save As) we use commands:
-                # createNewContent: for creating an empty new Content
-                # Insert at new Content for committing change
-                # For accessing this commands we must trow an "InteractiveBadTransferURLException"
-                raise InteractiveBadTransferURLException("Couln't handle Url: %s" % source, self)
+            clash = command.Argument.NameClash
+            print("DriveFolderContent.execute(): transfer 1:\n    %s - %s - %s - %s" % (source, id, command.Argument.MoveData, clash))
+            if not isChildId(self.Identifier, id):
+                # It appears that 'command.Argument.NewTitle' is not an id but a title...
+                # If 'NewTitle' exist and is unique in the folder, we can retrieve its Id
+                id = selectChildId(self.Identifier, id)
+                if id is None:
+                    # Id could not be found: NewTitle does not exist or is not unique in the folder
+                    # For new document (File Save As) we use commands:
+                    # createNewContent: for creating an empty new Content
+                    # Insert at new Content for committing change
+                    # For accessing this commands we must trow an "InteractiveBadTransferURLException"
+                    raise InteractiveBadTransferURLException("Couln't handle Url: %s" % source, self)
             print("DriveFolderContent.execute(): transfer 2:\n    transfer: %s - %s" % (source, id))
             sf = getSimpleFile(self.ctx)
             if not sf.exists(source):
