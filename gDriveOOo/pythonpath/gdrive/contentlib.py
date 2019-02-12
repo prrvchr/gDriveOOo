@@ -20,15 +20,16 @@ from com.sun.star.io import XStreamListener
 from .unolib import PropertySet
 from .unotools import getProperty
 from .contenttools import getUcb, getUri, getNameClashResolveRequest, getAuthenticationRequest
-from .contenttools import getParametersRequest
+from .contenttools import getParametersRequest, getSession
 from .identifiers import isIdentifier, getNewIdentifier
 
 import traceback
 
 
 class ContentUser(unohelper.Base, PropertySet):
-    def __init__(self, user=None):
+    def __init__(self, ctx, scheme=None, user=None):
         self.user = {} if user is None else user
+        self.Session = getSession(ctx, scheme, self.Name) if self.IsValid else None
 
     @property
     def Id(self):

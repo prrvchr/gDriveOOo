@@ -18,11 +18,11 @@ def isIdentifier(connection, id):
     call.close()
     return retreived
 
-def checkIdentifiers(connection, session, userid):
+def checkIdentifiers(connection, user):
     try:
         result = True
         if _countIdentifier(connection) < min(g_IdentifierRange):
-            result = _insertIdentifier(connection, session, userid, max(g_IdentifierRange))
+            result = _insertIdentifier(connection, user, max(g_IdentifierRange))
         return result
     except Exception as e:
         print("identifiers.checkIdentifiers().Error: %s - %s" % (e, traceback.print_exc()))
@@ -44,10 +44,10 @@ def _countIdentifier(connection):
     call.close()
     return count
 
-def _insertIdentifier(connection, session, userid, count):
+def _insertIdentifier(connection, user, count):
     insert = connection.prepareCall('CALL "insertIdentifier"(?, ?, ?)')
-    insert.setString(1, userid)
-    result = all(_doInsert(insert, id) for id in IdGenerator(session, count))
+    insert.setString(1, user.Id)
+    result = all(_doInsert(insert, id) for id in IdGenerator(user.Session, count))
     insert.close()
     return result
 

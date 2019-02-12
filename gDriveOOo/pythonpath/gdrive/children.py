@@ -44,9 +44,10 @@ def countChildTitle(identifier, title):
     call.close()
     return count
 
-def updateChildren(session, identifier):
+def updateChildren(identifier):
     merge, index = mergeJsonItemCall(identifier.Connection, identifier.User.Id)
-    update = all(mergeJsonItem(merge, item, index) for item in ChildGenerator(session, identifier.Id))
+    with identifier.User.Session as session:
+        update = all(mergeJsonItem(merge, item, index) for item in ChildGenerator(session, identifier.Id))
     merge.close()
     return update
 

@@ -6,7 +6,7 @@ import unohelper
 
 from com.sun.star.awt import XCallback
 from com.sun.star.container import XChild
-from com.sun.star.lang import XServiceInfo, XComponent, NoSupportException
+from com.sun.star.lang import XServiceInfo, NoSupportException
 from com.sun.star.ucb import XContent, XCommandProcessor2, XContentCreator
 from com.sun.star.ucb import InteractiveBadTransferURLException, CommandAbortedException
 from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
@@ -17,7 +17,7 @@ from gdrive import getDbConnection, getNewIdentifier, propertyChange, getChildSe
 from gdrive import updateChildren, createService, getSimpleFile, getResourceLocation, isChildId, selectChildId
 from gdrive import getUcb, getCommandInfo, getProperty, getContentInfo, setContentProperties, createContent
 from gdrive import getCommandIdentifier
-from gdrive import getPropertiesValues, setPropertiesValues, getSession, g_folder
+from gdrive import getPropertiesValues, setPropertiesValues, g_folder
 from gdrive import ACQUIRED, CREATED, RENAMED, REWRITED, TRASHED
 
 import requests
@@ -28,7 +28,7 @@ g_ImplementationHelper = unohelper.ImplementationHelper()
 g_ImplementationName = 'com.gmail.prrvchr.extensions.gDriveOOo.DriveFolderContent'
 
 
-class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent, XChild, XComponent,
+class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent, XChild,
                          XCommandProcessor2, XContentCreator, PropertyContainer, PropertiesChangeNotifier,
                          PropertySetInfoChangeNotifier, CommandInfoChangeNotifier, XCallback):
     def __init__(self, ctx, *namedvalues):
@@ -92,6 +92,9 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
     def Scheme(self):
         return self.Identifier.getContentProviderScheme()
     @property
+    def UserName(self):
+        return self.Identifier.User.Name
+    @property
     def Title(self):
         return self.Name
     @Title.setter
@@ -129,14 +132,6 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
                        getContentInfo(officetype, document, properties),
                        getContentInfo(documenttype, document, properties))
         return content
-
-    # XComponent
-    def dispose(self):
-        print("DriveFolderContent.dispose():*************************")
-    def addEventListener(self, listener):
-        print("DriveFolderContent.addEventListener():*************************")
-    def removeEventListener(self, listener):
-        print("DriveFolderContent.removeEventListener():*************************")
 
     # XCallback
     def notify(self, event):
@@ -192,7 +187,7 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         elif command.Name == 'getPropertySetInfo':
             return PropertySetInfo(self._propertySetInfo)
         elif command.Name == 'getPropertyValues':
-            namedvalues = getPropertiesValues(self, command.Argument,self.Logger)
+            namedvalues = getPropertiesValues(self, command.Argument, self.Logger)
             return Row(namedvalues)
         elif command.Name == 'setPropertyValues':
             return setPropertiesValues(self, command.Argument, self.Logger)
@@ -200,10 +195,8 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
             print("DriveFolderContent.execute() open 1")
             mode = self.Identifier.Mode
             if mode == ONLINE and self.Loaded == ONLINE:
-                with getSession(self.ctx, self.Identifier.User.Name) as session:
-                    if updateChildren(session, self.Identifier):
-                        self.Loaded = OFFLINE
-                    session.close()
+                if updateChildren(self.Identifier):
+                    self.Loaded = OFFLINE
             print("DriveFolderContent.execute() open 2")
             # Not Used: command.Argument.Properties - Implement me ;-)
             index, select = getChildSelect(self.Identifier)

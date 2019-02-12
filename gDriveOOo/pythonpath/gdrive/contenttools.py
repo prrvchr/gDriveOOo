@@ -41,9 +41,9 @@ def createContent(ctx, data):
         content = createService('com.gmail.prrvchr.extensions.gDriveOOo.%s' % name, ctx, **data)
     return content
 
-def getSession(ctx, username):
+def getSession(ctx, scheme, username):
     session = requests.Session()
-    session.auth = OAuth2Ooo(ctx, username)
+    session.auth = OAuth2Ooo(ctx, scheme, username)
     return session
 
 def doSync(ctx, identifier):
@@ -53,7 +53,7 @@ def doSync(ctx, identifier):
     select = identifier.Connection.prepareCall('CALL "selectSync"(?)')
     select.setLong(1, ACQUIRED)
     result = select.executeQuery()
-    with getSession(ctx, identifier.User.Name) as session:
+    with identifier.User.Session as session:
         while result.next():
             item = getItemFromResult(result, None, transform)
             print("contenttools.doSync(): %s" % (item, ))

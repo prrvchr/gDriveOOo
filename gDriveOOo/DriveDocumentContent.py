@@ -16,7 +16,7 @@ from gdrive import getDbConnection, parseDateTime, getChildSelect, getLogger
 from gdrive import createService, getSimpleFile, getResourceLocation
 from gdrive import getUcb, getCommandInfo, getProperty, getContentInfo
 from gdrive import propertyChange, getPropertiesValues, setPropertiesValues, uploadItem
-from gdrive import getSession, getCommandIdentifier
+from gdrive import getCommandIdentifier
 from gdrive import ACQUIRED, CREATED, RENAMED, REWRITED, TRASHED
 
 import traceback
@@ -94,6 +94,9 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
     @property
     def Scheme(self):
         return self.Identifier.getContentProviderScheme()
+    @property
+    def UserName(self):
+        return self.Identifier.User.Name
     @property
     def TitleOnServer(self):
         return self.Name
@@ -229,7 +232,7 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
         url = getResourceLocation(self.ctx, '%s/%s' % (self.Scheme, self.Id))
         if self.Loaded == OFFLINE and sf.exists(url):
             return url
-        with getSession(self.ctx, self.Identifier.User.Name) as session:
+        with self.Identifier.User.Session as session:
             try:
                 stream = InputStream(session, self.Id, self.Size, self.MediaType)
                 sf.writeFile(url, stream)

@@ -299,10 +299,10 @@ class OutputStream(unohelper.Base, XOutputStream):
 
 
 class OAuth2Ooo(object):
-    def __init__(self, ctx, username=None):
+    def __init__(self, ctx, scheme, username=None):
         name = 'com.gmail.prrvchr.extensions.OAuth2OOo.OAuth2Service'
         self.service = ctx.ServiceManager.createInstanceWithContext(name, ctx)
-        self.service.ResourceUrl = g_scheme
+        self.service.ResourceUrl = scheme
         if username is not None:
             self.service.UserName = username
 

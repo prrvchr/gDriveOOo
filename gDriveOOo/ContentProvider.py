@@ -39,8 +39,7 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory, P
         msg = "ContentProvider loading ..."
         self.ctx = ctx
         self._Statement = None
-        self.Session = None
-        self._User = ContentUser()
+        self._User = ContentUser(ctx)
         self.cachedContent = {}
         self.Logger = getLogger(self.ctx)
         self._Mode = getConnectionMode(self.ctx)
@@ -60,7 +59,7 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory, P
     def User(self, user):
         self._User = user
         if self.User.IsValid and self.Mode == ONLINE:
-            checkIdentifiers(self.Connection, self.Session, self.User.Id)
+            checkIdentifiers(self.Connection, self.User)
     @property
     def Mode(self):
         return self._Mode
@@ -189,8 +188,9 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory, P
             username = self._getUserFromHandler()
         else:
             return
-        user = self._getUser(username)
-        self.User = ContentUser(user)
+        scheme = uri.getScheme()
+        user = self._getUser(scheme, username)
+        self.User = ContentUser(self.ctx, scheme, user)
 
     def _getUserFromHandler(self):
         result = {}
@@ -202,7 +202,7 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory, P
                 return result.get('UserName')
         return None
 
-    def _getUser(self, username):
+    def _getUser(self, scheme, username):
         if username is None:
             message = "ERROR: Can't retrieve a UserName from Handler"
             user = {'Error': AuthenticationFailedException(message, self)}
@@ -212,29 +212,29 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory, P
             if self.Mode == OFFLINE:
                 self.Mode = ONLINE
             if self.Mode == ONLINE:
-                user = self._getUserFromProvider(username)
+                user = self._getUserFromProvider(scheme, username)
             else:
                 message = "ERROR: Can't retrieve User: %s Network is Offline" % username
                 user = {'Error': getInteractiveNetworkOffLineException(self, message)}
         return user
 
-    def _getUserFromProvider(self, username):
-        with getSession(self.ctx, username) as session:
+    def _getUserFromProvider(self, scheme, username):
+        with getSession(self.ctx, scheme, username) as session:
             data, root = getUser(session)
-            print("ContentProvider._getUserFromProvider(): %s" % username)
-            if root is not None:
-                user = mergeJsonUser(self.Connection, data, root, self.Mode)
-                self.Session = session
-            else:
-                message = "ERROR: Can't retrieve User: %s from provider" % username
-                user = {'Error': getInteractiveNetworkReadException(self, message)}
-                level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
-                self.Logger.logp(level, "ContentProvider", "_getUser()", message)
+        print("ContentProvider._getUserFromProvider(): %s" % username)
+        if root is not None:
+            user = mergeJsonUser(self.Connection, data, root, self.Mode)
+        else:
+            message = "ERROR: Can't retrieve User: %s from provider" % username
+            user = {'Error': getInteractiveNetworkReadException(self, message)}
+            level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
+            self.Logger.logp(level, "ContentProvider", "_getUser()", message)
         return user
 
     def _getItem(self, identifier):
         item = None
-        data = getItem(self.Session, identifier.Id)
+        with identifier.User.Session as session:
+            data = getItem(session, identifier.Id)
         if data is not None:
             item = insertJsonItem(self.Connection, identifier, data)
         else:
