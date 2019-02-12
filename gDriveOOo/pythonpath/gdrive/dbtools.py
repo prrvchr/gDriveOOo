@@ -5,7 +5,6 @@ import uno
 import unohelper
 
 from com.sun.star.sdbc import XDataSource, XArray, XRow, XResultSet
-from com.sun.star.lang import IllegalArgumentException
 from com.sun.star.container import XNameAccess, NoSuchElementException
 
 from .unotools import getResourceLocation, getPropertyValue, getSimpleFile

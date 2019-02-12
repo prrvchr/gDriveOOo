@@ -9,8 +9,9 @@ from com.sun.star.ucb import XContentIdentifier, XContentAccess, XDynamicResultS
 from com.sun.star.ucb import XCommandInfo, XCommandInfoChangeNotifier, UnsupportedCommandException
 from com.sun.star.task import XInteractionContinuation, XInteractionAbort
 from com.sun.star.ucb import XInteractionSupplyName, XInteractionReplaceExistingData
+from com.sun.star.ucb import XInteractionSupplyAuthentication2
 from com.sun.star.sdbc import XRow, XResultSet, XResultSetMetaDataSupplier
-from com.sun.star.sdb import ParametersRequest
+from com.sun.star.sdb import XInteractionSupplyParameters
 from com.sun.star.container import XIndexAccess, XChild
 from com.sun.star.task import XInteractionRequest
 from com.sun.star.io import XStreamListener
@@ -18,7 +19,8 @@ from com.sun.star.io import XStreamListener
 
 from .unolib import PropertySet
 from .unotools import getProperty
-from .contenttools import getUcb, getUri, getNameClashResolveRequest
+from .contenttools import getUcb, getUri, getNameClashResolveRequest, getAuthenticationRequest
+from .contenttools import getParametersRequest
 from .identifiers import isIdentifier, getNewIdentifier
 
 import traceback
@@ -84,15 +86,19 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild)
 
     # XChild
     def getParent(self):
-        if self.IsRoot:
-            raise NoSupportException('Root of the content has no parent', self)
+        print("contentlib.getParent(): ************************")
         segments = []
         for i in range(self.Uri.getPathSegmentCount()):
             segment = self.Uri.getPathSegment(i).strip()
-            if segment == '..':
+            if segment == '..' and segments:
                 segments.pop()
-                break
-            segments.append(segment)
+            elif segment not in ('','.'):
+                segments.append(segment)
+        if segments:
+            segments.pop()
+        if segments:
+            segments.append('..')
+            segments.append(segments[-2])
         identifier = '%s://%s/%s' % (self.Uri.getScheme(), self.Uri.getAuthority(), '/'.join(segments))
         uri = getUri(self.ctx, identifier)
         return ContentIdentifier(self.ctx, self.Connection, self.Mode, self.User, uri)
@@ -145,6 +151,58 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild)
         return properties
 
 
+class InteractionRequestAuthentication(unohelper.Base, XInteractionRequest):
+    def __init__(self, source, uri, message, result):
+        print("InteractionRequestAuthentication.__init__(): %s %s %s" % (source, uri, message))
+        self._request = getAuthenticationRequest(source, uri, message)
+        self._continuations = (InteractionSupplyAuthentication(result), InteractionAbort(result))
+
+    def getRequest(self):
+        return self._request
+    def getContinuations(self):
+        return self._continuations
+
+
+class InteractionSupplyAuthentication(unohelper.Base, XInteractionSupplyAuthentication2):
+    def __init__(self, result):
+        self.result = result
+        self.username = ''
+
+    # XInteractionSupplyAuthentication2
+    def canSetRealm(self):
+        return False
+    def setRealm(self, realm):
+        pass
+    def canSetUserName(self):
+        return True
+    def setUserName(self, username):
+        self.username = username
+    def canSetPassword(self):
+        return False
+    def setPassword(self, password):
+        pass
+    def getRememberPasswordModes(self, remember):
+        no = uno.Enum('com.sun.star.ucb.RememberAuthentication', 'NO')
+        return (), remember
+    def setRememberPassword(self, remember):
+        pass
+    def canSetAccount(self):
+        return False
+    def setAccount(self, account):
+        pass
+    def getRememberAccountModes(self, remember):
+        no = uno.Enum('com.sun.star.ucb.RememberAuthentication', 'NO')
+        return (), remember
+    def setRememberAccount(self, remember):
+        pass
+    def canUseSystemCredentials(self, default):
+        return False, False
+    def setUseSystemCredentials(self, default):
+        pass
+    def select(self):
+        print("InteractionSupplyAuthentication.select()")
+        self.result.update({'Retrieved': True, 'UserName': self.username})
+
 
 class InteractionRequestName(unohelper.Base, XInteractionRequest):
     def __init__(self, source, message, url, name, newname, result):
@@ -176,29 +234,38 @@ class InteractionReplaceExistingData(unohelper.Base, XInteractionReplaceExisting
     def select(self):
         print("InteractionReplaceExistingData.select()")
 
+
 class InteractionAbort(unohelper.Base, XInteractionAbort):
-    def __init__(self, name, result):
-        self.name = name
+    def __init__(self, result):
         self.result = result
 
     def select(self):
-        print("InteractionAbort.select()")
-        self.result.update({'Retrieved': False, 'Title': self.name})
+        self.result.update({'Retrieved': False})
 
 
-class InteractionRequest(unohelper.Base, XInteractionRequest):
-    def __init__(self, source, connection, message="Authentication is needed!!!"):
-        self.request = ParametersRequest()
-        self.request.Connection = connection
-        self.request.Classification = uno.Enum('com.sun.star.task.InteractionClassification', 'QUERY')
-        self.request.Message = message
-        self.request.Context = source
+class InteractionSupplyParameters(unohelper.Base, XInteractionSupplyParameters):
+    def __init__(self, result):
+        self.result = result
+        self.username = ''
+
+    def setParameters(self, properties):
+        for property in properties:
+            if property.Name == 'UserName':
+                self.username = property.Value
+    def select(self):
+        self.result.update({'Retrieved': True, 'UserName': self.username})
+
+
+class InteractionRequestParameters(unohelper.Base, XInteractionRequest):
+    def __init__(self, source, connection, message, result):
+        self.request = getParametersRequest(source, connection, message)
         self.request.Parameters = RequestParameters(message)
+        self.continuations = (InteractionSupplyParameters(result), InteractionAbort(result))
 
     def getRequest(self):
         return self.request
     def getContinuations(self):
-        return (self.request.Context, )
+        return self.continuations
 
 
 class RequestParameters(unohelper.Base, XIndexAccess):

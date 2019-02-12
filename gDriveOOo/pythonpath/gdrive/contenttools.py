@@ -7,6 +7,8 @@ from com.sun.star.beans import UnknownPropertyException, IllegalTypeException, P
 from com.sun.star.lang import IllegalAccessException
 from com.sun.star.ucb import NameClashResolveRequest, IllegalIdentifierException, InteractiveNetworkOffLineException
 from com.sun.star.ucb import InteractiveNetworkReadException, UnsupportedNameClashException
+from com.sun.star.ucb import NameClashException, AuthenticationRequest, URLAuthenticationRequest
+from com.sun.star.sdb import ParametersRequest
 from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
 from com.sun.star.ucb.ContentAction import INSERTED, REMOVED, DELETED, EXCHANGED
 
@@ -175,8 +177,9 @@ def getPump(ctx):
 def getPipe(ctx):
     return ctx.ServiceManager.createInstance('com.sun.star.io.Pipe')
 
-def getContentEvent(action, content, id):
+def getContentEvent(source, action, content, id):
     event = uno.createUnoStruct('com.sun.star.ucb.ContentEvent')
+    event.Source = source
     event.Action = action
     event.Content = content
     event.Id = id
@@ -230,16 +233,42 @@ def getMimeType(ctx, stream):
                 mimetype = property.Value
     return mimetype
 
+def getParametersRequest(source, connection, message):
+    r = ParametersRequest()
+    r.Message = message
+    r.Context = source
+    r.Classification = uno.Enum('com.sun.star.task.InteractionClassification', 'QUERY')
+    r.Connection = connection
+    return r
+
+def getAuthenticationRequest(source, uri, message):
+    e = URLAuthenticationRequest()
+    e.Message = message
+    e.Context = source
+    e.Classification = uno.Enum('com.sun.star.task.InteractionClassification', 'QUERY')
+    e.ServerName = uri.getScheme()
+    e.Diagnostic = message
+    e.HasRealm = False
+    e.Realm = ''
+    e.HasUserName = True
+    e.UserName = ''
+    e.HasPassword = False
+    e.Password = ''
+    e.HasAccount = False
+    e.Account = ''
+    e.URL = uri.getUriReference()
+    return e
+
 def getIllegalIdentifierException(source, message):
     e = IllegalIdentifierException()
-    e.Context = source
     e.Message = message
+    e.Context = source
     return e
 
 def getInteractiveNetworkOffLineException(source, message):
     e = InteractiveNetworkOffLineException()
-    e.Context = source
     e.Message = message
+    e.Context = source
     e.Classification = uno.Enum('com.sun.star.task.InteractionClassification', 'ERROR')
     return e
 
@@ -249,6 +278,14 @@ def getInteractiveNetworkReadException(source, message):
     e.Message = message
     e.Classification = uno.Enum('com.sun.star.task.InteractionClassification', 'ERROR')
     e.Diagnostic = message
+    return e
+
+def getNameClashException(source, message, name):
+    e = NameClashException()
+    e.Context = source
+    e.Message = message
+    e.Classification = uno.Enum('com.sun.star.task.InteractionClassification', 'ERROR')
+    e.Name = name
     return e
 
 def getUnsupportedNameClashException(source, message):

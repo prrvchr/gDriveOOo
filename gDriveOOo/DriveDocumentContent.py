@@ -16,7 +16,7 @@ from gdrive import getDbConnection, parseDateTime, getChildSelect, getLogger
 from gdrive import createService, getSimpleFile, getResourceLocation
 from gdrive import getUcb, getCommandInfo, getProperty, getContentInfo
 from gdrive import propertyChange, getPropertiesValues, setPropertiesValues, uploadItem
-from gdrive import getSession
+from gdrive import getSession, getCommandIdentifier
 from gdrive import ACQUIRED, CREATED, RENAMED, REWRITED, TRASHED
 
 import traceback
@@ -67,6 +67,7 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
             self.propertiesListener = {}
             self.propertyInfoListeners = []
             self.commandInfoListeners = []
+            self.commandIdentifier = 0
 
             self.typeMaps = {}
             self.typeMaps['application/vnd.google-apps.document'] = 'application/vnd.oasis.opendocument.text'
@@ -98,7 +99,7 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
         return self.Name
     @property
     def Title(self):
-        return self.Id
+        return self.Name
     @Title.setter
     def Title(self, title):
         propertyChange(self, 'Name', self.Name, title)
@@ -159,9 +160,9 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
     # XCommandProcessor2
     def createCommandIdentifier(self):
         print("DriveDocumentContent.createCommandIdentifier(): **********************")
-        return 0
+        return getCommandIdentifier(self)
     def execute(self, command, id, environment):
-        print("DriveDocumentContent.execute(): %s" % command.Name)
+        print("DriveDocumentContent.execute(): %s - %s" % (command.Name, id))
         result = None
         level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
         msg = "Command name: %s ..." % command.Name
@@ -213,7 +214,7 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
         self.Logger.logp(level, "DriveOfficeContent", "execute()", msg)
         return result
     def abort(self, id):
-        pass
+        print("DriveDocumentContent.abort(): %s" % id)
     def releaseCommandIdentifier(self, id):
         pass
 

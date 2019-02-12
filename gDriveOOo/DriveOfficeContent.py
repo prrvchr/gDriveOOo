@@ -14,7 +14,7 @@ from gdrive import Initialization, CommandInfo, CmisPropertySetInfo, Row, CmisDo
 from gdrive import PropertiesChangeNotifier, PropertySetInfoChangeNotifier, CommandInfoChangeNotifier
 from gdrive import ContentIdentifier, PropertyContainer, InteractionRequestName, countChildTitle
 from gdrive import getContentInfo, getPropertiesValues, uploadItem, getUcb, getMimeType, getUri, getInteractionHandler
-from gdrive import getUnsupportedNameClashException
+from gdrive import getUnsupportedNameClashException, getCommandIdentifier
 from gdrive import createService, getResourceLocation, parseDateTime, getPropertySetInfoChangeEvent, getNewIdentifier
 from gdrive import getSimpleFile, getCommandInfo, getProperty, getUcp, getSession, selectChildId
 from gdrive import propertyChange, setPropertiesValues, getLogger, getCmisProperty, getPropertyValue
@@ -69,6 +69,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
             self.propertiesListener = {}
             self.propertyInfoListeners = []
             self.commandInfoListeners = []
+            self.commandIdentifier = 0
 
             #self.Author = 'prrvchr'
             #self.Keywords = 'clefs de recherche'
@@ -107,7 +108,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         return self.Name
     @property
     def Title(self):
-        return self.Id
+        return self.Name
     @Title.setter
     def Title(self, title):
         old = self.Name
@@ -195,13 +196,13 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
     # XCommandProcessor2
     def createCommandIdentifier(self):
         print("DriveOfficeContent.createCommandIdentifier(): **********************")
-        return 0
+        return getCommandIdentifier(self)
     def execute(self, command, id, environment):
         try:
             result = None
             level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
             msg = "Command name: %s ..." % command.Name
-            print("DriveOfficeContent.execute(): %s" % command.Name)
+            print("DriveOfficeContent.execute(): %s - %s" % (command.Name, id))
             if command.Name == 'getCommandInfo':
                 print("DriveOfficeContent.getCommandInfo()?????????????????????????????????????????????????")
                 result = CommandInfo(self._commandInfo)
@@ -213,7 +214,6 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
                 print("DriveOfficeContent.getPropertyValues() 2: %s" % (namedvalues, ))
                 result = Row(namedvalues)
             elif command.Name == 'setPropertyValues':
-                print("DriveOfficeContent.setPropertyValues(): %s" % (command.Argument, ))
                 result = setPropertiesValues(self, command.Argument, self.Logger)
             elif command.Name == 'open':
                 print ("DriveOfficeContent.open(): %s" % command.Argument.Mode)
@@ -276,7 +276,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         except Exception as e:
             print("DriveOfficeContent.execute().Error: %s - %s" % (e, traceback.print_exc()))
     def abort(self, id):
-        pass
+        print("DriveOfficeContent.abort(): %s" % id)
     def releaseCommandIdentifier(self, id):
         pass
 

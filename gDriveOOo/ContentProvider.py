@@ -9,12 +9,12 @@ from com.sun.star.ucb import XContentProvider, XContentIdentifierFactory
 from com.sun.star.ucb import XParameterizedContentProvider
 from com.sun.star.ucb import ContentCreationException, IllegalIdentifierException
 from com.sun.star.ucb import InteractiveNetworkOffLineException
+from com.sun.star.auth import AuthenticationFailedException
 from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
 from com.sun.star.beans import XPropertiesChangeListener
 from com.sun.star.frame import XTerminateListener, TerminationVetoException
-from com.sun.star.sdb import XInteractionSupplyParameters
 
-from gdrive import ContentIdentifier, InteractionRequest, PropertySet
+from gdrive import ContentIdentifier, InteractionRequestParameters, PropertySet
 from gdrive import getDbConnection, selectUser, mergeJsonUser, selectItem, insertJsonItem
 from gdrive import getItem, updateContent, checkIdentifiers, getNewIdentifier
 from gdrive import getUcb, ContentUser, createContent, getInteractionHandler
@@ -33,7 +33,7 @@ g_ImplementationName = 'com.gmail.prrvchr.extensions.gDriveOOo.ContentProvider'
 
 class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory, PropertySet,
                       XContentProvider, XPropertiesChangeListener, XParameterizedContentProvider,
-                      XTerminateListener, XInteractionSupplyParameters):
+                      XTerminateListener):
     def __init__(self, ctx):
         level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
         msg = "ContentProvider loading ..."
@@ -41,7 +41,6 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory, P
         self._Statement = None
         self.Session = None
         self._User = ContentUser()
-        self._UserName = ''
         self.cachedContent = {}
         self.Logger = getLogger(self.ctx)
         self._Mode = getConnectionMode(self.ctx)
@@ -132,7 +131,7 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory, P
             self.Logger.logp(level, "ContentProvider", "createContentIdentifier()", msg)
             uri = getUri(self.ctx, identifier)
             print("ContentProvider.createContentIdentifier() 2 %s" % identifier)
-            self._setUserName(uri)
+            self._setUser(uri)
             contentidentifier = ContentIdentifier(self.ctx, self.Connection, self.Mode, self.User, uri)
             msg = "Identifier: %s ... Done" % contentidentifier.getContentIdentifier()
             self.Logger.logp(level, "ContentProvider", "createContentIdentifier()", msg)
@@ -183,32 +182,31 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory, P
         self.Logger.logp(level, "ContentProvider", "compareContentIds()", msg)
         return compare
 
-    # XInteractionSupplyParameters
-    def setParameters(self, values):
-        for property in values:
-            if property.Name == 'UserName' and property.Value:
-                self._UserName = property.Value
-    def select(self):
-        pass
-
-    def _setUserName(self, uri):
+    def _setUser(self, uri):
         if uri.hasAuthority() and uri.getAuthority() != '' and uri.getAuthority() != self.User.Name:
-            self._setUser(uri.getAuthority())
+            username = uri.getAuthority()
         elif self.User.Name is None:
-            username = self._getUserNameFromHandler()
-            if username:
-                self._setUser(username)
-            else:
-                pass
+            username = self._getUserFromHandler()
+        else:
+            return
+        user = self._getUser(username)
+        self.User = ContentUser(user)
 
-    def _getUserNameFromHandler(self):
-        self._UserName = ''
+    def _getUserFromHandler(self):
+        result = {}
         message = "Authentication is needed!!!"
         interaction = getInteractionHandler(self.ctx, message)
-        retrieved = interaction.handleInteractionRequest(InteractionRequest(self, self.Connection, message))
-        return self._UserName
+        request = InteractionRequestParameters(self, self.Connection, message, result)
+        if interaction.handleInteractionRequest(request):
+            if result.get('Retrieved', False):
+                return result.get('UserName')
+        return None
 
-    def _setUser(self, username):
+    def _getUser(self, username):
+        if username is None:
+            message = "ERROR: Can't retrieve a UserName from Handler"
+            user = {'Error': AuthenticationFailedException(message, self)}
+            return user
         user = selectUser(self.Connection, username, self.Mode)
         if user is None:
             if self.Mode == OFFLINE:
@@ -218,7 +216,7 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory, P
             else:
                 message = "ERROR: Can't retrieve User: %s Network is Offline" % username
                 user = {'Error': getInteractiveNetworkOffLineException(self, message)}
-        self.User = ContentUser(user)
+        return user
 
     def _getUserFromProvider(self, username):
         with getSession(self.ctx, username) as session:

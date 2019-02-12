@@ -6,7 +6,7 @@ import unohelper
 
 from com.sun.star.awt import XCallback
 from com.sun.star.container import XChild
-from com.sun.star.lang import XServiceInfo, NoSupportException
+from com.sun.star.lang import XServiceInfo, XComponent, NoSupportException
 from com.sun.star.ucb import XContent, XCommandProcessor2, XContentCreator
 from com.sun.star.ucb import InteractiveBadTransferURLException, CommandAbortedException
 from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
@@ -16,6 +16,7 @@ from gdrive import PropertiesChangeNotifier, PropertySetInfoChangeNotifier, Comm
 from gdrive import getDbConnection, getNewIdentifier, propertyChange, getChildSelect, parseDateTime, getLogger, getUcp
 from gdrive import updateChildren, createService, getSimpleFile, getResourceLocation, isChildId, selectChildId
 from gdrive import getUcb, getCommandInfo, getProperty, getContentInfo, setContentProperties, createContent
+from gdrive import getCommandIdentifier
 from gdrive import getPropertiesValues, setPropertiesValues, getSession, g_folder
 from gdrive import ACQUIRED, CREATED, RENAMED, REWRITED, TRASHED
 
@@ -27,7 +28,7 @@ g_ImplementationHelper = unohelper.ImplementationHelper()
 g_ImplementationName = 'com.gmail.prrvchr.extensions.gDriveOOo.DriveFolderContent'
 
 
-class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent, XChild,
+class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent, XChild, XComponent,
                          XCommandProcessor2, XContentCreator, PropertyContainer, PropertiesChangeNotifier,
                          PropertySetInfoChangeNotifier, CommandInfoChangeNotifier, XCallback):
     def __init__(self, ctx, *namedvalues):
@@ -69,6 +70,7 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
             self.propertiesListener = {}
             self.propertyInfoListeners = []
             self.commandInfoListeners = []
+            self.commandIdentifier = 0
 
             self.initialize(namedvalues)
 
@@ -128,6 +130,13 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
                        getContentInfo(documenttype, document, properties))
         return content
 
+    # XComponent
+    def dispose(self):
+        print("DriveFolderContent.dispose():*************************")
+    def addEventListener(self, listener):
+        print("DriveFolderContent.addEventListener():*************************")
+    def removeEventListener(self, listener):
+        print("DriveFolderContent.removeEventListener():*************************")
 
     # XCallback
     def notify(self, event):
@@ -175,9 +184,9 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
     # XCommandProcessor2
     def createCommandIdentifier(self):
         print("DriveFolderContent.createCommandIdentifier(): **********************")
-        return 0
+        return getCommandIdentifier(self)
     def execute(self, command, id, environment):
-        print("DriveFolderContent.execute(): %s" % command.Name)
+        print("DriveFolderContent.execute(): %s - %s" % (command.Name, id))
         if command.Name == 'getCommandInfo':
             return CommandInfo(self._commandInfo)
         elif command.Name == 'getPropertySetInfo':
@@ -256,7 +265,7 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         #    print("DriveFolderContent.execute().Error: %s - %e" % (e, traceback.print_exc()))
 
     def abort(self, id):
-        pass
+        print("DriveFolderContent.abort(): %s" % id)
     def releaseCommandIdentifier(self, id):
         pass
 

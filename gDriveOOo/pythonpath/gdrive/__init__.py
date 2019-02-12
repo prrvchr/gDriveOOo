@@ -25,7 +25,7 @@ from .identifiers import checkIdentifiers, getNewIdentifier, isIdentifier
 
 
 from .contentlib import ContentUser, ContentIdentifier, CommandInfo, CommandInfoChangeNotifier
-from .contentlib import InteractionRequest, Row, DynamicResultSet, InteractionRequestName
+from .contentlib import InteractionRequestParameters, Row, DynamicResultSet, InteractionRequestName
 
 from .contenttools import getUcb, getUcp, getUri, getMimeType
 from .contenttools import getContentEvent, getCmisProperty, getCommandInfo, getContentInfo
@@ -34,7 +34,7 @@ from .contenttools import uploadItem, getSession, createContent, getIllegalIdent
 from .contenttools import getInteractiveNetworkOffLineException, getInteractiveNetworkReadException
 from .contenttools import getUnsupportedNameClashException
 
-from .contentcore import updateContent, setPropertiesValues, getPropertiesValues
+from .contentcore import getCommandIdentifier, updateContent, setPropertiesValues, getPropertiesValues
 
 from .google import InputStream, getUser, getItem, getConnectionMode, updateItem, parseDateTime
 from .google import g_scheme, g_folder

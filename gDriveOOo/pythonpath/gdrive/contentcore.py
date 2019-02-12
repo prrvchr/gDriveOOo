@@ -4,13 +4,15 @@
 import uno
 
 from com.sun.star.uno import Exception as UnoException
+from com.sun.star.beans import UnknownPropertyException
+from com.sun.star.lang import IllegalArgumentException
 from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
 from com.sun.star.ucb.ContentAction import INSERTED, REMOVED, DELETED, EXCHANGED
 
 
 from .items import insertContentItem, updateName, updateSize, updateTrashed, updateLoaded
 from .contenttools import doSync, getUri, getContentEvent, getUcp
-from .contenttools import getUnsupportedNameClashException
+from .contenttools import getUnsupportedNameClashException, getNameClashException
 from .contentlib import ContentIdentifier, InteractionRequestName
 from .unotools import getInteractionHandler, getNamedValue
 from .children import countChildTitle
@@ -18,19 +20,23 @@ from .children import countChildTitle
 import traceback
 
 
+def getCommandIdentifier(source):
+    source.commandIdentifier += 1
+    return source.commandIdentifier
+
 def getPropertiesValues(source, properties, logger):
     namedvalues = []
     for property in properties:
         value = None
-        level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
         msg = "ERROR: Requested property: %s as incorect type" % property
+        level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
         if hasattr(property, 'Name') and hasattr(source, property.Name):
             value = getattr(source, property.Name)
-            level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
             msg = "Get property: %s value: %s" % (property.Name, value)
+            level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
         else:
-            level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
             msg = "ERROR: Requested property: %s is not available" % property.Name
+            level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
         logger.logp(level, source.__class__.__name__, "getPropertiesValues()", msg)
         print("%s.getPropertiesValues() %s" % (source.__class__.__name__, msg))
         namedvalues.append(getNamedValue(property.Name, value))
@@ -38,65 +44,96 @@ def getPropertiesValues(source, properties, logger):
 
 def setPropertiesValues(source, properties, logger):
     results = []
-    for property in properties:
-        result = UnoException('SetProperty Exception', source)
-        level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
-        msg = "ERROR: Requested property: %s as incorect type" % property
+    for position, property in enumerate(properties):
         if hasattr(property, 'Name') and hasattr(property, 'Value'):
             if hasattr(source, property.Name):
-                level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
-                msg = "Set property: %s value: %s" % (property.Name, property.Value)
-                if property.Name == 'Title':
-                    value, result = _getUniqueTitle(source, property.Value)
-                    if result is None:
-                        if property.Value != value:
-                            notifyContentListener(source.ctx, source, DELETED)
-                            setattr(source, property.Name, value)
-                            notifyContentListener(source.ctx, source, INSERTED)
-                        else:
-                            setattr(source, property.Name, value)
-                    else:
-                        notifyContentListener(source.ctx, source, DELETED)
-                        notifyContentListener(source.ctx, source, INSERTED)
-                        level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
-                        msg = "Can't set property: %s value: %s - NameClash ERROR" % (property.Name, value)
-                else:
-                    setattr(source, property.Name, property.Value)
-                    result = None
+                result, level, msg = _setPropertyValue(source, property.Name, property.Value, position)
             else:
-                result = UnknownPropertyException('UnknownProperty: %s' % property.Name, source)
                 msg = "ERROR: Requested property: %s is not available" % property.Name
+                level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
+                error = UnknownPropertyException('UnknownProperty: %s' % property.Name, source)
+                result = uno.Any('com.sun.star.beans.UnknownPropertyException', error)
+        else:
+            msg = "ERROR: Requested property: %s as incorect type" % property
+            level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
+            error = UnoException('SetProperty Exception', source)
+            result = uno.Any('com.sun.star.uno.Exception', error)
         logger.logp(level, source.__class__.__name__, "setPropertiesValues()", msg)
         print("%s.setPropertiesValues() %s" % (source.__class__.__name__, msg))
         results.append(result)
     return tuple(results)
-        
-def _getUniqueTitle(source, title):
-    name, extention = title, ''
-    namelist = title.split('.')
-    if len(namelist) > 1:
-        extension = namelist.pop()
-        name = '.'.join(namelist)
-    i, count, newtitle = 0, 1, title
+
+def _setPropertyValue(source, name, value, position):
+    if name == 'Title':
+        result, level, msg = _setTitle(source, value, position)
+    else:
+        setattr(source, name, value)
+        msg = "Set property: %s value: %s" % (name, value)
+        level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
+        result = None
+    return result, level, msg
+
+def _setTitle(source, value, position):
     identifier = source.getIdentifier().getParent()
-    while count != 0:
-        count = countChildTitle(identifier, newtitle)
-        newtitle = '%s~%s.%s' % (name, i, extension)
-        i += 1
-    if i != 1:
-        result = {}
-        message = "Name clash!!!"
-        url = source.getIdentifier().getContentIdentifier()
-        interaction = getInteractionHandler(source.ctx, message)
-        request = InteractionRequestName(source, message, url, title, newtitle, result)
-        if interaction.handleInteractionRequest(request):
-            if result.get('Retrieved', False):
-                title = result.get('Title')
-                return _getUniqueTitle(source, title)
+    if not countChildTitle(identifier, value):
+        setattr(source, 'Title', value)
+        msg = "Set property: %s value: %s" % ('Title', value)
+        level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
+        result = None
+    else:
+        msg = "Can't set property: %s value: %s - Name Clash Error" % ('Title', value)
+        level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
+        error = IllegalArgumentException(msg, source, position)
+        result = uno.Any('com.sun.star.lang.IllegalArgumentException', error)
+    return result, level, msg
+
+def _getTitle(source, title, position):
+    newtitle = _getNewTitle(source, title)
+    if title != newtitle:
+        #result = {}
+        #message = "Name clash!!!"
+        #url = '%s/../' % source.getIdentifier().BaseURL
+        ##interaction = getInteractionHandler(source.ctx, message)
+        #request = InteractionRequestName(source, message, url, title, newtitle, result)
+        #if handler.handleInteractionRequest(request):
+        #    if result.get('Retrieved', False):
+        #        title = result.get('Title')
+        #        return _getTitle(source, handler, title, position)
         message = "Title: %s cannot be set. File names must be unique" % title
-        e = getUnsupportedNameClashException(source, message)
-        return title, e
-    return title, None
+        e = IllegalArgumentException(message, source, position)
+        error = uno.Any('com.sun.star.lang.IllegalArgumentException', e)
+        print("contentcore._getTitle() %s" % error)
+        return error, title
+    return None, title
+
+def _getNewTitle(source, title):
+    name, extension = _getTitleExtension(title, '.')
+    name, i = _getTitleIndex(name, '~')
+    identifier = source.getIdentifier().getParent()
+    while True:
+        if not countChildTitle(identifier, title):
+            break
+        i += 1
+        title = '%s~%s.%s' % (name, i, extension) if extension else '%s~%s' % (name, i)
+    return title
+
+def _getTitleExtension(name, separator):
+    basename, extension = name, ''
+    names = name.split(separator)
+    if len(names) > 1:
+        extension = names.pop()
+        basename = separator.join(names)
+    return basename, extension
+
+def _getTitleIndex(name, separator):
+    basename, i = name, 0
+    names = name.split(separator)
+    if len(names) > 1:
+        last = names.pop()
+        if last.isdigit():
+            i = int(last)
+            basename = separator.join(names)
+    return basename, i
 
 def updateContent(ctx, event, mode):
     print("contentcore.updateContent() %s - %s" % (event.PropertyName, event.NewValue))
@@ -104,15 +141,27 @@ def updateContent(ctx, event, mode):
     identifier = event.Source.getIdentifier()
     if event.PropertyName == 'Id':
         result = insertContentItem(event.Source, identifier, event.NewValue)
-        action = INSERTED
+        if result:
+            id = source.getIdentifier().getParent()
+            parent = getUcp(ctx).queryContent(id)
+            parent.notify(getContentEvent(event.Source, INSERTED, event.Source, id))
     elif event.PropertyName == 'Trashed':
         result = updateTrashed(identifier, event.NewValue)
+        if result:
+            event.Source.notify(getContentEvent(event.Source, DELETED, event.Source, identifier))
         action = DELETED
-    if result:
-        notifyContentListener(ctx, event.Source, action)
     if event.PropertyName  == 'Name':
         result = updateName(identifier, event.NewValue)
-        #action = EXCHANGED
+        if result:
+            url = '%s/../%s' % (identifier.BaseURL, event.NewValue)
+            uri = getUri(ctx, url)
+            id = ContentIdentifier(ctx, identifier.Connection, identifier.Mode, identifier.User, uri)
+            oldcontent = getUcp(ctx).queryContent(id)
+            pid = identifier.getParent()
+            parent = getUcp(ctx).queryContent(pid)
+            parent.notify(getContentEvent(oldcontent, REMOVED, oldcontent, pid))
+            parent.notify(getContentEvent(event.Source, INSERTED, event.Source, pid))
+            #event.Source.notify(getContentEvent(event.Source, EXCHANGED, event.Source, identifier))
     elif event.PropertyName == 'Size':
         result = updateSize(identifier, event.NewValue)
     elif event.PropertyName == 'Loaded':
@@ -123,13 +172,14 @@ def updateContent(ctx, event, mode):
     print("contentcore.updateContent() %s" % result)
     return result
 
-def notifyContentListener(ctx, source, action):
+def notifyContentListener(ctx, source, action, identifier=None):
     if action == INSERTED:
         identifier = source.getIdentifier().getParent()
         parent = getUcp(ctx).queryContent(identifier)
         parent.notify(getContentEvent(action, source, identifier))
     elif action == DELETED:
-        source.notify(getContentEvent(action, source, source.getIdentifier()))
-    #elif action == EXCHANGED:
-    #    source.notify(getContentEvent(action, source, event.OldValue))
+        identifier = source.getIdentifier()
+        source.notify(getContentEvent(action, source, identifier))
+    elif action == EXCHANGED:
+        source.notify(getContentEvent(action, source, identifier))
 
