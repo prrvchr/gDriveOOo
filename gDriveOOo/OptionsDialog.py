@@ -85,7 +85,7 @@ class OptionsDialog(unohelper.Base, XServiceInfo, XContainerWindowEventHandler):
             #mri = self.ctx.ServiceManager.createInstance('mytools.Mri')
             #mri.inspect(uno)
             id = None
-            #select = self.Connection.prepareCall('CALL "selectChildId"(?, ?)')
+            #select = self.Connection.prepareCall('CALL "selectChildUniqueId"(?, ?)')
             #select.setString(1, '15HyYbehzPMCVFnjqcGRIGr5DjrjWzsTI')
             #select.setString(2, 'Facture Shanghai.odt')
             #result = select.executeQuery()

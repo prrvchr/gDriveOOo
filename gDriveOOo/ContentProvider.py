@@ -110,7 +110,7 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory, P
             msg = "Item inserted new Id: %s ..." % event.NewValue if name == 'Id' else \
                   "Item updated Property: %s ..." % name
             self.Logger.logp(level, "ContentProvider", "propertiesChange()", msg)
-            if updateContent(self.ctx, event, self.Mode):
+            if updateContent(self.ctx, event):
                 msg = "Item inserted new Id: %s ... Done" % event.OldValue if name == 'Id' else \
                       "Item updated Property: %s ... Done" % event.PropertyName
             else:
@@ -140,29 +140,32 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory, P
 
     # XContentProvider
     def queryContent(self, identifier):
-        error, content = identifier.User.Error, None
-        print("ContentProvider.queryContent() 1 %s" % identifier.getContentIdentifier())
-        level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
-        msg = "Identifier: %s..." % identifier.getContentIdentifier()
-        print("ContentProvider.queryContent() 2 %s" % error)
-        if identifier.IsValid:
-            print("ContentProvider.queryContent() 3 %s" % identifier.getContentIdentifier())
-            content = self._getCachedContent(identifier)
-        if error is not None:
-            print("ContentProvider.queryContent() 4 %s" % identifier.getContentIdentifier())
-            self.Logger.logp(level, "ContentProvider", "queryContent()", "%s - %s" % (msg, error.Message))
-            print("ContentProvider.queryContent() %s - %s" % (msg, error.Message))
-            raise error
-        if content is None:
-            e = ContentCreationException()
-            e.eError = uno.Enum('com.sun.star.ucb.ContentCreationError', 'CONTENT_CREATION_FAILED')
-            e.Message = "Identifier has not been retrieved: %s" % identifier.getContentIdentifier()
-            e.Context = self
-            raise e
-        msg += " Done"
-        level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
-        self.Logger.logp(level, "ContentProvider", "queryContent()", msg)
-        return content
+        try:
+            content = None
+            print("ContentProvider.queryContent() 1 %s" % identifier.getContentIdentifier())
+            level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
+            msg = "Identifier: %s..." % identifier.getContentIdentifier()
+            if identifier.IsValid:
+                print("ContentProvider.queryContent() 2 %s" % identifier.getContentIdentifier())
+                content = self._getCachedContent(identifier)
+            if identifier.User.Error is not None:
+                error = identifier.User.Error
+                print("ContentProvider.queryContent() 3 %s" % identifier.getContentIdentifier())
+                self.Logger.logp(level, "ContentProvider", "queryContent()", "%s - %s" % (msg, error.Message))
+                print("ContentProvider.queryContent() %s - %s" % (msg, error.Message))
+                raise error
+            if content is None:
+                e = ContentCreationException()
+                e.eError = uno.Enum('com.sun.star.ucb.ContentCreationError', 'CONTENT_CREATION_FAILED')
+                e.Message = "Identifier has not been retrieved: %s" % identifier.getContentIdentifier()
+                e.Context = self
+                raise e
+            msg += " Done"
+            level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
+            self.Logger.logp(level, "ContentProvider", "queryContent()", msg)
+            return content
+        except Exception as e:
+            print("ContentProvider.queryContent().Error: %s - %e" % (e, traceback.print_exc()))
 
     def compareContentIds(self, identifier1, identifier2):
         compare = 1
@@ -254,7 +257,7 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory, P
         return content
 
     def _getContent(self, identifier):
-        content, item = None, selectItem(self.Connection, identifier.Id)
+        content, item = None, selectItem(self.Connection, identifier.User.Id, identifier.Id)
         if item is None and self.Mode == ONLINE:
             item = self._getItem(identifier)
         if item is None:

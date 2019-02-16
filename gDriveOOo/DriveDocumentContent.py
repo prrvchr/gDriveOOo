@@ -10,14 +10,14 @@ from com.sun.star.lang import XServiceInfo, NoSupportException
 from com.sun.star.ucb import XContent, XCommandProcessor2, CommandAbortedException
 from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
 
-from gdrive import Initialization, CommandInfo, PropertySetInfo, Row, InputStream, PropertyContainer
+from gdrive import Initialization, CommandInfo, PropertySetInfo, Row, PropertyContainer
 from gdrive import PropertiesChangeNotifier, PropertySetInfoChangeNotifier, CommandInfoChangeNotifier
 from gdrive import getDbConnection, parseDateTime, getChildSelect, getLogger
 from gdrive import createService, getSimpleFile, getResourceLocation
 from gdrive import getUcb, getCommandInfo, getProperty, getContentInfo
 from gdrive import propertyChange, getPropertiesValues, setPropertiesValues, uploadItem
 from gdrive import getCommandIdentifier
-from gdrive import ACQUIRED, CREATED, RENAMED, REWRITED, TRASHED
+from gdrive import RETRIEVED, CREATED, RENAMED, REWRITED, TRASHED
 
 import traceback
 
@@ -177,7 +177,7 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
             namedvalues = getPropertiesValues(self, command.Argument, self.Logger)
             result = Row(namedvalues)
         elif command.Name == 'setPropertyValues':
-            result = setPropertiesValues(self, command.Argument, self.Logger)
+            result = setPropertiesValues(self, command.Argument, self._propertySetInfo, self.Logger)
         elif command.Name == 'open':
             print ("DriveDocumentContent.open(): %s" % command.Argument.Mode)
             sf = getSimpleFile(self.ctx)
@@ -232,17 +232,18 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
         url = getResourceLocation(self.ctx, '%s/%s' % (self.Scheme, self.Id))
         if self.Loaded == OFFLINE and sf.exists(url):
             return url
-        with self.Identifier.User.Session as session:
-            try:
-                stream = InputStream(session, self.Id, self.Size, self.MediaType)
-                sf.writeFile(url, stream)
-            except:
-                return None
-            else:
-                self.Loaded = OFFLINE
-            finally:
-                stream.closeInput()
+        self.Identifier.DownloadSize = self.Size
+        try:
+            stream = self.Identifier.DownloadStream
+            sf.writeFile(url, stream)
+        except:
+            return None
+        else:
+            self.Loaded = OFFLINE
+        finally:
+            stream.closeInput()
         return url
+
 
     def _getCommandInfo(self):
         commands = {}

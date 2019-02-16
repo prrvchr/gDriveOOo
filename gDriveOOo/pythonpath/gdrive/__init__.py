@@ -19,7 +19,7 @@ from .dbtools import getDbConnection, registerDataBase, getItemFromResult
 
 from .items import selectUser, mergeJsonUser, selectItem, insertJsonItem, needSync
 
-from .children import isChildId, selectChildId, updateChildren, getChildSelect, countChildTitle
+from .children import isChildId, selectChildId, getChildSelect, countChildTitle
 
 from .identifiers import checkIdentifiers, getNewIdentifier, isIdentifier
 
@@ -38,7 +38,7 @@ from .contentcore import getCommandIdentifier, updateContent, setPropertiesValue
 
 from .google import InputStream, getUser, getItem, getConnectionMode, updateItem, parseDateTime
 from .google import g_scheme, g_folder
-from .google import ACQUIRED, CREATED, RENAMED, REWRITED, TRASHED
+from .google import RETRIEVED, CREATED, FOLDER, FILE, RENAMED, REWRITED, TRASHED
 
 from .logger import getLogger, getLoggerSetting, setLoggerSetting, getLoggerUrl
 

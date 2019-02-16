@@ -41,11 +41,13 @@ g_doc = 'application/vnd.google-apps'
 
 g_datetime = '%Y-%m-%dT%H:%M:%S.%fZ'
 
-ACQUIRED = 0
-CREATED = 2
+RETRIEVED = 0
+CREATED = 1
+FOLDER = 2
+FILE = 4
 RENAMED = 8
-REWRITED = 32
-TRASHED = 128
+REWRITED = 16
+TRASHED = 32
 
 
 def getConnectionMode(ctx):
@@ -79,8 +81,7 @@ def getItem(session, id):
             return r.json()
     return None
 
-def getUploadLocation(session, id, data, size):
-    new = data is not None and 'id' in data
+def getUploadLocation(session, id, data, size, new):
     url = g_upload  if new else '%s/%s' % (g_upload, id)
     params = {'uploadType': 'resumable'}
     headers = {'X-Upload-Content-Length': '%s' % size}
@@ -95,8 +96,7 @@ def getUploadLocation(session, id, data, size):
             return r.headers['Location']
     return None
 
-def updateItem(session, id, data):
-    new = data is not None and 'id' in data
+def updateItem(session, id, data, new):
     url = '%sfiles' % g_url if new else '%sfiles/%s' % (g_url, id)
     with session.request('POST' if new else 'PATCH', url, json=data) as r:
         print("contenttools.updateItem()1 %s - %s" % (r.status_code, r.headers))

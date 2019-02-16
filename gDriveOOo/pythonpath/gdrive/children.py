@@ -22,11 +22,24 @@ def isChildId(identifier, id):
     call.close()
     return ischild
 
+def selectChildLastId(connection, userid, parent, title):
+    id = None
+    call = connection.prepareCall('CALL "selectChildLastId"(?, ?, ?)')
+    call.setString(1, userid)
+    call.setString(2, parent)
+    call.setString(3, title)
+    result = call.executeQuery()
+    if result.next():
+        id = result.getString(1)
+    call.close()
+    return id
+
 def selectChildId(identifier, title):
     id = None
-    call = identifier.Connection.prepareCall('CALL "selectChildId"(?, ?)')
-    call.setString(1, identifier.Id)
-    call.setString(2, title)
+    call = identifier.Connection.prepareCall('CALL "selectChildUniqueId"(?, ?, ?)')
+    call.setString(1, identifier.User.Id)
+    call.setString(2, identifier.Id)
+    call.setString(3, title)
     result = call.executeQuery()
     if result.next():
         id = result.getString(1)
@@ -35,35 +48,36 @@ def selectChildId(identifier, title):
 
 def countChildTitle(identifier, title):
     count = None
-    call = identifier.Connection.prepareCall('CALL "countChildTitle"(?, ?)')
-    call.setString(1, identifier.Id)
-    call.setString(2, title)
+    call = identifier.Connection.prepareCall('CALL "countChildTitle"(?, ?, ?)')
+    call.setString(1, identifier.User.Id)
+    call.setString(2, identifier.Id)
+    call.setString(3, title)
     result = call.executeQuery()
     if result.next():
         count = result.getLong(1)
     call.close()
     return count
 
-def updateChildren(identifier):
-    merge, index = mergeJsonItemCall(identifier.Connection, identifier.User.Id)
-    with identifier.User.Session as session:
-        update = all(mergeJsonItem(merge, item, index) for item in ChildGenerator(session, identifier.Id))
+def updateChildren(session, connection, userid, id):
+    merge, index = mergeJsonItemCall(connection, userid)
+    update = all(mergeJsonItem(merge, item, index) for item in ChildGenerator(session, id))
     merge.close()
     return update
 
 def getChildSelect(identifier):
     # LibreOffice Columns: ['Title', 'Size', 'DateModified', 'DateCreated', 'IsFolder', 'TargetURL', 'IsHidden', 'IsVolume', 'IsRemote', 'IsRemoveable', 'IsFloppy', 'IsCompactDisc']
     # OpenOffice Columns: ['Title', 'Size', 'DateModified', 'DateCreated', 'IsFolder', 'TargetURL', 'IsHidden', 'IsVolume', 'IsRemote', 'IsRemoveable', 'IsFloppy', 'IsCompactDisc']
-    index, select = 1, identifier.Connection.prepareCall('CALL "selectChild"(?, ?, ?, ?, ?)')
+    index, select = 1, identifier.Connection.prepareCall('CALL "selectChild"(?, ?, ?, ?, ?, ?)')
     # select return RowCount as OUT parameter in select.getLong(index)!!!
     # Never managed to run the next line:
     # select.ResultSetType = uno.getConstantByName('com.sun.star.sdbc.ResultSetType.SCROLL_INSENSITIVE')
     # selectChild(IN ID VARCHAR(100),IN URL VARCHAR(250),IN MODE SMALLINT,OUT ROWCOUNT SMALLINT)
+    select.setString(index, identifier.User.Id)
+    index += 1
     select.setString(index, identifier.Id)
     index += 1
-    # "TargetURL" is done by CONCAT(BaseURL,id,'/../',id)... The root uri already ends with a '/' ...
-    uri = identifier.BaseURL
-    select.setString(index, uri if uri.endswith('/') else '%s/' % uri)
+    # "TargetURL" is done by CONCAT(BaseURL,'/',Title or Id)...
+    select.setString(index, identifier.BaseURL)
     index += 1
     # "IsFolder" is done by comparing MimeType with g_folder 'application/vnd.google-apps.folder' ...
     select.setString(index, g_folder)

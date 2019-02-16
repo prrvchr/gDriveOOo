@@ -15,7 +15,7 @@ from com.sun.star.ucb.ContentAction import INSERTED, REMOVED, DELETED, EXCHANGED
 from .unotools import getProperty, getPropertyValue, createService, getSimpleFile, getResourceLocation
 #from .items import getMergeCall, mergeItem, setContentCall
 from .google import unparseDateTime, g_scheme, getUploadLocation, OutputStream, updateItem, OAuth2Ooo
-from .google import ACQUIRED, CREATED, RENAMED, REWRITED, TRASHED
+from .google import RETRIEVED, CREATED, FOLDER, FILE, RENAMED, REWRITED, TRASHED
 from .google import g_folder, g_link, g_doc
 from .dbtools import getItemFromResult
 
@@ -46,25 +46,26 @@ def getSession(ctx, scheme, username):
     session.auth = OAuth2Ooo(ctx, scheme, username)
     return session
 
-def doSync(ctx, identifier):
+def doSync(ctx, connection, session, id):
     items = []
     #data = ('name', 'createdTime', 'modifiedTime', 'mimeType')
     transform = {'parents': lambda value: value.split(',')}
-    select = identifier.Connection.prepareCall('CALL "selectSync"(?)')
-    select.setLong(1, ACQUIRED)
+    select = connection.prepareCall('CALL "selectSync"(?, ?)')
+    select.setString(1, id)
+    select.setLong(2, RETRIEVED)
     result = select.executeQuery()
-    with identifier.User.Session as session:
-        while result.next():
-            item = getItemFromResult(result, None, transform)
-            print("contenttools.doSync(): %s" % (item, ))
-            items.append(_syncItem(ctx, session, item))
+    while result.next():
+        item = getItemFromResult(result, None, transform)
+        print("contenttools.doSync(): %s" % (item, ))
+        items.append(_syncItem(ctx, session, item))
     select.close()
     if items and all(items):
-        update = identifier.Connection.prepareCall('CALL "updateSync"(?, ?, ?)')
-        update.setString(1, ','.join(items))
-        update.setLong(2, ACQUIRED)
+        update = connection.prepareCall('CALL "updateSync"(?, ?, ?, ?)')
+        update.setString(1, id)
+        update.setString(2, ','.join(items))
+        update.setLong(3, RETRIEVED)
         update.execute()
-        r = update.getLong(3)
+        r = update.getLong(4)
         print("contenttools.doSync(): all -> Ok %s" % r)
     else:
         print("contenttools.doSync(): all -> Error")
@@ -72,31 +73,41 @@ def doSync(ctx, identifier):
     return all(items)
 
 def _syncItem(ctx, session, item):
-    result = False
-    id = item.get('id')
-    mode = item.get('mode')
-    data = None
-    print("contenttools._syncItem(): data:\n%s" % (data, ))
-    if mode & CREATED:
-        data = {'id': id,
-                'parents': item.get('parents'),
-                'name': item.get('name'),
-                'mimeType': item.get('mimeType')}
-        print("contenttools._syncItem(): created\n%s" % (data, ))
-    if mode & REWRITED:
-        size, stream = _getInputStream(ctx, id)
-        if size != 0:
-            result = uploadItem(ctx, session, id, data, size, stream)
-    if mode & RENAMED:
-        data = {'name': item.get('name')}
-        result = updateItem(session, id, data)
-    if mode & TRASHED:
-        data = {'trashed': True}
-        result = updateItem(session, id, data)
-    return result
+    try:
+        result = False
+        id = item.get('id')
+        mode = item.get('mode')
+        data, new = None, False
+        print("contenttools._syncItem(): mode: %s" % (mode, ))
+        if mode & CREATED:
+            data = {'id': id,
+                    'parents': item.get('parents'),
+                    'name': item.get('name'),
+                    'mimeType': item.get('mimeType')}
+            print("contenttools._syncItem(): created\n%s" % (data, ))
+            if mode & FOLDER:
+                result = updateItem(session, id, data, True)
+            if mode & FILE:
+                size, stream = _getInputStream(ctx, id)
+                if size != 0:
+                    result = uploadItem(ctx, session, id, data, size, stream, True)
+        else:
+            if mode & REWRITED:
+                size, stream = _getInputStream(ctx, id)
+                if size != 0:
+                    result = uploadItem(ctx, session, id, data, size, stream, False)
+            if mode & RENAMED:
+                data = {'name': item.get('name')}
+                result = updateItem(session, id, data, False)
+        if mode & TRASHED:
+            data = {'trashed': True}
+            result = updateItem(session, id, data, False)
+        return result
+    except Exception as e:
+        print("contenttools._syncItem().Error: %s - %e" % (e, traceback.print_exc()))
 
-def uploadItem(ctx, session, id, data, size, stream):
-    location = getUploadLocation(session, id, data, size)
+def uploadItem(ctx, session, id, data, size, stream, new):
+    location = getUploadLocation(session, id, data, size, new)
     if location is not None:
         pump = getPump(ctx)
         pump.setInputStream(stream)

@@ -14,15 +14,20 @@ from com.sun.star.sdbc import XRow, XResultSet, XResultSetMetaDataSupplier
 from com.sun.star.sdb import XInteractionSupplyParameters
 from com.sun.star.container import XIndexAccess, XChild
 from com.sun.star.task import XInteractionRequest
-from com.sun.star.io import XStreamListener
+from com.sun.star.io import XStreamListener, XInputStreamProvider
+from com.sun.star.util import XUpdatable
+from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
 #from com.sun.star.document import XCmisDocument
 
 from .unolib import PropertySet
 from .unotools import getProperty
 from .contenttools import getUcb, getUri, getNameClashResolveRequest, getAuthenticationRequest
-from .contenttools import getParametersRequest, getSession
-from .identifiers import isIdentifier, getNewIdentifier
+from .contenttools import getParametersRequest, getSession, doSync
+from .identifiers import isIdentifier, getNewIdentifier, isIdentifier
+from .children import updateChildren, selectChildLastId
+from .google import InputStream
 
+from requests.compat import unquote_plus
 import traceback
 
 
@@ -60,14 +65,15 @@ class ContentUser(unohelper.Base, PropertySet):
         return properties
 
 
-class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild):
+class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild, XInputStreamProvider, XUpdatable):
     def __init__(self, ctx, connection, mode, user, uri):
         self.ctx = ctx
         self.Connection = connection
         self.Mode = mode
         self.User = user
         self.Uri = uri
-        self.Id, self.BaseURL = self._initUri(uri) if self.User.IsValid else (None, None)
+        self.Id, self.Url = self._parseUri() if self.User.IsValid else (None, None)
+        self.size = 0
 
     @property
     def IsRoot(self):
@@ -76,8 +82,33 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild)
     def IsValid(self):
         return self.Id is not None
     @property
+    def BaseURL(self):
+        return self.Url if self.IsRoot else '%s/%s' % (self.Url, self.Id)
+    @property
     def NewIdentifier(self):
-        return getNewIdentifier(self.Connection)
+        return getNewIdentifier(self.Connection, self.User.Id)
+    @property
+    def HasChild(self):
+        haschild = False
+        with self.User.Session as session:
+            haschild = updateChildren(session, self.Connection, self.User.Id, self.Id)
+        return haschild
+    @property
+    def InputStream(self):
+        return self.size
+    @InputStream.setter
+    def InputStream(self, size):
+        self.size = size
+
+    # XInputStreamProvider
+    def createInputStream(self):
+        return InputStream(self.User.Session, self.Id, self.size)
+
+    # XUpdatable
+    def update(self):
+        if self.Mode == ONLINE:
+            with self.User.Session as session:
+                doSync(self.ctx, self.Connection, session, self.User.Id)
 
     # XContentIdentifier
     def getContentIdentifier(self):
@@ -88,51 +119,34 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild)
     # XChild
     def getParent(self):
         print("contentlib.getParent(): ************************")
-        segments = []
-        for i in range(self.Uri.getPathSegmentCount()):
-            segment = self.Uri.getPathSegment(i).strip()
-            if segment == '..' and segments:
-                segments.pop()
-            elif segment not in ('','.'):
-                segments.append(segment)
-        if segments:
-            segments.pop()
-        if segments:
-            segments.append('..')
-            segments.append(segments[-2])
-        identifier = '%s://%s/%s' % (self.Uri.getScheme(), self.Uri.getAuthority(), '/'.join(segments))
-        uri = getUri(self.ctx, identifier)
+        uri = getUri(self.ctx, self.Url)
+        print("ContentIdentifier.getParent():\n    Uri: %s\n    Parent: %s" % (self.Uri.getUriReference(), uri.getUriReference()))
         return ContentIdentifier(self.ctx, self.Connection, self.Mode, self.User, uri)
     def setParent(self, parent):
         raise NoSupportException('Parent can not be set', self)
 
-    def _initUri(self, uri):
-        olduri = uri.getUriReference()
-        id = self.User.RootId
-        segments = []
-        count = uri.getPathSegmentCount()
-        rewrite = False
-        if count > 0:
-            last = uri.getPathSegment(count -1).strip()
-            for i in range(count):
-                segment = uri.getPathSegment(i).strip()
-                if segment == '..':
-                    if last in ('', '.', '..'):
-                        segments.pop()
-                        rewrite = True
-                    elif last == id:
-                        rewrite = False
-                    id = segments[-1] if segments else self.User.RootId
+    def _parseUri(self):
+        title, position = None, -1
+        parentid, paths = self.User.RootId, [self.Uri.getAuthority()]
+        for i in range(self.Uri.getPathSegmentCount() -1, -1, -1):
+            path = self.Uri.getPathSegment(i).strip()
+            if path not in ('','.'):
+                if title is None:
+                    title = unquote_plus(path.encode('utf-8')).decode('utf-8')
+                    position = i
+                elif parentid == self.User.RootId:
+                    parentid = path
                     break
-                elif segment != '':
-                    segments.append(segment)
-                    id = segment
-                    rewrite = True
-        url = '%s://%s/%s' % (uri.getScheme(), uri.getAuthority(), '/'.join(segments))
-        #if rewrite and segments:
-        #    identifier = '%s/../%s' % (url, id)
-        #    uri = getUri(self.ctx, identifier)
-        print("ContentIdentifier._initUri():\n    Uri: %s\n    Id: %s\n    Url: %s\n    Uri: %s" % (olduri, id, url, uri.getUriReference()))
+        for i in range(position):
+            paths.append(self.Uri.getPathSegment(i).strip())
+        url = '%s://%s' % (self.Uri.getScheme(), '/'.join(paths))
+        if title is None:
+            id = self.User.RootId
+        elif isIdentifier(self.Connection, title):
+            id = title
+        else:
+            id = selectChildLastId(self.Connection, self.User.Id, parentid, title)
+        print("ContentIdentifier._parseUri():\n    Uri: %s\n    Id - Title - Position: %s - %s - %s\n    BaseURL: %s" % (self.Uri.getUriReference(), id, title, position, url))
         return id, url
 
     def _getPropertySetInfo(self):
@@ -149,6 +163,8 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild)
         properties['IsValid'] = getProperty('IsValid', 'boolean', bound | readonly)
         properties['BaseURL'] = getProperty('BaseURL', 'string', bound | readonly)
         properties['NewIdentifier'] = getProperty('NewIdentifier', 'string', maybevoid | bound | readonly)
+        properties['HasChild'] = getProperty('HasChild', 'boolean', bound | readonly)
+        properties['InputStream'] = getProperty('InputStream', 'long', maybevoid)
         return properties
 
 
@@ -499,6 +515,7 @@ class ContentResultSet(unohelper.Base, PropertySet, XResultSet, XRow,
         return self.resultset.wasNull()
     def getString(self, index):
         result = self.resultset.getString(index)
+        #print("ContentResultSet.getString(): %s" % result)
         return result
     def getBoolean(self, index):
         return self.resultset.getBoolean(index)
@@ -528,6 +545,7 @@ class ContentResultSet(unohelper.Base, PropertySet, XResultSet, XRow,
         return self.resultset.getCharacterStream(index)
     def getObject(self, index, map):
         result = self.resultset.getObject(index, map)
+        #print("ContentResultSet.getObject(): %s" % result)
         return result
     def getRef(self, index):
         return self.resultset.getRef(index)
@@ -545,6 +563,7 @@ class ContentResultSet(unohelper.Base, PropertySet, XResultSet, XRow,
     # XContentAccess
     def queryContentIdentifierString(self):
         identifier = self.resultset.getString(self.resultset.findColumn('TargetURL'))
+        #print("ContentResultSet.queryContentIdentifierString(): %s" % identifier)
         return identifier
     def queryContentIdentifier(self):
         identifier = self.queryContentIdentifierString()

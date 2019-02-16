@@ -21,23 +21,25 @@ def isIdentifier(connection, id):
 def checkIdentifiers(connection, user):
     try:
         result = True
-        if _countIdentifier(connection) < min(g_IdentifierRange):
+        if _countIdentifier(connection, user.Id) < min(g_IdentifierRange):
             result = _insertIdentifier(connection, user, max(g_IdentifierRange))
         return result
     except Exception as e:
         print("identifiers.checkIdentifiers().Error: %s - %s" % (e, traceback.print_exc()))
 
-def getNewIdentifier(connection):
-    select = connection.prepareCall('CALL "selectIdentifier"()')
+def getNewIdentifier(connection, id):
+    select = connection.prepareCall('CALL "selectIdentifier"(?)')
+    select.setString(1, id)
     result = select.executeQuery()
     if result.next():
         id = result.getString(1)
     select.close()
     return id
 
-def _countIdentifier(connection):
+def _countIdentifier(connection, id):
     count = 0
-    call = connection.prepareCall('CALL "countIdentifier"()')
+    call = connection.prepareCall('CALL "countIdentifier"(?)')
+    call.setString(1, id)
     result = call.executeQuery()
     if result.next():
         count = result.getLong(1)

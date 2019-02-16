@@ -11,6 +11,7 @@ from .unotools import getResourceLocation, getPropertyValue, getSimpleFile
 
 import traceback
 
+
 g_protocol = 'jdbc:hsqldb:'
 g_folder = 'hsqldb/'
 g_jar = 'hsqldb.jar'

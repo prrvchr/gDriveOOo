@@ -10,7 +10,7 @@ from com.sun.star.lang import XServiceInfo, NoSupportException
 from com.sun.star.ucb import XContent, XCommandProcessor2, CommandAbortedException
 from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
 
-from gdrive import Initialization, CommandInfo, CmisPropertySetInfo, Row, CmisDocument, InputStream
+from gdrive import Initialization, CommandInfo, CmisPropertySetInfo, Row, CmisDocument
 from gdrive import PropertiesChangeNotifier, PropertySetInfoChangeNotifier, CommandInfoChangeNotifier
 from gdrive import ContentIdentifier, PropertyContainer, InteractionRequestName, countChildTitle
 from gdrive import getContentInfo, getPropertiesValues, uploadItem, getUcb, getMimeType, getUri, getInteractionHandler
@@ -18,7 +18,7 @@ from gdrive import getUnsupportedNameClashException, getCommandIdentifier
 from gdrive import createService, getResourceLocation, parseDateTime, getPropertySetInfoChangeEvent, getNewIdentifier
 from gdrive import getSimpleFile, getCommandInfo, getProperty, getUcp, selectChildId
 from gdrive import propertyChange, setPropertiesValues, getLogger, getCmisProperty, getPropertyValue
-from gdrive import ACQUIRED, CREATED, RENAMED, REWRITED, TRASHED
+from gdrive import RETRIEVED, CREATED, FOLDER, FILE, RENAMED, REWRITED, TRASHED
 
 import requests
 import traceback
@@ -111,14 +111,11 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         return self.Name
     @property
     def Title(self):
-        return self.Name
+        # After 'File Save', LibreOffice use 'Title' for executing 'Transfer' command at parent folder level
+        return self.Id
     @Title.setter
     def Title(self, title):
         old = self.Name
-        #old = self.Identifier
-        #url = '%s/../%s' % (self.Identifier.BaseURL, self.Id)
-        #uri = getUri(self.ctx, url)
-        #self.Identifier = ContentIdentifier(self.ctx, self.Identifier.Connection, self.Identifier.Mode, self.Identifier.User, uri)
         print("DriveOfficeContent.Title.setter() 1")
         self.Name = title
         propertyChange(self, 'Name', old, title)
@@ -217,7 +214,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
                 print("DriveOfficeContent.getPropertyValues() 2: %s" % (namedvalues, ))
                 result = Row(namedvalues)
             elif command.Name == 'setPropertyValues':
-                result = setPropertiesValues(self, command.Argument, self.Logger)
+                result = setPropertiesValues(self, command.Argument, self._propertySetInfo, self.Logger)
             elif command.Name == 'open':
                 print ("DriveOfficeContent.open(): %s" % command.Argument.Mode)
                 sf = getSimpleFile(self.ctx)
@@ -225,10 +222,11 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
                 if url is None:
                     raise CommandAbortedException("Error while downloading file: %s" % self.Name, self)
                 sink = command.Argument.Sink
+                stream = uno.getTypeByName('com.sun.star.io.XActiveDataStreamer')
                 if sink.queryInterface(uno.getTypeByName('com.sun.star.io.XActiveDataSink')):
                     msg += " ReadOnly mode selected ..."
                     sink.setInputStream(sf.openFileRead(url))
-                elif not self.IsReadOnly and sink.queryInterface(uno.getTypeByName('com.sun.star.io.XActiveDataStreamer')):
+                elif not self.IsReadOnly and sink.queryInterface(stream):
                     msg += " ReadWrite mode selected ..."
                     sink.setStream(sf.openFileReadWrite(url))
             elif command.Name == 'insert':
@@ -246,7 +244,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
                     stream.closeInput()
                     self.Size = sf.getSize(target)
                     self.addPropertiesChangeListener(('Id', 'Name', 'Size', 'Trashed', 'Loaded'), getUcp(self.ctx))
-                    self.Id = CREATED+REWRITED
+                    self.Id = CREATED + FILE
                 print("DriveOfficeContent.execute(): insert FIN")
             elif command.Name == 'delete':
                 print("DriveOfficeContent.execute(): delete")
@@ -287,16 +285,16 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         url = getResourceLocation(self.ctx, '%s/%s' % (self.Scheme, self.Id))
         if self.Loaded == OFFLINE and sf.exists(url):
             return url
-        with self.Identifier.User.Session as session:
-            try:
-                stream = InputStream(session, self.Id, self.Size)
-                sf.writeFile(url, stream)
-            except:
-                return None
-            else:
-                self.Loaded = OFFLINE
-            finally:
-                stream.closeInput()
+        try:
+            self.Identifier.InputStream = self.Size
+            stream = self.Identifier.createInputStream()
+            sf.writeFile(url, stream)
+        except:
+            return None
+        else:
+            self.Loaded = OFFLINE
+        finally:
+            stream.closeInput()
         return url
 
     def _getCommandInfo(self):
@@ -336,7 +334,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         properties['IsDocument'] = getProperty('IsDocument', 'boolean', bound | readonly)
         properties['IsFolder'] = getProperty('IsFolder', 'boolean', bound | readonly)
         properties['Title'] = getProperty('Title', 'string', bound | constrained)
-        properties['Size'] = getProperty('Size', 'long', bound | readonly)
+        properties['Size'] = getProperty('Size', 'long', bound)
         properties['DateModified'] = getProperty('DateModified', 'com.sun.star.util.DateTime', bound | readonly)
         properties['DateCreated'] = getProperty('DateCreated', 'com.sun.star.util.DateTime', bound | readonly)
         properties['IsReadOnly'] = getProperty('IsReadOnly', 'boolean', bound | readonly)

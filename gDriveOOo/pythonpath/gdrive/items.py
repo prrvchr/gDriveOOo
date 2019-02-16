@@ -5,17 +5,18 @@ import uno
 
 from .dbtools import getItemFromResult, SqlArray
 from .google import parseDateTime, unparseDateTime
-from .google import ACQUIRED, CREATED, RENAMED, REWRITED, TRASHED
+from .google import RETRIEVED, CREATED, FOLDER, FILE, RENAMED, REWRITED, TRASHED
 from .contenttools import setContentData
 
 import traceback
 
 
-def needSync(connection):
-    call = connection.prepareCall('CALL "needSync"(?, ?)')
-    call.setLong(1, ACQUIRED)
+def needSync(connection, id):
+    call = connection.prepareCall('CALL "needSync"(?, ?, ?)')
+    call.setString(1, id)
+    call.setLong(2, RETRIEVED)
     call.execute()
-    sync = call.getBoolean(2)
+    sync = call.getBoolean(3)
     call.close()
     return sync
 
@@ -30,13 +31,14 @@ def selectUser(connection, username, mode):
     select.close()
     return user
 
-def selectItem(connection, id):
+def selectItem(connection, userid, id):
     item = None
     data = ('Name', 'DateCreated', 'DateModified', 'MimeType', 'Size', 'Trashed',
             'CanAddChild', 'CanRename', 'IsReadOnly', 'IsVersionable', 'Loaded')
-    select = connection.prepareCall('CALL "selectItem"(?)')
-    # selectItem(IN ID VARCHAR(100))
-    select.setString(1, id)
+    select = connection.prepareCall('CALL "selectItem"(?, ?)')
+    # selectItem(IN USERID VARCHAR(100),IN ID VARCHAR(100))
+    select.setString(1, userid)
+    select.setString(2, id)
     result = select.executeQuery()
     if result.next():
         item = getItemFromResult(result, data)
