@@ -100,12 +100,11 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
     def Title(self):
         return self.Name
     @Title.setter
-    def Title(self, newtitle):
-        oldtitle = self.Name
-        self.Name = newtitle
-        propertyChange(self, 'Name', oldtitle, newtitle)
-        uri = '%s/%s' % (self.getIdentifier().BaseURL, newtitle)
-        identifier = getUcp(self.ctx).createContentIdentifier(uri)
+    def Title(self, title):
+        identifier = self.getIdentifier()
+        old = self.Name
+        self.Name = title
+        propertyChange(self, 'Name', old, title)
         event = getContentEvent(self, EXCHANGED, self, identifier)
         self.notify(event)
     @property
@@ -201,9 +200,9 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
                 return setPropertiesValues(self, command.Argument, self._propertySetInfo, self.Logger)
             elif command.Name == 'open':
                 print("DriveFolderContent.execute() open 1")
-                mode = self.Identifier.Mode
                 if self.Loaded == ONLINE:
-                    if self.Identifier.HasChild:
+                    self.Identifier.updateLinks()
+                    if self.Identifier.Updated:
                         self.Loaded = OFFLINE
                 print("DriveFolderContent.execute() open 2")
                 # Not Used: command.Argument.Properties - Implement me ;-)

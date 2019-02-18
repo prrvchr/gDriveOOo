@@ -15,7 +15,7 @@ from com.sun.star.sdb import XInteractionSupplyParameters
 from com.sun.star.container import XIndexAccess, XChild
 from com.sun.star.task import XInteractionRequest
 from com.sun.star.io import XStreamListener, XInputStreamProvider
-from com.sun.star.util import XUpdatable
+from com.sun.star.util import XUpdatable, XLinkUpdate
 from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
 #from com.sun.star.document import XCmisDocument
 
@@ -65,7 +65,7 @@ class ContentUser(unohelper.Base, PropertySet):
         return properties
 
 
-class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild, XInputStreamProvider, XUpdatable):
+class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild, XInputStreamProvider, XUpdatable, XLinkUpdate):
     def __init__(self, ctx, connection, mode, user, uri):
         self.ctx = ctx
         self.Connection = connection
@@ -74,6 +74,7 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild,
         self.Uri = uri
         self.Id, self.Url = self._parseUri() if self.User.IsValid else (None, None)
         self.size = 0
+        self._Updated = False
 
     @property
     def IsRoot(self):
@@ -88,11 +89,8 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild,
     def NewIdentifier(self):
         return getNewIdentifier(self.Connection, self.User.Id)
     @property
-    def HasChild(self):
-        haschild = False
-        with self.User.Session as session:
-            haschild = updateChildren(session, self.Connection, self.User.Id, self.Id)
-        return haschild
+    def Updated(self):
+        return self._Updated
     @property
     def InputStream(self):
         return self.size
@@ -106,9 +104,17 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild,
 
     # XUpdatable
     def update(self):
+        self._Updated = True
         if self.Mode == ONLINE:
             with self.User.Session as session:
-                doSync(self.ctx, self.Connection, session, self.User.Id)
+                self._Updated = doSync(self.ctx, self.Connection, session, self.User.Id)
+
+    # XLinkUpdate
+    def updateLinks(self):
+        self._Updated = False
+        if self.Mode == ONLINE:
+            with self.User.Session as session:
+                self._Updated = updateChildren(session, self.Connection, self.User.Id, self.Id)
 
     # XContentIdentifier
     def getContentIdentifier(self):
@@ -118,36 +124,59 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild,
 
     # XChild
     def getParent(self):
-        print("contentlib.getParent(): ************************")
+        #print("contentlib.getParent(): ************************")
         uri = getUri(self.ctx, self.Url)
-        print("ContentIdentifier.getParent():\n    Uri: %s\n    Parent: %s" % (self.Uri.getUriReference(), uri.getUriReference()))
+        #print("ContentIdentifier.getParent():\n    Uri: %s\n    Parent: %s" % (self.Uri.getUriReference(), uri.getUriReference()))
         return ContentIdentifier(self.ctx, self.Connection, self.Mode, self.User, uri)
     def setParent(self, parent):
         raise NoSupportException('Parent can not be set', self)
 
     def _parseUri(self):
         title, position = None, -1
-        parentid, paths = self.User.RootId, [self.Uri.getAuthority()]
+        parentid, paths = self.User.RootId, []
         for i in range(self.Uri.getPathSegmentCount() -1, -1, -1):
             path = self.Uri.getPathSegment(i).strip()
             if path not in ('','.'):
                 if title is None:
-                    title = unquote_plus(path.encode('utf-8')).decode('utf-8')
+                    title = self._unquote(path)
                     position = i
-                elif parentid == self.User.RootId:
+                else:
                     parentid = path
                     break
-        for i in range(position):
-            paths.append(self.Uri.getPathSegment(i).strip())
-        url = '%s://%s' % (self.Uri.getScheme(), '/'.join(paths))
         if title is None:
             id = self.User.RootId
         elif isIdentifier(self.Connection, title):
             id = title
         else:
             id = selectChildLastId(self.Connection, self.User.Id, parentid, title)
-        print("ContentIdentifier._parseUri():\n    Uri: %s\n    Id - Title - Position: %s - %s - %s\n    BaseURL: %s" % (self.Uri.getUriReference(), id, title, position, url))
+        for i in range(position):
+            paths.append(self.Uri.getPathSegment(i).strip())
+        if id is None:
+            id = self._searchId(paths[::-1], title)
+        paths.insert(0, self.Uri.getAuthority())
+        url = '%s://%s' % (self.Uri.getScheme(), '/'.join(paths))                
+        #print("ContentIdentifier._parseUri():\n    Uri: %s\n    Id - Title - Position: %s - %s - %s\n    BaseURL: %s" % (self.Uri.getUriReference(), id, title, position, url))
         return id, url
+
+    def _searchId(self, paths, title):
+        paths.append(self.User.RootId)
+        for index, path in enumerate(paths):
+            if isIdentifier(self.Connection, path):
+                id = path
+                break
+        for i in range(index -1, -1, -1):
+            path = self._unquote(paths[i])
+            id = selectChildLastId(self.Connection, self.User.Id, id, path)
+        id = selectChildLastId(self.Connection, self.User.Id, id, title)
+        return id
+
+    def _unquote(self, text):
+        # Needed for OpenOffice / LibreOffice compatibility
+        if isinstance(text, str):
+            text = unquote_plus(text)
+        else:
+            text = unquote_plus(text.encode('utf-8')).decode('utf-8')
+        return text
 
     def _getPropertySetInfo(self):
         properties = {}
@@ -163,7 +192,7 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild,
         properties['IsValid'] = getProperty('IsValid', 'boolean', bound | readonly)
         properties['BaseURL'] = getProperty('BaseURL', 'string', bound | readonly)
         properties['NewIdentifier'] = getProperty('NewIdentifier', 'string', maybevoid | bound | readonly)
-        properties['HasChild'] = getProperty('HasChild', 'boolean', bound | readonly)
+        properties['Updated'] = getProperty('Updated', 'boolean', bound | readonly)
         properties['InputStream'] = getProperty('InputStream', 'long', maybevoid)
         return properties
 

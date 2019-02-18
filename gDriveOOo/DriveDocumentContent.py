@@ -12,12 +12,12 @@ from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
 
 from gdrive import Initialization, CommandInfo, PropertySetInfo, Row, PropertyContainer
 from gdrive import PropertiesChangeNotifier, PropertySetInfoChangeNotifier, CommandInfoChangeNotifier
-from gdrive import getDbConnection, parseDateTime, getChildSelect, getLogger
-from gdrive import createService, getSimpleFile, getResourceLocation
+from gdrive import getDbConnection, parseDateTime, getChildSelect, getLogger, getUcp
+from gdrive import createService, getSimpleFile, getResourceLocation, getMimeType
 from gdrive import getUcb, getCommandInfo, getProperty, getContentInfo
 from gdrive import propertyChange, getPropertiesValues, setPropertiesValues, uploadItem
 from gdrive import getCommandIdentifier
-from gdrive import RETRIEVED, CREATED, RENAMED, REWRITED, TRASHED
+from gdrive import RETRIEVED, CREATED, FOLDER, FILE, RENAMED, REWRITED, TRASHED
 
 import traceback
 
@@ -78,7 +78,8 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
             self.initialize(namedvalues)
 
             self.ObjectId = self.Id
-            self.CasePreservingURL = self.Identifier.getContentIdentifier() + 'TEST'
+            self.TargetURL = self.Identifier.getContentIdentifier()
+            self.BaseURI = self.Identifier.BaseURL
             msg = "DriveDocumentContent loading Uri: %s ... Done" % self.Identifier.getContentIdentifier()
             self.Logger.logp(level, "DriveDocumentContent", "__init__()", msg)
             print("DriveDocumentContent.__init__()")
@@ -105,20 +106,28 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
         return self.Name
     @Title.setter
     def Title(self, title):
-        propertyChange(self, 'Name', self.Name, title)
+        identifier = self.getIdentifier()
+        old = self.Name
+        print("DriveOfficeContent.Title.setter() 1")
         self.Name = title
+        propertyChange(self, 'Name', old, title)
+        print("DriveOfficeContent.Title.setter() 2")
+        event = getContentEvent(self, EXCHANGED, self, identifier)
+        self.notify(event)
     @property
     def Size(self):
-        return 0
+        return self._Size
     @Size.setter
     def Size(self, size):
-        propertyChange(self, 'Size', 0, size)
+        propertyChange(self, 'Size', self._Size, size)
+        self._Size = size
     @property
     def Trashed(self):
         return self._Trashed
     @Trashed.setter
     def Trashed(self, trashed):
         propertyChange(self, 'Trashed', self._Trashed, trashed)
+        self._Trashed = trashed
     @property
     def MediaType(self):
         return self.typeMaps.get(self.MimeType, self.MimeType)
@@ -129,6 +138,18 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
     def Loaded(self, loaded):
         propertyChange(self, 'Loaded', self._Loaded, loaded)
         self._Loaded = loaded
+    @property
+    def CasePreservingURL(self):
+        return self.Identifier.getContentIdentifier()
+    @CasePreservingURL.setter
+    def CasePreservingURL(self, url):
+        pass
+    @property
+    def CreatableContentsInfo(self):
+        return ()
+    @CreatableContentsInfo.setter
+    def CreatableContentsInfo(self, contentinfo):
+        pass
 
     # XCallback
     def notify(self, event):
@@ -154,7 +175,8 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
         return self.ContentType
     def addContentEventListener(self, listener):
         print("DriveDocumentContent.addContentEventListener()")
-        self.contentListeners.append(listener)
+        if listener not in self.contentListeners:
+            self.contentListeners.append(listener)
     def removeContentEventListener(self, listener):
         print("DriveDocumentContent.removeContentEventListener()")
         if listener in self.contentListeners:
@@ -185,10 +207,11 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
             if url is None:
                 raise CommandAbortedException("Error while downloading file: %s" % self.Name, self)
             sink = command.Argument.Sink
+            stream = uno.getTypeByName('com.sun.star.io.XActiveDataStreamer')
             if sink.queryInterface(uno.getTypeByName('com.sun.star.io.XActiveDataSink')):
                 msg += " ReadOnly mode selected ..."
                 sink.setInputStream(sf.openFileRead(url))
-            elif not self.IsReadOnly and sink.queryInterface(uno.getTypeByName('com.sun.star.io.XActiveDataStreamer')):
+            elif not self.IsReadOnly and sink.queryInterface(stream):
                 msg += " ReadWrite mode selected ..."
                 sink.setStream(sf.openFileReadWrite(url))
         elif command.Name == 'insert':
@@ -196,16 +219,22 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
             # it saves content from createNewContent from the parent folder
             print("DriveDocumentContent.execute(): insert %s" % command.Argument)
             stream = command.Argument.Data
-            replace = command.Argument.ReplaceExisting
-            if stream.queryInterface(uno.getTypeByName('com.sun.star.io.XInputStream')):
-                sf = getSimpleFile(self.ctx)
-                target = getResourceLocation(self.ctx, '%s/%s' % (self.Scheme, self.Id))
+            sf = getSimpleFile(self.ctx)
+            path = '%s/%s' % (self.getIdentifier().getContentProviderScheme(), self.getIdentifier().Id)
+            target = getResourceLocation(self.ctx, path)
+            if sf.exists(target) and not command.Argument.ReplaceExisting:
+                pass
+            elif stream.queryInterface(uno.getTypeByName('com.sun.star.io.XInputStream')):
+                ucp = getUcp(self.ctx)
                 sf.writeFile(target, stream)
-                self._setMimeType(getMimeType(self.ctx, stream))
+                self.MimeType = getMimeType(self.ctx, stream)
                 stream.closeInput()
                 self.Size = sf.getSize(target)
-                self.addPropertiesChangeListener(('Id', 'Name', 'Size', 'Trashed', 'Loaded'), getUcp(self.ctx))
-                self.Id = CREATED+REWRITED
+                self.addPropertiesChangeListener(('Id', 'Name', 'Size', 'Trashed', 'Loaded'), ucp)
+                self.Id = CREATED + FILE
+                identifier = self.getIdentifier().getParent()
+                event = getContentEvent(self, INSERTED, self, identifier)
+                ucp.queryContent(identifier).notify(event)
         elif command.Name == 'delete':
             print("DriveDocumentContent.execute(): delete")
             self.Trashed = True
@@ -232,9 +261,9 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
         url = getResourceLocation(self.ctx, '%s/%s' % (self.Scheme, self.Id))
         if self.Loaded == OFFLINE and sf.exists(url):
             return url
-        self.Identifier.DownloadSize = self.Size
         try:
-            stream = self.Identifier.DownloadStream
+            self.Identifier.InputStream = self.Size
+            stream = self.Identifier.createInputStream()
             sf.writeFile(url, stream)
         except:
             return None
@@ -243,7 +272,6 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
         finally:
             stream.closeInput()
         return url
-
 
     def _getCommandInfo(self):
         commands = {}
@@ -278,6 +306,7 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
         properties['Loaded'] = getProperty('Loaded', 'long', bound)
         properties['ObjectId'] = getProperty('ObjectId', 'string', bound | readonly)
         properties['CasePreservingURL'] = getProperty('CasePreservingURL', 'string', bound | readonly)
+        properties['CreatableContentsInfo'] = getProperty('CreatableContentsInfo', '[]com.sun.star.ucb.ContentInfo', bound)
 
         properties['IsHidden'] = getProperty('IsHidden', 'boolean', bound | readonly)
         properties['IsVolume'] = getProperty('IsVolume', 'boolean', bound | readonly)

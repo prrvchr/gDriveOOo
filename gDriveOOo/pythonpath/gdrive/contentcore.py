@@ -149,7 +149,7 @@ def _getTitleIndex(name, separator):
 
 def updateContent(ctx, event):
     print("contentcore.updateContent() %s - %s" % (event.PropertyName, event.NewValue))
-    name, sync, result = event.PropertyName, True, False
+    name, update, result = event.PropertyName, True, False
     identifier = event.Source.getIdentifier()
     if name == 'Id':
         result = insertContentItem(event.Source, identifier, event.NewValue)
@@ -174,9 +174,10 @@ def updateContent(ctx, event):
         result = updateSize(identifier, event.NewValue)
     elif name == 'Loaded':
         result = updateLoaded(identifier, event.NewValue)
-        sync = False
-    if sync and result:
+        update = False
+    if update and result:
         identifier.update()
+        result = identifier.Updated
     print("contentcore.updateContent() %s" % result)
     return result
 

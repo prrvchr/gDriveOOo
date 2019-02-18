@@ -14,7 +14,7 @@ from gdrive import Initialization, CommandInfo, CmisPropertySetInfo, Row, CmisDo
 from gdrive import PropertiesChangeNotifier, PropertySetInfoChangeNotifier, CommandInfoChangeNotifier
 from gdrive import ContentIdentifier, PropertyContainer, InteractionRequestName, countChildTitle
 from gdrive import getContentInfo, getPropertiesValues, uploadItem, getUcb, getMimeType, getUri, getInteractionHandler
-from gdrive import getUnsupportedNameClashException, getCommandIdentifier
+from gdrive import getUnsupportedNameClashException, getCommandIdentifier, getContentEvent
 from gdrive import createService, getResourceLocation, parseDateTime, getPropertySetInfoChangeEvent, getNewIdentifier
 from gdrive import getSimpleFile, getCommandInfo, getProperty, getUcp, selectChildId
 from gdrive import propertyChange, setPropertiesValues, getLogger, getCmisProperty, getPropertyValue
@@ -111,15 +111,17 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         return self.Name
     @property
     def Title(self):
-        # After 'File Save', LibreOffice use 'Title' for executing 'Transfer' command at parent folder level
-        return self.Id
+        return self.Name
     @Title.setter
     def Title(self, title):
+        identifier = self.getIdentifier()
         old = self.Name
         print("DriveOfficeContent.Title.setter() 1")
         self.Name = title
         propertyChange(self, 'Name', old, title)
         print("DriveOfficeContent.Title.setter() 2")
+        event = getContentEvent(self, EXCHANGED, self, identifier)
+        self.notify(event)
     @property
     def Size(self):
         return self._Size
@@ -150,7 +152,6 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
     def Loaded(self, loaded):
         propertyChange(self, 'Loaded', self._Loaded, loaded)
         self._Loaded = loaded
-
     @property
     def CasePreservingURL(self):
         return self.Identifier.getContentIdentifier()
@@ -235,16 +236,21 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
                 print("DriveOfficeContent.execute(): insert %s" % command.Argument)
                 stream = command.Argument.Data
                 sf = getSimpleFile(self.ctx)
-                target = getResourceLocation(self.ctx, '%s/%s' % (self.Scheme, self.Id))
+                path = '%s/%s' % (self.getIdentifier().getContentProviderScheme(), self.getIdentifier().Id)
+                target = getResourceLocation(self.ctx, path)
                 if sf.exists(target) and not command.Argument.ReplaceExisting:
                     pass
                 elif stream.queryInterface(uno.getTypeByName('com.sun.star.io.XInputStream')):
+                    ucp = getUcp(self.ctx)
                     sf.writeFile(target, stream)
                     self.MimeType = getMimeType(self.ctx, stream)
                     stream.closeInput()
                     self.Size = sf.getSize(target)
-                    self.addPropertiesChangeListener(('Id', 'Name', 'Size', 'Trashed', 'Loaded'), getUcp(self.ctx))
+                    self.addPropertiesChangeListener(('Id', 'Name', 'Size', 'Trashed', 'Loaded'), ucp)
                     self.Id = CREATED + FILE
+                    identifier = self.getIdentifier().getParent()
+                    event = getContentEvent(self, INSERTED, self, identifier)
+                    ucp.queryContent(identifier).notify(event)
                 print("DriveOfficeContent.execute(): insert FIN")
             elif command.Name == 'delete':
                 print("DriveOfficeContent.execute(): delete")
