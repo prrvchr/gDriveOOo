@@ -284,8 +284,8 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         commands['setPropertyValues'] = getCommandInfo('setPropertyValues', '[]com.sun.star.beans.PropertyValue')
         commands['open'] = getCommandInfo('open', 'com.sun.star.ucb.OpenCommandArgument2')
         commands['createNewContent'] = getCommandInfo('createNewContent', 'com.sun.star.ucb.ContentInfo')
-        #commands['insert'] = getCommandInfo('insert', 'com.sun.star.ucb.InsertCommandArgument')
-        commands['insert'] = getCommandInfo('insert', 'com.sun.star.ucb.InsertCommandArgument2')
+        commands['insert'] = getCommandInfo('insert', 'com.sun.star.ucb.InsertCommandArgument')
+        #commands['insert'] = getCommandInfo('insert', 'com.sun.star.ucb.InsertCommandArgument2')
         if not self.Identifier.IsRoot:
             commands['delete'] = getCommandInfo('delete', 'boolean')
         commands['transfer'] = getCommandInfo('transfer', 'com.sun.star.ucb.TransferInfo')
