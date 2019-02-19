@@ -8,7 +8,9 @@ from com.sun.star.awt import XCallback
 from com.sun.star.container import XChild
 from com.sun.star.lang import XServiceInfo, NoSupportException
 from com.sun.star.ucb import XContent, XCommandProcessor2, CommandAbortedException
+from com.sun.star.ucb.ContentAction import INSERTED, REMOVED, DELETED, EXCHANGED
 from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
+
 
 from gdrive import Initialization, CommandInfo, CmisPropertySetInfo, Row, CmisDocument
 from gdrive import PropertiesChangeNotifier, PropertySetInfoChangeNotifier, CommandInfoChangeNotifier
@@ -16,7 +18,7 @@ from gdrive import ContentIdentifier, PropertyContainer, InteractionRequestName,
 from gdrive import getContentInfo, getPropertiesValues, uploadItem, getUcb, getMimeType, getUri, getInteractionHandler
 from gdrive import getUnsupportedNameClashException, getCommandIdentifier, getContentEvent
 from gdrive import createService, getResourceLocation, parseDateTime, getPropertySetInfoChangeEvent, getNewIdentifier
-from gdrive import getSimpleFile, getCommandInfo, getProperty, getUcp, selectChildId
+from gdrive import getSimpleFile, getCommandInfo, getProperty, getUcp
 from gdrive import propertyChange, setPropertiesValues, getLogger, getCmisProperty, getPropertyValue
 from gdrive import RETRIEVED, CREATED, FOLDER, FILE, RENAMED, REWRITED, TRASHED
 
@@ -62,8 +64,6 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
             self.IsFloppy = False
             self.IsCompactDisc = False
 
-            self._commandInfo = self._getCommandInfo()
-            self._propertySetInfo = self._getPropertySetInfo()
             self.listeners = []
             self.contentListeners = []
             self.propertiesListener = {}
@@ -77,7 +77,11 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
             self._CmisProperties = None
 
             self.initialize(namedvalues)
+            
+            self._commandInfo = self._getCommandInfo()
+            self._propertySetInfo = self._getPropertySetInfo()
 
+            self._Title = self.Name
             self.ObjectId = self.Id
             self.CanCheckOut = True
             self.CanCheckIn = True
@@ -108,10 +112,11 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         return self.Identifier.User.Name
     @property
     def TitleOnServer(self):
-        return self.Name
+        # LibreOffice specifique property
+        return self.Identifier.Title
     @property
     def Title(self):
-        return self.Name
+        return self.Identifier.Title
     @Title.setter
     def Title(self, title):
         identifier = self.getIdentifier()
@@ -333,17 +338,18 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         bound = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.BOUND')
         constrained = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.CONSTRAINED')
         readonly = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.READONLY')
+        ro = 0 if self.Identifier.IsNew else readonly
         properties['Id'] = getProperty('Id', 'string', bound | readonly)
-        properties['ContentType'] = getProperty('ContentType', 'string', bound | readonly)
+        properties['ContentType'] = getProperty('ContentType', 'string', bound | ro)
         properties['MimeType'] = getProperty('MimeType', 'string', bound | readonly)
         properties['MediaType'] = getProperty('MediaType', 'string', bound | readonly)
-        properties['IsDocument'] = getProperty('IsDocument', 'boolean', bound | readonly)
-        properties['IsFolder'] = getProperty('IsFolder', 'boolean', bound | readonly)
+        properties['IsDocument'] = getProperty('IsDocument', 'boolean', bound | ro)
+        properties['IsFolder'] = getProperty('IsFolder', 'boolean', bound | ro)
         properties['Title'] = getProperty('Title', 'string', bound | constrained)
         properties['Size'] = getProperty('Size', 'long', bound)
-        properties['DateModified'] = getProperty('DateModified', 'com.sun.star.util.DateTime', bound | readonly)
+        properties['DateModified'] = getProperty('DateModified', 'com.sun.star.util.DateTime', bound | ro)
         properties['DateCreated'] = getProperty('DateCreated', 'com.sun.star.util.DateTime', bound | readonly)
-        properties['IsReadOnly'] = getProperty('IsReadOnly', 'boolean', bound | readonly)
+        properties['IsReadOnly'] = getProperty('IsReadOnly', 'boolean', bound | ro)
         properties['Loaded'] = getProperty('Loaded', 'long', bound)
 
         properties['BaseURI'] = getProperty('BaseURI', 'string', bound | readonly)
@@ -358,12 +364,12 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
 #        properties['Keywords'] = getProperty('Keywords', 'string', bound)
 #        properties['Subject'] = getProperty('Subject', 'string', bound)
         
-        properties['IsHidden'] = getProperty('IsHidden', 'boolean', bound | readonly)
-        properties['IsVolume'] = getProperty('IsVolume', 'boolean', bound | readonly)
-        properties['IsRemote'] = getProperty('IsRemote', 'boolean', bound | readonly)
-        properties['IsRemoveable'] = getProperty('IsRemoveable', 'boolean', bound | readonly)
-        properties['IsFloppy'] = getProperty('IsFloppy', 'boolean', bound | readonly)
-        properties['IsCompactDisc'] = getProperty('IsCompactDisc', 'boolean', bound | readonly)
+        properties['IsHidden'] = getProperty('IsHidden', 'boolean', bound | ro)
+        properties['IsVolume'] = getProperty('IsVolume', 'boolean', bound | ro)
+        properties['IsRemote'] = getProperty('IsRemote', 'boolean', bound | ro)
+        properties['IsRemoveable'] = getProperty('IsRemoveable', 'boolean', bound | ro)
+        properties['IsFloppy'] = getProperty('IsFloppy', 'boolean', bound | ro)
+        properties['IsCompactDisc'] = getProperty('IsCompactDisc', 'boolean', bound | ro)
         return properties
 
     def _getCmisPropertySetInfo(self):

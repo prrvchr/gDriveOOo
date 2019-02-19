@@ -22,19 +22,18 @@ def isChildId(identifier, id):
     call.close()
     return ischild
 
-def selectChildLastId(connection, userid, parent, title):
+def selectChildId(connection, parent, uri):
     id = None
-    call = connection.prepareCall('CALL "selectChildLastId"(?, ?, ?)')
-    call.setString(1, userid)
-    call.setString(2, parent)
-    call.setString(3, title)
+    call = connection.prepareCall('CALL "selectChildId"(?, ?)')
+    call.setString(1, parent)
+    call.setString(2, uri)
     result = call.executeQuery()
     if result.next():
         id = result.getString(1)
     call.close()
     return id
 
-def selectChildId(identifier, title):
+def selectChildUniqueId(identifier, title):
     id = None
     call = identifier.Connection.prepareCall('CALL "selectChildUniqueId"(?, ?, ?)')
     call.setString(1, identifier.User.Id)

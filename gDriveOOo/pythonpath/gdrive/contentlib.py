@@ -9,7 +9,7 @@ from com.sun.star.ucb import XContentIdentifier, XContentAccess, XDynamicResultS
 from com.sun.star.ucb import XCommandInfo, XCommandInfoChangeNotifier, UnsupportedCommandException
 from com.sun.star.task import XInteractionContinuation, XInteractionAbort
 from com.sun.star.ucb import XInteractionSupplyName, XInteractionReplaceExistingData
-from com.sun.star.ucb import XInteractionSupplyAuthentication2
+from com.sun.star.ucb import IllegalIdentifierException, XInteractionSupplyAuthentication2
 from com.sun.star.sdbc import XRow, XResultSet, XResultSetMetaDataSupplier
 from com.sun.star.sdb import XInteractionSupplyParameters
 from com.sun.star.container import XIndexAccess, XChild
@@ -24,7 +24,7 @@ from .unotools import getProperty
 from .contenttools import getUcb, getUri, getNameClashResolveRequest, getAuthenticationRequest
 from .contenttools import getParametersRequest, getSession, doSync
 from .identifiers import isIdentifier, getNewIdentifier, isIdentifier
-from .children import updateChildren, selectChildLastId
+from .children import updateChildren, selectChildId
 from .google import InputStream
 
 from requests.compat import unquote_plus
@@ -61,20 +61,22 @@ class ContentUser(unohelper.Base, PropertySet):
         properties['Name'] = getProperty('Name', 'string', maybevoid | bound | readonly)
         properties['RootId'] = getProperty('RootId', 'string', maybevoid | bound | readonly)
         properties['IsValid'] = getProperty('IsValid', 'boolean', bound | readonly)
-        properties['Error'] = getProperty('Error', 'com.sun.star.uno.Exception', maybevoid | bound | readonly)    
+        properties['Error'] = getProperty('Error', 'com.sun.star.ucb.IllegalIdentifierException', maybevoid | bound | readonly)    
         return properties
 
 
 class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild, XInputStreamProvider, XUpdatable, XLinkUpdate):
-    def __init__(self, ctx, connection, mode, user, uri):
+    def __init__(self, ctx, connection, mode, user, uri, new=False):
         self.ctx = ctx
         self.Connection = connection
         self.Mode = mode
         self.User = user
         self.Uri = uri
-        self.Id, self.Url = self._parseUri() if self.User.IsValid else (None, None)
+        self.IsNew = new
+        self._Error = None
         self.size = 0
         self._Updated = False
+        self.Id, self.Title, self.Url = self._parseUri() if self.User.IsValid else (None, None, None)
 
     @property
     def IsRoot(self):
@@ -97,6 +99,10 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild,
     @InputStream.setter
     def InputStream(self, size):
         self.size = size
+    @property
+    def Error(self):
+        print("contentlib.ContentIdentifier.Error: %s" % self._Error)
+        return self._Error if self.User.Error is None else self.User.Error
 
     # XInputStreamProvider
     def createInputStream(self):
@@ -132,7 +138,7 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild,
         raise NoSupportException('Parent can not be set', self)
 
     def _parseUri(self):
-        title, position = None, -1
+        title, position, url = None, -1, None
         parentid, paths = self.User.RootId, []
         for i in range(self.Uri.getPathSegmentCount() -1, -1, -1):
             path = self.Uri.getPathSegment(i).strip()
@@ -148,17 +154,22 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild,
         elif isIdentifier(self.Connection, title):
             id = title
         else:
-            id = selectChildLastId(self.Connection, self.User.Id, parentid, title)
+            id = selectChildId(self.Connection, parentid, title)
         for i in range(position):
             paths.append(self.Uri.getPathSegment(i).strip())
         if id is None:
             id = self._searchId(paths[::-1], title)
+        if id is None:
+            message = "ERROR: Can't retrieve Uri: %s" % self.Uri.getUriReference()
+            print("contentlib.ContentIdentifier._parseUri() Error: %s" % message)
+            self._Error = IllegalIdentifierException(message, self)
         paths.insert(0, self.Uri.getAuthority())
         url = '%s://%s' % (self.Uri.getScheme(), '/'.join(paths))                
         #print("ContentIdentifier._parseUri():\n    Uri: %s\n    Id - Title - Position: %s - %s - %s\n    BaseURL: %s" % (self.Uri.getUriReference(), id, title, position, url))
-        return id, url
+        return id, title, url
 
     def _searchId(self, paths, title):
+        # Needed for be able to create a folder in a just created folder...
         paths.append(self.User.RootId)
         for index, path in enumerate(paths):
             if isIdentifier(self.Connection, path):
@@ -166,8 +177,8 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild,
                 break
         for i in range(index -1, -1, -1):
             path = self._unquote(paths[i])
-            id = selectChildLastId(self.Connection, self.User.Id, id, path)
-        id = selectChildLastId(self.Connection, self.User.Id, id, title)
+            id = selectChildId(self.Connection, id, path)
+        id = selectChildId(self.Connection, id, title)
         return id
 
     def _unquote(self, text):
@@ -190,10 +201,13 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild,
         properties['Id'] = getProperty('Id', 'string', maybevoid | bound | readonly)
         properties['IsRoot'] = getProperty('IsRoot', 'boolean', bound | readonly)
         properties['IsValid'] = getProperty('IsValid', 'boolean', bound | readonly)
+        properties['IsNew'] = getProperty('IsNew', 'boolean', bound | readonly)
         properties['BaseURL'] = getProperty('BaseURL', 'string', bound | readonly)
+        properties['Title'] = getProperty('Title', 'string', maybevoid | bound | readonly)
         properties['NewIdentifier'] = getProperty('NewIdentifier', 'string', maybevoid | bound | readonly)
         properties['Updated'] = getProperty('Updated', 'boolean', bound | readonly)
         properties['InputStream'] = getProperty('InputStream', 'long', maybevoid)
+        properties['Error'] = getProperty('Error', 'com.sun.star.ucb.IllegalIdentifierException', maybevoid | bound | readonly)
         return properties
 
 

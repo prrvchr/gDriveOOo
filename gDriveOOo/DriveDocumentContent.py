@@ -8,6 +8,7 @@ from com.sun.star.awt import XCallback
 from com.sun.star.container import XChild
 from com.sun.star.lang import XServiceInfo, NoSupportException
 from com.sun.star.ucb import XContent, XCommandProcessor2, CommandAbortedException
+from com.sun.star.ucb.ContentAction import INSERTED, REMOVED, DELETED, EXCHANGED
 from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
 
 from gdrive import Initialization, CommandInfo, PropertySetInfo, Row, PropertyContainer

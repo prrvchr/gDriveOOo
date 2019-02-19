@@ -140,33 +140,29 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory, P
 
     # XContentProvider
     def queryContent(self, identifier):
-        try:
-            content = None
-            print("ContentProvider.queryContent() 1 %s" % identifier.getContentIdentifier())
+        #try:
+        content = None
+        print("ContentProvider.queryContent() 1 %s" % identifier.getContentIdentifier())
+        msg = "Identifier: %s..." % identifier.getContentIdentifier()
+        if not identifier.IsValid:
+            error = ContentCreationException()
+            error.eError = uno.Enum('com.sun.star.ucb.ContentCreationError', 'CONTENT_CREATION_FAILED')
+            error.Message = "Identifier has not been retrieved: %s" % identifier.getContentIdentifier()
+            error.Context = self
+            #error = identifier.Error
+            print("ContentProvider.queryContent() 2 %s" % identifier.getContentIdentifier())
             level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
-            msg = "Identifier: %s..." % identifier.getContentIdentifier()
-            if identifier.IsValid:
-                print("ContentProvider.queryContent() 2 %s" % identifier.getContentIdentifier())
-                content = self._getCachedContent(identifier)
-            if identifier.User.Error is not None:
-                error = identifier.User.Error
-                print("ContentProvider.queryContent() 3 %s" % identifier.getContentIdentifier())
-                self.Logger.logp(level, "ContentProvider", "queryContent()", "%s - %s" % (msg, error.Message))
-                print("ContentProvider.queryContent() %s - %s" % (msg, error.Message))
-                raise error
-            if content is None:
-                e = ContentCreationException()
-                e.eError = uno.Enum('com.sun.star.ucb.ContentCreationError', 'CONTENT_CREATION_FAILED')
-                e.Message = "Identifier has not been retrieved: %s" % identifier.getContentIdentifier()
-                e.Context = self
-                raise e
-            msg += " Done"
-            level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
-            self.Logger.logp(level, "ContentProvider", "queryContent()", msg)
-            return content
-        except Exception as e:
-            print("ContentProvider.queryContent().Error: %s - %e" % (e, traceback.print_exc()))
-
+            self.Logger.logp(level, "ContentProvider", "queryContent()", "%s - %s" % (msg, error.Message))
+            print("ContentProvider.queryContent() %s - %s" % (msg, error.Message))
+            raise error
+        print("ContentProvider.queryContent() 3 %s" % identifier.getContentIdentifier())
+        content = self._getContent(identifier)
+        msg += " Done"
+        level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
+        self.Logger.logp(level, "ContentProvider", "queryContent()", msg)
+        return content
+        #except Exception as e:
+        #    print("ContentProvider.queryContent().Error: %s - %e" % (e, traceback.print_exc()))
     def compareContentIds(self, identifier1, identifier2):
         compare = 1
         print("ContentProvider.compareContentIds() %s - %s" % (identifier1.getContentIdentifier(), identifier2.getContentIdentifier()))
@@ -175,11 +171,12 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory, P
         if identifier1.getContentIdentifier() == identifier2.getContentIdentifier():
             msg += " seem to be the same..."
             compare = 0
-        elif identifier1.Uri.getPathSegmentCount() != identifier2.Uri.getPathSegmentCount():
+        elif identifier1.Id is None and identifier2.Id is not None:
             msg += " are not the same..."
-            compare = identifier1.Uri.getPathSegmentCount() - identifier2.Uri.getPathSegmentCount()
-        else:
+            compare = -10
+        elif identifier1.Id is not None and identifier2.Id is None:
             msg += " are not the same..."
+            compare = 10
         msg += " Done"
         self.Logger.logp(level, "ContentProvider", "compareContentIds()", msg)
         return compare
@@ -208,7 +205,7 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory, P
     def _getUser(self, scheme, username):
         if username is None:
             message = "ERROR: Can't retrieve a UserName from Handler"
-            user = {'Error': AuthenticationFailedException(message, self)}
+            user = {'Error': IllegalIdentifierException(message, self)}
             return user
         user = selectUser(self.Connection, username, self.Mode)
         if user is None:
@@ -218,7 +215,7 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory, P
                 user = self._getUserFromProvider(scheme, username)
             else:
                 message = "ERROR: Can't retrieve User: %s Network is Offline" % username
-                user = {'Error': getInteractiveNetworkOffLineException(self, message)}
+                user = {'Error': IllegalIdentifierException(message, self)}
         return user
 
     def _getUserFromProvider(self, scheme, username):
@@ -229,9 +226,9 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory, P
             user = mergeJsonUser(self.Connection, data, root, self.Mode)
         else:
             message = "ERROR: Can't retrieve User: %s from provider" % username
-            user = {'Error': getInteractiveNetworkReadException(self, message)}
-            level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
-            self.Logger.logp(level, "ContentProvider", "_getUser()", message)
+            user = {'Error': IllegalIdentifierException(message, self)}
+            #level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
+            #self.Logger.logp(level, "ContentProvider", "_getUser()", message)
         return user
 
     def _getItem(self, identifier):
