@@ -14,7 +14,7 @@ from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
 
 from gdrive import Initialization, CommandInfo, CmisPropertySetInfo, Row, CmisDocument
 from gdrive import PropertiesChangeNotifier, PropertySetInfoChangeNotifier, CommandInfoChangeNotifier
-from gdrive import ContentIdentifier, PropertyContainer, InteractionRequestName, countChildTitle
+from gdrive import ContentIdentifier, PropertyContainer, InteractionRequestName
 from gdrive import getContentInfo, getPropertiesValues, uploadItem, getUcb, getMimeType, getUri, getInteractionHandler
 from gdrive import getUnsupportedNameClashException, getCommandIdentifier, getContentEvent
 from gdrive import createService, getResourceLocation, parseDateTime, getPropertySetInfoChangeEvent, getNewIdentifier
@@ -220,7 +220,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
                 print("DriveOfficeContent.getPropertyValues() 2: %s" % (namedvalues, ))
                 result = Row(namedvalues)
             elif command.Name == 'setPropertyValues':
-                result = setPropertiesValues(self, command.Argument, self._propertySetInfo, self.Logger)
+                result = setPropertiesValues(self, environment, command.Argument, self._propertySetInfo, self.Logger)
             elif command.Name == 'open':
                 print ("DriveOfficeContent.open(): %s" % command.Argument.Mode)
                 sf = getSimpleFile(self.ctx)

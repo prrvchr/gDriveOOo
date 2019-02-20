@@ -163,7 +163,9 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild,
             print("contentlib.ContentIdentifier._parseUri() Error: %s" % message)
             self._Error = IllegalIdentifierException(message, self)
         paths.insert(0, self.Uri.getAuthority())
-        url = '%s://%s' % (self.Uri.getScheme(), '/'.join(paths))                
+        url = '%s://%s' % (self.Uri.getScheme(), '/'.join(paths))
+        if self.Uri.hasFragment():
+            title += '#%s' % self.Uri.getFragment()
         #print("ContentIdentifier._parseUri():\n    Uri: %s\n    Id - Title - Position: %s - %s - %s\n    BaseURL: %s" % (self.Uri.getUriReference(), id, title, position, url))
         return id, title, url
 
@@ -383,7 +385,6 @@ class Parameters(unohelper.Base, PropertySet):
         properties['Description'] = getProperty('Description', 'string', bound | readonly)
         properties['DefaultValue'] = getProperty('DefaultValue', 'string', bound | readonly)
         return properties
-
 
 class CommandInfo(unohelper.Base, XCommandInfo):
     def __init__(self, commands={}):

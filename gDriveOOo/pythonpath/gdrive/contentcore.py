@@ -13,8 +13,9 @@ from com.sun.star.ucb.ContentAction import INSERTED, REMOVED, DELETED, EXCHANGED
 from .items import insertContentItem, updateName, updateSize, updateTrashed, updateLoaded
 from .contenttools import getUri, getContentEvent, getUcp
 from .contenttools import getUnsupportedNameClashException, getNameClashException
+from .contenttools import getInteractiveIOException, getInteractiveAugmentedIOException
 from .contentlib import ContentIdentifier, InteractionRequestName
-from .unotools import getInteractionHandler, getNamedValue
+from .unotools import getInteractionHandler, getNamedValue, getPropertyValueSet
 from .children import countChildTitle
 
 import traceback
@@ -42,13 +43,13 @@ def getPropertiesValues(source, properties, logger):
         namedvalues.append(getNamedValue(property.Name, value))
     return tuple(namedvalues)
 
-def setPropertiesValues(source, properties, propertyset, logger):
+def setPropertiesValues(source, context, properties, propertyset, logger):
     results = []
     readonly = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.READONLY')
     for position, property in enumerate(properties):
         if hasattr(property, 'Name') and hasattr(property, 'Value'):
             name, value = property.Name, property.Value
-            result, level, msg = _setPropertyValue(source, propertyset, name, value, position, readonly)
+            result, level, msg = _setPropertyValue(source, context, propertyset, name, value, position, readonly)
         else:
             msg = "ERROR: Requested property: %s as incorect type" % property
             level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
@@ -59,7 +60,7 @@ def setPropertiesValues(source, properties, propertyset, logger):
         results.append(result)
     return tuple(results)
 
-def _setPropertyValue(source, propertyset, name, value, position, readonly):
+def _setPropertyValue(source, context, propertyset, name, value, position, readonly):
     if name in propertyset:
         if propertyset.get(name).Attributes & readonly:
             msg = "ERROR: Requested property: %s is READONLY" % name
@@ -67,7 +68,7 @@ def _setPropertyValue(source, propertyset, name, value, position, readonly):
             error = IllegalAccessException(msg, source)
             result = uno.Any('com.sun.star.lang.IllegalAccessException', error)
         else:
-            result, level, msg = _setProperty(source, name, value, position)
+            result, level, msg = _setProperty(source, context, name, value, position)
     else:
         msg = "ERROR: Requested property: %s is not available" % name
         level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
@@ -75,9 +76,9 @@ def _setPropertyValue(source, propertyset, name, value, position, readonly):
         result = uno.Any('com.sun.star.beans.UnknownPropertyException', error)
     return result, level, msg
 
-def _setProperty(source, name, value, position):
+def _setProperty(source, context, name, value, position):
     if name == 'Title':
-        result, level, msg = _setTitle(source, value, position)
+        result, level, msg = _setTitle(source, context, value, position)
     else:
         setattr(source, name, value)
         msg = "Set property: %s value: %s" % (name, value)
@@ -85,18 +86,30 @@ def _setProperty(source, name, value, position):
         result = None
     return result, level, msg
 
-def _setTitle(source, title, position):
-    identifier = source.getIdentifier().getParent()
-    if not countChildTitle(identifier, title):
+def _setTitle(source, context, title, position):
+    identifier = source.getIdentifier()
+    if u'~' in title:
+        print("contentcore._setTitle(): %s - %s" % (title, type(title)))
+        msg = "Can't set property: %s value: %s contains invalid character: '~'." % ('Title', title)
+        level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
+        data = getPropertyValueSet({'Uri': identifier.getContentIdentifier(),'ResourceName': title})
+        error = getInteractiveAugmentedIOException(msg, context, 'ERROR', 'INVALID_CHARACTER', data)
+        result = uno.Any('com.sun.star.ucb.InteractiveAugmentedIOException', error)
+    elif countChildTitle(identifier.getParent(), title):
+        #msg = "Can't set property: %s value: %s - Name Clash Error" % ('Title', title)
+        #level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
+        #error = IllegalArgumentException(msg, source, position)
+        #result = uno.Any('com.sun.star.lang.IllegalArgumentException', error)
+        msg = "Can't set property: %s value: %s - Name Clash Error" % ('Title', title)
+        level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
+        data = getPropertyValueSet({'Uri': identifier.getContentIdentifier(),'ResourceName': title})
+        error = getInteractiveAugmentedIOException(msg, context, 'ERROR', 'ALREADY_EXISTING', data)
+        result = uno.Any('com.sun.star.ucb.InteractiveAugmentedIOException', error)
+    else:
         setattr(source, 'Title', title)
         msg = "Set property: %s value: %s" % ('Title', title)
         level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
         result = None
-    else:
-        msg = "Can't set property: %s value: %s - Name Clash Error" % ('Title', title)
-        level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
-        error = IllegalArgumentException(msg, source, position)
-        result = uno.Any('com.sun.star.lang.IllegalArgumentException', error)
     return result, level, msg
 
 def _getTitle(source, title, position):

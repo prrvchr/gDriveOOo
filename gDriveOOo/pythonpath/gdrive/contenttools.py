@@ -8,6 +8,7 @@ from com.sun.star.lang import IllegalAccessException
 from com.sun.star.ucb import NameClashResolveRequest, IllegalIdentifierException, InteractiveNetworkOffLineException
 from com.sun.star.ucb import InteractiveNetworkReadException, UnsupportedNameClashException
 from com.sun.star.ucb import NameClashException, AuthenticationRequest, URLAuthenticationRequest
+from com.sun.star.ucb import InteractiveIOException, InteractiveAugmentedIOException
 from com.sun.star.sdb import ParametersRequest
 from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
 from com.sun.star.ucb.ContentAction import INSERTED, REMOVED, DELETED, EXCHANGED
@@ -271,6 +272,23 @@ def getAuthenticationRequest(source, uri, message):
     e.HasAccount = False
     e.Account = ''
     e.URL = uri.getUriReference()
+    return e
+
+def getInteractiveAugmentedIOException(message, source, Classification, code, arguments):
+    e = InteractiveAugmentedIOException()
+    e.Message = message
+    e.Context = source
+    e.Classification = uno.Enum('com.sun.star.task.InteractionClassification', Classification)
+    e.Code = uno.Enum('com.sun.star.ucb.IOErrorCode', code)
+    e.Arguments = arguments
+    return e
+
+def getInteractiveIOException(message, source, Classification, code):
+    e = InteractiveIOException()
+    e.Message = message
+    e.Context = source
+    e.Classification = uno.Enum('com.sun.star.task.InteractionClassification', Classification)
+    e.Code = uno.Enum('com.sun.star.ucb.IOErrorCode', code)
     return e
 
 def getIllegalIdentifierException(source, message):

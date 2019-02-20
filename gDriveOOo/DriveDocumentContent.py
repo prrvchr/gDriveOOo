@@ -200,7 +200,7 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
             namedvalues = getPropertiesValues(self, command.Argument, self.Logger)
             result = Row(namedvalues)
         elif command.Name == 'setPropertyValues':
-            result = setPropertiesValues(self, command.Argument, self._propertySetInfo, self.Logger)
+            result = setPropertiesValues(self, environment, command.Argument, self._propertySetInfo, self.Logger)
         elif command.Name == 'open':
             print ("DriveDocumentContent.open(): %s" % command.Argument.Mode)
             sf = getSimpleFile(self.ctx)

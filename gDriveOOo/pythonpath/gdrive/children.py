@@ -46,7 +46,7 @@ def selectChildUniqueId(identifier, title):
     return id
 
 def countChildTitle(identifier, title):
-    count = None
+    count = 1
     call = identifier.Connection.prepareCall('CALL "countChildTitle"(?, ?, ?)')
     call.setString(1, identifier.User.Id)
     call.setString(2, identifier.Id)

@@ -198,7 +198,7 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
             namedvalues = getPropertiesValues(self, command.Argument, self.Logger)
             return Row(namedvalues)
         elif command.Name == 'setPropertyValues':
-            return setPropertiesValues(self, command.Argument, self._propertySetInfo, self.Logger)
+            return setPropertiesValues(self, environment, command.Argument, self._propertySetInfo, self.Logger)
         elif command.Name == 'open':
             print("DriveFolderContent.execute() open 1")
             if self.Loaded == ONLINE:

@@ -19,7 +19,7 @@ from .dbtools import getDbConnection, registerDataBase, getItemFromResult
 
 from .items import selectUser, mergeJsonUser, selectItem, insertJsonItem, needSync
 
-from .children import isChildId, selectChildId, getChildSelect, countChildTitle
+from .children import isChildId, selectChildId, getChildSelect
 
 from .identifiers import checkIdentifiers, getNewIdentifier, isIdentifier
 
