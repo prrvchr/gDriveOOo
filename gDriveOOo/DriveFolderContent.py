@@ -15,10 +15,11 @@ from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
 from gdrive import Initialization, CommandInfo, PropertySetInfo, Row, DynamicResultSet, PropertyContainer
 from gdrive import PropertiesChangeNotifier, PropertySetInfoChangeNotifier, CommandInfoChangeNotifier
 from gdrive import getDbConnection, getNewIdentifier, propertyChange, getChildSelect, parseDateTime, getLogger, getUcp
-from gdrive import createService, getSimpleFile, getResourceLocation, isChildId, selectChildId
-from gdrive import getUcb, getCommandInfo, getProperty, getContentInfo, setContentProperties, createContent
-from gdrive import getCommandIdentifier, getContentEvent, ContentIdentifier
-from gdrive import getPropertiesValues, setPropertiesValues, g_folder
+from gdrive import createService, getSimpleFile, getResourceLocation, isChildId, selectChildId, getInteractionHandler
+from gdrive import getUcb, getCommandInfo, getProperty, getContentInfo, executeContentCommand, createContent
+from gdrive import getCommandIdentifier, getContentEvent, ContentIdentifier, InteractionRequest, InteractionAbort
+from gdrive import getPropertiesValues, setPropertiesValues, getMimeType, getInsertCommandArgument, g_folder
+from gdrive import getPropertyValueSet, getUri
 from gdrive import RETRIEVED, CREATED, FOLDER, FILE, RENAMED, REWRITED, TRASHED
 
 
@@ -151,9 +152,9 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         return self.CreatableContentsInfo
     def createNewContent(self, contentinfo):
         id = self.getIdentifier()
-        uri = '%s/%s' % (id.BaseURL, id.NewIdentifier)
+        uri = getUri(self.ctx, '%s/%s' % (id.BaseURL, id.NewIdentifier))
         identifier = ContentIdentifier(self.ctx, id.Connection, id.Mode, id.User, uri, True)
-        print("DriveFolderContent.createNewContent():\nNew Uri: %s\nBaseURL: %s\nUri: %s" % (uri, id.BaseURL, id.getContentIdentifier()))
+        print("DriveFolderContent.createNewContent():\nNew Uri: %s\nBaseURL: %s\nUri: %s" % (uri.getUriReference(), id.BaseURL, id.getContentIdentifier()))
         kwarg = {'Identifier': identifier, 'MimeType': contentinfo.Type}
         content = createContent(self.ctx, kwarg)
         return content
@@ -231,36 +232,36 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
             # - Property Title of "XContent" for LibreOffice
             # If the content has been renamed, the last segment is the new Title of the content
             # We assume 'command.Argument.NewTitle' as an id
-            id = command.Argument.NewTitle
+            title = command.Argument.NewTitle
             source = command.Argument.SourceURL
+            move = command.Argument.MoveData
             clash = command.Argument.NameClash
-            print("DriveFolderContent.execute(): transfer 1:\n    %s - %s - %s - %s" % (source, id, command.Argument.MoveData, clash))
-            if not isChildId(self.Identifier, id):
+            print("DriveFolderContent.execute(): transfer 1:\nSource:    %s\nId:    %s\nMove:    %s\nClash:    %s" % (source, title, move, clash))
+            if isChildId(self.Identifier, title):
+                id = title
+            else:
                 # It appears that 'command.Argument.NewTitle' is not an id but a title...
                 # If 'NewTitle' exist and is unique in the folder, we can retrieve its Id
-                id = selectChildId(self.Identifier.Connection, self.Identifier.Id, id)
+                id = selectChildId(self.Identifier.Connection, self.Identifier.Id, title)
                 if id is None:
-                    print("DriveFolderContent.execute(): transfer 2:\n    create NewIdentifier: %s - %s" % (source, id))
-                    if not hasattr(command.Argument, 'DocumentId'):
-                        print("DriveFolderContent.execute(): transfer 3:\n    create NewIdentifier: %s - %s" % (source, id))
-                        raise InteractiveBadTransferURLException("Couln't handle Url: %s" % source, self)
                     # Id could not be found: NewTitle does not exist or is not unique in the folder
                     # For new document (File Save As) we use commands:
                     # createNewContent: for creating an empty new Content
                     # Insert at new Content for committing change
-                    # For accessing this commands we must trow an "InteractiveBadTransferURLException"
-                    print("DriveFolderContent.execute(): transfer 4:\n    create NewIdentifier: %s - %s" % (command.Argument.DocumentId, command.Argument.MimeType))
+                    raise InteractiveBadTransferURLException("Couln't handle Url: %s" % source, self)
             print("DriveFolderContent.execute(): transfer 2:\n    transfer: %s - %s" % (source, id))
             sf = getSimpleFile(self.ctx)
             if not sf.exists(source):
                 raise CommandAbortedException("Error while saving file: %s" % source, self)
+            inputstream = sf.openFileRead(source)
             target = getResourceLocation(self.ctx, '%s/%s' % (self.Scheme, id))
-            stream = sf.openFileRead(source)
-            sf.writeFile(target, stream)
-            stream.closeInput()
+            sf.writeFile(target, inputstream)
+            inputstream.closeInput()
             ucb = getUcb(self.ctx)
-            identifier = ucb.createContentIdentifier('%s/%s' % (self.Identifier.BaseURL, id))
-            setContentProperties(ucb.queryContent(identifier), {'Size': sf.getSize(target)})
+            identifier = ucb.createContentIdentifier('%s/%s' % (self.Identifier.BaseURL, title))
+            data = getPropertyValueSet({'Size': sf.getSize(target)})
+            content = ucb.queryContent(identifier)
+            executeContentCommand(content, 'setPropertyValues', data, environment)
             print("DriveFolderContent.execute(): transfer 3: Fin")
             if command.Argument.MoveData:
                 pass #must delete object

@@ -101,7 +101,6 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild,
         self.size = size
     @property
     def Error(self):
-        print("contentlib.ContentIdentifier.Error: %s" % self._Error)
         return self._Error if self.User.Error is None else self.User.Error
 
     # XInputStreamProvider
@@ -211,6 +210,17 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild,
         return properties
 
 
+class InteractionRequest(unohelper.Base, XInteractionRequest):
+    def __init__(self, request, continuations, result={}):
+        print("InteractionRequest.__init__(): %s %s" % (request, continuations))
+        self._request = request
+        self._continuations = continuations
+
+    def getRequest(self):
+        return self._request
+    def getContinuations(self):
+        return self._continuations
+
 class InteractionRequestAuthentication(unohelper.Base, XInteractionRequest):
     def __init__(self, source, uri, message, result):
         print("InteractionRequestAuthentication.__init__(): %s %s %s" % (source, uri, message))
@@ -296,7 +306,7 @@ class InteractionReplaceExistingData(unohelper.Base, XInteractionReplaceExisting
 
 
 class InteractionAbort(unohelper.Base, XInteractionAbort):
-    def __init__(self, result):
+    def __init__(self, result={}):
         self.result = result
 
     def select(self):

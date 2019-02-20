@@ -26,13 +26,14 @@ from .identifiers import checkIdentifiers, getNewIdentifier, isIdentifier
 
 from .contentlib import ContentUser, ContentIdentifier, CommandInfo, CommandInfoChangeNotifier
 from .contentlib import InteractionRequestParameters, Row, DynamicResultSet, InteractionRequestName
+from .contentlib import InteractionRequest, InteractionAbort
 
 from .contenttools import getUcb, getUcp, getUri, getMimeType
 from .contenttools import getContentEvent, getCmisProperty, getCommandInfo, getContentInfo
-from .contenttools import setContentProperties, propertyChange, doSync
+from .contenttools import executeContentCommand, propertyChange, doSync
 from .contenttools import uploadItem, getSession, createContent, getIllegalIdentifierException
 from .contenttools import getInteractiveNetworkOffLineException, getInteractiveNetworkReadException
-from .contenttools import getUnsupportedNameClashException
+from .contenttools import getUnsupportedNameClashException, getInsertCommandArgument
 
 from .contentcore import getCommandIdentifier, updateContent, setPropertiesValues, getPropertiesValues
 
@@ -44,7 +45,7 @@ from .logger import getLogger, getLoggerSetting, setLoggerSetting, getLoggerUrl
 
 from .unotools import getResourceLocation, createService, getStringResource, getPropertyValue
 from .unotools import getFileSequence, getProperty, getPropertySetInfoChangeEvent, getSimpleFile
-from .unotools import getInteractionHandler
+from .unotools import getInteractionHandler, getPropertyValueSet
 
 from .unolib import Component, Initialization, InteractionHandler, PropertiesChangeNotifier
 from .unolib import PropertySetInfo, CmisPropertySetInfo, PropertySet, PropertySetInfoChangeNotifier

@@ -55,6 +55,12 @@ def getPropertySetInfoChangeEvent(source, name, reason, handle=-1):
     event.Handle = handle
     event.Reason = reason
 
+def getPropertyValueSet(kwargs):
+    properties = []
+    for key, value in kwargs.items():
+        properties.append(getPropertyValue(key, value))
+    return tuple(properties)
+
 def getPropertyValue(name, value, state=None, handle=-1):
     property = uno.createUnoStruct('com.sun.star.beans.PropertyValue')
     property.Name = name

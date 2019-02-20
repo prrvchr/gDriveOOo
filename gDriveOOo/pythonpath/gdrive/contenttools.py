@@ -147,12 +147,9 @@ def _getContentProperties(content, properties):
     command = getCommand('getPropertyValues', tuple(namedvalues))
     return content.execute(command, 0, None)
 
-def setContentProperties(content, arguments):
-    properties = []
-    for name, value in arguments.items():
-        properties.append(getPropertyValue(name, value))
-    command = getCommand('setPropertyValues', tuple(properties))
-    return content.execute(command, 0, None)
+def executeContentCommand(content, name, argument, environment=None):
+    command = getCommand(name, argument)
+    return content.execute(command, 0, environment)
 
 def _getPropertyChangeEvent(source, name, oldvalue, newvalue, further=False, handle=-1):
     event = uno.createUnoStruct('com.sun.star.beans.PropertyChangeEvent')
@@ -211,12 +208,18 @@ def getCommandInfo(name, typename=None, handle=-1):
         command.ArgType = uno.getTypeByName(typename)
     return command
 
-def getContentInfo(ctype, attributes, properties):
-    info = uno.createUnoStruct('com.sun.star.ucb.ContentInfo',
-                                ctype,
-                                attributes,
-                                properties)
+def getContentInfo(ctype, attributes=0, properties=()):
+    info = uno.createUnoStruct('com.sun.star.ucb.ContentInfo')
+    info.Type = ctype
+    info.Attributes = attributes
+    info.Properties = properties
     return info
+
+def getInsertCommandArgument(data, replace):
+    insert = uno.createUnoStruct('com.sun.star.ucb.InsertCommandArgument')
+    insert.Data = data
+    insert.ReplaceExisting = replace
+    return insert
 
 def getUri(ctx, identifier):
     factory = ctx.ServiceManager.createInstance('com.sun.star.uri.UriReferenceFactory')
