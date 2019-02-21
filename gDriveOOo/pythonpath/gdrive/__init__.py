@@ -21,7 +21,7 @@ from .items import selectUser, mergeJsonUser, selectItem, insertJsonItem, needSy
 
 from .children import isChildId, selectChildId, getChildSelect
 
-from .identifiers import checkIdentifiers, getNewIdentifier, isIdentifier
+from .identifiers import checkIdentifiers, isIdentifier
 
 
 from .contentlib import ContentUser, ContentIdentifier, CommandInfo, CommandInfoChangeNotifier

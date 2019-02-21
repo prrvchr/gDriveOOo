@@ -17,7 +17,7 @@ from gdrive import PropertiesChangeNotifier, PropertySetInfoChangeNotifier, Comm
 from gdrive import ContentIdentifier, PropertyContainer, InteractionRequestName
 from gdrive import getContentInfo, getPropertiesValues, uploadItem, getUcb, getMimeType, getUri, getInteractionHandler
 from gdrive import getUnsupportedNameClashException, getCommandIdentifier, getContentEvent
-from gdrive import createService, getResourceLocation, parseDateTime, getPropertySetInfoChangeEvent, getNewIdentifier
+from gdrive import createService, getResourceLocation, parseDateTime, getPropertySetInfoChangeEvent
 from gdrive import getSimpleFile, getCommandInfo, getProperty, getUcp
 from gdrive import propertyChange, setPropertiesValues, getLogger, getCmisProperty, getPropertyValue
 from gdrive import RETRIEVED, CREATED, FOLDER, FILE, RENAMED, REWRITED, TRASHED
@@ -113,9 +113,10 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
     @property
     def TitleOnServer(self):
         # LibreOffice specifique property
-        return self.Identifier.Title
+        return self.Name
     @property
     def Title(self):
+        # LibreOffice use this property for 'transfer command' in 'command.Argument.NewTitle'
         return self.Identifier.Title
     @Title.setter
     def Title(self, title):
@@ -127,6 +128,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         print("DriveOfficeContent.Title.setter() 2")
         event = getContentEvent(self, EXCHANGED, self, identifier)
         self.notify(event)
+        print("DriveOfficeContent.Title.setter() 3")
     @property
     def Size(self):
         return self._Size

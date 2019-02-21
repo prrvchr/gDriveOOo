@@ -14,7 +14,7 @@ from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
 
 from gdrive import Initialization, CommandInfo, PropertySetInfo, Row, DynamicResultSet, PropertyContainer
 from gdrive import PropertiesChangeNotifier, PropertySetInfoChangeNotifier, CommandInfoChangeNotifier
-from gdrive import getDbConnection, getNewIdentifier, propertyChange, getChildSelect, parseDateTime, getLogger, getUcp
+from gdrive import getDbConnection, propertyChange, getChildSelect, parseDateTime, getLogger, getUcp
 from gdrive import createService, getSimpleFile, getResourceLocation, isChildId, selectChildId, getInteractionHandler
 from gdrive import getUcb, getCommandInfo, getProperty, getContentInfo, executeContentCommand, createContent
 from gdrive import getCommandIdentifier, getContentEvent, ContentIdentifier, InteractionRequest, InteractionAbort
@@ -81,6 +81,7 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
             self._propertySetInfo = self._getPropertySetInfo()
             msg = "DriveFolderContent loading Uri: %s ... Done" % self.Identifier.getContentIdentifier()
             self.Logger.logp(level, "DriveFolderContent", "__init__()", msg)
+            self._newTitle = ''
             print(msg)
         except Exception as e:
             print("DriveFolderContent.__init__().Error: %s - %e" % (e, traceback.print_exc()))
@@ -151,10 +152,8 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         print("DriveFolderContent.queryCreatableContentsInfo():*************************")
         return self.CreatableContentsInfo
     def createNewContent(self, contentinfo):
-        id = self.getIdentifier()
-        uri = getUri(self.ctx, '%s/%s' % (id.BaseURL, id.NewIdentifier))
-        identifier = ContentIdentifier(self.ctx, id.Connection, id.Mode, id.User, uri, True)
-        print("DriveFolderContent.createNewContent():\nNew Uri: %s\nBaseURL: %s\nUri: %s" % (uri.getUriReference(), id.BaseURL, id.getContentIdentifier()))
+        identifier = self.getIdentifier().createContentIdentifier(self._newTitle)
+        self._newTitle = ''
         kwarg = {'Identifier': identifier, 'MimeType': contentinfo.Type}
         content = createContent(self.ctx, kwarg)
         return content
@@ -244,6 +243,7 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
                 # If 'NewTitle' exist and is unique in the folder, we can retrieve its Id
                 id = selectChildId(self.Identifier.Connection, self.Identifier.Id, title)
                 if id is None:
+                    self._newTitle = title
                     # Id could not be found: NewTitle does not exist or is not unique in the folder
                     # For new document (File Save As) we use commands:
                     # createNewContent: for creating an empty new Content

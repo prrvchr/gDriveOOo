@@ -16,7 +16,7 @@ from com.sun.star.frame import XTerminateListener, TerminationVetoException
 
 from gdrive import ContentIdentifier, InteractionRequestParameters, PropertySet
 from gdrive import getDbConnection, selectUser, mergeJsonUser, selectItem, insertJsonItem
-from gdrive import getItem, updateContent, checkIdentifiers, getNewIdentifier
+from gdrive import getItem, updateContent, checkIdentifiers
 from gdrive import getUcb, ContentUser, createContent, getInteractionHandler
 from gdrive import createService, getUri, getProperty, getSession, getIllegalIdentifierException
 from gdrive import getInteractiveNetworkOffLineException, getInteractiveNetworkReadException
@@ -123,7 +123,6 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory, P
 
     # XContentIdentifierFactory
     def createContentIdentifier(self, identifier):
-        #try:
         print("ContentProvider.createContentIdentifier() 1 %s" % identifier)
         level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
         msg = "Identifier: %s ..." % identifier
@@ -132,22 +131,10 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory, P
         print("ContentProvider.createContentIdentifier() 2 %s" % identifier)
         self._setUser(uri)
         contentidentifier = ContentIdentifier(self.ctx, self.Connection, self.Mode, self.User, uri)
-        #if not contentidentifier.IsValid:
-            #error = ContentCreationException()
-            #error.eError = uno.Enum('com.sun.star.ucb.ContentCreationError', 'CONTENT_CREATION_FAILED')
-            #error.Message = "Identifier has not been retrieved: %s" % identifier.getContentIdentifier()
-            #error.Context = self
-            #error = contentidentifier.Error
-            #print("ContentProvider.createContentIdentifier() 3 %s" % contentidentifier.getContentIdentifier())
-            #level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
-            #self.Logger.logp(level, "ContentProvider", "createContentIdentifier()", "%s - %s" % (msg, error.Message))
-            #print("ContentProvider.createContentIdentifier() %s - %s" % (msg, error.Message))
-            #raise error
         msg = "Identifier: %s ... Done" % contentidentifier.getContentIdentifier()
         self.Logger.logp(level, "ContentProvider", "createContentIdentifier()", msg)
+        print("ContentProvider.createContentIdentifier() 3 %s" % identifier)
         return contentidentifier
-        #except Exception as e:
-        #    print("ContentProvider.createContentIdentifier().Error: %s - %e" % (e, traceback.print_exc()))
 
     # XContentProvider
     def queryContent(self, identifier):
@@ -156,11 +143,11 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory, P
         print("ContentProvider.queryContent() 1 %s" % identifier.getContentIdentifier())
         msg = "Identifier: %s..." % identifier.getContentIdentifier()
         if not identifier.IsValid:
-            error = ContentCreationException()
-            error.eError = uno.Enum('com.sun.star.ucb.ContentCreationError', 'CONTENT_CREATION_FAILED')
-            error.Message = "Identifier has not been retrieved: %s" % identifier.getContentIdentifier()
-            error.Context = self
-            #error = identifier.Error
+            #error = ContentCreationException()
+            #error.eError = uno.Enum('com.sun.star.ucb.ContentCreationError', 'CONTENT_CREATION_FAILED')
+            #error.Message = "Identifier has not been retrieved: %s" % identifier.getContentIdentifier()
+            #error.Context = self
+            error = identifier.Error
             print("ContentProvider.queryContent() 2 %s" % identifier.getContentIdentifier())
             level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
             self.Logger.logp(level, "ContentProvider", "queryContent()", "%s - %s" % (msg, error.Message))

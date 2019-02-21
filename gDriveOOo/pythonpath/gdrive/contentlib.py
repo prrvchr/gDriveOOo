@@ -6,7 +6,8 @@ import unohelper
 
 from com.sun.star.lang import NoSupportException
 from com.sun.star.ucb import XContentIdentifier, XContentAccess, XDynamicResultSet
-from com.sun.star.ucb import XCommandInfo, XCommandInfoChangeNotifier, UnsupportedCommandException
+from com.sun.star.ucb import XCommandInfo, XCommandInfoChangeNotifier, XContentIdentifierFactory
+from com.sun.star.ucb import UnsupportedCommandException
 from com.sun.star.task import XInteractionContinuation, XInteractionAbort
 from com.sun.star.ucb import XInteractionSupplyName, XInteractionReplaceExistingData
 from com.sun.star.ucb import IllegalIdentifierException, XInteractionSupplyAuthentication2
@@ -65,14 +66,15 @@ class ContentUser(unohelper.Base, PropertySet):
         return properties
 
 
-class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild, XInputStreamProvider, XUpdatable, XLinkUpdate):
-    def __init__(self, ctx, connection, mode, user, uri, new=False):
+class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild, XInputStreamProvider,
+                        XUpdatable, XLinkUpdate, XContentIdentifierFactory):
+    def __init__(self, ctx, connection, mode, user, uri):
         self.ctx = ctx
         self.Connection = connection
         self.Mode = mode
         self.User = user
         self.Uri = uri
-        self.IsNew = new
+        self.IsNew = self.Uri.hasFragment()
         self._Error = None
         self.size = 0
         self._Updated = False
@@ -87,9 +89,6 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild,
     @property
     def BaseURL(self):
         return self.Url if self.IsRoot else '%s/%s' % (self.Url, self.Id)
-    @property
-    def NewIdentifier(self):
-        return getNewIdentifier(self.Connection, self.User.Id)
     @property
     def Updated(self):
         return self._Updated
@@ -121,6 +120,13 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild,
             with self.User.Session as session:
                 self._Updated = updateChildren(session, self.Connection, self.User.Id, self.Id)
 
+    # XContentIdentifierFactory
+    def createContentIdentifier(self, title=''):
+        id = getNewIdentifier(self.Connection, self.User.Id)
+        identifier = '%s/%s#%s' % (self.BaseURL, title, id) if title else '%s/%s' % (self.BaseURL, id)
+        uri = getUri(self.ctx, identifier)
+        return ContentIdentifier(self.ctx, self.Connection, self.Mode, self.User, uri)
+
     # XContentIdentifier
     def getContentIdentifier(self):
         return self.Uri.getUriReference()
@@ -150,6 +156,8 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild,
                     break
         if title is None:
             id = self.User.RootId
+        elif self.IsNew:
+            id = self.Uri.getFragment()
         elif isIdentifier(self.Connection, title):
             id = title
         else:
@@ -164,8 +172,6 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild,
             self._Error = IllegalIdentifierException(message, self)
         paths.insert(0, self.Uri.getAuthority())
         url = '%s://%s' % (self.Uri.getScheme(), '/'.join(paths))
-        if self.Uri.hasFragment():
-            title += '#%s' % self.Uri.getFragment()
         #print("ContentIdentifier._parseUri():\n    Uri: %s\n    Id - Title - Position: %s - %s - %s\n    BaseURL: %s" % (self.Uri.getUriReference(), id, title, position, url))
         return id, title, url
 
@@ -205,7 +211,6 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild,
         properties['IsNew'] = getProperty('IsNew', 'boolean', bound | readonly)
         properties['BaseURL'] = getProperty('BaseURL', 'string', bound | readonly)
         properties['Title'] = getProperty('Title', 'string', maybevoid | bound | readonly)
-        properties['NewIdentifier'] = getProperty('NewIdentifier', 'string', maybevoid | bound | readonly)
         properties['Updated'] = getProperty('Updated', 'boolean', bound | readonly)
         properties['InputStream'] = getProperty('InputStream', 'long', maybevoid)
         properties['Error'] = getProperty('Error', 'com.sun.star.ucb.IllegalIdentifierException', maybevoid | bound | readonly)
