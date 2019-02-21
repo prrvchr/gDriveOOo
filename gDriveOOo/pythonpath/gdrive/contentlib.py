@@ -123,8 +123,8 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild,
     # XContentIdentifierFactory
     def createContentIdentifier(self, title=''):
         id = getNewIdentifier(self.Connection, self.User.Id)
-        identifier = '%s/%s#%s' % (self.BaseURL, title, id) if title else '%s/%s' % (self.BaseURL, id)
-        uri = getUri(self.ctx, identifier)
+        title = title if title else id
+        uri = getUri(self.ctx, '%s/%s#%s' % (self.BaseURL, title, id))
         return ContentIdentifier(self.ctx, self.Connection, self.Mode, self.User, uri)
 
     # XContentIdentifier

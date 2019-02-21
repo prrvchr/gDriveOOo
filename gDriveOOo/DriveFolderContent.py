@@ -79,7 +79,7 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
 
             self._commandInfo = self._getCommandInfo()
             self._propertySetInfo = self._getPropertySetInfo()
-            msg = "DriveFolderContent loading Uri: %s ... Done" % self.Identifier.getContentIdentifier()
+            msg = "DriveFolderContent loading Uri: %s ... Done" % self.getIdentifier().getContentIdentifier()
             self.Logger.logp(level, "DriveFolderContent", "__init__()", msg)
             self._newTitle = ''
             print(msg)
@@ -88,16 +88,16 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
 
     @property
     def Id(self):
-        return self.Identifier.Id
+        return self.getIdentifier().Id
     @Id.setter
     def Id(self, id):
         propertyChange(self, 'Id', self.Id, id)
     @property
     def Scheme(self):
-        return self.Identifier.getContentProviderScheme()
+        return self.getIdentifier().getContentProviderScheme()
     @property
     def UserName(self):
-        return self.Identifier.User.Name
+        return self.getIdentifier().User.Name
     @property
     def Title(self):
         return self.Name
@@ -160,11 +160,11 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
 
     # XChild
     def getParent(self):
-        if self.Identifier.IsRoot:
+        identifier = self.getIdentifier()
+        if identifier.IsRoot:
             raise NoSupportException('Root Folder as no Parent', self)
         print("DriveFolderContent.getParent()")
-        identifier = self.Identifier.getParent()
-        return getUcb(self.ctx).queryContent(identifier)
+        return getUcb(self.ctx).queryContent(identifier.getParent())
     def setParent(self, parent):
         print("DriveFolderContent.setParent()")
         raise NoSupportException('Parent can not be set', self)
@@ -200,15 +200,16 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
             return setPropertiesValues(self, environment, command.Argument, self._propertySetInfo, self.Logger)
         elif command.Name == 'open':
             print("DriveFolderContent.execute() open 1")
+            identifier = self.getIdentifier()
             if self.Loaded == ONLINE:
-                self.Identifier.updateLinks()
-                if self.Identifier.Updated:
+                identifier.updateLinks()
+                if identifier.Updated:
                     self.Loaded = OFFLINE
             print("DriveFolderContent.execute() open 2")
             # Not Used: command.Argument.Properties - Implement me ;-)
-            index, select = getChildSelect(self.Identifier)
+            index, select = getChildSelect(identifier)
             print("DriveFolderContent.execute() open 3")
-            return DynamicResultSet(self.ctx, self.Identifier, select, index)
+            return DynamicResultSet(self.ctx, identifier, select, index)
             print("DriveFolderContent.execute() open 4")
         elif command.Name == 'insert':
             print("DriveFolderContent.execute() insert")
@@ -236,12 +237,13 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
             move = command.Argument.MoveData
             clash = command.Argument.NameClash
             print("DriveFolderContent.execute(): transfer 1:\nSource:    %s\nId:    %s\nMove:    %s\nClash:    %s" % (source, title, move, clash))
-            if isChildId(self.Identifier, title):
+            identifier = self.getIdentifier()
+            if isChildId(identifier, title):
                 id = title
             else:
                 # It appears that 'command.Argument.NewTitle' is not an id but a title...
                 # If 'NewTitle' exist and is unique in the folder, we can retrieve its Id
-                id = selectChildId(self.Identifier.Connection, self.Identifier.Id, title)
+                id = selectChildId(identifier.Connection, identifier.Id, title)
                 if id is None:
                     self._newTitle = title
                     # Id could not be found: NewTitle does not exist or is not unique in the folder
@@ -258,7 +260,7 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
             sf.writeFile(target, inputstream)
             inputstream.closeInput()
             ucb = getUcb(self.ctx)
-            identifier = ucb.createContentIdentifier('%s/%s' % (self.Identifier.BaseURL, title))
+            identifier = ucb.createContentIdentifier('%s/%s' % (identifier.BaseURL, title))
             data = getPropertyValueSet({'Size': sf.getSize(target)})
             content = ucb.queryContent(identifier)
             executeContentCommand(content, 'setPropertyValues', data, environment)
@@ -287,7 +289,7 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         commands['createNewContent'] = getCommandInfo('createNewContent', 'com.sun.star.ucb.ContentInfo')
         commands['insert'] = getCommandInfo('insert', 'com.sun.star.ucb.InsertCommandArgument')
         #commands['insert'] = getCommandInfo('insert', 'com.sun.star.ucb.InsertCommandArgument2')
-        if not self.Identifier.IsRoot:
+        if not self.getIdentifier().IsRoot:
             commands['delete'] = getCommandInfo('delete', 'boolean')
         commands['transfer'] = getCommandInfo('transfer', 'com.sun.star.ucb.TransferInfo')
         commands['close'] = getCommandInfo('close')

@@ -86,13 +86,15 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
             self.CanCheckOut = True
             self.CanCheckIn = True
             self.CanCancelCheckOut = True
-            self.TargetURL = self.Identifier.getContentIdentifier()
-            self.BaseURI = self.Identifier.BaseURL
-            #parent = self.Identifier.getParent()
+
+            identifier = self.getIdentifier()
+            self.TargetURL = identifier.getContentIdentifier()
+            self.BaseURI = identifier.BaseURL
+            #parent = identifier.getParent()
             #baseuri = parent.getContentIdentifier()
             #self.CasePreservingURL = '%s%s' % (baseuri, parent.Id) if baseuri.endswith('/') else '%s/%s' % (baseuri, parent.Id)
-            #self.CasePreservingURL = self.Identifier.getContentIdentifier()
-            msg = "DriveOfficeContent loading Uri: %s ... Done" % self.Identifier.getContentIdentifier()
+            #self.CasePreservingURL = identifier.getContentIdentifier()
+            msg = "DriveOfficeContent loading Uri: %s ... Done" % identifier.getContentIdentifier()
             self.Logger.logp(level, "DriveOfficeContent", "__init__()", msg)            
             print("DriveOfficeContent.__init__()")
         except Exception as e:
@@ -100,16 +102,16 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
 
     @property
     def Id(self):
-        return self.Identifier.Id
+        return self.getIdentifier().Id
     @Id.setter
     def Id(self, id):
         propertyChange(self, 'Id', self.Id, id)
     @property
     def Scheme(self):
-        return self.Identifier.getContentProviderScheme()
+        return self.getIdentifier().getContentProviderScheme()
     @property
     def UserName(self):
-        return self.Identifier.User.Name
+        return self.getIdentifier().User.Name
     @property
     def TitleOnServer(self):
         # LibreOffice specifique property
@@ -117,7 +119,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
     @property
     def Title(self):
         # LibreOffice use this property for 'transfer command' in 'command.Argument.NewTitle'
-        return self.Identifier.Title
+        return self.getIdentifier().Title
     @Title.setter
     def Title(self, title):
         identifier = self.getIdentifier()
@@ -161,7 +163,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         self._Loaded = loaded
     @property
     def CasePreservingURL(self):
-        return self.Identifier.getContentIdentifier()
+        return self.getIdentifier().getContentIdentifier()
     @CasePreservingURL.setter
     def CasePreservingURL(self, url):
         pass
@@ -181,8 +183,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
      # XChild
     def getParent(self):
         print("DriveOfficeContent.getParent() ***********************************************")
-        identifier = self.Identifier.getParent()
-        return getUcb(self.ctx).queryContent(identifier)
+        return getUcb(self.ctx).queryContent(self.getIdentifier().getParent())
     def setParent(self, parent):
         print("DriveOfficeContent.setParent() ***********************************************")
         raise NoSupportException('Parent can not be set', self)
@@ -299,8 +300,9 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         if self.Loaded == OFFLINE and sf.exists(url):
             return url
         try:
-            self.Identifier.InputStream = self.Size
-            stream = self.Identifier.createInputStream()
+            identifier = self.getIdentifier()
+            identifier.InputStream = self.Size
+            stream = identifier.createInputStream()
             sf.writeFile(url, stream)
         except:
             return None
@@ -340,7 +342,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         bound = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.BOUND')
         constrained = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.CONSTRAINED')
         readonly = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.READONLY')
-        ro = 0 if self.Identifier.IsNew else readonly
+        ro = 0 if self.getIdentifier().IsNew else readonly
         properties['Id'] = getProperty('Id', 'string', bound | readonly)
         properties['ContentType'] = getProperty('ContentType', 'string', bound | ro)
         properties['MimeType'] = getProperty('MimeType', 'string', bound | readonly)

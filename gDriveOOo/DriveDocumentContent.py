@@ -77,11 +77,12 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
             self.typeMaps['application/vnd.google-apps.drawing'] = 'application/pdf'
 
             self.initialize(namedvalues)
-
+            
+            identifier = self.getIdentifier()
             self.ObjectId = self.Id
-            self.TargetURL = self.Identifier.getContentIdentifier()
-            self.BaseURI = self.Identifier.BaseURL
-            msg = "DriveDocumentContent loading Uri: %s ... Done" % self.Identifier.getContentIdentifier()
+            self.TargetURL = identifier.getContentIdentifier()
+            self.BaseURI = identifier.BaseURL
+            msg = "DriveDocumentContent loading Uri: %s ... Done" % identifier.getContentIdentifier()
             self.Logger.logp(level, "DriveDocumentContent", "__init__()", msg)
             print("DriveDocumentContent.__init__()")
         except Exception as e:
@@ -89,16 +90,16 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
 
     @property
     def Id(self):
-        return self.Identifier.Id
+        return self.getIdentifier().Id
     @Id.setter
     def Id(self, id):
         propertyChange(self, 'Id', self.Id, id)
     @property
     def Scheme(self):
-        return self.Identifier.getContentProviderScheme()
+        return self.getIdentifier().getContentProviderScheme()
     @property
     def UserName(self):
-        return self.Identifier.User.Name
+        return self.getIdentifier().User.Name
     @property
     def TitleOnServer(self):
         return self.Name
@@ -141,7 +142,7 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
         self._Loaded = loaded
     @property
     def CasePreservingURL(self):
-        return self.Identifier.getContentIdentifier()
+        return self.getIdentifier().getContentIdentifier()
     @CasePreservingURL.setter
     def CasePreservingURL(self, url):
         pass
@@ -161,8 +162,7 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
     # XChild
     def getParent(self):
         print("DriveDocumentContent.getParent() ***********************************************")
-        identifier = self.Identifier.getParent()
-        return getUcb(self.ctx).queryContent(identifier)
+        return getUcb(self.ctx).queryContent(self.getIdentifier().getParent())
     def setParent(self, parent):
         print("DriveDocumentContent.setParent()")
         raise NoSupportException('Parent can not be set', self)
@@ -263,8 +263,9 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
         if self.Loaded == OFFLINE and sf.exists(url):
             return url
         try:
-            self.Identifier.InputStream = self.Size
-            stream = self.Identifier.createInputStream()
+            identifier = self.getIdentifier()
+            identifier.InputStream = self.Size
+            stream = identifier.createInputStream()
             sf.writeFile(url, stream)
         except:
             return None
