@@ -35,57 +35,51 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
                          XCommandProcessor2, XContentCreator, PropertyContainer, PropertiesChangeNotifier,
                          PropertySetInfoChangeNotifier, CommandInfoChangeNotifier, XCallback):
     def __init__(self, ctx, *namedvalues):
-        try:
-            self.ctx = ctx
+        self.ctx = ctx
+        self.Logger = getLogger(self.ctx)
+        level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
+        msg = "DriveFolderContent loading ..."
+        self.Logger.logp(level, "DriveFolderContent", "__init__()", msg)
+        self.Identifier = None
+        self.ContentType = 'application/vnd.google-apps.folder'
+        self.Name = 'Sans Nom'
+        self.IsFolder = True
+        self.IsDocument = False
+        self.DateCreated = parseDateTime()
+        self.DateModified = parseDateTime()
+        self.MimeType = 'application/vnd.google-apps.folder'
+        self.Size = 0
+        self._Trashed = False
 
-            self.Logger = getLogger(self.ctx)
-            level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
-            msg = "DriveFolderContent loading ..."
-            self.Logger.logp(level, "DriveFolderContent", "__init__()", msg)
+        self.CanAddChild = True
+        self.CanRename = True
+        self.IsReadOnly = False
+        self.IsVersionable = False
+        self._Loaded = 1
 
-            self.Identifier = None
+        self.IsHidden = False
+        self.IsVolume = False
+        self.IsRemote = False
+        self.IsRemoveable = False
+        self.IsFloppy = False
+        self.IsCompactDisc = False
 
-            self.ContentType = 'application/vnd.google-apps.folder'
-            self.Name = 'Sans Nom'
-            self.IsFolder = True
-            self.IsDocument = False
-            self.DateCreated = parseDateTime()
-            self.DateModified = parseDateTime()
-            self.MimeType = 'application/vnd.google-apps.folder'
-            self.Size = 0
-            self._Trashed = False
+        self.listeners = []
+        self.contentListeners = []
+        self.propertiesListener = {}
+        self.propertyInfoListeners = []
+        self.commandInfoListeners = []
+        self.commandIdentifier = 0
 
-            self.CanAddChild = True
-            self.CanRename = True
-            self.IsReadOnly = False
-            self.IsVersionable = False
-            self._Loaded = 1
+        self._newTitle = ''
 
-            self.IsHidden = False
-            self.IsVolume = False
-            self.IsRemote = False
-            self.IsRemoveable = False
-            self.IsFloppy = False
-            self.IsCompactDisc = False
+        self.initialize(namedvalues)
 
-            self.listeners = []
-            self.contentListeners = []
-            self.propertiesListener = {}
-            self.propertyInfoListeners = []
-            self.commandInfoListeners = []
-            self.commandIdentifier = 0
-
-            self.initialize(namedvalues)
-
-            self._commandInfo = self._getCommandInfo()
-            self._propertySetInfo = self._getPropertySetInfo()
-            self._creatableContentsInfo = self._getCreatableContentsInfo()
-            msg = "DriveFolderContent loading Uri: %s ... Done" % self.getIdentifier().getContentIdentifier()
-            self.Logger.logp(level, "DriveFolderContent", "__init__()", msg)
-            self._newTitle = ''
-            print(msg)
-        except Exception as e:
-            print("DriveFolderContent.__init__().Error: %s - %e" % (e, traceback.print_exc()))
+        self._commandInfo = self._getCommandInfo()
+        self._propertySetInfo = self._getPropertySetInfo()
+        self._creatableContentsInfo = self._getCreatableContentsInfo()
+        msg = "DriveFolderContent loading Uri: %s ... Done" % self.getIdentifier().getContentIdentifier()
+        self.Logger.logp(level, "DriveFolderContent", "__init__()", msg)
 
     @property
     def UserName(self):
@@ -124,12 +118,10 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
     # XCallback
     def notify(self, event):
         for listener in self.contentListeners:
-            print("DriveFolderContent.notify() ***********************************************")
             listener.contentEvent(event)
 
     # XContentCreator
     def queryCreatableContentsInfo(self):
-        print("DriveFolderContent.queryCreatableContentsInfo():*************************")
         return self._creatableContentsInfo
     def createNewContent(self, contentinfo):
         identifier = self.getIdentifier().createContentIdentifier(self._newTitle)
@@ -141,10 +133,8 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         identifier = self.getIdentifier()
         if identifier.IsRoot:
             raise NoSupportException('Root Folder as no Parent', self)
-        print("DriveFolderContent.getParent()")
         return getUcb(self.ctx).queryContent(identifier.getParent())
     def setParent(self, parent):
-        print("DriveFolderContent.setParent()")
         raise NoSupportException('Parent can not be set', self)
 
     # XContent
@@ -153,20 +143,15 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
     def getContentType(self):
         return self.ContentType
     def addContentEventListener(self, listener):
-        print("DriveFolderContent.addContentEventListener():*************************")
         self.contentListeners.append(listener)
     def removeContentEventListener(self, listener):
-        print("DriveFolderContent.removeContentEventListener():*************************")
         if listener in self.contentListeners:
             self.contentListeners.remove(listener)
 
     # XCommandProcessor2
     def createCommandIdentifier(self):
-        print("DriveFolderContent.createCommandIdentifier(): **********************")
         return getCommandIdentifier(self)
     def execute(self, command, id, environment):
-        #try:
-        print("DriveFolderContent.execute(): %s - %s" % (command.Name, id))
         if command.Name == 'getCommandInfo':
             return CommandInfo(self._commandInfo)
         elif command.Name == 'getPropertySetInfo':
@@ -177,22 +162,18 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         elif command.Name == 'setPropertyValues':
             return setPropertiesValues(self, environment, command.Argument, self._propertySetInfo, self.Logger)
         elif command.Name == 'open':
-            print("DriveFolderContent.execute() open 1")
             identifier = self.getIdentifier()
             if self.Loaded == ONLINE:
                 identifier.updateLinks()
                 if identifier.Updated:
                     self.Loaded = OFFLINE
-            print("DriveFolderContent.execute() open 2")
             # Not Used: command.Argument.Properties - Implement me ;-)
             index, select = getChildSelect(identifier)
-            print("DriveFolderContent.execute() open 3")
             return DynamicResultSet(self.ctx, identifier, select, index)
-            print("DriveFolderContent.execute() open 4")
         elif command.Name == 'insert':
             print("DriveFolderContent.execute() insert")
             ucp = getUcp(self.ctx)
-            self.addPropertiesChangeListener(('Name', 'Size', 'Trashed', 'Loaded'), ucp)
+            self.addPropertiesChangeListener(('Id', 'Name', 'Size', 'Trashed', 'Loaded'), ucp)
             identifier = self.getIdentifier()
             propertyChange(self, 'Id', identifier.Id, CREATED | FOLDER)
             parent = identifier.getParent()
@@ -205,30 +186,32 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
             print("DriveFolderContent.execute(): createNewContent %s" % command.Argument)
             return self.createNewContent(command.Argument)
         elif command.Name == 'transfer':
-            # Transfer command is only used for existing document (File Save)
+            # Transfer command is used for document 'File Save' or 'File Save As'
             # NewTitle come from:
             # - Last segment path of "XContent.getIdentifier().getContentIdentifier()" for OpenOffice
             # - Property Title of "XContent" for LibreOffice
             # If the content has been renamed, the last segment is the new Title of the content
-            # We assume 'command.Argument.NewTitle' as an id
             title = command.Argument.NewTitle
             source = command.Argument.SourceURL
             move = command.Argument.MoveData
             clash = command.Argument.NameClash
             print("DriveFolderContent.execute(): transfer 1:\nSource:    %s\nId:    %s\nMove:    %s\nClash:    %s" % (source, title, move, clash))
             identifier = self.getIdentifier()
+            # We check if 'command.Argument.NewTitle' is an Id
             if isChildId(identifier, title):
                 id = title
             else:
-                # It appears that 'command.Argument.NewTitle' is not an id but a title...
+                # It appears that 'command.Argument.NewTitle' is not an Id but a Title...
                 # If 'NewTitle' exist and is unique in the folder, we can retrieve its Id
                 id = selectChildId(identifier.Connection, identifier.Id, title)
                 if id is None:
-                    self._newTitle = title
-                    # Id could not be found: NewTitle does not exist or is not unique in the folder
+                    # Id could not be found: NewTitle does not exist in the folder...
                     # For new document (File Save As) we use commands:
-                    # createNewContent: for creating an empty new Content
-                    # Insert at new Content for committing change
+                    # - createNewContent: for creating an empty new Content
+                    # - Insert at new Content for committing change
+                    # To execute these commands, we must throw an exception
+                    # But we need to keep 'NewTitle' for building the Uri
+                    self._newTitle = title
                     raise InteractiveBadTransferURLException("Couln't handle Url: %s" % source, self)
             print("DriveFolderContent.execute(): transfer 2:\n    transfer: %s - %s" % (source, id))
             sf = getSimpleFile(self.ctx)
@@ -250,11 +233,8 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
             print("DriveFolderContent.execute(): close")
         elif command.Name == 'flush':
             print("DriveFolderContent.execute(): flush")
-        #except Exception as e:
-        #    print("DriveFolderContent.execute().Error: %s - %e" % (e, traceback.print_exc()))
-
     def abort(self, id):
-        print("DriveFolderContent.abort(): %s" % id)
+        pass
     def releaseCommandIdentifier(self, id):
         pass
 

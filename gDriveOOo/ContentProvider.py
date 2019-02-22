@@ -43,7 +43,6 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory, P
         self.cachedContent = {}
         self.Logger = getLogger(self.ctx)
         self._Mode = getConnectionMode(self.ctx)
-        print("ContentProvider.__init__() %s" % self.Mode)
         msg += " Done"
         desktop = self.ctx.ServiceManager.createInstance('com.sun.star.frame.Desktop')
         desktop.addTerminateListener(self)
@@ -79,9 +78,6 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory, P
             print("ContentProvider.registerInstance() 2 %s - %s" % (g_scheme, template))
             # Piggyback DataBase Connections (easy and clean ShutDown ;-) )
             self._Statement = getDbConnection(self.ctx, g_scheme, True).createStatement()
-            #self.Connection = getDbConnection(self.ctx, g_scheme, True)
-            #mri = self.ctx.ServiceManager.createInstance('mytools.Mri')
-            #mri.inspect(self.Connection)
             print("ContentProvider.registerInstance() 3")
             return getUcb(self.ctx).registerContentProvider(self, g_scheme, replace)
     def deregisterInstance(self, template, argument):
@@ -123,44 +119,41 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory, P
 
     # XContentIdentifierFactory
     def createContentIdentifier(self, identifier):
-        print("ContentProvider.createContentIdentifier() 1 %s" % identifier)
         level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
         msg = "Identifier: %s ..." % identifier
         self.Logger.logp(level, "ContentProvider", "createContentIdentifier()", msg)
         uri = getUri(self.ctx, identifier)
-        print("ContentProvider.createContentIdentifier() 2 %s" % identifier)
         self._setUser(uri)
         contentidentifier = ContentIdentifier(self.ctx, self.Connection, self.Mode, self.User, uri)
         msg = "Identifier: %s ... Done" % contentidentifier.getContentIdentifier()
         self.Logger.logp(level, "ContentProvider", "createContentIdentifier()", msg)
-        print("ContentProvider.createContentIdentifier() 3 %s" % identifier)
         return contentidentifier
 
     # XContentProvider
     def queryContent(self, identifier):
-        try:
-            content = None
-            print("ContentProvider.queryContent() 1 %s" % identifier.getContentIdentifier())
-            msg = "Identifier: %s..." % identifier.getContentIdentifier()
-            if not identifier.IsValid:
-                #error = ContentCreationException()
-                #error.eError = uno.Enum('com.sun.star.ucb.ContentCreationError', 'CONTENT_CREATION_FAILED')
-                #error.Message = "Identifier has not been retrieved: %s" % identifier.getContentIdentifier()
-                #error.Context = self
-                error = identifier.Error
-                print("ContentProvider.queryContent() 2 %s" % identifier.getContentIdentifier())
-                level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
-                self.Logger.logp(level, "ContentProvider", "queryContent()", "%s - %s" % (msg, error.Message))
-                print("ContentProvider.queryContent() %s - %s" % (msg, error.Message))
-                raise error
-            print("ContentProvider.queryContent() 3 %s" % identifier.getContentIdentifier())
-            content = self._getContent(identifier)
-            msg += " Done"
-            level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
-            self.Logger.logp(level, "ContentProvider", "queryContent()", msg)
-            return content
-        except Exception as e:
-            print("ContentProvider.queryContent().Error: %s - %e" % (e, traceback.print_exc()))
+        content = None
+        print("ContentProvider.queryContent() 1 %s" % identifier.getContentIdentifier())
+        msg = "Identifier: %s..." % identifier.getContentIdentifier()
+        if not identifier.IsValid:
+            error = identifier.Error
+            print("ContentProvider.queryContent() 2 %s" % identifier.getContentIdentifier())
+            level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
+            self.Logger.logp(level, "ContentProvider", "queryContent()", "%s - %s" % (msg, error.Message))
+            print("ContentProvider.queryContent() %s - %s" % (msg, error.Message))
+            raise error
+        print("ContentProvider.queryContent() 3 %s" % identifier.getContentIdentifier())
+        content = self._getContent(identifier)
+        if content is None:
+            error = ContentCreationException()
+            error.eError = uno.Enum('com.sun.star.ucb.ContentCreationError', 'CONTENT_CREATION_FAILED')
+            error.Message = "Content coult not be created: %s" % identifier.getContentIdentifier()
+            error.Context = self
+            raise error
+        content.addPropertiesChangeListener(('Id', 'Name', 'Size', 'Trashed', 'Loaded'), self)
+        msg += " Done"
+        level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
+        self.Logger.logp(level, "ContentProvider", "queryContent()", msg)
+        return content
     def compareContentIds(self, identifier1, identifier2):
         compare = 1
         print("ContentProvider.compareContentIds() %s - %s" % (identifier1.getContentIdentifier(), identifier2.getContentIdentifier()))
@@ -225,8 +218,6 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory, P
         else:
             message = "ERROR: Can't retrieve User: %s from provider" % username
             user = {'Error': IllegalIdentifierException(message, self)}
-            #level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
-            #self.Logger.logp(level, "ContentProvider", "_getUser()", message)
         return user
 
     def _getItem(self, identifier):
@@ -260,7 +251,6 @@ class ContentProvider(unohelper.Base, XServiceInfo, XContentIdentifierFactory, P
         data = item.get('Data', {})
         mimetype = data.get('MimeType', 'application/octet-stream')
         content = createContent(self.ctx, mimetype, identifier, data)
-        content.addPropertiesChangeListener(('Name', 'Size', 'Trashed', 'Loaded'), self)
         return content
 
     # PropertySet

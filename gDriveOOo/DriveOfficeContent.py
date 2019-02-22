@@ -33,67 +33,63 @@ g_ImplementationName = 'com.gmail.prrvchr.extensions.gDriveOOo.DriveOfficeConten
 class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent, XChild, XCommandProcessor2, PropertyContainer,
                          PropertiesChangeNotifier, PropertySetInfoChangeNotifier, CommandInfoChangeNotifier, XCallback):
     def __init__(self, ctx, *namedvalues):
-        try:
-            self.ctx = ctx
-            self.Logger = getLogger(self.ctx)
-            level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
-            msg = "DriveOfficeContent loading ..."
-            self.Logger.logp(level, "DriveOfficeContent", "__init__()", msg)
-            self.Identifier = None
+        self.ctx = ctx
+        self.Logger = getLogger(self.ctx)
+        level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
+        msg = "DriveOfficeContent loading ..."
+        self.Logger.logp(level, "DriveOfficeContent", "__init__()", msg)
+        self.Identifier = None
 
-            self.ContentType = 'application/vnd.oasis.opendocument'
-            self.Name = 'Sans Nom'
-            self.IsFolder = False
-            self.IsDocument = True
-            self.DateCreated = parseDateTime()
-            self.DateModified = parseDateTime()
-            self._Trashed = False
+        self.ContentType = 'application/vnd.oasis.opendocument'
+        self.Name = 'Sans Nom'
+        self.IsFolder = False
+        self.IsDocument = True
+        self.DateCreated = parseDateTime()
+        self.DateModified = parseDateTime()
+        self._Trashed = False
 
-            self.CanAddChild = False
-            self.CanRename = True
-            self.IsReadOnly = False
-            self.IsVersionable = False
-            self._Loaded = 1
+        self.CanAddChild = False
+        self.CanRename = True
+        self.IsReadOnly = False
+        self.IsVersionable = False
+        self._Loaded = 1
 
-            self.IsHidden = False
-            self.IsVolume = False
-            self.IsRemote = False
-            self.IsRemoveable = False
-            self.IsFloppy = False
-            self.IsCompactDisc = False
+        self.IsHidden = False
+        self.IsVolume = False
+        self.IsRemote = False
+        self.IsRemoveable = False
+        self.IsFloppy = False
+        self.IsCompactDisc = False
 
-            self.listeners = []
-            self.contentListeners = []
-            self.propertiesListener = {}
-            self.propertyInfoListeners = []
-            self.commandInfoListeners = []
-            self.commandIdentifier = 0
+        self.listeners = []
+        self.contentListeners = []
+        self.propertiesListener = {}
+        self.propertyInfoListeners = []
+        self.commandInfoListeners = []
+        self.commandIdentifier = 0
 
-            #self.Author = 'prrvchr'
-            #self.Keywords = 'clefs de recherche'
-            #self.Subject = 'Test de Google DriveOfficeContent'
-            self._CmisProperties = None
+        #self.Author = 'prrvchr'
+        #self.Keywords = 'clefs de recherche'
+        #self.Subject = 'Test de Google DriveOfficeContent'
+        self._CmisProperties = None
 
-            self.MimeType = None
+        self.MimeType = None
 
-            self.initialize(namedvalues)
-            
-            self._commandInfo = self._getCommandInfo()
-            self._propertySetInfo = self._getPropertySetInfo()
+        self.initialize(namedvalues)
+        
+        self._commandInfo = self._getCommandInfo()
+        self._propertySetInfo = self._getPropertySetInfo()
 
-            identifier = self.getIdentifier()
-            self.ObjectId = identifier.Id
-            self.CanCheckOut = True
-            self.CanCheckIn = True
-            self.CanCancelCheckOut = True
+        identifier = self.getIdentifier()
+        self.ObjectId = identifier.Id
+        self.CanCheckOut = True
+        self.CanCheckIn = True
+        self.CanCancelCheckOut = True
 
-            self.TargetURL = identifier.getContentIdentifier()
-            self.BaseURI = identifier.BaseURL
-            msg = "DriveOfficeContent loading Uri: %s ... Done" % identifier.getContentIdentifier()
-            self.Logger.logp(level, "DriveOfficeContent", "__init__()", msg)            
-            print("DriveOfficeContent.__init__()")
-        except Exception as e:
-            print("DriveOfficeContent.__init__().Error: %s - %e" % (e, traceback.print_exc()))
+        self.TargetURL = identifier.getContentIdentifier()
+        self.BaseURI = identifier.BaseURL
+        msg = "DriveOfficeContent loading Uri: %s ... Done" % identifier.getContentIdentifier()
+        self.Logger.logp(level, "DriveOfficeContent", "__init__()", msg)            
 
     @property
     def UserName(self):
@@ -110,13 +106,10 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
     def Title(self, title):
         identifier = self.getIdentifier()
         old = self.Name
-        print("DriveOfficeContent.Title.setter() 1")
         self.Name = title
         propertyChange(self, 'Name', old, title)
-        print("DriveOfficeContent.Title.setter() 2")
         event = getContentEvent(self, EXCHANGED, self, identifier)
         self.notify(event)
-        print("DriveOfficeContent.Title.setter() 3")
     @property
     def Size(self):
         return self.getIdentifier().Size
@@ -165,15 +158,12 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
     # XCallback
     def notify(self, event):
         for listener in self.contentListeners:
-            print("DriveOfficeContent.notify() ***********************************************")
             listener.contentEvent(event)
 
      # XChild
     def getParent(self):
-        print("DriveOfficeContent.getParent() ***********************************************")
         return getUcb(self.ctx).queryContent(self.getIdentifier().getParent())
     def setParent(self, parent):
-        print("DriveOfficeContent.setParent() ***********************************************")
         raise NoSupportException('Parent can not be set', self)
 
     # XContent
@@ -182,37 +172,29 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
     def getContentType(self):
         return self.ContentType
     def addContentEventListener(self, listener):
-        print("DriveOfficeContent.addContentEventListener()")
         if listener not in self.contentListeners:
             self.contentListeners.append(listener)
     def removeContentEventListener(self, listener):
-        print("DriveOfficeContent.removeContentEventListener()")
         if listener in self.contentListeners:
             self.contentListeners.remove(listener)
 
     # XCommandProcessor2
     def createCommandIdentifier(self):
-        print("DriveOfficeContent.createCommandIdentifier(): **********************")
         return getCommandIdentifier(self)
     def execute(self, command, id, environment):
         result = None
         level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
         msg = "Command name: %s ..." % command.Name
-        print("DriveOfficeContent.execute(): %s - %s" % (command.Name, id))
         if command.Name == 'getCommandInfo':
-            print("DriveOfficeContent.getCommandInfo()?????????????????????????????????????????????????")
             result = CommandInfo(self._commandInfo)
         elif command.Name == 'getPropertySetInfo':
             result = CmisPropertySetInfo(self._propertySetInfo, self._getCmisPropertySetInfo)
         elif command.Name == 'getPropertyValues':
-            print("DriveOfficeContent.getPropertyValues() 1: %s" % (command.Argument, ))
             namedvalues = getPropertiesValues(self, command.Argument, self.Logger)
-            print("DriveOfficeContent.getPropertyValues() 2: %s" % (namedvalues, ))
             result = Row(namedvalues)
         elif command.Name == 'setPropertyValues':
             result = setPropertiesValues(self, environment, command.Argument, self._propertySetInfo, self.Logger)
         elif command.Name == 'open':
-            print ("DriveOfficeContent.open(): %s" % command.Argument.Mode)
             sf = getSimpleFile(self.ctx)
             url = self._getUrl(sf)
             if url is None:
@@ -242,7 +224,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
                 self.MimeType = getMimeType(self.ctx, stream)
                 stream.closeInput()
                 self.Size = sf.getSize(target)
-                self.addPropertiesChangeListener(('Name', 'Size', 'Trashed', 'Loaded'), ucp)
+                self.addPropertiesChangeListener(('Id', 'Name', 'Size', 'Trashed', 'Loaded'), ucp)
                 propertyChange(self, 'Id', identifier.Id, CREATED | FILE)
                 parent = identifier.getParent()
                 event = getContentEvent(self, INSERTED, self, parent)
@@ -275,7 +257,7 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         self.Logger.logp(level, "DriveOfficeContent", "execute()", msg)
         return result
     def abort(self, id):
-        print("DriveOfficeContent.abort(): %s" % id)
+        pass
     def releaseCommandIdentifier(self, id):
         pass
 

@@ -28,7 +28,7 @@ import traceback
 g_OfficeDocument = 'application/vnd.oasis.opendocument'
 
 
-def createContent(ctx, mimetype, identifier, data=None):
+def createContent(ctx, mimetype, identifier, data={}):
     name, content = None, None
     if mimetype == g_folder:
         name = 'DriveFolderContent'
@@ -41,8 +41,7 @@ def createContent(ctx, mimetype, identifier, data=None):
     if name is not None:
         service = 'com.gmail.prrvchr.extensions.gDriveOOo.%s' % name
         namedvalue = getNamedValueSet({'Identifier': identifier})
-        if data:
-            namedvalue += getNamedValueSet(data)
+        namedvalue += getNamedValueSet(data)
         content = ctx.ServiceManager.createInstanceWithArgumentsAndContext(service, namedvalue, ctx)
     return content
 

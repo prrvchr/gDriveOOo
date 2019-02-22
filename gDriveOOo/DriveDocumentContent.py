@@ -30,62 +30,58 @@ g_ImplementationName = 'com.gmail.prrvchr.extensions.gDriveOOo.DriveDocumentCont
 class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XContent, XChild, XCommandProcessor2, PropertyContainer,
                            PropertiesChangeNotifier, PropertySetInfoChangeNotifier, CommandInfoChangeNotifier, XCallback):
     def __init__(self, ctx, *namedvalues):
-        try:
-            self.ctx = ctx
-            self.Logger = getLogger(self.ctx)
-            level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
-            msg = "DriveDocumentContent loading ..."
-            self.Logger.logp(level, "DriveDocumentContent", "__init__()", msg)
-            self.Identifier = None
+        self.ctx = ctx
+        self.Logger = getLogger(self.ctx)
+        level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
+        msg = "DriveDocumentContent loading ..."
+        self.Logger.logp(level, "DriveDocumentContent", "__init__()", msg)
+        self.Identifier = None
 
-            self.ContentType = 'application/vnd.google-apps.document'
-            self.Name = 'Sans Nom'
-            self.IsFolder = False
-            self.IsDocument = True
-            self.DateCreated = parseDateTime()
-            self.DateModified = parseDateTime()
-            self._Trashed = False
+        self.ContentType = 'application/vnd.google-apps.document'
+        self.Name = 'Sans Nom'
+        self.IsFolder = False
+        self.IsDocument = True
+        self.DateCreated = parseDateTime()
+        self.DateModified = parseDateTime()
+        self._Trashed = False
 
-            self.CanAddChild = False
-            self.CanRename = True
-            self.IsReadOnly = False
-            self.IsVersionable = False
-            self._Loaded = 1
+        self.CanAddChild = False
+        self.CanRename = True
+        self.IsReadOnly = False
+        self.IsVersionable = False
+        self._Loaded = 1
 
-            self.IsHidden = False
-            self.IsVolume = False
-            self.IsRemote = False
-            self.IsRemoveable = False
-            self.IsFloppy = False
-            self.IsCompactDisc = False
+        self.IsHidden = False
+        self.IsVolume = False
+        self.IsRemote = False
+        self.IsRemoveable = False
+        self.IsFloppy = False
+        self.IsCompactDisc = False
 
-            self.listeners = []
-            self.contentListeners = []
-            self.propertiesListener = {}
-            self.propertyInfoListeners = []
-            self.commandInfoListeners = []
-            self.commandIdentifier = 0
+        self.listeners = []
+        self.contentListeners = []
+        self.propertiesListener = {}
+        self.propertyInfoListeners = []
+        self.commandInfoListeners = []
+        self.commandIdentifier = 0
 
-            self.typeMaps = {}
-            self.typeMaps['application/vnd.google-apps.document'] = 'application/vnd.oasis.opendocument.text'
-            self.typeMaps['application/vnd.google-apps.spreadsheet'] = 'application/x-vnd.oasis.opendocument.spreadsheet'
-            self.typeMaps['application/vnd.google-apps.presentation'] = 'application/vnd.oasis.opendocument.presentation'
-            self.typeMaps['application/vnd.google-apps.drawing'] = 'application/pdf'
+        self.typeMaps = {}
+        self.typeMaps['application/vnd.google-apps.document'] = 'application/vnd.oasis.opendocument.text'
+        self.typeMaps['application/vnd.google-apps.spreadsheet'] = 'application/x-vnd.oasis.opendocument.spreadsheet'
+        self.typeMaps['application/vnd.google-apps.presentation'] = 'application/vnd.oasis.opendocument.presentation'
+        self.typeMaps['application/vnd.google-apps.drawing'] = 'application/pdf'
 
-            self.initialize(namedvalues)
-            
-            self._commandInfo = self._getCommandInfo()
-            self._propertySetInfo = self._getPropertySetInfo()
+        self.initialize(namedvalues)
+        
+        self._commandInfo = self._getCommandInfo()
+        self._propertySetInfo = self._getPropertySetInfo()
 
-            identifier = self.getIdentifier()
-            self.ObjectId = identifier.Id
-            self.TargetURL = identifier.getContentIdentifier()
-            self.BaseURI = identifier.BaseURL
-            msg = "DriveDocumentContent loading Uri: %s ... Done" % identifier.getContentIdentifier()
-            self.Logger.logp(level, "DriveDocumentContent", "__init__()", msg)
-            print("DriveDocumentContent.__init__()")
-        except Exception as e:
-            print("DriveDocumentContent.__init__().Error: %s - %s" % (e, traceback.print_exc()))
+        identifier = self.getIdentifier()
+        self.ObjectId = identifier.Id
+        self.TargetURL = identifier.getContentIdentifier()
+        self.BaseURI = identifier.BaseURL
+        msg = "DriveDocumentContent loading Uri: %s ... Done" % identifier.getContentIdentifier()
+        self.Logger.logp(level, "DriveDocumentContent", "__init__()", msg)
 
     @property
     def UserName(self):
@@ -102,13 +98,10 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
     def Title(self, title):
         identifier = self.getIdentifier()
         old = self.Name
-        print("DriveDocumentContent.Title.setter() 1")
         self.Name = title
         propertyChange(self, 'Name', old, title)
-        print("DriveDocumentContent.Title.setter() 2")
         event = getContentEvent(self, EXCHANGED, self, identifier)
         self.notify(event)
-        print("DriveDocumentContent.Title.setter() 3")
     @property
     def Size(self):
         return 0
@@ -154,15 +147,12 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
     # XCallback
     def notify(self, event):
         for listener in self.contentListeners:
-            print("DriveDocumentContent.notify() ***********************************************")
             listener.contentEvent(event)
 
     # XChild
     def getParent(self):
-        print("DriveDocumentContent.getParent() ***********************************************")
         return getUcb(self.ctx).queryContent(self.getIdentifier().getParent())
     def setParent(self, parent):
-        print("DriveDocumentContent.setParent()")
         raise NoSupportException('Parent can not be set', self)
 
     # XContent
@@ -171,23 +161,19 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
     def getContentType(self):
         return self.ContentType
     def addContentEventListener(self, listener):
-        print("DriveDocumentContent.addContentEventListener()")
         if listener not in self.contentListeners:
             self.contentListeners.append(listener)
     def removeContentEventListener(self, listener):
-        print("DriveDocumentContent.removeContentEventListener()")
         if listener in self.contentListeners:
             self.contentListeners.remove(listener)
 
     # XCommandProcessor2
     def createCommandIdentifier(self):
-        print("DriveDocumentContent.createCommandIdentifier(): **********************")
         return getCommandIdentifier(self)
     def execute(self, command, id, environment):
         result = None
         level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
         msg = "Command name: %s ..." % command.Name
-        print("DriveDocumentContent.execute(): %s - %s" % (command.Name, id))
         if command.Name == 'getCommandInfo':
             result = CommandInfo(self._commandInfo)
         elif command.Name == 'getPropertySetInfo':
@@ -198,7 +184,6 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
         elif command.Name == 'setPropertyValues':
             result = setPropertiesValues(self, environment, command.Argument, self._propertySetInfo, self.Logger)
         elif command.Name == 'open':
-            print ("DriveDocumentContent.open(): %s" % command.Argument.Mode)
             sf = getSimpleFile(self.ctx)
             url = self._getUrl(sf)
             if url is None:
@@ -228,7 +213,7 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
                 self.MimeType = getMimeType(self.ctx, stream)
                 stream.closeInput()
                 self.Size = sf.getSize(target)
-                self.addPropertiesChangeListener(('Name', 'Size', 'Trashed', 'Loaded'), ucp)
+                self.addPropertiesChangeListener(('Id', 'Name', 'Size', 'Trashed', 'Loaded'), ucp)
                 propertyChange(self, 'Id', identifier.Id, CREATED | FILE)
                 parent = identifier.getParent()
                 event = getContentEvent(self, INSERTED, self, parent)
@@ -244,7 +229,7 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
         self.Logger.logp(level, "DriveOfficeContent", "execute()", msg)
         return result
     def abort(self, id):
-        print("DriveDocumentContent.abort(): %s" % id)
+        pass
     def releaseCommandIdentifier(self, id):
         pass
 

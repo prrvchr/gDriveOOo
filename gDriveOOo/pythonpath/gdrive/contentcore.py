@@ -89,7 +89,6 @@ def _setProperty(source, context, name, value, position):
 def _setTitle(source, context, title, position):
     identifier = source.getIdentifier()
     if u'~' in title:
-        print("contentcore._setTitle(): %s - %s" % (title, type(title)))
         msg = "Can't set property: %s value: %s contains invalid character: '~'." % ('Title', title)
         level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
         data = getPropertyValueSet({'Uri': identifier.getContentIdentifier(),'ResourceName': title})
