@@ -14,6 +14,7 @@ from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
 from com.sun.star.ucb.ContentAction import INSERTED, REMOVED, DELETED, EXCHANGED
 
 from .unotools import getProperty, getPropertyValue, createService, getSimpleFile, getResourceLocation
+from .unotools import getNamedValueFromArguments, getNamedValueSet
 #from .items import getMergeCall, mergeItem, setContentCall
 from .google import unparseDateTime, g_scheme, getUploadLocation, OutputStream, updateItem, OAuth2Ooo
 from .google import RETRIEVED, CREATED, FOLDER, FILE, RENAMED, REWRITED, TRASHED
@@ -27,19 +28,22 @@ import traceback
 g_OfficeDocument = 'application/vnd.oasis.opendocument'
 
 
-def createContent(ctx, data):
+def createContent(ctx, mimetype, identifier, data=None):
     name, content = None, None
-    mime = data.get('MimeType', 'application/octet-stream')
-    if mime == g_folder:
+    if mimetype == g_folder:
         name = 'DriveFolderContent'
-    elif mime == g_link:
+    elif mimetype == g_link:
         pass
-    elif mime.startswith(g_doc):
+    elif mimetype.startswith(g_doc):
         name = 'DriveDocumentContent'
-    elif mime.startswith(g_OfficeDocument):
+    elif mimetype.startswith(g_OfficeDocument):
         name = 'DriveOfficeContent'
     if name is not None:
-        content = createService('com.gmail.prrvchr.extensions.gDriveOOo.%s' % name, ctx, **data)
+        service = 'com.gmail.prrvchr.extensions.gDriveOOo.%s' % name
+        namedvalue = getNamedValueSet({'Identifier': identifier})
+        if data:
+            namedvalue += getNamedValueSet(data)
+        content = ctx.ServiceManager.createInstanceWithArgumentsAndContext(service, namedvalue, ctx)
     return content
 
 def getSession(ctx, scheme, username):
@@ -78,8 +82,8 @@ def _syncItem(ctx, session, item):
         result = False
         id = item.get('id')
         mode = item.get('mode')
-        data, new = None, False
-        print("contenttools._syncItem(): mode: %s" % (mode, ))
+        data = None 
+        print("contenttools._syncItem():\nmode: %s\ndata: %s" % (mode, data))
         if mode & CREATED:
             data = {'id': id,
                     'parents': item.get('parents'),
@@ -89,14 +93,12 @@ def _syncItem(ctx, session, item):
             if mode & FOLDER:
                 result = updateItem(session, id, data, True)
             if mode & FILE:
-                size, stream = _getInputStream(ctx, id)
-                if size != 0:
-                    result = uploadItem(ctx, session, id, data, size, stream, True)
+                mimetype = item.get('mimeType')
+                result = uploadItem(ctx, session, id, data, mimetype, True)
         else:
             if mode & REWRITED:
-                size, stream = _getInputStream(ctx, id)
-                if size != 0:
-                    result = uploadItem(ctx, session, id, data, size, stream, False)
+                mimetype = None if item.get('size') else item.get('mimeType')
+                result = uploadItem(ctx, session, id, data, mimetype, False)
             if mode & RENAMED:
                 data = {'name': item.get('name')}
                 result = updateItem(session, id, data, False)
@@ -107,14 +109,17 @@ def _syncItem(ctx, session, item):
     except Exception as e:
         print("contenttools._syncItem().Error: %s - %e" % (e, traceback.print_exc()))
 
-def uploadItem(ctx, session, id, data, size, stream, new):
-    location = getUploadLocation(session, id, data, size, new)
-    if location is not None:
-        pump = getPump(ctx)
-        pump.setInputStream(stream)
-        pump.setOutputStream(OutputStream(session, location, size))
-        pump.start()
-        return id
+def uploadItem(ctx, session, id, data, mimetype, new):
+    size, stream = _getInputStream(ctx, id)
+    if size: 
+        location = getUploadLocation(session, id, data, mimetype, new, size)
+        if location is not None:
+            mimetype = None
+            pump = getPump(ctx)
+            pump.setInputStream(stream)
+            pump.setOutputStream(OutputStream(session, location, size))
+            pump.start()
+            return id
     return False
 
 def propertyChange(source, name, oldvalue, newvalue):
@@ -136,7 +141,7 @@ def setContentData(content, call, properties, index=1):
             call.setTimestamp(index, value)
         elif name in ('Trashed', 'CanAddChild', 'CanRename', 'IsReadOnly', 'IsVersionable'):
             call.setBoolean(index, value)
-        elif name in ('Size', 'Loaded', 'SyncMode'):
+        elif name in ('Size', 'Loaded'):
             call.setLong(index, value)
         index += 1
     return index
@@ -147,10 +152,6 @@ def _getContentProperties(content, properties):
         namedvalues.append(getProperty(name))
     command = getCommand('getPropertyValues', tuple(namedvalues))
     return content.execute(command, 0, None)
-
-def executeContentCommand(content, name, argument, environment=None):
-    command = getCommand(name, argument)
-    return content.execute(command, 0, environment)
 
 def _getPropertyChangeEvent(source, name, oldvalue, newvalue, further=False, handle=-1):
     event = uno.createUnoStruct('com.sun.star.beans.PropertyChangeEvent')

@@ -69,6 +69,12 @@ def getPropertyValue(name, value, state=None, handle=-1):
     property.State = uno.Enum('com.sun.star.beans.PropertyState', 'DIRECT_VALUE') if state is None else state
     return property
 
+def getNamedValueSet(kwargs):
+    namedvalues = []
+    for key, value in kwargs.items():
+        namedvalues.append(getNamedValue(key, value))
+    return tuple(namedvalues)
+
 def getNamedValue(name, value):
     namedvalue = uno.createUnoStruct('com.sun.star.beans.NamedValue')
     namedvalue.Name = name

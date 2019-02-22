@@ -11,10 +11,10 @@ from com.sun.star.ucb.ContentAction import INSERTED, REMOVED, DELETED, EXCHANGED
 
 
 from .items import insertContentItem, updateName, updateSize, updateTrashed, updateLoaded
-from .contenttools import getUri, getContentEvent, getUcp
+from .contenttools import getUri, getContentEvent, getUcp, getCommand
 from .contenttools import getUnsupportedNameClashException, getNameClashException
 from .contenttools import getInteractiveIOException, getInteractiveAugmentedIOException
-from .contentlib import ContentIdentifier, InteractionRequestName
+from .contentlib import ContentIdentifier, InteractionRequestName, CommandEnvironment
 from .unotools import getInteractionHandler, getNamedValue, getPropertyValueSet
 from .children import countChildTitle
 
@@ -205,3 +205,7 @@ def notifyContentListener(ctx, source, action, identifier=None):
     elif action == EXCHANGED:
         source.notify(getContentEvent(action, source, identifier))
 
+def executeContentCommand(content, name, argument, environment=None):
+    environment = CommandEnvironment() if environment is None else environment
+    command = getCommand(name, argument)
+    return content.execute(command, 0, environment)

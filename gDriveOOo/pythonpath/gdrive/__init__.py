@@ -30,12 +30,13 @@ from .contentlib import InteractionRequest, InteractionAbort
 
 from .contenttools import getUcb, getUcp, getUri, getMimeType
 from .contenttools import getContentEvent, getCmisProperty, getCommandInfo, getContentInfo
-from .contenttools import executeContentCommand, propertyChange, doSync
+from .contenttools import propertyChange, doSync
 from .contenttools import uploadItem, getSession, createContent, getIllegalIdentifierException
 from .contenttools import getInteractiveNetworkOffLineException, getInteractiveNetworkReadException
 from .contenttools import getUnsupportedNameClashException, getInsertCommandArgument
 
 from .contentcore import getCommandIdentifier, updateContent, setPropertiesValues, getPropertiesValues
+from .contentcore import executeContentCommand
 
 from .google import InputStream, getUser, getItem, getConnectionMode, updateItem, parseDateTime
 from .google import g_scheme, g_folder
@@ -45,7 +46,7 @@ from .logger import getLogger, getLoggerSetting, setLoggerSetting, getLoggerUrl
 
 from .unotools import getResourceLocation, createService, getStringResource, getPropertyValue
 from .unotools import getFileSequence, getProperty, getPropertySetInfoChangeEvent, getSimpleFile
-from .unotools import getInteractionHandler, getPropertyValueSet
+from .unotools import getInteractionHandler, getPropertyValueSet, getNamedValueSet
 
 from .unolib import Component, Initialization, InteractionHandler, PropertiesChangeNotifier
 from .unolib import PropertySetInfo, CmisPropertySetInfo, PropertySet, PropertySetInfoChangeNotifier

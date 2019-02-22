@@ -157,7 +157,7 @@ def _insertContentItem(content, insert, properties, index=1):
 
 def _setJsonData(call, data, timestamp, index=1):
     # IN Call Parameters for: mergeJsonUser(), insertJsonItem(), mergeJsonItem()
-    # Id, Name, DateCreated, DateModified, MimeType, Size, CanAddChild, CanRename, IsReadOnly, IsVersionable, SyncMode, ParentsId
+    # Id, Name, DateCreated, DateModified, MimeType, Size, CanAddChild, CanRename, IsReadOnly, IsVersionable, ParentsId
     # OUT Call Parameters for: mergeJsonItem()
     # RowCount
     call.setString(index, data.get('id'))

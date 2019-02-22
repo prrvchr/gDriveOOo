@@ -44,8 +44,6 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
             self.IsDocument = True
             self.DateCreated = parseDateTime()
             self.DateModified = parseDateTime()
-            self.MimeType = 'application/octet-stream'
-            self._Size = 0
             self._Trashed = False
 
             self.CanAddChild = False
@@ -61,8 +59,6 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
             self.IsFloppy = False
             self.IsCompactDisc = False
 
-            self._commandInfo = self._getCommandInfo()
-            self._propertySetInfo = self._getPropertySetInfo()
             self.listeners = []
             self.contentListeners = []
             self.propertiesListener = {}
@@ -78,8 +74,11 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
 
             self.initialize(namedvalues)
             
+            self._commandInfo = self._getCommandInfo()
+            self._propertySetInfo = self._getPropertySetInfo()
+
             identifier = self.getIdentifier()
-            self.ObjectId = self.Id
+            self.ObjectId = identifier.Id
             self.TargetURL = identifier.getContentIdentifier()
             self.BaseURI = identifier.BaseURL
             msg = "DriveDocumentContent loading Uri: %s ... Done" % identifier.getContentIdentifier()
@@ -89,40 +88,33 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
             print("DriveDocumentContent.__init__().Error: %s - %s" % (e, traceback.print_exc()))
 
     @property
-    def Id(self):
-        return self.getIdentifier().Id
-    @Id.setter
-    def Id(self, id):
-        propertyChange(self, 'Id', self.Id, id)
-    @property
-    def Scheme(self):
-        return self.getIdentifier().getContentProviderScheme()
-    @property
     def UserName(self):
         return self.getIdentifier().User.Name
     @property
     def TitleOnServer(self):
+        # LibreOffice specifique property
         return self.Name
     @property
     def Title(self):
-        return self.Name
+        # LibreOffice use this property for 'transfer command' in 'command.Argument.NewTitle'
+        return self.getIdentifier().Title
     @Title.setter
     def Title(self, title):
         identifier = self.getIdentifier()
         old = self.Name
-        print("DriveOfficeContent.Title.setter() 1")
+        print("DriveDocumentContent.Title.setter() 1")
         self.Name = title
         propertyChange(self, 'Name', old, title)
-        print("DriveOfficeContent.Title.setter() 2")
+        print("DriveDocumentContent.Title.setter() 2")
         event = getContentEvent(self, EXCHANGED, self, identifier)
         self.notify(event)
+        print("DriveDocumentContent.Title.setter() 3")
     @property
     def Size(self):
-        return self._Size
+        return 0
     @Size.setter
     def Size(self, size):
-        propertyChange(self, 'Size', self._Size, size)
-        self._Size = size
+        propertyChange(self, 'Size', 0, 0)
     @property
     def Trashed(self):
         return self._Trashed
@@ -131,8 +123,14 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
         propertyChange(self, 'Trashed', self._Trashed, trashed)
         self._Trashed = trashed
     @property
+    def MimeType(self):
+        return self.getIdentifier().MimeType
+    @MimeType.setter
+    def MimeType(self, mimetype):
+        self.getIdentifier().MimeType = self.typeMaps.get(mimetype)
+    @property
     def MediaType(self):
-        return self.typeMaps.get(self.MimeType, self.MimeType)
+        return self.getIdentifier().MimeType
     @property
     def Loaded(self):
         return self._Loaded
@@ -169,10 +167,8 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
 
     # XContent
     def getIdentifier(self):
-        print("DriveDocumentContent.getIdentifier()")
         return self.Identifier
     def getContentType(self):
-        print("DriveDocumentContent.getContentType()")
         return self.ContentType
     def addContentEventListener(self, listener):
         print("DriveDocumentContent.addContentEventListener()")
@@ -188,10 +184,10 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
         print("DriveDocumentContent.createCommandIdentifier(): **********************")
         return getCommandIdentifier(self)
     def execute(self, command, id, environment):
-        print("DriveDocumentContent.execute(): %s - %s" % (command.Name, id))
         result = None
         level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
         msg = "Command name: %s ..." % command.Name
+        print("DriveDocumentContent.execute(): %s - %s" % (command.Name, id))
         if command.Name == 'getCommandInfo':
             result = CommandInfo(self._commandInfo)
         elif command.Name == 'getPropertySetInfo':
@@ -219,9 +215,10 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
             # The Insert command is only used to create a new document (File Save As)
             # it saves content from createNewContent from the parent folder
             print("DriveDocumentContent.execute(): insert %s" % command.Argument)
+            identifier = self.getIdentifier()
             stream = command.Argument.Data
             sf = getSimpleFile(self.ctx)
-            path = '%s/%s' % (self.getIdentifier().getContentProviderScheme(), self.getIdentifier().Id)
+            path = '%s/%s' % (identifier.getContentProviderScheme(), identifier.Id)
             target = getResourceLocation(self.ctx, path)
             if sf.exists(target) and not command.Argument.ReplaceExisting:
                 pass
@@ -231,11 +228,11 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
                 self.MimeType = getMimeType(self.ctx, stream)
                 stream.closeInput()
                 self.Size = sf.getSize(target)
-                self.addPropertiesChangeListener(('Id', 'Name', 'Size', 'Trashed', 'Loaded'), ucp)
-                self.Id = CREATED + FILE
-                identifier = self.getIdentifier().getParent()
-                event = getContentEvent(self, INSERTED, self, identifier)
-                ucp.queryContent(identifier).notify(event)
+                self.addPropertiesChangeListener(('Name', 'Size', 'Trashed', 'Loaded'), ucp)
+                propertyChange(self, 'Id', identifier.Id, CREATED | FILE)
+                parent = identifier.getParent()
+                event = getContentEvent(self, INSERTED, self, parent)
+                ucp.queryContent(parent).notify(event)
         elif command.Name == 'delete':
             print("DriveDocumentContent.execute(): delete")
             self.Trashed = True
@@ -259,12 +256,12 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
         self.MimeType = mimetype
 
     def _getUrl(self, sf):
-        url = getResourceLocation(self.ctx, '%s/%s' % (self.Scheme, self.Id))
+        identifier = self.getIdentifier()
+        location = '%s/%s' % (identifier.getContentProviderScheme(), identifier.Id)
+        url = getResourceLocation(self.ctx, location)
         if self.Loaded == OFFLINE and sf.exists(url):
             return url
         try:
-            identifier = self.getIdentifier()
-            identifier.InputStream = self.Size
             stream = identifier.createInputStream()
             sf.writeFile(url, stream)
         except:
@@ -293,29 +290,33 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
         bound = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.BOUND')
         constrained = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.CONSTRAINED')
         readonly = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.READONLY')
-        transient = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.TRANSIENT')
-        properties['Id'] = getProperty('Id', 'string', bound | readonly)
-        properties['ContentType'] = getProperty('ContentType', 'string', bound | readonly)
+        ro = 0 if self.getIdentifier().IsNew else readonly
+        properties['ContentType'] = getProperty('ContentType', 'string', bound | ro)
         properties['MimeType'] = getProperty('MimeType', 'string', bound | readonly)
         properties['MediaType'] = getProperty('MediaType', 'string', bound | readonly)
-        properties['IsDocument'] = getProperty('IsDocument', 'boolean', bound | readonly)
-        properties['IsFolder'] = getProperty('IsFolder', 'boolean', bound | readonly)
+        properties['IsDocument'] = getProperty('IsDocument', 'boolean', bound | ro)
+        properties['IsFolder'] = getProperty('IsFolder', 'boolean', bound | ro)
         properties['Title'] = getProperty('Title', 'string', bound | constrained)
-        properties['Size'] = getProperty('Size', 'long', bound | readonly)
-        properties['DateModified'] = getProperty('DateModified', 'com.sun.star.util.DateTime', bound | readonly)
+        properties['Size'] = getProperty('Size', 'long', bound)
+        properties['DateModified'] = getProperty('DateModified', 'com.sun.star.util.DateTime', bound | ro)
         properties['DateCreated'] = getProperty('DateCreated', 'com.sun.star.util.DateTime', bound | readonly)
-        properties['IsReadOnly'] = getProperty('IsReadOnly', 'boolean', bound | readonly)
+        properties['IsReadOnly'] = getProperty('IsReadOnly', 'boolean', bound | ro)
         properties['Loaded'] = getProperty('Loaded', 'long', bound)
+
+        properties['BaseURI'] = getProperty('BaseURI', 'string', bound | readonly)
+        properties['TargetURL'] = getProperty('TargetURL', 'string', bound | readonly)
+        properties['TitleOnServer'] = getProperty('TitleOnServer', 'string', bound)
+
         properties['ObjectId'] = getProperty('ObjectId', 'string', bound | readonly)
-        properties['CasePreservingURL'] = getProperty('CasePreservingURL', 'string', bound | readonly)
+        properties['CasePreservingURL'] = getProperty('CasePreservingURL', 'string', bound)
         properties['CreatableContentsInfo'] = getProperty('CreatableContentsInfo', '[]com.sun.star.ucb.ContentInfo', bound)
 
-        properties['IsHidden'] = getProperty('IsHidden', 'boolean', bound | readonly)
-        properties['IsVolume'] = getProperty('IsVolume', 'boolean', bound | readonly)
-        properties['IsRemote'] = getProperty('IsRemote', 'boolean', bound | readonly)
-        properties['IsRemoveable'] = getProperty('IsRemoveable', 'boolean', bound | readonly)
-        properties['IsFloppy'] = getProperty('IsFloppy', 'boolean', bound | readonly)
-        properties['IsCompactDisc'] = getProperty('IsCompactDisc', 'boolean', bound | readonly)
+        properties['IsHidden'] = getProperty('IsHidden', 'boolean', bound | ro)
+        properties['IsVolume'] = getProperty('IsVolume', 'boolean', bound | ro)
+        properties['IsRemote'] = getProperty('IsRemote', 'boolean', bound | ro)
+        properties['IsRemoveable'] = getProperty('IsRemoveable', 'boolean', bound | ro)
+        properties['IsFloppy'] = getProperty('IsFloppy', 'boolean', bound | ro)
+        properties['IsCompactDisc'] = getProperty('IsCompactDisc', 'boolean', bound | ro)
         return properties
 
     # XServiceInfo

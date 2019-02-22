@@ -81,15 +81,16 @@ def getItem(session, id):
             return r.json()
     return None
 
-def getUploadLocation(session, id, data, size, new):
+def getUploadLocation(session, id, data, mimetype, new, size):
     url = g_upload  if new else '%s/%s' % (g_upload, id)
     params = {'uploadType': 'resumable'}
     headers = {'X-Upload-Content-Length': '%s' % size}
-    if new:
-        headers['X-Upload-Content-Type'] = data.get('mimeType')
+    if new or mimetype:
+        headers['X-Upload-Content-Type'] = mimetype
     #session.headers.update(headers)
     print("google.getUploadLocation()1: %s - %s" % (url, id))
-    with session.request('POST' if new else 'PATCH', url, params=params, headers=headers, json=data) as r:
+    method = 'POST' if new else 'PATCH'
+    with session.request(method, url, params=params, headers=headers, json=data) as r:
         print("contenttools.getUploadLocation()2 %s - %s" % (r.status_code, r.headers))
         print("contenttools.getUploadLocation()3 %s - %s" % (r.content, data))
         if r.status_code == requests.codes.ok and 'Location' in r.headers:
@@ -163,9 +164,9 @@ class ChildGenerator():
 
 
 class InputStream(unohelper.Base, XInputStream):
-    def __init__(self, session, id, size, mimetype=None):
+    def __init__(self, session, id, size, mimetype):
         self.session = session
-        self.url = '%sfiles/%s' % (g_url, id) if size else '%sfiles/%s/export' % (g_url, id)
+        self.url = '%sfiles/%s/export' % (g_url, id) if mimetype else '%sfiles/%s' % (g_url, id)
         self.size = size
         self.length = 32768
         self.mimetype = mimetype
@@ -189,11 +190,12 @@ class InputStream(unohelper.Base, XInputStream):
     def available(self):
         return g_chunk
     def closeInput(self):
-        self.session.close()
+        pass
+        #self.session.close()
 
 
 class ChunksDownloader():
-    def __init__(self, session, url, length, size, mimetype=None):
+    def __init__(self, session, url, length, size, mimetype):
         print("google.ChunkDownloader.__init__()")
         self.session = session
         self.url = url
@@ -202,7 +204,7 @@ class ChunksDownloader():
         self.start, self.closed = 0, False
         self.headers = {}
         self.headers['Accept-Encoding'] = 'gzip'
-        self.params = {'alt': 'media'} if mimetype is None else {'mimeType': mimetype}
+        self.params = {'mimeType': mimetype} if mimetype else {'alt': 'media'} 
         print("google.ChunkDownloader.__init__()")
     def __iter__(self):
         return self
@@ -241,13 +243,6 @@ class OutputStream(unohelper.Base, XOutputStream):
         self.buffers = uno.ByteSequence(b'')
         self.start = 0
         self.closed, self.flushed, self.chunked = False, False, size >= g_chunk
-        #self.headers['Content-Range'] = 'bytes */%s' % self.size
-        #with self.session.put(self.url, headers=self.headers, timeout=g_timeout, auth=self.authentication) as r:
-        #    print("google.OutputStream.__init__(): %s - %s" % (r.status_code, r.headers))
-        #    if r.status_code == requests.codes.ok:
-        #        if 'Range' in r.headers:
-        #            self.start = int(r.headers['Range'].split('-')[-1]) +1
-        #self.headers['Content-Type'] = mimetype
 
     # XOutputStream
     def writeBytes(self, sequence):
@@ -270,7 +265,7 @@ class OutputStream(unohelper.Base, XOutputStream):
         print("google.OutputStream.closeOutput()")
         if not self.flushed and not self._flush():
             raise IOException('Error Uploading file...', self)
-        self.session.close()
+        #self.session.close()
         self.closed = True
     def _flush(self):
         self.flushed = True

@@ -79,6 +79,7 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
 
             self._commandInfo = self._getCommandInfo()
             self._propertySetInfo = self._getPropertySetInfo()
+            self._creatableContentsInfo = self._getCreatableContentsInfo()
             msg = "DriveFolderContent loading Uri: %s ... Done" % self.getIdentifier().getContentIdentifier()
             self.Logger.logp(level, "DriveFolderContent", "__init__()", msg)
             self._newTitle = ''
@@ -86,15 +87,6 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         except Exception as e:
             print("DriveFolderContent.__init__().Error: %s - %e" % (e, traceback.print_exc()))
 
-    @property
-    def Id(self):
-        return self.getIdentifier().Id
-    @Id.setter
-    def Id(self, id):
-        propertyChange(self, 'Id', self.Id, id)
-    @property
-    def Scheme(self):
-        return self.getIdentifier().getContentProviderScheme()
     @property
     def UserName(self):
         return self.getIdentifier().User.Name
@@ -127,19 +119,7 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         self._Loaded = loaded
     @property
     def CreatableContentsInfo(self):
-        content = ()
-        if self.CanAddChild:
-            bound = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.BOUND')
-            document = uno.getConstantByName('com.sun.star.ucb.ContentInfoAttribute.KIND_DOCUMENT')
-            folder = uno.getConstantByName('com.sun.star.ucb.ContentInfoAttribute.KIND_FOLDER')
-            foldertype = 'application/vnd.google-apps.folder'
-            officetype = 'application/vnd.oasis.opendocument'
-            documenttype = 'application/vnd.google-apps.document'
-            properties = (getProperty('Title', 'string', bound), )
-            content = (getContentInfo(foldertype, folder, properties),
-                       getContentInfo(officetype, document, properties),
-                       getContentInfo(documenttype, document, properties))
-        return content
+        return self._creatableContentsInfo
 
     # XCallback
     def notify(self, event):
@@ -150,13 +130,11 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
     # XContentCreator
     def queryCreatableContentsInfo(self):
         print("DriveFolderContent.queryCreatableContentsInfo():*************************")
-        return self.CreatableContentsInfo
+        return self._creatableContentsInfo
     def createNewContent(self, contentinfo):
         identifier = self.getIdentifier().createContentIdentifier(self._newTitle)
         self._newTitle = ''
-        kwarg = {'Identifier': identifier, 'MimeType': contentinfo.Type}
-        content = createContent(self.ctx, kwarg)
-        return content
+        return createContent(self.ctx, contentinfo.Type, identifier)
 
     # XChild
     def getParent(self):
@@ -214,11 +192,12 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         elif command.Name == 'insert':
             print("DriveFolderContent.execute() insert")
             ucp = getUcp(self.ctx)
-            self.addPropertiesChangeListener(('Id', 'Name', 'Size', 'Trashed', 'Loaded'), ucp)
-            self.Id = CREATED + FOLDER
-            identifier = self.getIdentifier().getParent()
-            event = getContentEvent(self, INSERTED, self, identifier)
-            ucp.queryContent(identifier).notify(event)
+            self.addPropertiesChangeListener(('Name', 'Size', 'Trashed', 'Loaded'), ucp)
+            identifier = self.getIdentifier()
+            propertyChange(self, 'Id', identifier.Id, CREATED | FOLDER)
+            parent = identifier.getParent()
+            event = getContentEvent(self, INSERTED, self, parent)
+            ucp.queryContent(parent).notify(event)
         elif command.Name == 'delete':
             print("DriveFolderContent.execute(): delete")
             self.Trashed = True
@@ -256,7 +235,7 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
             if not sf.exists(source):
                 raise CommandAbortedException("Error while saving file: %s" % source, self)
             inputstream = sf.openFileRead(source)
-            target = getResourceLocation(self.ctx, '%s/%s' % (self.Scheme, id))
+            target = getResourceLocation(self.ctx, '%s/%s' % (identifier.getContentProviderScheme(), id))
             sf.writeFile(target, inputstream)
             inputstream.closeInput()
             ucb = getUcb(self.ctx)
@@ -302,8 +281,6 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         constrained = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.CONSTRAINED')
         readonly = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.READONLY')
         transient = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.TRANSIENT')
-        properties['Id'] = getProperty('Id', 'string', bound | readonly)
-#        properties['ParentsId'] = getProperty('ParentsId', '[]string', bound | readonly)
         properties['ContentType'] = getProperty('ContentType', 'string', bound | readonly)
         properties['MimeType'] = getProperty('MimeType', 'string', bound | readonly)
         properties['MediaType'] = getProperty('MediaType', 'string', bound | readonly)
@@ -323,6 +300,21 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         properties['IsFloppy'] = getProperty('IsFloppy', 'boolean', bound | readonly)
         properties['IsCompactDisc'] = getProperty('IsCompactDisc', 'boolean', bound | readonly)
         return properties
+
+    def _getCreatableContentsInfo(self):
+        if not self.CanAddChild:
+            return ()
+        bound = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.BOUND')
+        document = uno.getConstantByName('com.sun.star.ucb.ContentInfoAttribute.KIND_DOCUMENT')
+        folder = uno.getConstantByName('com.sun.star.ucb.ContentInfoAttribute.KIND_FOLDER')
+        foldertype = 'application/vnd.google-apps.folder'
+        officetype = 'application/vnd.oasis.opendocument'
+        documenttype = 'application/vnd.google-apps.document'
+        properties = (getProperty('Title', 'string', bound), )
+        content = (getContentInfo(foldertype, folder, properties),
+                   getContentInfo(officetype, document, properties),
+                   getContentInfo(documenttype, document, properties))
+        return content
 
     # XServiceInfo
     def supportsService(self, service):

@@ -7,7 +7,7 @@ import unohelper
 from com.sun.star.lang import NoSupportException
 from com.sun.star.ucb import XContentIdentifier, XContentAccess, XDynamicResultSet
 from com.sun.star.ucb import XCommandInfo, XCommandInfoChangeNotifier, XContentIdentifierFactory
-from com.sun.star.ucb import UnsupportedCommandException
+from com.sun.star.ucb import UnsupportedCommandException, XCommandEnvironment
 from com.sun.star.task import XInteractionContinuation, XInteractionAbort
 from com.sun.star.ucb import XInteractionSupplyName, XInteractionReplaceExistingData
 from com.sun.star.ucb import IllegalIdentifierException, XInteractionSupplyAuthentication2
@@ -76,8 +76,9 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild,
         self.Uri = uri
         self.IsNew = self.Uri.hasFragment()
         self._Error = None
-        self.size = 0
-        self._Updated = False
+        self.Size = 0
+        self.MimeType = None
+        self.Updated = False
         self.Id, self.Title, self.Url = self._parseUri() if self.User.IsValid else (None, None, None)
 
     @property
@@ -90,35 +91,26 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild,
     def BaseURL(self):
         return self.Url if self.IsRoot else '%s/%s' % (self.Url, self.Id)
     @property
-    def Updated(self):
-        return self._Updated
-    @property
-    def InputStream(self):
-        return self.size
-    @InputStream.setter
-    def InputStream(self, size):
-        self.size = size
-    @property
     def Error(self):
         return self._Error if self.User.Error is None else self.User.Error
 
     # XInputStreamProvider
     def createInputStream(self):
-        return InputStream(self.User.Session, self.Id, self.size)
+        return InputStream(self.User.Session, self.Id, self.Size, self.MimeType)
 
     # XUpdatable
     def update(self):
-        self._Updated = True
+        self.Updated = True
         if self.Mode == ONLINE:
             with self.User.Session as session:
-                self._Updated = doSync(self.ctx, self.Connection, session, self.User.Id)
+                self.Updated = doSync(self.ctx, self.Connection, session, self.User.Id)
 
     # XLinkUpdate
     def updateLinks(self):
-        self._Updated = False
+        self.Updated = False
         if self.Mode == ONLINE:
             with self.User.Session as session:
-                self._Updated = updateChildren(session, self.Connection, self.User.Id, self.Id)
+                self.Updated = updateChildren(session, self.Connection, self.User.Id, self.Id)
 
     # XContentIdentifierFactory
     def createContentIdentifier(self, title=''):
@@ -212,9 +204,17 @@ class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild,
         properties['BaseURL'] = getProperty('BaseURL', 'string', bound | readonly)
         properties['Title'] = getProperty('Title', 'string', maybevoid | bound | readonly)
         properties['Updated'] = getProperty('Updated', 'boolean', bound | readonly)
-        properties['InputStream'] = getProperty('InputStream', 'long', maybevoid)
+        properties['Size'] = getProperty('Size', 'long', maybevoid | bound)
+        properties['MimeType'] = getProperty('MimeType', 'string', maybevoid | bound)
         properties['Error'] = getProperty('Error', 'com.sun.star.ucb.IllegalIdentifierException', maybevoid | bound | readonly)
         return properties
+
+
+class CommandEnvironment(unohelper.Base, XCommandEnvironment):
+    def getInteractionHandler(self):
+        return None
+    def getProgressHandler(self):
+        return None
 
 
 class InteractionRequest(unohelper.Base, XInteractionRequest):
