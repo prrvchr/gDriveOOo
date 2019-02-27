@@ -2,9 +2,18 @@
 <description
   xmlns="http://openoffice.org/extensions/update/2006"
   xmlns:xlink="http://www.w3.org/1999/xlink">
-        <identifier value="com.gmail.prrvchr.extensions.gDriveOOo" />
-        <version value="0.0.1" /> 
-        <update-download>
-                <src xlink:href="https://github.com/prrvchr/gDriveOOo/releases/download/v0.0.1/gDriveOOo.oxt" />
-        </update-download>
+    <identifier value="com.gmail.prrvchr.extensions.gDriveOOo" />
+    <version value="0.0.1" /> 
+    <update-download>
+        <src xlink:href="https://github.com/prrvchr/gDriveOOo/releases/download/v0.0.1/gDriveOOo.oxt" />
+    </update-download>
+    <dependencies xmlns:dep="http://openoffice.org/extensions/description/2006">
+        <dep:OpenOffice.org-minimal-version value="4.0" dep:name="OpenOffice.org 4.0"/>
+    </dependencies>
+    <publisher>
+        <name xlink:href="https://github.com/prrvchr/gDriveOOo" lang="en">gDriveOOo</name>
+    </publisher>
+    <release-notes>
+        <src xlink:href="https://github.com/prrvchr/gDriveOOo/blob/master/README.md" lang="en" />
+    </release-notes>
 </description>
