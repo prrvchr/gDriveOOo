@@ -3,30 +3,54 @@
 
 import uno
 
-from com.sun.star.beans import UnknownPropertyException, IllegalTypeException, PropertyVetoException
-from com.sun.star.lang import IllegalAccessException
-from com.sun.star.ucb import NameClashResolveRequest, IllegalIdentifierException, InteractiveNetworkOffLineException
-from com.sun.star.ucb import InteractiveNetworkReadException, UnsupportedNameClashException
-from com.sun.star.ucb import NameClashException, AuthenticationRequest, URLAuthenticationRequest
-from com.sun.star.ucb import InteractiveIOException, InteractiveAugmentedIOException
+from com.sun.star.ucb import NameClashResolveRequest
+from com.sun.star.ucb import IllegalIdentifierException
+from com.sun.star.ucb import InteractiveNetworkOffLineException
+from com.sun.star.ucb import InteractiveNetworkReadException
+from com.sun.star.ucb import UnsupportedNameClashException
+from com.sun.star.ucb import NameClashException
+from com.sun.star.ucb import URLAuthenticationRequest
+from com.sun.star.ucb import InteractiveIOException
+from com.sun.star.ucb import InteractiveAugmentedIOException
 from com.sun.star.sdb import ParametersRequest
-from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
-from com.sun.star.ucb.ContentAction import INSERTED, REMOVED, DELETED, EXCHANGED
 
-from .unotools import getProperty, getPropertyValue, createService, getSimpleFile, getResourceLocation
-from .unotools import getNamedValueFromArguments, getNamedValueSet
-#from .items import getMergeCall, mergeItem, setContentCall
-from .google import unparseDateTime, g_scheme, getUploadLocation, OutputStream, updateItem, OAuth2Ooo
-from .google import RETRIEVED, CREATED, FOLDER, FILE, RENAMED, REWRITED, TRASHED
-from .google import g_folder, g_link, g_doc
 from .dbtools import getItemFromResult
+from .google import OAuth2Ooo
+from .google import OutputStream
+from .google import g_doc_map
+from .google import g_folder
+from .google import g_link
+from .google import getUploadLocation
+from .google import updateItem
+from .google import RETRIEVED
+from .google import CREATED
+from .google import FOLDER
+from .google import FILE
+from .google import RENAMED
+from .google import REWRITED
+from .google import TRASHED
+from .unotools import getProperty
+from .unotools import getPropertyValue
+from .unotools import getSimpleFile
+from .unotools import getResourceLocation
+from .unotools import getNamedValueSet
 
-import datetime
 import requests
-import traceback
 
 g_OfficeDocument = 'application/vnd.oasis.opendocument'
 
+
+def createContentUser(ctx, plugin, scheme, connection, username=None):
+    service = '%s.ContentUser' % plugin
+    namedvalue = getNamedValueSet({'Scheme': scheme, 'Connection': connection, 'Name': username})
+    contentuser = ctx.ServiceManager.createInstanceWithArgumentsAndContext(service, namedvalue, ctx)
+    return contentuser
+
+def createContentIdentifier(ctx, plugin, user, uri):
+    service = '%s.ContentIdentifier' % plugin
+    namedvalue = getNamedValueSet({'User': user, 'Uri': uri})
+    contentidentifier = ctx.ServiceManager.createInstanceWithArgumentsAndContext(service, namedvalue, ctx)
+    return contentidentifier
 
 def createContent(ctx, mimetype, identifier, data={}):
     name, content = None, None
@@ -34,7 +58,7 @@ def createContent(ctx, mimetype, identifier, data={}):
         name = 'DriveFolderContent'
     elif mimetype == g_link:
         pass
-    elif mimetype.startswith(g_doc):
+    elif mimetype in (g_doc_map):
         name = 'DriveDocumentContent'
     elif mimetype.startswith(g_OfficeDocument):
         name = 'DriveOfficeContent'
@@ -50,22 +74,22 @@ def getSession(ctx, scheme, username):
     session.auth = OAuth2Ooo(ctx, scheme, username)
     return session
 
-def doSync(ctx, connection, session, id):
+def doSync(ctx, scheme, connection, session, userid):
     items = []
     #data = ('name', 'createdTime', 'modifiedTime', 'mimeType')
     transform = {'parents': lambda value: value.split(',')}
     select = connection.prepareCall('CALL "selectSync"(?, ?)')
-    select.setString(1, id)
+    select.setString(1, userid)
     select.setLong(2, RETRIEVED)
     result = select.executeQuery()
     while result.next():
         item = getItemFromResult(result, None, transform)
         print("contenttools.doSync(): %s" % (item, ))
-        items.append(_syncItem(ctx, session, item))
+        items.append(_syncItem(ctx, scheme, session, item))
     select.close()
     if items and all(items):
         update = connection.prepareCall('CALL "updateSync"(?, ?, ?, ?)')
-        update.setString(1, id)
+        update.setString(1, userid)
         update.setString(2, ','.join(items))
         update.setLong(3, RETRIEVED)
         update.execute()
@@ -76,40 +100,37 @@ def doSync(ctx, connection, session, id):
     print("doSync: %s" % items)
     return all(items)
 
-def _syncItem(ctx, session, item):
-    try:
-        result = False
-        id = item.get('id')
-        mode = item.get('mode')
-        data = None 
-        print("contenttools._syncItem():\nmode: %s\ndata: %s" % (mode, data))
-        if mode & CREATED:
-            data = {'id': id,
-                    'parents': item.get('parents'),
-                    'name': item.get('name'),
-                    'mimeType': item.get('mimeType')}
-            print("contenttools._syncItem(): created\n%s" % (data, ))
-            if mode & FOLDER:
-                result = updateItem(session, id, data, True)
-            if mode & FILE:
-                mimetype = item.get('mimeType')
-                result = uploadItem(ctx, session, id, data, mimetype, True)
-        else:
-            if mode & REWRITED:
-                mimetype = None if item.get('size') else item.get('mimeType')
-                result = uploadItem(ctx, session, id, data, mimetype, False)
-            if mode & RENAMED:
-                data = {'name': item.get('name')}
-                result = updateItem(session, id, data, False)
-        if mode & TRASHED:
-            data = {'trashed': True}
+def _syncItem(ctx, scheme, session, item):
+    result = False
+    id = item.get('id')
+    mode = item.get('mode')
+    data = None 
+    print("contenttools._syncItem():\nmode: %s\ndata: %s" % (mode, data))
+    if mode & CREATED:
+        data = {'id': id,
+                'parents': item.get('parents'),
+                'name': item.get('name'),
+                'mimeType': item.get('mimeType')}
+        print("contenttools._syncItem(): created\n%s" % (data, ))
+        if mode & FOLDER:
+            result = updateItem(session, id, data, True)
+        if mode & FILE:
+            mimetype = item.get('mimeType')
+            result = uploadItem(ctx, scheme, session, id, data, mimetype, True)
+    else:
+        if mode & REWRITED:
+            mimetype = None if item.get('size') else item.get('mimeType')
+            result = uploadItem(ctx, scheme, session, id, data, mimetype, False)
+        if mode & RENAMED:
+            data = {'name': item.get('name')}
             result = updateItem(session, id, data, False)
-        return result
-    except Exception as e:
-        print("contenttools._syncItem().Error: %s - %e" % (e, traceback.print_exc()))
+    if mode & TRASHED:
+        data = {'trashed': True}
+        result = updateItem(session, id, data, False)
+    return result
 
-def uploadItem(ctx, session, id, data, mimetype, new):
-    size, stream = _getInputStream(ctx, id)
+def uploadItem(ctx, scheme, session, id, data, mimetype, new):
+    size, stream = _getInputStream(ctx, scheme, id)
     if size: 
         location = getUploadLocation(session, id, data, mimetype, new, size)
         if location is not None:
@@ -161,19 +182,6 @@ def _getPropertyChangeEvent(source, name, oldvalue, newvalue, further=False, han
     event.OldValue = oldvalue
     event.NewValue = newvalue
     return event
-
-def getCmisProperty(id, name, unotype, updatable, required, multivalued, openchoice, choices, value):
-    property = uno.createUnoStruct('com.sun.star.document.CmisProperty')
-    property.Id = id
-    property.Name = name
-    property.Type = unotype
-    property.Updatable = updatable
-    property.Required = required
-    property.MultiValued = multivalued
-    property.OpenChoice = openchoice
-    property.Choices = choices
-    property.Value = value
-    return property
 
 def getTempFile(ctx):
     tmp = ctx.ServiceManager.createInstance('com.sun.star.io.TempFile')
@@ -233,8 +241,8 @@ def getUcb(ctx=None, arguments=None):
     name = 'com.sun.star.ucb.UniversalContentBroker'
     return ctx.ServiceManager.createInstanceWithArguments(name, (arguments, ))
 
-def getUcp(ctx):
-    return getUcb(ctx).queryContentProvider('%s://' % g_scheme)
+def getUcp(ctx, scheme):
+    return getUcb(ctx).queryContentProvider('%s://' % scheme)
 
 def getMimeType(ctx, stream):
     mimetype = 'application/octet-stream'
@@ -337,9 +345,9 @@ def getNameClashResolveRequest(source, message, url, name, newname):
     r.Classification = uno.Enum('com.sun.star.task.InteractionClassification', 'QUERY')
     return r
 
-def _getInputStream(ctx, id):
+def _getInputStream(ctx, scheme, id):
     sf = getSimpleFile(ctx)
-    url = getResourceLocation(ctx, '%s/%s' % (g_scheme, id))
+    url = getResourceLocation(ctx, '%s/%s' % (scheme, id))
     if sf.exists(url):
         return sf.getSize(url), sf.openFileRead(url)
     return 0, None

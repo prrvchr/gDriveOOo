@@ -6,29 +6,56 @@ import unohelper
 
 from com.sun.star.awt import XCallback
 from com.sun.star.container import XChild
-from com.sun.star.lang import XServiceInfo, NoSupportException
-from com.sun.star.ucb import XContent, XCommandProcessor2, CommandAbortedException
-from com.sun.star.ucb.ContentAction import INSERTED, REMOVED, DELETED, EXCHANGED
-from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
+from com.sun.star.lang import NoSupportException
+from com.sun.star.lang import XServiceInfo
+from com.sun.star.ucb import CommandAbortedException
+from com.sun.star.ucb import XContent
+from com.sun.star.ucb import XCommandProcessor2
+from com.sun.star.ucb.ConnectionMode import OFFLINE
+from com.sun.star.ucb.ContentAction import INSERTED
+from com.sun.star.ucb.ContentAction import EXCHANGED
 
-from gdrive import Initialization, CommandInfo, PropertySetInfo, Row, PropertyContainer
-from gdrive import PropertiesChangeNotifier, PropertySetInfoChangeNotifier, CommandInfoChangeNotifier
-from gdrive import getDbConnection, parseDateTime, getChildSelect, getLogger, getUcp
-from gdrive import createService, getSimpleFile, getResourceLocation, getMimeType
-from gdrive import getUcb, getCommandInfo, getProperty, getContentInfo
-from gdrive import propertyChange, getPropertiesValues, setPropertiesValues, uploadItem
-from gdrive import getCommandIdentifier
-from gdrive import RETRIEVED, CREATED, FOLDER, FILE, RENAMED, REWRITED, TRASHED
-
-import traceback
+from gdrive import CommandInfo
+from gdrive import CommandInfoChangeNotifier
+from gdrive import Initialization
+from gdrive import PropertiesChangeNotifier
+from gdrive import PropertyContainer
+from gdrive import PropertySetInfo
+from gdrive import PropertySetInfoChangeNotifier
+from gdrive import Row
+from gdrive import getCommandInfo
+#from gdrive import getContentEvent
+from gdrive import getLogger
+from gdrive import getMimeType
+from gdrive import getPropertiesValues
+from gdrive import getProperty
+from gdrive import getSimpleFile
+from gdrive import getResourceLocation
+from gdrive import getUcb
+from gdrive import getUcp
+from gdrive import parseDateTime
+from gdrive import propertyChange
+from gdrive import setPropertiesValues
+from gdrive import g_doc_map
+from gdrive import CREATED
+from gdrive import FILE
 
 # pythonloader looks for a static g_ImplementationHelper variable
 g_ImplementationHelper = unohelper.ImplementationHelper()
 g_ImplementationName = 'com.gmail.prrvchr.extensions.gDriveOOo.DriveDocumentContent'
 
 
-class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XContent, XChild, XCommandProcessor2, PropertyContainer,
-                           PropertiesChangeNotifier, PropertySetInfoChangeNotifier, CommandInfoChangeNotifier, XCallback):
+class DriveDocumentContent(unohelper.Base,
+                           XServiceInfo,
+                           XContent,
+                           XChild,
+                           XCommandProcessor2,
+                           XCallback,
+                           CommandInfoChangeNotifier,
+                           Initialization,
+                           PropertiesChangeNotifier,
+                           PropertyContainer,
+                           PropertySetInfoChangeNotifier):
     def __init__(self, ctx, *namedvalues):
         self.ctx = ctx
         self.Logger = getLogger(self.ctx)
@@ -63,13 +90,8 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
         self.propertiesListener = {}
         self.propertyInfoListeners = []
         self.commandInfoListeners = []
-        self.commandIdentifier = 0
 
-        self.typeMaps = {}
-        self.typeMaps['application/vnd.google-apps.document'] = 'application/vnd.oasis.opendocument.text'
-        self.typeMaps['application/vnd.google-apps.spreadsheet'] = 'application/x-vnd.oasis.opendocument.spreadsheet'
-        self.typeMaps['application/vnd.google-apps.presentation'] = 'application/vnd.oasis.opendocument.presentation'
-        self.typeMaps['application/vnd.google-apps.drawing'] = 'application/pdf'
+        self.typeMaps = g_doc_map
 
         self.initialize(namedvalues)
         
@@ -169,7 +191,7 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
 
     # XCommandProcessor2
     def createCommandIdentifier(self):
-        return getCommandIdentifier(self)
+        return 0
     def execute(self, command, id, environment):
         result = None
         level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
@@ -208,7 +230,7 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
             if sf.exists(target) and not command.Argument.ReplaceExisting:
                 pass
             elif stream.queryInterface(uno.getTypeByName('com.sun.star.io.XInputStream')):
-                ucp = getUcp(self.ctx)
+                ucp = getUcp(self.ctx, identifier.getContentProviderScheme())
                 sf.writeFile(target, stream)
                 self.MimeType = getMimeType(self.ctx, stream)
                 stream.closeInput()
@@ -221,10 +243,6 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
         elif command.Name == 'delete':
             print("DriveDocumentContent.execute(): delete")
             self.Trashed = True
-        elif command.Name == 'close':
-            print("DriveDocumentContent.execute(): close")
-        elif command.Name == 'flush':
-            print("DriveDocumentContent.execute(): flush")
         msg += " Done"
         self.Logger.logp(level, "DriveOfficeContent", "execute()", msg)
         return result
@@ -265,9 +283,7 @@ class DriveDocumentContent(unohelper.Base, XServiceInfo, Initialization, XConten
         commands['setPropertyValues'] = getCommandInfo('setPropertyValues', '[]com.sun.star.beans.PropertyValue')
         commands['open'] = getCommandInfo('open', 'com.sun.star.ucb.OpenCommandArgument2')
         commands['insert'] = getCommandInfo('insert', 'com.sun.star.ucb.InsertCommandArgument')
-#        commands['insert'] = getCommandInfo('insert', 'com.sun.star.ucb.InsertCommandArgument2')
         commands['delete'] = getCommandInfo('delete', 'boolean')
-        commands['close'] = getCommandInfo('close')
         return commands
 
     def _getPropertySetInfo(self):

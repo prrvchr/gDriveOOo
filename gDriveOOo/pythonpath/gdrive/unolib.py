@@ -4,9 +4,13 @@
 import uno
 import unohelper
 
-from com.sun.star.lang import XComponent, XInitialization
-from com.sun.star.beans import XPropertySet, XPropertySetInfo
-from com.sun.star.beans import XPropertiesChangeNotifier, XPropertySetInfoChangeNotifier, UnknownPropertyException
+from com.sun.star.beans import UnknownPropertyException
+from com.sun.star.beans import XPropertySet
+from com.sun.star.beans import XPropertySetInfo
+from com.sun.star.beans import XPropertiesChangeNotifier
+from com.sun.star.beans import XPropertySetInfoChangeNotifier
+from com.sun.star.lang import XComponent
+from com.sun.star.lang import XInitialization
 from com.sun.star.task import XInteractionHandler
 
 
@@ -109,32 +113,6 @@ class PropertySetInfo(unohelper.Base, XPropertySetInfo):
         msg = 'Cant getPropertyByName, UnknownProperty: %s' % name
         raise UnknownPropertyException(msg, self)
     def hasPropertyByName(self, name):
-        return name in self.properties
-
-
-class CmisPropertySetInfo(unohelper.Base, XPropertySetInfo):
-    def __init__(self, properties, getCmisProperty):
-        self.properties = properties
-        self.getCmisProperty = getCmisProperty
-
-    # XPropertySetInfo
-    def getProperties(self):
-        print("PyPropertySetInfo.getProperties()")
-        return tuple(self.properties.values())
-    def getPropertyByName(self, name):
-        print("PyPropertySetInfo.getPropertyByName(): %s" % name)
-        if name in self.properties:
-            return self.properties[name]
-        print("PyPropertySetInfo.getPropertyByName() Error: %s" % name)
-        msg = 'Cant getPropertyByName, UnknownProperty: %s' % name
-        raise UnknownPropertyException(msg, self)
-    def hasPropertyByName(self, name):
-        print("PyPropertySetInfo.hasPropertyByName(): %s" % name)
-        if name == 'CmisProperties'  and name not in self.properties:
-            print("PyPropertySetInfo.hasPropertyByName(): %s" % (name in self.properties, ))
-            properties = self.getCmisProperty()
-            self.properties.update(properties)
-            print("PyPropertySetInfo.hasPropertyByName(): %s" % (name in self.properties, ))
         return name in self.properties
 
 

@@ -3,12 +3,15 @@
 
 import uno
 
-from .dbtools import getItemFromResult, SqlArray
-from .google import parseDateTime, unparseDateTime
-from .google import RETRIEVED, CREATED, FOLDER, FILE, RENAMED, REWRITED, TRASHED
 from .contenttools import setContentData
-
-import traceback
+from .dbtools import getItemFromResult
+from .dbtools import SqlArray
+from .google import parseDateTime
+from .google import unparseDateTime
+from .google import RETRIEVED
+from .google import RENAMED
+from .google import REWRITED
+from .google import TRASHED
 
 
 def needSync(connection, id):
@@ -62,12 +65,12 @@ def mergeJsonUser(connection, user, data, mode):
     merge.close()
     return root
 
-def insertJsonItem(connection, identifier, data):
+def insertJsonItem(connection, userid, data):
     item = None
     fields = ('Name', 'DateCreated', 'DateModified', 'MimeType', 'Size', 'Trashed',
               'CanAddChild', 'CanRename', 'IsReadOnly', 'IsVersionable', 'Loaded')
     insert = connection.prepareCall('CALL "insertJsonItem"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-    insert.setString(1, identifier.User.Id)
+    insert.setString(1, userid)
     index = _setJsonData(insert, data, unparseDateTime(), 2)
     parents = ','.join(data.get('parents', ()))
     insert.setString(index, parents)
@@ -96,7 +99,7 @@ def mergeJsonItem(merge, data, index=1):
 def insertContentItem(content, identifier, value):
     properties = ('Name', 'DateCreated', 'DateModified', 'MimeType', 'Size', 'Trashed',
                   'CanAddChild', 'CanRename', 'IsReadOnly', 'IsVersionable', 'Loaded')
-    insert = identifier.Connection.prepareCall('CALL "insertContentItem"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    insert = identifier.User.Connection.prepareCall('CALL "insertContentItem"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
     insert.setString(1, identifier.User.Id)
     insert.setString(2, identifier.Id)
     insert.setString(3, identifier.getParent().Id)
@@ -106,7 +109,7 @@ def insertContentItem(content, identifier, value):
     return result
 
 def updateName(identifier, value):
-    update = identifier.Connection.prepareCall('CALL "updateName"(?, ?, ?, ?, ?)')
+    update = identifier.User.Connection.prepareCall('CALL "updateName"(?, ?, ?, ?, ?)')
     update.setString(1, identifier.User.Id)
     update.setString(2, identifier.Id)
     update.setString(3, value)
@@ -117,7 +120,7 @@ def updateName(identifier, value):
     return result
 
 def updateSize(identifier, value):
-    update = identifier.Connection.prepareCall('CALL "updateSize"(?, ?, ?, ?, ?)')
+    update = identifier.User.Connection.prepareCall('CALL "updateSize"(?, ?, ?, ?, ?)')
     update.setString(1, identifier.User.Id)
     update.setString(2, identifier.Id)
     update.setLong(3, value)
@@ -128,7 +131,7 @@ def updateSize(identifier, value):
     return result
 
 def updateTrashed(identifier, value):
-    update = identifier.Connection.prepareCall('CALL "updateTrashed"(?, ?, ?, ?, ?)')
+    update = identifier.User.Connection.prepareCall('CALL "updateTrashed"(?, ?, ?, ?, ?)')
     update.setString(1, identifier.User.Id)
     update.setString(2, identifier.Id)
     update.setLong(3, value)
@@ -139,7 +142,7 @@ def updateTrashed(identifier, value):
     return result
 
 def updateLoaded(identifier, value):
-    update = identifier.Connection.prepareCall('CALL "updateLoaded"(?, ?, ?, ?)')
+    update = identifier.User.Connection.prepareCall('CALL "updateLoaded"(?, ?, ?, ?)')
     update.setString(1, identifier.User.Id)
     update.setString(2, identifier.Id)
     update.setLong(3, value)

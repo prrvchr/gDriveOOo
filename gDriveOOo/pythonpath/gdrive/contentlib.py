@@ -4,247 +4,72 @@
 import uno
 import unohelper
 
-from com.sun.star.lang import NoSupportException
-from com.sun.star.ucb import XContentIdentifier, XContentAccess, XDynamicResultSet
-from com.sun.star.ucb import XCommandInfo, XCommandInfoChangeNotifier, XContentIdentifierFactory
-from com.sun.star.ucb import UnsupportedCommandException, XCommandEnvironment
-from com.sun.star.task import XInteractionContinuation, XInteractionAbort
-from com.sun.star.ucb import XInteractionSupplyName, XInteractionReplaceExistingData
-from com.sun.star.ucb import IllegalIdentifierException, XInteractionSupplyAuthentication2
-from com.sun.star.sdbc import XRow, XResultSet, XResultSetMetaDataSupplier
+from com.sun.star.container import XIndexAccess
 from com.sun.star.sdb import XInteractionSupplyParameters
-from com.sun.star.container import XIndexAccess, XChild
+from com.sun.star.sdbc import XRow
+from com.sun.star.sdbc import XResultSet
+from com.sun.star.sdbc import XResultSetMetaDataSupplier
 from com.sun.star.task import XInteractionRequest
-from com.sun.star.io import XStreamListener, XInputStreamProvider
-from com.sun.star.util import XUpdatable, XLinkUpdate
-from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
-#from com.sun.star.document import XCmisDocument
+from com.sun.star.task import XInteractionAbort
+from com.sun.star.ucb import XContentAccess
+from com.sun.star.ucb import XDynamicResultSet
+from com.sun.star.ucb import XCommandInfo
+from com.sun.star.ucb import XCommandInfoChangeNotifier
+from com.sun.star.ucb import UnsupportedCommandException
+from com.sun.star.ucb import XCommandEnvironment
+from com.sun.star.ucb import XInteractionSupplyName
+from com.sun.star.ucb import XInteractionReplaceExistingData
+from com.sun.star.ucb import XInteractionSupplyAuthentication2
 
+from .contenttools import getUcb
+from .contenttools import getNameClashResolveRequest
+from .contenttools import getAuthenticationRequest
+from .contenttools import getParametersRequest
+from .contenttools import createContent
 from .unolib import PropertySet
 from .unotools import getProperty
-from .contenttools import getUcb, getUri, getNameClashResolveRequest, getAuthenticationRequest
-from .contenttools import getParametersRequest, getSession, doSync
-from .identifiers import isIdentifier, getNewIdentifier, isIdentifier
-from .children import updateChildren, selectChildId
-from .google import InputStream
-
-from requests.compat import unquote_plus
-import traceback
 
 
-class ContentUser(unohelper.Base, PropertySet):
-    def __init__(self, ctx, scheme=None, user=None):
-        self.user = {} if user is None else user
-        self.Session = getSession(ctx, scheme, self.Name) if self.IsValid else None
-
-    @property
-    def Id(self):
-        return self.user.get('Id', None)
-    @property
-    def Name(self):
-        return self.user.get('UserName', None)
-    @property
-    def RootId(self):
-        return self.user.get('RootId', None)
-    @property
-    def IsValid(self):
-        return all((self.Id, self.Name, self.RootId, self.Error is None))
-    @property
-    def Error(self):
-        return self.user.get('Error', None)
-
-    def _getPropertySetInfo(self):
-        properties = {}
-        maybevoid = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.MAYBEVOID')
-        bound = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.BOUND')
-        readonly = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.READONLY')
-        properties['Id'] = getProperty('Id', 'string', maybevoid | bound | readonly)
-        properties['Name'] = getProperty('Name', 'string', maybevoid | bound | readonly)
-        properties['RootId'] = getProperty('RootId', 'string', maybevoid | bound | readonly)
-        properties['IsValid'] = getProperty('IsValid', 'boolean', bound | readonly)
-        properties['Error'] = getProperty('Error', 'com.sun.star.ucb.IllegalIdentifierException', maybevoid | bound | readonly)    
-        return properties
-
-
-class ContentIdentifier(unohelper.Base, PropertySet, XContentIdentifier, XChild, XInputStreamProvider,
-                        XUpdatable, XLinkUpdate, XContentIdentifierFactory):
-    def __init__(self, ctx, connection, mode, user, uri):
-        self.ctx = ctx
-        self.Connection = connection
-        self.Mode = mode
-        self.User = user
-        self.Uri = uri
-        self.IsNew = self.Uri.hasFragment()
-        self._Error = None
-        self.Size = 0
-        self.MimeType = None
-        self.Updated = False
-        self.Id, self.Title, self.Url = self._parseUri() if self.User.IsValid else (None, None, None)
-
-    @property
-    def IsRoot(self):
-        return self.Id == self.User.RootId
-    @property
-    def IsValid(self):
-        return self.Id is not None
-    @property
-    def BaseURL(self):
-        return self.Url if self.IsRoot else '%s/%s' % (self.Url, self.Id)
-    @property
-    def Error(self):
-        return self._Error if self.User.Error is None else self.User.Error
-
-    # XInputStreamProvider
-    def createInputStream(self):
-        return InputStream(self.User.Session, self.Id, self.Size, self.MimeType)
-
-    # XUpdatable
-    def update(self):
-        self.Updated = True
-        if self.Mode == ONLINE:
-            with self.User.Session as session:
-                self.Updated = doSync(self.ctx, self.Connection, session, self.User.Id)
-
-    # XLinkUpdate
-    def updateLinks(self):
-        self.Updated = False
-        if self.Mode == ONLINE:
-            with self.User.Session as session:
-                self.Updated = updateChildren(session, self.Connection, self.User.Id, self.Id)
-
-    # XContentIdentifierFactory
-    def createContentIdentifier(self, title=''):
-        id = getNewIdentifier(self.Connection, self.User.Id)
-        title = title if title else id
-        uri = getUri(self.ctx, '%s/%s#%s' % (self.BaseURL, title, id))
-        return ContentIdentifier(self.ctx, self.Connection, self.Mode, self.User, uri)
-
-    # XContentIdentifier
-    def getContentIdentifier(self):
-        return self.Uri.getUriReference()
-    def getContentProviderScheme(self):
-        return self.Uri.getScheme()
-
-    # XChild
-    def getParent(self):
-        #print("contentlib.getParent(): ************************")
-        uri = getUri(self.ctx, self.Url)
-        #print("ContentIdentifier.getParent():\n    Uri: %s\n    Parent: %s" % (self.Uri.getUriReference(), uri.getUriReference()))
-        return ContentIdentifier(self.ctx, self.Connection, self.Mode, self.User, uri)
-    def setParent(self, parent):
-        raise NoSupportException('Parent can not be set', self)
-
-    def _parseUri(self):
-        title, position, url = None, -1, None
-        parentid, paths = self.User.RootId, []
-        for i in range(self.Uri.getPathSegmentCount() -1, -1, -1):
-            path = self.Uri.getPathSegment(i).strip()
-            if path not in ('','.'):
-                if title is None:
-                    title = self._unquote(path)
-                    position = i
-                else:
-                    parentid = path
-                    break
-        if title is None:
-            id = self.User.RootId
-        elif self.IsNew:
-            id = self.Uri.getFragment()
-        elif isIdentifier(self.Connection, title):
-            id = title
-        else:
-            id = selectChildId(self.Connection, parentid, title)
-        for i in range(position):
-            paths.append(self.Uri.getPathSegment(i).strip())
-        if id is None:
-            id = self._searchId(paths[::-1], title)
-        if id is None:
-            message = "ERROR: Can't retrieve Uri: %s" % self.Uri.getUriReference()
-            print("contentlib.ContentIdentifier._parseUri() Error: %s" % message)
-            self._Error = IllegalIdentifierException(message, self)
-        paths.insert(0, self.Uri.getAuthority())
-        url = '%s://%s' % (self.Uri.getScheme(), '/'.join(paths))
-        #print("ContentIdentifier._parseUri():\n    Uri: %s\n    Id - Title - Position: %s - %s - %s\n    BaseURL: %s" % (self.Uri.getUriReference(), id, title, position, url))
-        return id, title, url
-
-    def _searchId(self, paths, title):
-        # Needed for be able to create a folder in a just created folder...
-        paths.append(self.User.RootId)
-        for index, path in enumerate(paths):
-            if isIdentifier(self.Connection, path):
-                id = path
-                break
-        for i in range(index -1, -1, -1):
-            path = self._unquote(paths[i])
-            id = selectChildId(self.Connection, id, path)
-        id = selectChildId(self.Connection, id, title)
-        return id
-
-    def _unquote(self, text):
-        # Needed for OpenOffice / LibreOffice compatibility
-        if isinstance(text, str):
-            text = unquote_plus(text)
-        else:
-            text = unquote_plus(text.encode('utf-8')).decode('utf-8')
-        return text
-
-    def _getPropertySetInfo(self):
-        properties = {}
-        maybevoid = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.MAYBEVOID')
-        bound = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.BOUND')
-        readonly = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.READONLY')
-        properties['Connection'] = getProperty('Connection', 'com.sun.star.sdbc.XConnection', maybevoid | readonly)
-        properties['Mode'] = getProperty('Mode', 'short', bound | readonly)
-        properties['User'] = getProperty('User', 'com.sun.star.uno.XInterface', maybevoid | bound | readonly)
-        properties['Uri'] = getProperty('Uri', 'com.sun.star.uri.XUriReference', bound | readonly)
-        properties['Id'] = getProperty('Id', 'string', maybevoid | bound | readonly)
-        properties['IsRoot'] = getProperty('IsRoot', 'boolean', bound | readonly)
-        properties['IsValid'] = getProperty('IsValid', 'boolean', bound | readonly)
-        properties['IsNew'] = getProperty('IsNew', 'boolean', bound | readonly)
-        properties['BaseURL'] = getProperty('BaseURL', 'string', bound | readonly)
-        properties['Title'] = getProperty('Title', 'string', maybevoid | bound | readonly)
-        properties['Updated'] = getProperty('Updated', 'boolean', bound | readonly)
-        properties['Size'] = getProperty('Size', 'long', maybevoid | bound)
-        properties['MimeType'] = getProperty('MimeType', 'string', maybevoid | bound)
-        properties['Error'] = getProperty('Error', 'com.sun.star.ucb.IllegalIdentifierException', maybevoid | bound | readonly)
-        return properties
-
-
-class CommandEnvironment(unohelper.Base, XCommandEnvironment):
+class CommandEnvironment(unohelper.Base,
+                         XCommandEnvironment):
+    # XCommandEnvironment
     def getInteractionHandler(self):
         return None
     def getProgressHandler(self):
         return None
 
 
-class InteractionRequest(unohelper.Base, XInteractionRequest):
+class InteractionRequest(unohelper.Base,
+                         XInteractionRequest):
     def __init__(self, request, continuations, result={}):
         print("InteractionRequest.__init__(): %s %s" % (request, continuations))
         self._request = request
         self._continuations = continuations
-
+    # XInteractionRequest
     def getRequest(self):
         return self._request
     def getContinuations(self):
         return self._continuations
 
-class InteractionRequestAuthentication(unohelper.Base, XInteractionRequest):
+
+class InteractionRequestAuthentication(unohelper.Base,
+                                       XInteractionRequest):
     def __init__(self, source, uri, message, result):
         print("InteractionRequestAuthentication.__init__(): %s %s %s" % (source, uri, message))
         self._request = getAuthenticationRequest(source, uri, message)
         self._continuations = (InteractionSupplyAuthentication(result), InteractionAbort(result))
-
+    # XInteractionRequest
     def getRequest(self):
         return self._request
     def getContinuations(self):
         return self._continuations
 
 
-class InteractionSupplyAuthentication(unohelper.Base, XInteractionSupplyAuthentication2):
+class InteractionSupplyAuthentication(unohelper.Base,
+                                      XInteractionSupplyAuthentication2):
     def __init__(self, result):
         self.result = result
         self.username = ''
-
     # XInteractionSupplyAuthentication2
     def canSetRealm(self):
         return False
@@ -281,22 +106,25 @@ class InteractionSupplyAuthentication(unohelper.Base, XInteractionSupplyAuthenti
         self.result.update({'Retrieved': True, 'UserName': self.username})
 
 
-class InteractionRequestName(unohelper.Base, XInteractionRequest):
+class InteractionRequestName(unohelper.Base,
+                             XInteractionRequest):
     def __init__(self, source, message, url, name, newname, result):
         print("InteractionRequestName.__init__(): %s %s %s %s %s" % (source, message, url, name, newname))
         self._request = getNameClashResolveRequest(source, message, url, name, newname)
         self._continuations = (InteractionSupplyName(result), InteractionAbort(name, result))
-
+    # XInteractionRequest
     def getRequest(self):
         return self._request
     def getContinuations(self):
         return self._continuations
 
-class InteractionSupplyName(unohelper.Base, XInteractionSupplyName):
+
+class InteractionSupplyName(unohelper.Base,
+                            XInteractionSupplyName):
     def __init__(self, result):
         self.result = result
         self.newtitle = ''
-
+    # XInteractionSupplyName
     def setName(self, name):
         print("InteractionSupplyName.setName(): %s" % name)
         self.newtitle = name
@@ -304,27 +132,31 @@ class InteractionSupplyName(unohelper.Base, XInteractionSupplyName):
         print("InteractionSupplyName.select()")
         self.result.update({'Retrieved': True, 'Title': self.newtitle})
 
-class InteractionReplaceExistingData(unohelper.Base, XInteractionReplaceExistingData):
+
+class InteractionReplaceExistingData(unohelper.Base,
+                                     XInteractionReplaceExistingData):
     def __init__(self, callback):
         self.callback = callback
-
+    # XInteractionReplaceExistingData
     def select(self):
         print("InteractionReplaceExistingData.select()")
 
 
-class InteractionAbort(unohelper.Base, XInteractionAbort):
+class InteractionAbort(unohelper.Base,
+                       XInteractionAbort):
     def __init__(self, result={}):
         self.result = result
-
+    # XInteractionAbort
     def select(self):
         self.result.update({'Retrieved': False})
 
 
-class InteractionSupplyParameters(unohelper.Base, XInteractionSupplyParameters):
+class InteractionSupplyParameters(unohelper.Base,
+                                  XInteractionSupplyParameters):
     def __init__(self, result):
         self.result = result
         self.username = ''
-
+    # XInteractionSupplyParameters
     def setParameters(self, properties):
         for property in properties:
             if property.Name == 'UserName':
@@ -333,22 +165,23 @@ class InteractionSupplyParameters(unohelper.Base, XInteractionSupplyParameters):
         self.result.update({'Retrieved': True, 'UserName': self.username})
 
 
-class InteractionRequestParameters(unohelper.Base, XInteractionRequest):
+class InteractionRequestParameters(unohelper.Base,
+                                   XInteractionRequest):
     def __init__(self, source, connection, message, result):
         self.request = getParametersRequest(source, connection, message)
         self.request.Parameters = RequestParameters(message)
         self.continuations = (InteractionSupplyParameters(result), InteractionAbort(result))
-
+    # XInteractionRequest
     def getRequest(self):
         return self.request
     def getContinuations(self):
         return self.continuations
 
 
-class RequestParameters(unohelper.Base, XIndexAccess):
+class RequestParameters(unohelper.Base,
+                        XIndexAccess):
     def __init__(self, description):
         self.description = description
-
     # XIndexAccess
     def getCount(self):
         return 1
@@ -360,7 +193,8 @@ class RequestParameters(unohelper.Base, XIndexAccess):
         return True
 
 
-class Parameters(unohelper.Base, PropertySet):
+class Parameters(unohelper.Base,
+                 PropertySet):
     def __init__(self, description):
         self.Name = 'UserName'
         self.Type = uno.getConstantByName('com.sun.star.sdbc.DataType.VARCHAR')
@@ -373,7 +207,6 @@ class Parameters(unohelper.Base, PropertySet):
         self.IsRowVersion = False
         self.Description = description
         self.DefaultValue = ''
-        
     def _getPropertySetInfo(self):
         properties = {}
         bound = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.BOUND')
@@ -391,10 +224,11 @@ class Parameters(unohelper.Base, PropertySet):
         properties['DefaultValue'] = getProperty('DefaultValue', 'string', bound | readonly)
         return properties
 
-class CommandInfo(unohelper.Base, XCommandInfo):
+
+class CommandInfo(unohelper.Base,
+                  XCommandInfo):
     def __init__(self, commands={}):
         self.commands = commands
-
     # XCommandInfo
     def getCommands(self):
         print("PyCommandInfo.getCommands()")
@@ -428,7 +262,6 @@ class CommandInfo(unohelper.Base, XCommandInfo):
 class CommandInfoChangeNotifier(XCommandInfoChangeNotifier):
     def __init__(self):
         self.commandInfoListeners = []
-
     # XCommandInfoChangeNotifier
     def addCommandInfoChangeListener(self, listener):
         self.commandInfoListeners.append(listener)
@@ -437,11 +270,11 @@ class CommandInfoChangeNotifier(XCommandInfoChangeNotifier):
             self.commandInfoListeners.remove(listener)
 
 
-class Row(unohelper.Base, XRow):
+class Row(unohelper.Base,
+          XRow):
     def __init__(self, namedvalues):
         self.namedvalues = namedvalues
         self.isNull = False
-
     # XRow
     def wasNull(self):
         return self.isNull
@@ -483,7 +316,6 @@ class Row(unohelper.Base, XRow):
         return self._getValue(index -1)
     def getArray(self, index):
         return self._getValue(index -1)
-
     def _getValue(self, index):
         value  = None
         self.isNull = True
@@ -493,13 +325,13 @@ class Row(unohelper.Base, XRow):
         return value
         
 
-class DynamicResultSet(unohelper.Base, XDynamicResultSet):
+class DynamicResultSet(unohelper.Base,
+                       XDynamicResultSet):
     def __init__(self, ctx, identifier, select, index):
         self.ctx = ctx
         self.identifier = identifier
         self.select = select
         self.index = index
-
     # XDynamicResultSet
     def getStaticResultSet(self):
         return ContentResultSet(self.ctx, self.identifier, self.select, self.index)
@@ -514,8 +346,12 @@ class DynamicResultSet(unohelper.Base, XDynamicResultSet):
         return uno.getConstantByName('com.sun.star.ucb.ContentResultSetCapability.SORTED')
 
 
-class ContentResultSet(unohelper.Base, PropertySet, XResultSet, XRow,
-                       XResultSetMetaDataSupplier, XContentAccess):
+class ContentResultSet(unohelper.Base,
+                       PropertySet,
+                       XResultSet,
+                       XRow,
+                       XResultSetMetaDataSupplier,
+                       XContentAccess):
     def __init__(self, ctx, identifier, select, index):
         self.ctx = ctx
         self.identifier = identifier
@@ -523,14 +359,12 @@ class ContentResultSet(unohelper.Base, PropertySet, XResultSet, XRow,
         self.RowCount = select.getLong(index)
         self.IsRowCountFinal = not select.MoreResults
         print("ContentResultSet.__init__(): %s" % self.RowCount)
-
     def _getPropertySetInfo(self):
         properties = {}
         readonly = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.READONLY')
         properties['RowCount'] = getProperty('RowCount', 'long', readonly)
         properties['IsRowCountFinal'] = getProperty('IsRowCountFinal', 'boolean', readonly)
         return properties
-
     # XResultSet
     def next(self):
         return self.resultset.next()
@@ -568,7 +402,6 @@ class ContentResultSet(unohelper.Base, PropertySet, XResultSet, XRow,
         return self.resultset.rowDeleted()
     def getStatement(self):
         return self.resultset.getStatement()
-
     # XRow
     def wasNull(self):
         return self.resultset.wasNull()
@@ -614,11 +447,9 @@ class ContentResultSet(unohelper.Base, PropertySet, XResultSet, XRow,
         return self.resultset.getClob(index)
     def getArray(self, index):
         return self.resultset.getArray(index)
-
     # XResultSetMetaDataSupplier
     def getMetaData(self):
         return self.resultset.getMetaData()
-
     # XContentAccess
     def queryContentIdentifierString(self):
         identifier = self.resultset.getString(self.resultset.findColumn('TargetURL'))
@@ -626,8 +457,7 @@ class ContentResultSet(unohelper.Base, PropertySet, XResultSet, XRow,
         return identifier
     def queryContentIdentifier(self):
         identifier = self.queryContentIdentifierString()
-        uri = getUri(self.ctx, identifier)
-        return ContentIdentifier(self.ctx, self.identifier.Connection, self.identifier.Mode, self.identifier.User, uri)
+        return getUcb(self.ctx).createContentIdentifier(identifier)
     def queryContent(self):
         identifier = self.queryContentIdentifier()
         return getUcb(self.ctx).queryContent(identifier)

@@ -4,16 +4,16 @@
 import uno
 import unohelper
 
-from com.sun.star.io import XActiveDataSource, XActiveDataSink, XActiveDataControl
-from com.sun.star.io import XOutputStream, XInputStream, IOException
-from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
 from com.sun.star.connection import NoConnectException
-
+from com.sun.star.io import XOutputStream
+from com.sun.star.io import XInputStream
+from com.sun.star.io import IOException
+from com.sun.star.ucb.ConnectionMode import ONLINE
+from com.sun.star.ucb.ConnectionMode import OFFLINE
 
 import requests
 import sys
 import datetime
-import traceback
 
 
 if sys.version_info[0] < 3:
@@ -30,14 +30,18 @@ g_capabilityfields = 'canEdit,canRename,canAddChildren,canReadRevisions'
 g_itemfields = 'id,parents,name,mimeType,size,createdTime,modifiedTime,trashed,capabilities(%s)' % g_capabilityfields
 g_childfields = 'kind,nextPageToken,files(%s)' % g_itemfields
 
-# Minimun chunk: 262144 (256Ko) no more uploads if less... (must be a multiple of 64Ko)
+# Minimun chunk: 262144 (256Ko) no more uploads if less... (must be a multiple of 64Ko (and 32Ko))
 g_chunk = 262144
 g_pages = 100
 g_timeout = (15, 60)
 
 g_folder = 'application/vnd.google-apps.folder'
 g_link = 'application/vnd.google-apps.drive-sdk'
-g_doc = 'application/vnd.google-apps'
+g_doc_map = {'application/vnd.google-apps.document':     'application/vnd.oasis.opendocument.text',
+             'application/vnd.google-apps.spreadsheet':  'application/x-vnd.oasis.opendocument.spreadsheet',
+             'application/vnd.google-apps.presentation': 'application/vnd.oasis.opendocument.presentation',
+             'application/vnd.google-apps.drawing':      'application/pdf'}
+
 
 g_datetime = '%Y-%m-%dT%H:%M:%S.%fZ'
 
@@ -166,22 +170,20 @@ class ChildGenerator():
 class InputStream(unohelper.Base, XInputStream):
     def __init__(self, session, id, size, mimetype):
         self.session = session
-        self.url = '%sfiles/%s/export' % (g_url, id) if mimetype else '%sfiles/%s' % (g_url, id)
-        self.size = size
         self.length = 32768
-        self.mimetype = mimetype
-        self.chunks = None
+        url = '%sfiles/%s/export' % (g_url, id) if mimetype else '%sfiles/%s' % (g_url, id)
+        params = {'mimeType': mimetype} if mimetype else {'alt': 'media'}
+        self.chunks = (s for c in ChunksDownloader(self.session, url, params, size, self.length) for s in c)
         print("google.InputStream.__init__()")
 
     #XInputStream
     def readBytes(self, sequence, length):
-        # I assume that length is constant...
-        if self.chunks is None:
-            self.chunks = (s for c in ChunksDownloader(self.session, self.url, length, self.size, self.mimetype) for s in c)
-        print("google.InputStream.readBytes() 1")
-        sequence = uno.ByteSequence(next(self.chunks, b''))
+        # I assume that 'length' is constant...and is multiple of 'self.length'
+        sequence = uno.ByteSequence(b'')
+        while length > 0:
+            sequence += uno.ByteSequence(next(self.chunks, b''))
+            length -= self.length
         length = len(sequence)
-        print("google.InputStream.readBytes() 2 %s" % (length, ))
         return length, sequence
     def readSomeBytes(self, sequence, length):
         return self.readBytes(sequence, length)
@@ -190,21 +192,19 @@ class InputStream(unohelper.Base, XInputStream):
     def available(self):
         return g_chunk
     def closeInput(self):
-        pass
-        #self.session.close()
+        self.session.close()
 
 
 class ChunksDownloader():
-    def __init__(self, session, url, length, size, mimetype):
+    def __init__(self, session, url, params, size, length):
         print("google.ChunkDownloader.__init__()")
         self.session = session
         self.url = url
         self.size = size
         self.length = length
         self.start, self.closed = 0, False
-        self.headers = {}
-        self.headers['Accept-Encoding'] = 'gzip'
-        self.params = {'mimeType': mimetype} if mimetype else {'alt': 'media'} 
+        self.headers = {'Accept-Encoding': 'gzip'}
+        self.params = params 
         print("google.ChunkDownloader.__init__()")
     def __iter__(self):
         return self

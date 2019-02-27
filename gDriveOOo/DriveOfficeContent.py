@@ -6,23 +6,39 @@ import unohelper
 
 from com.sun.star.awt import XCallback
 from com.sun.star.container import XChild
-from com.sun.star.lang import XServiceInfo, NoSupportException
-from com.sun.star.ucb import XContent, XCommandProcessor2, CommandAbortedException
-from com.sun.star.ucb.ContentAction import INSERTED, REMOVED, DELETED, EXCHANGED
-from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
+from com.sun.star.lang import NoSupportException
+from com.sun.star.lang import XServiceInfo
+from com.sun.star.ucb import CommandAbortedException
+from com.sun.star.ucb import XContent
+from com.sun.star.ucb import XCommandProcessor2
+from com.sun.star.ucb.ConnectionMode import OFFLINE
+from com.sun.star.ucb.ContentAction import INSERTED
+from com.sun.star.ucb.ContentAction import EXCHANGED
 
+from gdrive import CommandInfo
+from gdrive import CommandInfoChangeNotifier
+from gdrive import Initialization
+from gdrive import PropertiesChangeNotifier
+from gdrive import PropertyContainer
+from gdrive import PropertySetInfo
+from gdrive import PropertySetInfoChangeNotifier
+from gdrive import Row
+from gdrive import getCommandInfo
+from gdrive import getContentEvent
+from gdrive import getLogger
+from gdrive import getMimeType
+from gdrive import getPropertiesValues
+from gdrive import getProperty
+from gdrive import getSimpleFile
+from gdrive import getResourceLocation
+from gdrive import getUcb
+from gdrive import getUcp
+from gdrive import parseDateTime
+from gdrive import propertyChange
+from gdrive import setPropertiesValues
+from gdrive import CREATED
+from gdrive import FILE
 
-from gdrive import Initialization, CommandInfo, CmisPropertySetInfo, Row, CmisDocument
-from gdrive import PropertiesChangeNotifier, PropertySetInfoChangeNotifier, CommandInfoChangeNotifier
-from gdrive import ContentIdentifier, PropertyContainer, InteractionRequestName
-from gdrive import getContentInfo, getPropertiesValues, uploadItem, getUcb, getMimeType, getUri, getInteractionHandler
-from gdrive import getUnsupportedNameClashException, getCommandIdentifier, getContentEvent
-from gdrive import createService, getResourceLocation, parseDateTime, getPropertySetInfoChangeEvent
-from gdrive import getSimpleFile, getCommandInfo, getProperty, getUcp
-from gdrive import propertyChange, setPropertiesValues, getLogger, getCmisProperty, getPropertyValue
-from gdrive import RETRIEVED, CREATED, FOLDER, FILE, RENAMED, REWRITED, TRASHED
-
-import requests
 import traceback
 
 # pythonloader looks for a static g_ImplementationHelper variable
@@ -30,8 +46,17 @@ g_ImplementationHelper = unohelper.ImplementationHelper()
 g_ImplementationName = 'com.gmail.prrvchr.extensions.gDriveOOo.DriveOfficeContent'
 
 
-class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent, XChild, XCommandProcessor2, PropertyContainer,
-                         PropertiesChangeNotifier, PropertySetInfoChangeNotifier, CommandInfoChangeNotifier, XCallback):
+class DriveOfficeContent(unohelper.Base,
+                         XServiceInfo,
+                         XContent,
+                         XChild,
+                         XCommandProcessor2,
+                         XCallback,
+                         CommandInfoChangeNotifier,
+                         Initialization,
+                         PropertiesChangeNotifier,
+                         PropertyContainer,
+                         PropertySetInfoChangeNotifier):
     def __init__(self, ctx, *namedvalues):
         self.ctx = ctx
         self.Logger = getLogger(self.ctx)
@@ -66,12 +91,6 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         self.propertiesListener = {}
         self.propertyInfoListeners = []
         self.commandInfoListeners = []
-        self.commandIdentifier = 0
-
-        #self.Author = 'prrvchr'
-        #self.Keywords = 'clefs de recherche'
-        #self.Subject = 'Test de Google DriveOfficeContent'
-        self._CmisProperties = None
 
         self.MimeType = None
 
@@ -82,10 +101,6 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
 
         identifier = self.getIdentifier()
         self.ObjectId = identifier.Id
-        self.CanCheckOut = True
-        self.CanCheckIn = True
-        self.CanCancelCheckOut = True
-
         self.TargetURL = identifier.getContentIdentifier()
         self.BaseURI = identifier.BaseURL
         msg = "DriveOfficeContent loading Uri: %s ... Done" % identifier.getContentIdentifier()
@@ -129,12 +144,6 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
     @property
     def MediaType(self):
         return self.MimeType
-    @property
-    def CmisProperties(self):
-        print("DriveOfficeContent.CmisProperties(): 1")
-        if self._CmisProperties is None:
-            self._CmisProperties = self._getCmisProperties()
-        return self._CmisProperties
     @property
     def Loaded(self):
         return self._Loaded
@@ -180,82 +189,65 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
 
     # XCommandProcessor2
     def createCommandIdentifier(self):
-        return getCommandIdentifier(self)
+        return 0
     def execute(self, command, id, environment):
-        result = None
-        level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
-        msg = "Command name: %s ..." % command.Name
-        if command.Name == 'getCommandInfo':
-            result = CommandInfo(self._commandInfo)
-        elif command.Name == 'getPropertySetInfo':
-            result = CmisPropertySetInfo(self._propertySetInfo, self._getCmisPropertySetInfo)
-        elif command.Name == 'getPropertyValues':
-            namedvalues = getPropertiesValues(self, command.Argument, self.Logger)
-            result = Row(namedvalues)
-        elif command.Name == 'setPropertyValues':
-            result = setPropertiesValues(self, environment, command.Argument, self._propertySetInfo, self.Logger)
-        elif command.Name == 'open':
-            sf = getSimpleFile(self.ctx)
-            url = self._getUrl(sf)
-            if url is None:
-                raise CommandAbortedException("Error while downloading file: %s" % self.Name, self)
-            sink = command.Argument.Sink
-            stream = uno.getTypeByName('com.sun.star.io.XActiveDataStreamer')
-            if sink.queryInterface(uno.getTypeByName('com.sun.star.io.XActiveDataSink')):
-                msg += " ReadOnly mode selected ..."
-                sink.setInputStream(sf.openFileRead(url))
-            elif not self.IsReadOnly and sink.queryInterface(stream):
-                msg += " ReadWrite mode selected ..."
-                sink.setStream(sf.openFileReadWrite(url))
-        elif command.Name == 'insert':
-            # The Insert command is only used to create a new document (File Save As)
-            # it saves content from createNewContent from the parent folder
-            print("DriveOfficeContent.execute(): insert %s" % command.Argument)
-            identifier = self.getIdentifier()
-            stream = command.Argument.Data
-            sf = getSimpleFile(self.ctx)
-            path = '%s/%s' % (identifier.getContentProviderScheme(), identifier.Id)
-            target = getResourceLocation(self.ctx, path)
-            if sf.exists(target) and not command.Argument.ReplaceExisting:
-                pass
-            elif stream.queryInterface(uno.getTypeByName('com.sun.star.io.XInputStream')):
-                ucp = getUcp(self.ctx)
-                sf.writeFile(target, stream)
-                self.MimeType = getMimeType(self.ctx, stream)
-                stream.closeInput()
-                self.Size = sf.getSize(target)
-                self.addPropertiesChangeListener(('Id', 'Name', 'Size', 'Trashed', 'Loaded'), ucp)
-                propertyChange(self, 'Id', identifier.Id, CREATED | FILE)
-                parent = identifier.getParent()
-                event = getContentEvent(self, INSERTED, self, parent)
-                ucp.queryContent(parent).notify(event)
-            print("DriveOfficeContent.execute(): insert FIN")
-        elif command.Name == 'delete':
-            print("DriveOfficeContent.execute(): delete")
-            self.Trashed = True
-        elif command.Name == 'addProperty':
-            print("DriveOfficeContent.addProperty():")
-        elif command.Name == 'removeProperty':
-            print("DriveOfficeContent.removeProperty():")
-        elif command.Name == 'lock':
-            print("DriveOfficeContent.lock()")
-        elif command.Name == 'unlock':
-            print("DriveOfficeContent.unlock()")
-        elif command.Name == 'close':
-            print("DriveOfficeContent.close()")
-        elif command.Name == 'updateProperties':
-            print("DriveOfficeContent.updateProperties()")
-        elif command.Name == 'getAllVersions':
-            print("DriveOfficeContent.getAllVersions()")
-        elif command.Name == 'checkout':
-            print("DriveOfficeContent.checkout()")
-        elif command.Name == 'cancelCheckout':
-            print("DriveOfficeContent.cancelCheckout()")
-        elif command.Name == 'checkIn':
-            print("DriveOfficeContent.checkin()")
-        msg += " Done"
-        self.Logger.logp(level, "DriveOfficeContent", "execute()", msg)
-        return result
+        try:
+            result = None
+            level = uno.getConstantByName("com.sun.star.logging.LogLevel.INFO")
+            msg = "Command name: %s ..." % command.Name
+            if command.Name == 'getCommandInfo':
+                result = CommandInfo(self._commandInfo)
+            elif command.Name == 'getPropertySetInfo':
+                result = PropertySetInfo(self._propertySetInfo)
+            elif command.Name == 'getPropertyValues':
+                namedvalues = getPropertiesValues(self, command.Argument, self.Logger)
+                result = Row(namedvalues)
+            elif command.Name == 'setPropertyValues':
+                result = setPropertiesValues(self, environment, command.Argument, self._propertySetInfo, self.Logger)
+            elif command.Name == 'open':
+                sf = getSimpleFile(self.ctx)
+                url = self._getUrl(sf)
+                if url is None:
+                    raise CommandAbortedException("Error while downloading file: %s" % self.Name, self)
+                sink = command.Argument.Sink
+                stream = uno.getTypeByName('com.sun.star.io.XActiveDataStreamer')
+                if sink.queryInterface(uno.getTypeByName('com.sun.star.io.XActiveDataSink')):
+                    msg += " ReadOnly mode selected ..."
+                    sink.setInputStream(sf.openFileRead(url))
+                elif not self.IsReadOnly and sink.queryInterface(stream):
+                    msg += " ReadWrite mode selected ..."
+                    sink.setStream(sf.openFileReadWrite(url))
+            elif command.Name == 'insert':
+                # The Insert command is only used to create a new document (File Save As)
+                # it saves content from createNewContent from the parent folder
+                print("DriveOfficeContent.execute(): insert %s" % command.Argument)
+                identifier = self.getIdentifier()
+                stream = command.Argument.Data
+                sf = getSimpleFile(self.ctx)
+                path = '%s/%s' % (identifier.getContentProviderScheme(), identifier.Id)
+                target = getResourceLocation(self.ctx, path)
+                if sf.exists(target) and not command.Argument.ReplaceExisting:
+                    pass
+                elif stream.queryInterface(uno.getTypeByName('com.sun.star.io.XInputStream')):
+                    ucp = getUcp(self.ctx, identifier.getContentProviderScheme())
+                    sf.writeFile(target, stream)
+                    self.MimeType = getMimeType(self.ctx, stream)
+                    stream.closeInput()
+                    self.Size = sf.getSize(target)
+                    self.addPropertiesChangeListener(('Id', 'Name', 'Size', 'Trashed', 'Loaded'), ucp)
+                    propertyChange(self, 'Id', identifier.Id, CREATED | FILE)
+                    parent = identifier.getParent()
+                    event = getContentEvent(self, INSERTED, self, parent)
+                    ucp.queryContent(parent).notify(event)
+                print("DriveOfficeContent.execute(): insert FIN")
+            elif command.Name == 'delete':
+                print("DriveOfficeContent.execute(): delete")
+                self.Trashed = True
+            msg += " Done"
+            self.Logger.logp(level, "DriveOfficeContent", "execute()", msg)
+            return result
+        except Exception as e:
+            print("DriveOfficeContent.execute().Error in Command: %s\n %s - %s" % (command.Name, e, traceback.print_exc()))
     def abort(self, id):
         pass
     def releaseCommandIdentifier(self, id):
@@ -286,22 +278,8 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         commands['setPropertyValues'] = getCommandInfo('setPropertyValues', '[]com.sun.star.beans.Property')
         commands['open'] = getCommandInfo('open', 'com.sun.star.ucb.OpenCommandArgument2')
         commands['insert'] = getCommandInfo('insert', 'com.sun.star.ucb.InsertCommandArgument')
-#        commands['insert'] = getCommandInfo('insert', 'com.sun.star.ucb.InsertCommandArgument2')
         commands['delete'] = getCommandInfo('delete', 'boolean')
-#        commands['lock'] = getCommandInfo('lock')
-#        commands['unlock'] = getCommandInfo('unlock')
-        commands['close'] = getCommandInfo('close')
         return commands
-        
-    def _updateCommandInfo(self):
-        commands = {}
-        commands['insert'] = getCommandInfo('insert', 'com.sun.star.ucb.InsertCommandArgument2')
-        commands['checkout'] = getCommandInfo('checkout')
-        commands['cancelCheckout'] = getCommandInfo('cancelCheckout')
-        commands['checkin'] = getCommandInfo('checkin', 'com.sun.star.ucb.CheckinArgument')
-        commands['updateProperties'] = getCommandInfo('updateProperties', '[]com.sun.star.document.CmisProperty')
-        commands['getAllVersions'] = getCommandInfo('getAllVersions', '[]com.sun.star.document.CmisVersion')
-        self._commandInfo.update(commands)
 
     def _getPropertySetInfo(self):
         properties = {}
@@ -336,37 +314,6 @@ class DriveOfficeContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         properties['IsFloppy'] = getProperty('IsFloppy', 'boolean', bound | ro)
         properties['IsCompactDisc'] = getProperty('IsCompactDisc', 'boolean', bound | ro)
         return properties
-
-#        properties['CanCheckIn'] = getProperty('CanCheckIn', 'boolean', bound)
-#        properties['CanCancelCheckOut'] = getProperty('CanCancelCheckOut', 'boolean', bound)
-#        properties['Author'] = getProperty('Author', 'string', bound)
-#        properties['Keywords'] = getProperty('Keywords', 'string', bound)
-#        properties['Subject'] = getProperty('Subject', 'string', bound)
-
-    def _getCmisPropertySetInfo(self):
-        properties = {}
-        bound = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.BOUND')
-        readonly = uno.getConstantByName('com.sun.star.beans.PropertyAttribute.READONLY')
-        properties['CmisProperties'] = getProperty('CmisProperties', '[]com.sun.star.document.CmisProperty', bound | readonly)
-        properties['IsVersionable'] = getProperty('IsVersionable', 'boolean', bound | readonly)
-        properties['CanCheckOut'] = getProperty('CanCheckOut', 'boolean', bound)
-        properties['CanCheckIn'] = getProperty('CanCheckIn', 'boolean', bound)
-        properties['CanCancelCheckOut'] = getProperty('CanCancelCheckOut', 'boolean', bound)
-        self._propertySetInfo.update(properties)
-        self._updateCommandInfo()
-        return properties
-
-    def _getCmisProperties(self):
-        properties = []
-        properties.append(getCmisProperty('cmis:isVersionSeriesCheckedOut', 'isVersionSeriesCheckedOut', 'boolean', True, True, False, True, (), True))
-        properties.append(getCmisProperty('cmis:title', 'title', 'string', True, True, False, True, (), 'nouveau titre'))
-        return tuple(properties)
-
-#        self._propertySetInfo.update({property.Name: property})
-#        reason = uno.getConstantByName('com.sun.star.beans.PropertySetInfoChange.PROPERTY_INSERTED')
-#        event = getPropertySetInfoChangeEvent(self, property.Name, reason)
-#        for listener in self.propertyInfoListeners:
-#            listener.propertySetInfoChange(event)
 
     # XServiceInfo
     def supportsService(self, service):

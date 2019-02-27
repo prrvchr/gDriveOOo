@@ -1,9 +1,6 @@
 #!
 # -*- coding: utf-8 -*-
 
-import uno
-import unohelper
-
 from com.sun.star.beans import XPropertyContainer
 
 from .unotools import getProperty

@@ -6,13 +6,19 @@ import unohelper
 
 from com.sun.star.lang import XServiceInfo
 from com.sun.star.awt import XContainerWindowEventHandler
-from com.sun.star.ucb import URLAuthenticationRequest
 
-from gdrive import getStringResource, getFileSequence, createService
-from gdrive import getLoggerUrl, getLoggerSetting, setLoggerSetting, getLogger
-from gdrive import getPropertyValue, registerDataBase, getUcp, getUcb, needSync, doSync
-
-from gdrive import g_scheme, getDbConnection, getItemFromResult, getSession
+from gdrive import createService
+from gdrive import getFileSequence
+from gdrive import getLoggerUrl
+from gdrive import getLoggerSetting
+from gdrive import getStringResource
+from gdrive import getUcb
+from gdrive import getUcp
+from gdrive import registerDataBase
+from gdrive import setLoggerSetting
+from gdrive import g_scheme
+from gdrive import getDbConnection
+from gdrive import getSession
 
 import traceback
 
@@ -22,7 +28,9 @@ g_ImplementationName = 'com.gmail.prrvchr.extensions.gDriveOOo.OptionsDialog'
 
 g_scheme = 'vnd.google-apps'
 
-class OptionsDialog(unohelper.Base, XServiceInfo, XContainerWindowEventHandler):
+class OptionsDialog(unohelper.Base,
+                    XServiceInfo,
+                    XContainerWindowEventHandler):
     def __init__(self, ctx):
         try:
             self.ctx = ctx
@@ -30,7 +38,8 @@ class OptionsDialog(unohelper.Base, XServiceInfo, XContainerWindowEventHandler):
             print("PyOptionsDialog.__init__() 1")
             #identifier = getUcb(self.ctx).createContentIdentifier('%s:///' % g_scheme)
             #print("PyOptionsDialog.__init__() 2 %s" % identifier.getContentIdentifier())
-            self.Connection = getDbConnection(self.ctx, g_scheme, True)
+            identifier = 'com.gmail.prrvchr.extensions.gDriveOOo'
+            self.Connection = getDbConnection(self.ctx, g_scheme, identifier, True)
             print("PyOptionsDialog.__init__() 3")
         except Exception as e:
             print("PyOptionsDialog.__init__().Error: %s - %s" % (e, traceback.print_exc()))
@@ -81,25 +90,11 @@ class OptionsDialog(unohelper.Base, XServiceInfo, XContainerWindowEventHandler):
             print("PyOptionsDialog._doConnect().Error: %s - %s" % (e, traceback.print_exc()))
 
     def _doViewFile(self, dialog):
-        try:
-            #mri = self.ctx.ServiceManager.createInstance('mytools.Mri')
-            #mri.inspect(uno)
-            id = None
-            #select = self.Connection.prepareCall('CALL "selectChildUniqueId"(?, ?)')
-            #select.setString(1, '15HyYbehzPMCVFnjqcGRIGr5DjrjWzsTI')
-            #select.setString(2, 'Facture Shanghai.odt')
-            #result = select.executeQuery()
-            #if result.next():
-            #    id = result.getString(1)
-            #select.close()
-            print("PyOptionsDialog._doViewFile() Id: %s" % id)
-            #doSync(self.ctx, self.Connection, user)
-        except Exception as e:
-            print("PyOptionsDialog._doViewFile().Error: %s - %s" % (e, traceback.print_exc()))
+        print("PyOptionsDialog._doViewFile().Error: %s - %s" % (e, traceback.print_exc()))
 
     def _initialize(self, dialog):
         print("PyOptionsDialog._initialize()")
-        provider = getUcp(self.ctx)
+        provider = getUcp(self.ctx, g_scheme)
         loaded = provider.supportsService('com.sun.star.ucb.ContentProvider')
         print("OptionsDialog._initialize() %s" % loaded) 
         self._toogleSync(dialog, loaded)
@@ -122,19 +117,22 @@ class OptionsDialog(unohelper.Base, XServiceInfo, XContainerWindowEventHandler):
         dialog.getControl('CommandButton1').Model.Enabled = enabled
 
     def _doViewLog(self, window):
-        url = getLoggerUrl(self.ctx)
-        length, sequence = getFileSequence(self.ctx, url)
-        text = sequence.value.decode('utf-8')
-        dialog = self._getLogDialog()
-        dialog.Title = url
-        dialog.getControl('TextField1').Text = text
-        dialog.execute()
-        dialog.dispose()
-
+        try:
+            url = getLoggerUrl(self.ctx)
+            length, sequence = getFileSequence(self.ctx, url)
+            text = sequence.value.decode('utf-8')
+            dialog = self._getLogDialog()
+            dialog.Title = url
+            dialog.getControl('TextField1').Text = text
+            dialog.execute()
+            dialog.dispose()
+        except Exception as e:
+            print("PyOptionsDialog._doViewLog().Error: %s - %s" % (e, traceback.print_exc()))
+    
     def _doLoadUcp(self, dialog):
         try:
             print("PyOptionsDialog._doLoadUcp() 1")
-            provider = getUcp(self.ctx)
+            provider = getUcp(self.ctx, g_scheme)
             if provider.supportsService('com.sun.star.ucb.ContentProviderProxy'):
                 #ucp = provider.getContentProvider()
                 ucp = createService('com.gmail.prrvchr.extensions.gDriveOOo.ContentProvider', self.ctx)
@@ -173,7 +171,6 @@ class OptionsDialog(unohelper.Base, XServiceInfo, XContainerWindowEventHandler):
         enabled = bool(dialog.getControl('CheckBox1').State)
         index = self._getLoggerLevel(dialog.getControl('ComboBox1'))
         handler = dialog.getControl('OptionButton1').State
-        setLoggerSetting(self.ctx, enabled, index, handler)
         setLoggerSetting(self.ctx, enabled, index, handler)
 
     # XServiceInfo

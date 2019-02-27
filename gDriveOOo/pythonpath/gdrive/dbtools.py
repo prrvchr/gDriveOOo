@@ -4,24 +4,28 @@
 import uno
 import unohelper
 
-from com.sun.star.sdbc import XDataSource, XArray, XRow, XResultSet
-from com.sun.star.container import XNameAccess, NoSuchElementException
+from com.sun.star.container import NoSuchElementException
+from com.sun.star.container import XNameAccess
+from com.sun.star.sdbc import XArray
+from com.sun.star.sdbc import XResultSet
+from com.sun.star.sdbc import XRow
 
-from .unotools import getResourceLocation, getPropertyValue, getSimpleFile
-
-import traceback
+from .unotools import getPropertyValue
+from .unotools import getResourceLocation
+from .unotools import getSimpleFile
 
 
 g_protocol = 'jdbc:hsqldb:'
-g_folder = 'hsqldb/'
+g_folder = 'hsqldb'
 g_jar = 'hsqldb.jar'
 g_class = 'org.hsqldb.jdbc.JDBCDriver'
 g_options = ';default_schema=true;hsqldb.default_table_type=cached;get_column_name=false;ifexists=true'
 g_shutdow = ';shutdown=true'
 
 
-def getDbConnection(ctx, scheme, shutdown=False, url=None):
-    location = getResourceLocation(ctx, '') if url is None else url
+def getDbConnection(ctx, scheme, identifier, shutdown=False):
+    service = '/singletons/com.sun.star.deployment.PackageInformationProvider'
+    location = ctx.getValueByName(service).getPackageLocation(identifier)
     pool = ctx.ServiceManager.createInstance('com.sun.star.sdbc.ConnectionPool')
     url = _getUrl(location, scheme, shutdown)
     info = _getInfo(location)
@@ -41,10 +45,10 @@ def registerDataBase(ctx, scheme, shutdown=False, url=None):
     return url
 
 def _getUrl(location, scheme, shutdown):
-    return '%s%s%s%s%s%s' % (g_protocol, location, g_folder, scheme, g_options, g_shutdow if shutdown else '')
+    return '%s%s/%s/%s%s%s' % (g_protocol, location, g_folder, scheme, g_options, g_shutdow if shutdown else '')
 
 def _getInfo(location):
-    path = '%s%s%s' % (location, g_folder, g_jar)
+    path = '%s/%s/%s' % (location, g_folder, g_jar)
     return (getPropertyValue('JavaDriverClass', g_class), 
             getPropertyValue('JavaDriverClassPath', path))
 
@@ -56,11 +60,11 @@ def _createDataBase(dbcontext, scheme, location, url, shutdown):
     datasource.DatabaseDocument.storeAsURL(url, descriptor)
 
 
-class SqlArray(unohelper.Base, XArray):
+class SqlArray(unohelper.Base,
+               XArray):
     def __init__(self, values, map):
         self.values = list(values)
         self.map = map
-
     # XArray
     def getBaseTypeName(self):
         return self.map
@@ -80,11 +84,11 @@ class SqlArray(unohelper.Base, XArray):
         return ArrayResultSet(values)
 
 
-class SqlTypeMap(unohelper.Base, XNameAccess):
+class SqlTypeMap(unohelper.Base,
+                 XNameAccess):
     def __init__(self, map='VARCHAR'):
         self.map = map
         self.maps = {'VARCHAR': 'string'}
-
     # XNameAccess
     def getByName(self, name):
         print("dbtools.SqlTypeMap.getByName() %s" % name)
@@ -105,18 +109,18 @@ class SqlTypeMap(unohelper.Base, XNameAccess):
         return True
 
 
-class ArrayResultSet(unohelper.Base, XResultSet, XRow):
+class ArrayResultSet(unohelper.Base,
+                     XResultSet,
+                     XRow):
     def __init__(self, values):
         self.values = values
         self.count = len(values)
         self.index = 0
-
     @property
     def value(self):
         if self.index > 0 and self.index <= self.count:
             return self.values[self.index -1]
         return None
-
     # XResultSet
     def next(self):
         if self.index < self.count:
@@ -176,7 +180,6 @@ class ArrayResultSet(unohelper.Base, XResultSet, XRow):
         return False
     def getStatement(self):
         return None
-
     # XRow
     def wasNull(self):
         return self.value is None
@@ -218,7 +221,6 @@ class ArrayResultSet(unohelper.Base, XResultSet, XRow):
         return self._getValue(index)
     def getArray(self, index):
         return self._getValue(index)
-
     def _getValue(self, index):
         if index == 1:
             return self.index

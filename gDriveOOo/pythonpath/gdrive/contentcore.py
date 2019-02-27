@@ -3,27 +3,32 @@
 
 import uno
 
-from com.sun.star.uno import Exception as UnoException
 from com.sun.star.beans import UnknownPropertyException
 from com.sun.star.lang import IllegalArgumentException, IllegalAccessException
-from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
-from com.sun.star.ucb.ContentAction import INSERTED, REMOVED, DELETED, EXCHANGED
+from com.sun.star.ucb.ConnectionMode import ONLINE
+from com.sun.star.ucb.ConnectionMode import OFFLINE
+from com.sun.star.ucb.ContentAction import INSERTED
+from com.sun.star.ucb.ContentAction import REMOVED
+from com.sun.star.ucb.ContentAction import DELETED
+from com.sun.star.ucb.ContentAction import EXCHANGED
+from com.sun.star.uno import Exception as UnoException
 
-
-from .items import insertContentItem, updateName, updateSize, updateTrashed, updateLoaded
-from .contenttools import getUri, getContentEvent, getUcp, getCommand
-from .contenttools import getUnsupportedNameClashException, getNameClashException
-from .contenttools import getInteractiveIOException, getInteractiveAugmentedIOException
-from .contentlib import ContentIdentifier, InteractionRequestName, CommandEnvironment
-from .unotools import getInteractionHandler, getNamedValue, getPropertyValueSet
 from .children import countChildTitle
+from .contentlib import CommandEnvironment
+from .contentlib import InteractionRequestName
+from .contenttools import getCommand
+from .contenttools import getContentEvent
+from .contenttools import getUcp
+from .contenttools import getInteractiveAugmentedIOException
+from .items import insertContentItem
+from .items import updateLoaded
+from .items import updateName
+from .items import updateSize
+from .items import updateTrashed
+from .unotools import getInteractionHandler
+from .unotools import getNamedValue
+from .unotools import getPropertyValueSet
 
-import traceback
-
-
-def getCommandIdentifier(source):
-    source.commandIdentifier += 1
-    return source.commandIdentifier
 
 def getPropertiesValues(source, properties, logger):
     namedvalues = []
@@ -172,16 +177,6 @@ def updateContent(ctx, event):
         #action = DELETED
     if name  == 'Name':
         result = updateName(identifier, event.NewValue)
-        #if result:
-        #    url = '%s/../%s' % (identifier.BaseURL, event.NewValue)
-        #    uri = getUri(ctx, url)
-        #    id = ContentIdentifier(ctx, identifier.Connection, identifier.Mode, identifier.User, uri)
-        #    oldcontent = getUcp(ctx).queryContent(id)
-        #    pid = identifier.getParent()
-        #    parent = getUcp(ctx).queryContent(pid)
-        #    parent.notify(getContentEvent(oldcontent, REMOVED, oldcontent, pid))
-        #    parent.notify(getContentEvent(event.Source, INSERTED, event.Source, pid))
-            #event.Source.notify(getContentEvent(event.Source, EXCHANGED, event.Source, identifier))
     elif name == 'Size':
         result = updateSize(identifier, event.NewValue)
     elif name == 'Loaded':
@@ -196,7 +191,7 @@ def updateContent(ctx, event):
 def notifyContentListener(ctx, source, action, identifier=None):
     if action == INSERTED:
         identifier = source.getIdentifier().getParent()
-        parent = getUcp(ctx).queryContent(identifier)
+        parent = getUcp(ctx, identifier.getContentProviderScheme()).queryContent(identifier)
         parent.notify(getContentEvent(action, source, identifier))
     elif action == DELETED:
         identifier = source.getIdentifier()

@@ -3,17 +3,15 @@
 
 import uno
 
-from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
-
-from .items import mergeJsonItemCall, mergeJsonItem
-from .google import ChildGenerator, g_folder
-
-import traceback
+from .google import ChildGenerator
+from .google import g_folder
+from .items import mergeJsonItemCall
+from .items import mergeJsonItem
 
 
 def isChildId(identifier, id):
     ischild = False
-    call = identifier.Connection.prepareCall('CALL "isChildId"(?, ?)')
+    call = identifier.User.Connection.prepareCall('CALL "isChildId"(?, ?)')
     call.setString(1, identifier.Id)
     call.setString(2, id)
     result = call.executeQuery()
@@ -35,7 +33,7 @@ def selectChildId(connection, parent, uri):
 
 def selectChildUniqueId(identifier, title):
     id = None
-    call = identifier.Connection.prepareCall('CALL "selectChildUniqueId"(?, ?, ?)')
+    call = identifier.User.Connection.prepareCall('CALL "selectChildUniqueId"(?, ?, ?)')
     call.setString(1, identifier.User.Id)
     call.setString(2, identifier.Id)
     call.setString(3, title)
@@ -47,7 +45,7 @@ def selectChildUniqueId(identifier, title):
 
 def countChildTitle(identifier, title):
     count = 1
-    call = identifier.Connection.prepareCall('CALL "countChildTitle"(?, ?, ?)')
+    call = identifier.User.Connection.prepareCall('CALL "countChildTitle"(?, ?, ?)')
     call.setString(1, identifier.User.Id)
     call.setString(2, identifier.Id)
     call.setString(3, title)
@@ -66,7 +64,7 @@ def updateChildren(session, connection, userid, id):
 def getChildSelect(identifier):
     # LibreOffice Columns: ['Title', 'Size', 'DateModified', 'DateCreated', 'IsFolder', 'TargetURL', 'IsHidden', 'IsVolume', 'IsRemote', 'IsRemoveable', 'IsFloppy', 'IsCompactDisc']
     # OpenOffice Columns: ['Title', 'Size', 'DateModified', 'DateCreated', 'IsFolder', 'TargetURL', 'IsHidden', 'IsVolume', 'IsRemote', 'IsRemoveable', 'IsFloppy', 'IsCompactDisc']
-    index, select = 1, identifier.Connection.prepareCall('CALL "selectChild"(?, ?, ?, ?, ?, ?)')
+    index, select = 1, identifier.User.Connection.prepareCall('CALL "selectChild"(?, ?, ?, ?, ?, ?)')
     # select return RowCount as OUT parameter in select.getLong(index)!!!
     # Never managed to run the next line:
     # select.ResultSetType = uno.getConstantByName('com.sun.star.sdbc.ResultSetType.SCROLL_INSENSITIVE')
@@ -81,6 +79,6 @@ def getChildSelect(identifier):
     # "IsFolder" is done by comparing MimeType with g_folder 'application/vnd.google-apps.folder' ...
     select.setString(index, g_folder)
     index += 1
-    select.setLong(index, identifier.Mode)
+    select.setLong(index, identifier.User.Mode)
     index += 1
     return index, select

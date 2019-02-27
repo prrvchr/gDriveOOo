@@ -6,34 +6,66 @@ import unohelper
 
 from com.sun.star.awt import XCallback
 from com.sun.star.container import XChild
-from com.sun.star.lang import XServiceInfo, NoSupportException
-from com.sun.star.ucb import XContent, XCommandProcessor2, XContentCreator
-from com.sun.star.ucb import InteractiveBadTransferURLException, CommandAbortedException
-from com.sun.star.ucb.ContentAction import INSERTED, REMOVED, DELETED, EXCHANGED
-from com.sun.star.ucb.ConnectionMode import ONLINE, OFFLINE
+from com.sun.star.lang import NoSupportException
+from com.sun.star.lang import XServiceInfo
+from com.sun.star.ucb import XContent
+from com.sun.star.ucb import XCommandProcessor2
+from com.sun.star.ucb import XContentCreator
+from com.sun.star.ucb import InteractiveBadTransferURLException
+from com.sun.star.ucb import CommandAbortedException
+from com.sun.star.ucb.ConnectionMode import OFFLINE
+from com.sun.star.ucb.ConnectionMode import ONLINE
+from com.sun.star.ucb.ContentAction import EXCHANGED
+from com.sun.star.ucb.ContentAction import INSERTED
 
-from gdrive import Initialization, CommandInfo, PropertySetInfo, Row, DynamicResultSet, PropertyContainer
-from gdrive import PropertiesChangeNotifier, PropertySetInfoChangeNotifier, CommandInfoChangeNotifier
-from gdrive import getDbConnection, propertyChange, getChildSelect, parseDateTime, getLogger, getUcp
-from gdrive import createService, getSimpleFile, getResourceLocation, isChildId, selectChildId, getInteractionHandler
-from gdrive import getUcb, getCommandInfo, getProperty, getContentInfo, executeContentCommand, createContent
-from gdrive import getCommandIdentifier, getContentEvent, ContentIdentifier, InteractionRequest, InteractionAbort
-from gdrive import getPropertiesValues, setPropertiesValues, getMimeType, getInsertCommandArgument, g_folder
-from gdrive import getPropertyValueSet, getUri
-from gdrive import RETRIEVED, CREATED, FOLDER, FILE, RENAMED, REWRITED, TRASHED
-
-
-import requests
-import traceback
+from gdrive import CommandInfo
+from gdrive import CommandInfoChangeNotifier
+from gdrive import DynamicResultSet
+from gdrive import Initialization
+from gdrive import PropertiesChangeNotifier
+from gdrive import PropertyContainer
+from gdrive import PropertySetInfo
+from gdrive import PropertySetInfoChangeNotifier
+from gdrive import Row
+from gdrive import createContent
+from gdrive import executeContentCommand
+from gdrive import getChildSelect
+from gdrive import getCommandInfo
+from gdrive import getContentEvent
+from gdrive import getContentInfo
+from gdrive import getLogger
+from gdrive import getPropertiesValues
+from gdrive import getProperty
+from gdrive import getPropertyValueSet
+from gdrive import getResourceLocation
+from gdrive import getSimpleFile
+from gdrive import getUcb
+from gdrive import getUcp
+from gdrive import isChildId
+from gdrive import parseDateTime
+from gdrive import propertyChange
+from gdrive import selectChildId
+from gdrive import setPropertiesValues
+from gdrive import CREATED
+from gdrive import FOLDER
 
 # pythonloader looks for a static g_ImplementationHelper variable
 g_ImplementationHelper = unohelper.ImplementationHelper()
 g_ImplementationName = 'com.gmail.prrvchr.extensions.gDriveOOo.DriveFolderContent'
 
 
-class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent, XChild,
-                         XCommandProcessor2, XContentCreator, PropertyContainer, PropertiesChangeNotifier,
-                         PropertySetInfoChangeNotifier, CommandInfoChangeNotifier, XCallback):
+class DriveFolderContent(unohelper.Base,
+                         XServiceInfo,
+                         XContent,
+                         XChild,
+                         XCommandProcessor2,
+                         XContentCreator,
+                         XCallback,
+                         Initialization,
+                         PropertyContainer,
+                         PropertiesChangeNotifier,
+                         PropertySetInfoChangeNotifier,
+                         CommandInfoChangeNotifier):
     def __init__(self, ctx, *namedvalues):
         self.ctx = ctx
         self.Logger = getLogger(self.ctx)
@@ -143,14 +175,15 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
     def getContentType(self):
         return self.ContentType
     def addContentEventListener(self, listener):
-        self.contentListeners.append(listener)
+        if listener not in self.contentListeners:
+            self.contentListeners.append(listener)
     def removeContentEventListener(self, listener):
         if listener in self.contentListeners:
             self.contentListeners.remove(listener)
 
     # XCommandProcessor2
     def createCommandIdentifier(self):
-        return getCommandIdentifier(self)
+        return 0
     def execute(self, command, id, environment):
         if command.Name == 'getCommandInfo':
             return CommandInfo(self._commandInfo)
@@ -162,6 +195,7 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         elif command.Name == 'setPropertyValues':
             return setPropertiesValues(self, environment, command.Argument, self._propertySetInfo, self.Logger)
         elif command.Name == 'open':
+            print("DriveFolderContent.execute() open")
             identifier = self.getIdentifier()
             if self.Loaded == ONLINE:
                 identifier.updateLinks()
@@ -172,9 +206,9 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
             return DynamicResultSet(self.ctx, identifier, select, index)
         elif command.Name == 'insert':
             print("DriveFolderContent.execute() insert")
-            ucp = getUcp(self.ctx)
-            self.addPropertiesChangeListener(('Id', 'Name', 'Size', 'Trashed', 'Loaded'), ucp)
             identifier = self.getIdentifier()
+            ucp = getUcp(self.ctx, identifier.getContentProviderScheme())
+            self.addPropertiesChangeListener(('Id', 'Name', 'Size', 'Trashed', 'Loaded'), ucp)
             propertyChange(self, 'Id', identifier.Id, CREATED | FOLDER)
             parent = identifier.getParent()
             event = getContentEvent(self, INSERTED, self, parent)
@@ -188,8 +222,8 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         elif command.Name == 'transfer':
             # Transfer command is used for document 'File Save' or 'File Save As'
             # NewTitle come from:
-            # - Last segment path of "XContent.getIdentifier().getContentIdentifier()" for OpenOffice
-            # - Property Title of "XContent" for LibreOffice
+            # - Last segment path of 'XContent.getIdentifier().getContentIdentifier()' for OpenOffice
+            # - Property 'Title' of 'XContent' for LibreOffice
             # If the content has been renamed, the last segment is the new Title of the content
             title = command.Argument.NewTitle
             source = command.Argument.SourceURL
@@ -203,7 +237,7 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
             else:
                 # It appears that 'command.Argument.NewTitle' is not an Id but a Title...
                 # If 'NewTitle' exist and is unique in the folder, we can retrieve its Id
-                id = selectChildId(identifier.Connection, identifier.Id, title)
+                id = selectChildId(identifier.User.Connection, identifier.Id, title)
                 if id is None:
                     # Id could not be found: NewTitle does not exist in the folder...
                     # For new document (File Save As) we use commands:
@@ -212,8 +246,9 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
                     # To execute these commands, we must throw an exception
                     # But we need to keep 'NewTitle' for building the Uri
                     self._newTitle = title
+                    print("DriveFolderContent.execute(): transfer 2:\n    transfer: %s - %s" % (source, id))
                     raise InteractiveBadTransferURLException("Couln't handle Url: %s" % source, self)
-            print("DriveFolderContent.execute(): transfer 2:\n    transfer: %s - %s" % (source, id))
+            print("DriveFolderContent.execute(): transfer 3:\n    transfer: %s - %s" % (source, id))
             sf = getSimpleFile(self.ctx)
             if not sf.exists(source):
                 raise CommandAbortedException("Error while saving file: %s" % source, self)
@@ -226,11 +261,9 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
             data = getPropertyValueSet({'Size': sf.getSize(target)})
             content = ucb.queryContent(identifier)
             executeContentCommand(content, 'setPropertyValues', data, environment)
-            print("DriveFolderContent.execute(): transfer 3: Fin")
+            print("DriveFolderContent.execute(): transfer 4: Fin")
             if command.Argument.MoveData:
                 pass #must delete object
-        elif command.Name == 'close':
-            print("DriveFolderContent.execute(): close")
         elif command.Name == 'flush':
             print("DriveFolderContent.execute(): flush")
     def abort(self, id):
@@ -247,11 +280,9 @@ class DriveFolderContent(unohelper.Base, XServiceInfo, Initialization, XContent,
         commands['open'] = getCommandInfo('open', 'com.sun.star.ucb.OpenCommandArgument2')
         commands['createNewContent'] = getCommandInfo('createNewContent', 'com.sun.star.ucb.ContentInfo')
         commands['insert'] = getCommandInfo('insert', 'com.sun.star.ucb.InsertCommandArgument')
-        #commands['insert'] = getCommandInfo('insert', 'com.sun.star.ucb.InsertCommandArgument2')
         if not self.getIdentifier().IsRoot:
             commands['delete'] = getCommandInfo('delete', 'boolean')
         commands['transfer'] = getCommandInfo('transfer', 'com.sun.star.ucb.TransferInfo')
-        commands['close'] = getCommandInfo('close')
         commands['flush'] = getCommandInfo('flush')
         return commands
 
