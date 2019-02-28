@@ -25,7 +25,6 @@ from .contenttools import getUcb
 from .contenttools import getNameClashResolveRequest
 from .contenttools import getAuthenticationRequest
 from .contenttools import getParametersRequest
-from .contenttools import createContent
 from .unolib import PropertySet
 from .unotools import getProperty
 

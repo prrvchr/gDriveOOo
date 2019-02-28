@@ -35,7 +35,6 @@ from .contenttools import createContentIdentifier
 from .contenttools import createContentUser
 from .contenttools import uploadItem
 from .contenttools import getSession
-from .contenttools import createContent
 from .contenttools import getIllegalIdentifierException
 from .contenttools import getInteractiveNetworkOffLineException
 from .contenttools import getInteractiveNetworkReadException
@@ -52,9 +51,10 @@ from .google import getItem
 from .google import getConnectionMode
 from .google import updateItem
 from .google import parseDateTime
-from .google import g_scheme
-from .google import g_folder
 from .google import g_doc_map
+from .google import g_folder
+from .google import g_link
+from .google import g_scheme
 from .google import RETRIEVED
 from .google import CREATED
 from .google import FOLDER

@@ -17,9 +17,6 @@ from com.sun.star.sdb import ParametersRequest
 from .dbtools import getItemFromResult
 from .google import OAuth2Ooo
 from .google import OutputStream
-from .google import g_doc_map
-from .google import g_folder
-from .google import g_link
 from .google import getUploadLocation
 from .google import updateItem
 from .google import RETRIEVED
@@ -35,9 +32,12 @@ from .unotools import getSimpleFile
 from .unotools import getResourceLocation
 from .unotools import getNamedValueSet
 
+import sys
 import requests
+import traceback
 
-g_OfficeDocument = 'application/vnd.oasis.opendocument'
+if sys.version_info[0] < 3:
+    requests.packages.urllib3.disable_warnings()
 
 
 def createContentUser(ctx, plugin, scheme, connection, username=None):
@@ -51,23 +51,6 @@ def createContentIdentifier(ctx, plugin, user, uri):
     namedvalue = getNamedValueSet({'User': user, 'Uri': uri})
     contentidentifier = ctx.ServiceManager.createInstanceWithArgumentsAndContext(service, namedvalue, ctx)
     return contentidentifier
-
-def createContent(ctx, mimetype, identifier, data={}):
-    name, content = None, None
-    if mimetype == g_folder:
-        name = 'DriveFolderContent'
-    elif mimetype == g_link:
-        pass
-    elif mimetype in (g_doc_map):
-        name = 'DriveDocumentContent'
-    elif mimetype.startswith(g_OfficeDocument):
-        name = 'DriveOfficeContent'
-    if name is not None:
-        service = 'com.gmail.prrvchr.extensions.gDriveOOo.%s' % name
-        namedvalue = getNamedValueSet({'Identifier': identifier})
-        namedvalue += getNamedValueSet(data)
-        content = ctx.ServiceManager.createInstanceWithArgumentsAndContext(service, namedvalue, ctx)
-    return content
 
 def getSession(ctx, scheme, username):
     session = requests.Session()
@@ -130,17 +113,20 @@ def _syncItem(ctx, scheme, session, item):
     return result
 
 def uploadItem(ctx, scheme, session, id, data, mimetype, new):
-    size, stream = _getInputStream(ctx, scheme, id)
-    if size: 
-        location = getUploadLocation(session, id, data, mimetype, new, size)
-        if location is not None:
-            mimetype = None
-            pump = getPump(ctx)
-            pump.setInputStream(stream)
-            pump.setOutputStream(OutputStream(session, location, size))
-            pump.start()
-            return id
-    return False
+    try:
+        size, stream = _getInputStream(ctx, scheme, id)
+        if size: 
+            location = getUploadLocation(session, id, data, mimetype, new, size)
+            if location is not None:
+                mimetype = None
+                pump = getPump(ctx)
+                pump.setInputStream(stream)
+                pump.setOutputStream(OutputStream(session, location, size))
+                pump.start()
+                return id
+        return False
+    except Exception as e:
+        print("contenttools.uploadItem().Error: %s - %s" % (e, traceback.print_exc()))
 
 def propertyChange(source, name, oldvalue, newvalue):
     if name in source.propertiesListener:

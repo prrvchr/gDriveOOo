@@ -20,12 +20,13 @@ from com.sun.star.util import XUpdatable
 from gdrive import Initialization
 from gdrive import InputStream
 from gdrive import PropertySet
-from gdrive import createContent
 from gdrive import createContentIdentifier
 from gdrive import doSync
 from gdrive import getItem
+from gdrive import getNamedValueSet
 from gdrive import getNewIdentifier
 from gdrive import getProperty
+from gdrive import getResourceLocation
 from gdrive import getSession
 from gdrive import getUri
 from gdrive import insertJsonItem
@@ -33,9 +34,14 @@ from gdrive import isIdentifier
 from gdrive import selectChildId
 from gdrive import selectItem
 from gdrive import updateChildren
+from gdrive import g_doc_map
+from gdrive import g_folder
+from gdrive import g_link
 
 from requests.compat import unquote_plus
 import traceback
+
+g_OfficeDocument = 'application/vnd.oasis.opendocument'
 
 # pythonloader looks for a static g_ImplementationHelper variable
 g_ImplementationHelper = unohelper.ImplementationHelper()
@@ -79,6 +85,9 @@ class ContentIdentifier(unohelper.Base,
     def BaseURL(self):
         return self.Url if self.IsRoot else '%s/%s' % (self.Url, self.Id)
     @property
+    def SourceURL(self):
+        return getResourceLocation(self.ctx, self.getContentProviderScheme())
+    @property
     def Error(self):
         return self._Error if self.User.Error is None else self.User.Error
 
@@ -109,18 +118,30 @@ class ContentIdentifier(unohelper.Base,
         return createContentIdentifier(self.ctx, plugin, self.User, uri)
 
     # XInstanceProvider
-    def getInstance(self, url):
-        item = self._getItem()
-        if item is not None:
-            data = item.get('Data', {})
-            mimetype = data.get('MimeType', 'application/octet-stream')
-            content = createContent(self.ctx, mimetype, self, data)
-            if content is not None:
-                return content
-            else:
-                message = "ERROR: Can't handle mimetype: %s" % mimetype
-                self._Error = IllegalIdentifierException(message, self)
-        return None
+    def getInstance(self, mimetype):
+        service, content, data = None, None, {}
+        if mimetype == '':
+            mimetype = 'application/octet-stream'
+            item = self._getItem()
+            if item is not None:
+                data = item.get('Data', {})
+                mimetype = data.get('MimeType', 'application/octet-stream')
+        if mimetype == g_folder:
+            service = 'com.gmail.prrvchr.extensions.CloudUcpOOo.FolderContent'
+        elif mimetype == g_link:
+            pass
+        elif mimetype in (g_doc_map):
+            service = 'com.gmail.prrvchr.extensions.gDriveOOo.DocumentContent'
+        elif mimetype.startswith(g_OfficeDocument):
+            service = 'com.gmail.prrvchr.extensions.CloudUcpOOo.DocumentContent'
+        if service is not None:
+            namedvalue = getNamedValueSet({'Identifier': self})
+            namedvalue += getNamedValueSet(data)
+            content = self.ctx.ServiceManager.createInstanceWithArgumentsAndContext(service, namedvalue, self.ctx)
+        else:
+            message = "ERROR: Can't handle mimetype: %s" % mimetype
+            self._Error = IllegalIdentifierException(message, self)
+        return content
 
     # XContentIdentifier
     def getContentIdentifier(self):
@@ -218,6 +239,7 @@ class ContentIdentifier(unohelper.Base,
         properties['IsValid'] = getProperty('IsValid', 'boolean', bound | readonly)
         properties['IsNew'] = getProperty('IsNew', 'boolean', bound | readonly)
         properties['BaseURL'] = getProperty('BaseURL', 'string', bound | readonly)
+        properties['SourceURL'] = getProperty('SourceURL', 'string', bound | readonly)
         properties['Title'] = getProperty('Title', 'string', maybevoid | bound | readonly)
         properties['Updated'] = getProperty('Updated', 'boolean', bound | readonly)
         properties['Size'] = getProperty('Size', 'long', maybevoid | bound)

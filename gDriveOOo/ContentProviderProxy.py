@@ -49,7 +49,7 @@ class ContentProviderProxy(unohelper.Base,
         print("ContentProviderProxy.getContentProvider() 1")
         if provider.supportsService('com.sun.star.ucb.ContentProviderProxy'):
             print("ContentProviderProxy.getContentProvider() 2")
-            provider = self.createContentProvider('com.gmail.prrvchr.extensions.gDriveOOo.ContentProvider')
+            provider = self.createContentProvider('com.gmail.prrvchr.extensions.CloudUcpOOo.ContentProvider')
             print("ContentProviderProxy.getContentProvider() 3")
         return provider
 
@@ -57,7 +57,7 @@ class ContentProviderProxy(unohelper.Base,
     def registerInstance(self, template, arguments, replace):
         print("ContentProviderProxy.registerInstance() 1")
         self.template = template
-        self.arguments = 'com.gmail.prrvchr.extensions.gDriveOOo'
+        self.arguments = arguments
         self.replace = replace
         return self
     def deregisterInstance(self, template, argument):

@@ -12,7 +12,7 @@ You must install this extention first!!!
 
 Restart LibreOffice / OpenOffice after installation.
 
-### Install [gDriveOOo](https://github.com/prrvchr/gDriveOOo/raw/master/gDriveOOo.oxt) extention v 0.0.1.
+### Install [gDriveOOo](https://github.com/prrvchr/gDriveOOo/releases/download/0.0.1/gDriveOOo.oxt) extention v 0.0.1.
 
 Restart LibreOffice / OpenOffice after installation.
 

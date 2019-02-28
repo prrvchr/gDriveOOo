@@ -64,7 +64,7 @@ def updateChildren(session, connection, userid, id):
 def getChildSelect(identifier):
     # LibreOffice Columns: ['Title', 'Size', 'DateModified', 'DateCreated', 'IsFolder', 'TargetURL', 'IsHidden', 'IsVolume', 'IsRemote', 'IsRemoveable', 'IsFloppy', 'IsCompactDisc']
     # OpenOffice Columns: ['Title', 'Size', 'DateModified', 'DateCreated', 'IsFolder', 'TargetURL', 'IsHidden', 'IsVolume', 'IsRemote', 'IsRemoveable', 'IsFloppy', 'IsCompactDisc']
-    index, select = 1, identifier.User.Connection.prepareCall('CALL "selectChild"(?, ?, ?, ?, ?, ?)')
+    index, select = 1, identifier.User.Connection.prepareCall('CALL "selectChild"(?, ?, ?, ?, ?)')
     # select return RowCount as OUT parameter in select.getLong(index)!!!
     # Never managed to run the next line:
     # select.ResultSetType = uno.getConstantByName('com.sun.star.sdbc.ResultSetType.SCROLL_INSENSITIVE')
@@ -75,9 +75,6 @@ def getChildSelect(identifier):
     index += 1
     # "TargetURL" is done by CONCAT(BaseURL,'/',Title or Id)...
     select.setString(index, identifier.BaseURL)
-    index += 1
-    # "IsFolder" is done by comparing MimeType with g_folder 'application/vnd.google-apps.folder' ...
-    select.setString(index, g_folder)
     index += 1
     select.setLong(index, identifier.User.Mode)
     index += 1

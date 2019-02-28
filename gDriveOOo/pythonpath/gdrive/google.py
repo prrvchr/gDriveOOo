@@ -15,7 +15,6 @@ import requests
 import sys
 import datetime
 
-
 if sys.version_info[0] < 3:
     requests.packages.urllib3.disable_warnings()
 
