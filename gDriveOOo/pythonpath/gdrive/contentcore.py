@@ -5,25 +5,25 @@ CREATED = None
 FILE = None
 
 def getPropertiesValues(*arg):
-    return NotImplemented
+    pass
 
 def setPropertiesValues(*arg):
-    return NotImplemented
+    pass
 
 def getCommandInfo(*arg):
-    return NotImplemented
+    pass
 
 def getMimeType(*arg):
-    return NotImplemented
+    pass
 
 def getUcb(*arg):
-    return NotImplemented
+    pass
 
 def getUcp(*arg):
-    return NotImplemented
+    pass
 
 def propertyChange(*arg):
-    return NotImplemented
+    pass
 
 class CommandInfo():
     pass
