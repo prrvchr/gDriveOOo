@@ -28,21 +28,18 @@ g_ImplementationName = 'com.gmail.prrvchr.extensions.gDriveOOo.ContentUser'
 
 class ContentUser(unohelper.Base, XServiceInfo, Initialization, PropertySet):
     def __init__(self, ctx, *namedvalues):
-        try:
-            self.ctx = ctx
-            self.Scheme = None
-            self.Connection = None
-            self.Name = None
-            self.initialize(namedvalues)
-            self._Mode = getConnectionMode(self.ctx)
-            self.Error = None
-            self.Session = None if self.Name is None else getSession(self.ctx, self.Scheme, self.Name)
-            user = self._getUser()
-            self.user = {} if user is None else user
-            if self.IsValid and self.Mode == ONLINE:
-                checkIdentifiers(self.Connection, self.Session, self.Id)
-        except Exception as e:
-            print("ContentUser.__init__().Error: %s - %s" % (e, traceback.print_exc()))
+        self.ctx = ctx
+        self.Scheme = None
+        self.Connection = None
+        self.Name = None
+        self.initialize(namedvalues)
+        self._Mode = getConnectionMode(self.ctx)
+        self.Error = None
+        self.Session = None if self.Name is None else getSession(self.ctx, self.Scheme, self.Name)
+        user = self._getUser()
+        self.user = {} if user is None else user
+        if self.IsValid and self.Mode == ONLINE:
+            checkIdentifiers(self.Connection, self.Session, self.Id)
 
 
     @property
