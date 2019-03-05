@@ -14,6 +14,7 @@ from com.sun.star.ucb import XParameterizedContentProvider
 from gdrive import createService
 from gdrive import getResourceLocation
 from gdrive import getUcp
+from gdrive import g_provider
 
 # pythonloader looks for a static g_ImplementationHelper variable
 g_ImplementationHelper = unohelper.ImplementationHelper()
@@ -49,7 +50,7 @@ class ContentProviderProxy(unohelper.Base,
         print("ContentProviderProxy.getContentProvider() 1")
         if provider.supportsService('com.sun.star.ucb.ContentProviderProxy'):
             print("ContentProviderProxy.getContentProvider() 2")
-            provider = self.createContentProvider('com.gmail.prrvchr.extensions.CloudUcpOOo.ContentProvider')
+            provider = self.createContentProvider(g_provider)
             print("ContentProviderProxy.getContentProvider() 3")
         return provider
 
