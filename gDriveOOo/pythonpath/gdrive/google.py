@@ -11,12 +11,9 @@ from com.sun.star.io import IOException
 from com.sun.star.ucb.ConnectionMode import ONLINE
 from com.sun.star.ucb.ConnectionMode import OFFLINE
 
-import requests
 import sys
 import datetime
 
-if sys.version_info[0] < 3:
-    requests.packages.urllib3.disable_warnings()
 
 g_scheme = 'vnd.google-apps'    #vnd.google-apps
 g_host = 'www.googleapis.com'
@@ -70,7 +67,7 @@ def getUser(session):
     params = {'fields': g_userfields}
     with session.get(url, params=params, timeout=g_timeout) as r:
         print("google.getUser(): %s - %s" % (r.status_code, r.json()))
-        if r.status_code == requests.codes.ok:
+        if r.status_code == 200: #session.codes.ok:
             user = r.json().get('user')
             root = getItem(session, 'root')
     return user, root
@@ -80,7 +77,7 @@ def getItem(session, id):
     params = {'fields': g_itemfields}
     with session.get(url, params=params, timeout=g_timeout) as r:
         print("google.getItem(): %s - %s" % (r.status_code, r.json()))
-        if r.status_code == requests.codes.ok:
+        if r.status_code == 200: #session.codes.ok:
             return r.json()
     return None
 
@@ -96,7 +93,7 @@ def getUploadLocation(session, id, data, mimetype, new, size):
     with session.request(method, url, params=params, headers=headers, json=data) as r:
         print("contenttools.getUploadLocation()2 %s - %s" % (r.status_code, r.headers))
         print("contenttools.getUploadLocation()3 %s - %s" % (r.content, data))
-        if r.status_code == requests.codes.ok and 'Location' in r.headers:
+        if r.status_code == 200 and 'Location' in r.headers: #session.codes.ok
             return r.headers['Location']
     return None
 
@@ -105,7 +102,7 @@ def updateItem(session, id, data, new):
     with session.request('POST' if new else 'PATCH', url, json=data) as r:
         print("contenttools.updateItem()1 %s - %s" % (r.status_code, r.headers))
         print("contenttools.updateItem()2 %s - %s" % (r.content, data))
-        if r.status_code == requests.codes.ok:
+        if r.status_code == 200: #session.codes.ok:
             return id
     return False
 
@@ -118,7 +115,7 @@ class IdGenerator():
         params = {'count': count, 'space': space}
         with session.get(url, params=params, timeout=g_timeout) as r:
             print("google.IdGenerator(): %s" % r.json())
-            if r.status_code == requests.codes.ok:
+            if r.status_code == 200: #session.codes.ok:
                 self.ids = r.json().get('ids', [])
         print("google.IdGenerator.__init__()")
     def __iter__(self):
@@ -160,7 +157,7 @@ class ChildGenerator():
         token = None
         r = self.session.get(self.url, params=self.params, timeout=g_timeout)
         print("google.ChildGenerator(): %s" % r.json())
-        if r.status_code == requests.codes.ok:
+        if r.status_code == 200: #session.codes.ok:
             rows = r.json().get('files', [])
             token = r.json().get('nextPageToken', None)
         return rows, token
@@ -218,11 +215,11 @@ class ChunksDownloader():
         print("google.ChunkDownloader.__next__() 2: %s" % (self.headers, ))
         r = self.session.get(self.url, headers=self.headers, params=self.params, timeout=g_timeout, stream=True)
         print("google.ChunkDownloader.__next__() 3: %s - %s" % (r.status_code, r.headers))
-        if r.status_code == requests.codes.partial_content:
+        if r.status_code == 206: #session.codes.partial_content:
             self.start += int(r.headers.get('Content-Length', end))
             self.closed = self.start == self.size
             print("google.ChunkDownloader.__next__() 4 %s - %s" % (self.closed, self.start))
-        elif  r.status_code == requests.codes.ok:
+        elif  r.status_code == 200: #session.codes.ok:
             self.start += int(r.headers.get('Content-Length', end))
             self.closed = True
             print("google.ChunkDownloader.__next__() 5 %s - %s" % (self.closed, self.start))
@@ -280,11 +277,11 @@ class OutputStream(unohelper.Base, XOutputStream):
         print("google.OutputStream._write() 2: %s" % (r.request.headers, ))
         print("google.OutputStream._write() 3: %s - %s" % (r.status_code, r.headers))
         print("google.OutputStream._write() 4: %s" % (r.content, ))
-        if r.status_code == requests.codes.ok or r.status_code == requests.codes.created:
+        if r.status_code == 200 or r.status_code == 201: #session.codes.created:
             self.start += int(r.request.headers['Content-Length'])
             self.buffers = uno.ByteSequence(b'')
             return True
-        elif r.status_code == requests.codes.permanent_redirect:
+        elif r.status_code == 308: #session.codes.permanent_redirect:
             if 'Range' in r.headers:
                 self.start += int(r.headers['Range'].split('-')[-1]) +1
                 self.buffers = uno.ByteSequence(b'')

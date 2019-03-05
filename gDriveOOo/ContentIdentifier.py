@@ -38,7 +38,12 @@ from gdrive import g_doc_map
 from gdrive import g_folder
 from gdrive import g_link
 
-from requests.compat import unquote_plus
+#requests is only available after OAuth2OOo as been loaded...
+try:
+    from requests.compat import unquote_plus
+except ImportError:
+    pass
+
 import traceback
 
 g_OfficeDocument = 'application/vnd.oasis.opendocument'

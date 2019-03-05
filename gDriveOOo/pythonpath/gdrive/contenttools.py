@@ -33,11 +33,7 @@ from .unotools import getResourceLocation
 from .unotools import getNamedValueSet
 
 import sys
-import requests
 import traceback
-
-if sys.version_info[0] < 3:
-    requests.packages.urllib3.disable_warnings()
 
 
 def createContentUser(ctx, plugin, scheme, connection, username=None):
@@ -53,8 +49,12 @@ def createContentIdentifier(ctx, plugin, user, uri):
     return contentidentifier
 
 def getSession(ctx, scheme, username):
+    oauth = OAuth2Ooo(ctx, scheme, username)
+    import requests
+    if sys.version_info[0] < 3:
+        requests.packages.urllib3.disable_warnings()
     session = requests.Session()
-    session.auth = OAuth2Ooo(ctx, scheme, username)
+    session.auth = oauth
     return session
 
 def doSync(ctx, scheme, connection, session, userid):
