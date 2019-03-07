@@ -157,7 +157,7 @@ class ChildGenerator():
         token = None
         r = self.session.get(self.url, params=self.params, timeout=g_timeout)
         print("google.ChildGenerator(): %s" % r.json())
-        if r.status_code == session.codes.ok:
+        if r.status_code == self.session.codes.ok:
             rows = r.json().get('files', [])
             token = r.json().get('nextPageToken', None)
         return rows, token
@@ -215,11 +215,11 @@ class ChunksDownloader():
         print("google.ChunkDownloader.__next__() 2: %s" % (self.headers, ))
         r = self.session.get(self.url, headers=self.headers, params=self.params, timeout=g_timeout, stream=True)
         print("google.ChunkDownloader.__next__() 3: %s - %s" % (r.status_code, r.headers))
-        if r.status_code == session.codes.partial_content:
+        if r.status_code == self.session.codes.partial_content:
             self.start += int(r.headers.get('Content-Length', end))
             self.closed = self.start == self.size
             print("google.ChunkDownloader.__next__() 4 %s - %s" % (self.closed, self.start))
-        elif  r.status_code == session.codes.ok:
+        elif  r.status_code == self.session.codes.ok:
             self.start += int(r.headers.get('Content-Length', end))
             self.closed = True
             print("google.ChunkDownloader.__next__() 5 %s - %s" % (self.closed, self.start))
@@ -277,11 +277,11 @@ class OutputStream(unohelper.Base, XOutputStream):
         print("google.OutputStream._write() 2: %s" % (r.request.headers, ))
         print("google.OutputStream._write() 3: %s - %s" % (r.status_code, r.headers))
         print("google.OutputStream._write() 4: %s" % (r.content, ))
-        if r.status_code == session.codes.ok or r.status_code == session.codes.created:
+        if r.status_code == self.session.codes.ok or r.status_code == self.session.codes.created:
             self.start += int(r.request.headers['Content-Length'])
             self.buffers = uno.ByteSequence(b'')
             return True
-        elif r.status_code == session.codes.permanent_redirect:
+        elif r.status_code == self.session.codes.permanent_redirect:
             if 'Range' in r.headers:
                 self.start += int(r.headers['Range'].split('-')[-1]) +1
                 self.buffers = uno.ByteSequence(b'')
