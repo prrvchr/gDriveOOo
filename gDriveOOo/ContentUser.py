@@ -9,21 +9,32 @@ from com.sun.star.ucb.ConnectionMode import OFFLINE
 from com.sun.star.ucb.ConnectionMode import ONLINE
 from com.sun.star.ucb import IllegalIdentifierException
 
-from gdrive import Initialization
-from gdrive import PropertySet
+try:
+    from clouducp import Initialization
+    from clouducp import PropertySet
+    from clouducp import getConnectionMode
+    from clouducp import getProperty
+    from clouducp import getSession
+except ImportError:
+    from gdrive import Initialization
+    from gdrive import PropertySet
+    from gdrive import getConnectionMode
+    from gdrive import getProperty
+    from gdrive import getSession
+
 from gdrive import checkIdentifiers
-from gdrive import getConnectionMode
-from gdrive import getProperty
-from gdrive import getSession
+
 from gdrive import getUser
 from gdrive import mergeJsonUser
 from gdrive import selectUser
+from gdrive import g_host
+from gdrive import g_plugin
 
 import traceback
 
 # pythonloader looks for a static g_ImplementationHelper variable
 g_ImplementationHelper = unohelper.ImplementationHelper()
-g_ImplementationName = 'com.gmail.prrvchr.extensions.gDriveOOo.ContentUser'
+g_ImplementationName = '%s.ContentUser' % g_plugin
 
 
 class ContentUser(unohelper.Base, XServiceInfo, Initialization, PropertySet):
@@ -33,7 +44,7 @@ class ContentUser(unohelper.Base, XServiceInfo, Initialization, PropertySet):
         self.Connection = None
         self.Name = None
         self.initialize(namedvalues)
-        self._Mode = getConnectionMode(self.ctx)
+        self._Mode = getConnectionMode(self.ctx, g_host)
         self.Error = None
         self.Session = None if self.Name is None else getSession(self.ctx, self.Scheme, self.Name)
         user = self._getUser()
@@ -75,6 +86,7 @@ class ContentUser(unohelper.Base, XServiceInfo, Initialization, PropertySet):
         return user
 
     def _getUserFromProvider(self):
+        user = None
         with self.Session as session:
             data, root = getUser(session)
         print("ContentUser._getUserFromProvider(): %s" % self.Name)
@@ -82,7 +94,7 @@ class ContentUser(unohelper.Base, XServiceInfo, Initialization, PropertySet):
             user = mergeJsonUser(self.Connection, data, root, self.Mode)
         else:
             message = "ERROR: Can't retrieve User: %s from provider" % self.Name
-            user = {'Error': IllegalIdentifierException(message, self)}
+            self.Error = IllegalIdentifierException(message, self)
         return user
 
     def _getPropertySetInfo(self):

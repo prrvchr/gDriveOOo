@@ -11,14 +11,12 @@ from com.sun.star.ucb import XContentProviderFactory
 from com.sun.star.ucb import XContentProviderSupplier
 from com.sun.star.ucb import XParameterizedContentProvider
 
-from gdrive import createService
-from gdrive import getResourceLocation
-from gdrive import getUcp
+from gdrive import g_plugin
 from gdrive import g_provider
 
 # pythonloader looks for a static g_ImplementationHelper variable
 g_ImplementationHelper = unohelper.ImplementationHelper()
-g_ImplementationName = 'com.gmail.prrvchr.extensions.gDriveOOo.ContentProviderProxy'
+g_ImplementationName = '%s.ContentProviderProxy' % g_plugin
 
 
 class ContentProviderProxy(unohelper.Base,
@@ -40,13 +38,13 @@ class ContentProviderProxy(unohelper.Base,
     # XContentProviderFactory
     def createContentProvider(self, service):
         print("ContentProviderProxy.createContentProvider() %s" % service)
-        ucp = createService(service, self.ctx)
+        ucp = self.ctx.ServiceManager.createInstanceWithContext(service, self.ctx)
         provider = ucp.registerInstance(self.template, self.arguments, self.replace)
         return provider
 
     # XContentProviderSupplier
     def getContentProvider(self):
-        provider = getUcp(self.ctx, self.template)
+        provider = self._getUcp()
         print("ContentProviderProxy.getContentProvider() 1")
         if provider.supportsService('com.sun.star.ucb.ContentProviderProxy'):
             print("ContentProviderProxy.getContentProvider() 2")
@@ -81,6 +79,14 @@ class ContentProviderProxy(unohelper.Base,
         return g_ImplementationName
     def getSupportedServiceNames(self):
         return g_ImplementationHelper.getSupportedServiceNames(g_ImplementationName)
+
+    def _getUcb(self, arguments=None):
+        arguments = ('Local', 'Office') if arguments is None else arguments
+        name = 'com.sun.star.ucb.UniversalContentBroker'
+        return self.ctx.ServiceManager.createInstanceWithArguments(name, (arguments, ))
+
+    def _getUcp(self):
+        return self._getUcb().queryContentProvider('%s://' % self.template)
 
 
 g_ImplementationHelper.addImplementation(ContentProviderProxy,                                               # UNO object class

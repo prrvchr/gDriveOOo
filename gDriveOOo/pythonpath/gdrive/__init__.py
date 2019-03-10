@@ -1,101 +1,74 @@
 #!
 # -*- coding: utf-8 -*-
 
-from .children import selectChildId
-from .children import updateChildren
+import traceback
 
-from .contentcore import CommandInfo
-from .contentcore import CommandInfoChangeNotifier
-from .contentcore import PropertiesChangeNotifier
-from .contentcore import PropertyContainer
-from .contentcore import PropertySetInfo
-from .contentcore import PropertySetInfoChangeNotifier
-from .contentcore import Row
-from .contentcore import getPropertiesValues
-from .contentcore import setPropertiesValues
-from .contentcore import getCommandInfo
-from .contentcore import getMimeType
-from .contentcore import getUcb
-from .contentcore import getUcp
-from .contentcore import propertyChange
-from .contentcore import CREATED
-from .contentcore import FILE
+try:
+    from .lazylib import CommandInfo
+    from .lazylib import CommandInfoChangeNotifier
+    from .lazylib import Initialization
+    from .lazylib import PropertiesChangeNotifier
+    from .lazylib import PropertyContainer
+    from .lazylib import PropertySet
+    from .lazylib import PropertySetInfo
+    from .lazylib import PropertySetInfoChangeNotifier
+    from .lazylib import Row
 
-from .contenttools import getUcb
-from .contenttools import getUcp
-from .contenttools import getUri
-from .contenttools import getMimeType
-from .contenttools import getContentEvent
-from .contenttools import getCommandInfo
-from .contenttools import getContentInfo
-from .contenttools import propertyChange
-from .contenttools import doSync
-from .contenttools import createContentIdentifier
-from .contenttools import createContentUser
-from .contenttools import uploadItem
-from .contenttools import getSession
-from .contenttools import getIllegalIdentifierException
-from .contenttools import getInteractiveNetworkOffLineException
-from .contenttools import getInteractiveNetworkReadException
-from .contenttools import getUnsupportedNameClashException
-from .contenttools import getInsertCommandArgument
+    from .lazytools import createContentIdentifier
+    from .lazytools import getCommandInfo
+    from .lazytools import getConnectionMode
+    from .lazytools import getContentEvent
+    from .lazytools import getLogger
+    from .lazytools import getMimeType
+    from .lazytools import getNamedValueSet
+    from .lazytools import getPropertiesValues
+    from .lazytools import getProperty
+    from .lazytools import getSession
+    from .lazytools import getSimpleFile
+    from .lazytools import getUcb
+    from .lazytools import getUcp
+    from .lazytools import getUri
+    from .lazytools import propertyChange
+    from .lazytools import setPropertiesValues
+    from .lazytools import CREATED
+    from .lazytools import FILE
 
-from .dbtools import getDbConnection
-from .dbtools import registerDataBase
-from .dbtools import getItemFromResult
+    from .drivelib import InputStream
 
-from .google import InputStream
-from .google import getUser
-from .google import getItem
-from .google import getConnectionMode
-from .google import updateItem
-from .google import parseDateTime
-from .google import g_doc_map
-from .google import g_folder
-from .google import g_link
-from .google import g_provider
-from .google import g_scheme
-from .google import RETRIEVED
-from .google import CREATED
-from .google import FOLDER
-from .google import FILE
-from .google import RENAMED
-from .google import REWRITED
-from .google import TRASHED
+    from .drivetools import getResourceLocation
+    from .drivetools import getUser
+    from .drivetools import getItem
+    
+    from .drivetools import updateItem
+    from .drivetools import parseDateTime
+    
+    from .drivetools import g_doc_map
+    from .drivetools import g_folder
+    from .drivetools import g_host
+    from .drivetools import g_link
+    from .drivetools import g_plugin
+    from .drivetools import g_provider
+    from .drivetools import g_scheme
+    from .drivetools import RETRIEVED
+    from .drivetools import CREATED
+    from .drivetools import FOLDER
+    from .drivetools import FILE
+    from .drivetools import RENAMED
+    from .drivetools import REWRITED
+    from .drivetools import TRASHED
 
-from .identifiers import checkIdentifiers
-from .identifiers import isIdentifier
-from .identifiers import getNewIdentifier
+    from .children import selectChildId
+    from .children import updateChildren
 
-from .items import selectUser
-from .items import mergeJsonUser
-from .items import selectItem
-from .items import insertJsonItem
-from .items import needSync
+    from .identifiers import checkIdentifiers
+    from .identifiers import isIdentifier
+    from .identifiers import getNewIdentifier
 
-from .logger import getLogger
-from .logger import getLoggerSetting
-from .logger import setLoggerSetting
-from .logger import getLoggerUrl
+    from .items import selectUser
+    from .items import mergeJsonUser
+    from .items import selectItem
+    from .items import insertJsonItem
+    from .items import doSync
 
-from .unocore import PropertyContainer
-
-from .unolib import Component
-from .unolib import Initialization
-from .unolib import InteractionHandler
-from .unolib import PropertiesChangeNotifier
-from .unolib import PropertySetInfo
-from .unolib import PropertySet
-from .unolib import PropertySetInfoChangeNotifier
-
-from .unotools import getResourceLocation
-from .unotools import createService
-from .unotools import getStringResource
-from .unotools import getPropertyValue
-from .unotools import getFileSequence
-from .unotools import getProperty
-from .unotools import getPropertySetInfoChangeEvent
-from .unotools import getSimpleFile
-from .unotools import getInteractionHandler
-from .unotools import getPropertyValueSet
-from .unotools import getNamedValueSet
+except ImportError as e:
+    print("gdrive.__init__().Error: %s - %s" % (e, traceback.print_exc()))

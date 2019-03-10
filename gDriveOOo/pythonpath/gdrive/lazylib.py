@@ -1,28 +1,10 @@
 #!
 # -*- coding: utf-8 -*-
 
-CREATED = None
-FILE = None
-
-def getPropertiesValues(*arg):
+class Initialization():
     pass
 
-def setPropertiesValues(*arg):
-    pass
-
-def getCommandInfo(*arg):
-    pass
-
-def getMimeType(*arg):
-    pass
-
-def getUcb(*arg):
-    pass
-
-def getUcp(*arg):
-    pass
-
-def propertyChange(*arg):
+class PropertySet():
     pass
 
 class CommandInfo():
@@ -45,4 +27,3 @@ class PropertySetInfoChangeNotifier():
 
 class Row():
     pass
-

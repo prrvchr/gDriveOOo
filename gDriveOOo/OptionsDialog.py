@@ -7,7 +7,6 @@ import unohelper
 from com.sun.star.lang import XServiceInfo
 from com.sun.star.awt import XContainerWindowEventHandler
 
-from gdrive import createService
 from gdrive import getFileSequence
 from gdrive import getLoggerUrl
 from gdrive import getLoggerSetting
@@ -17,7 +16,6 @@ from gdrive import getUcp
 from gdrive import registerDataBase
 from gdrive import setLoggerSetting
 from gdrive import g_scheme
-from gdrive import getDbConnection
 from gdrive import getSession
 
 import traceback
@@ -39,7 +37,7 @@ class OptionsDialog(unohelper.Base,
             #identifier = getUcb(self.ctx).createContentIdentifier('%s:///' % g_scheme)
             #print("PyOptionsDialog.__init__() 2 %s" % identifier.getContentIdentifier())
             identifier = 'com.gmail.prrvchr.extensions.gDriveOOo'
-            self.Connection = getDbConnection(self.ctx, g_scheme, identifier, True)
+            #self.Connection = getDbConnection(self.ctx, g_scheme, identifier, True)
             print("PyOptionsDialog.__init__() 3")
         except Exception as e:
             print("PyOptionsDialog.__init__().Error: %s - %s" % (e, traceback.print_exc()))
@@ -135,7 +133,7 @@ class OptionsDialog(unohelper.Base,
             provider = getUcp(self.ctx, g_scheme)
             if provider.supportsService('com.sun.star.ucb.ContentProviderProxy'):
                 #ucp = provider.getContentProvider()
-                ucp = createService('com.gmail.prrvchr.extensions.gDriveOOo.ContentProvider', self.ctx)
+                #ucp = createService('com.gmail.prrvchr.extensions.gDriveOOo.ContentProvider', self.ctx)
                 provider = ucp.registerInstance(g_scheme, '', True)
                 self._toogleSync(dialog, True)
             print("PyOptionsDialog._doLoadUcp() 2")

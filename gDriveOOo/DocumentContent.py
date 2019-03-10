@@ -18,50 +18,56 @@ from com.sun.star.ucb.ContentAction import EXCHANGED
 try:
     from clouducp import CommandInfo
     from clouducp import CommandInfoChangeNotifier
+    from clouducp import Initialization
     from clouducp import PropertiesChangeNotifier
     from clouducp import PropertyContainer
     from clouducp import PropertySetInfo
     from clouducp import PropertySetInfoChangeNotifier
     from clouducp import Row
-    from clouducp import getPropertiesValues
-    from clouducp import setPropertiesValues
     from clouducp import getCommandInfo
+    from clouducp import getContentEvent
+    from clouducp import getLogger
     from clouducp import getMimeType
+    from clouducp import getPropertiesValues
+    from clouducp import getProperty
+    from clouducp import getSimpleFile
     from clouducp import getUcb
     from clouducp import getUcp
     from clouducp import propertyChange
+    from clouducp import setPropertiesValues
     from clouducp import CREATED
     from clouducp import FILE
 except ImportError:
     from gdrive import CommandInfo
     from gdrive import CommandInfoChangeNotifier
+    from gdrive import Initialization
     from gdrive import PropertiesChangeNotifier
     from gdrive import PropertyContainer
     from gdrive import PropertySetInfo
     from gdrive import PropertySetInfoChangeNotifier
     from gdrive import Row
-    from gdrive import getPropertiesValues
-    from gdrive import setPropertiesValues
     from gdrive import getCommandInfo
+    from gdrive import getContentEvent
+    from gdrive import getLogger
     from gdrive import getMimeType
+    from gdrive import getPropertiesValues
+    from gdrive import getProperty
+    from gdrive import getSimpleFile
     from gdrive import getUcb
     from gdrive import getUcp
     from gdrive import propertyChange
+    from gdrive import setPropertiesValues
     from gdrive import CREATED
     from gdrive import FILE
 
-from gdrive import Initialization
-#from gdrive import getContentEvent
-from gdrive import getLogger
-from gdrive import getProperty
-from gdrive import getSimpleFile
-from gdrive import getResourceLocation
 from gdrive import parseDateTime
 from gdrive import g_doc_map
+from gdrive import g_plugin
+
 
 # pythonloader looks for a static g_ImplementationHelper variable
 g_ImplementationHelper = unohelper.ImplementationHelper()
-g_ImplementationName = 'com.gmail.prrvchr.extensions.gDriveOOo.DocumentContent'
+g_ImplementationName = '%s.DocumentContent' % g_plugin
 
 
 class DocumentContent(unohelper.Base,

@@ -17,26 +17,43 @@ from com.sun.star.ucb import XContentIdentifierFactory
 from com.sun.star.util import XLinkUpdate
 from com.sun.star.util import XUpdatable
 
-from gdrive import Initialization
+try:
+    from clouducp import Initialization
+    from clouducp import PropertySet
+    from clouducp import createContentIdentifier
+    from clouducp import getNamedValueSet
+    from clouducp import getProperty
+    from clouducp import getSession
+    from clouducp import getUri
+except ImportError:
+    from gdrive import Initialization
+    from gdrive import PropertySet
+    from gdrive import createContentIdentifier
+    from gdrive import getNamedValueSet
+    from gdrive import getProperty
+    from gdrive import getSession
+    from gdrive import getUri
+
 from gdrive import InputStream
-from gdrive import PropertySet
-from gdrive import createContentIdentifier
+
 from gdrive import doSync
+
 from gdrive import getItem
-from gdrive import getNamedValueSet
-from gdrive import getNewIdentifier
-from gdrive import getProperty
 from gdrive import getResourceLocation
-from gdrive import getSession
-from gdrive import getUri
-from gdrive import insertJsonItem
-from gdrive import isIdentifier
-from gdrive import selectChildId
+
 from gdrive import selectItem
+from gdrive import insertJsonItem
+
+from gdrive import isIdentifier
+from gdrive import getNewIdentifier
+
+from gdrive import selectChildId
 from gdrive import updateChildren
+
 from gdrive import g_doc_map
 from gdrive import g_folder
 from gdrive import g_link
+from gdrive import g_plugin
 
 #requests is only available after OAuth2OOo as been loaded...
 try:
@@ -50,7 +67,7 @@ g_OfficeDocument = 'application/vnd.oasis.opendocument'
 
 # pythonloader looks for a static g_ImplementationHelper variable
 g_ImplementationHelper = unohelper.ImplementationHelper()
-g_ImplementationName = 'com.gmail.prrvchr.extensions.gDriveOOo.ContentIdentifier'
+g_ImplementationName = '%s.ContentIdentifier' % g_plugin
 
 
 class ContentIdentifier(unohelper.Base,

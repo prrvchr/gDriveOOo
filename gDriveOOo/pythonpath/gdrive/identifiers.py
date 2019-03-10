@@ -1,11 +1,8 @@
 #!
 # -*- coding: utf_8 -*-
 
-from .google import IdGenerator
-
-import traceback
-
-g_IdentifierRange = (10, 50)
+from .drivelib import IdGenerator
+from .drivetools import g_IdentifierRange
 
 
 def isIdentifier(connection, id):
@@ -19,13 +16,10 @@ def isIdentifier(connection, id):
     return retreived
 
 def checkIdentifiers(connection, session, userid):
-    try:
-        result = True
-        if _countIdentifier(connection, userid) < min(g_IdentifierRange):
-            result = _insertIdentifier(connection, session, userid, max(g_IdentifierRange))
-        return result
-    except Exception as e:
-        print("identifiers.checkIdentifiers().Error: %s - %s" % (e, traceback.print_exc()))
+    result = True
+    if _countIdentifier(connection, userid) < min(g_IdentifierRange):
+        result = _insertIdentifier(connection, session, userid, max(g_IdentifierRange))
+    return result
 
 def getNewIdentifier(connection, userid):
     select = connection.prepareCall('CALL "selectIdentifier"(?)')
