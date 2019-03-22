@@ -76,7 +76,7 @@ class ContentUser(unohelper.Base, XServiceInfo, Initialization, PropertySet):
             message = "ERROR: Can't retrieve a UserName from Handler"
             self.Error = IllegalIdentifierException(message, self)
             return None
-        user = selectUser(self.Connection, self.Name, self.Mode)
+        user = selectUser(self.Connection, self.Name)
         if user is None:
             if self.Mode == ONLINE:
                 user = self._getUserFromProvider()
@@ -91,7 +91,7 @@ class ContentUser(unohelper.Base, XServiceInfo, Initialization, PropertySet):
             data, root = getUser(session)
         print("ContentUser._getUserFromProvider(): %s" % self.Name)
         if root is not None:
-            user = mergeJsonUser(self.Connection, data, root, self.Mode)
+            user = mergeJsonUser(self.Connection, data, root)
         else:
             message = "ERROR: Can't retrieve User: %s from provider" % self.Name
             self.Error = IllegalIdentifierException(message, self)

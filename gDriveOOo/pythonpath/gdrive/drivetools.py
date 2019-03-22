@@ -5,14 +5,16 @@ import uno
 
 import datetime
 
+
 g_scheme = 'vnd.google-apps'    #vnd.google-apps
 
 g_plugin = 'com.gmail.prrvchr.extensions.gDriveOOo'
-g_provider = 'com.gmail.prrvchr.extensions.CloudUcpOOo.ContentProvider'
+g_provider = 'com.gmail.prrvchr.extensions.CloudUcpOOo'
 
 g_host = 'www.googleapis.com'
-g_url = 'https://%s/drive/v3/' % g_host
-g_upload = 'https://%s/upload/drive/v3/files' % g_host
+g_version = 'v3'
+g_url = 'https://%s/drive/%s/' % (g_host, g_version)
+g_upload = 'https://%s/upload/drive/%s/files' % (g_host, g_version)
 
 g_userfields = 'user(displayName,permissionId,emailAddress)'
 g_capabilityfields = 'canEdit,canRename,canAddChildren,canReadRevisions'
@@ -25,6 +27,7 @@ g_pages = 100
 g_timeout = (15, 60)
 g_IdentifierRange = (10, 50)
 
+g_office = 'application/vnd.oasis.opendocument'
 g_folder = 'application/vnd.google-apps.folder'
 g_link = 'application/vnd.google-apps.drive-sdk'
 g_doc_map = {'application/vnd.google-apps.document':     'application/vnd.oasis.opendocument.text',
@@ -81,17 +84,13 @@ def getUploadLocation(session, id, data, mimetype, new, size):
 
 def updateItem(session, id, data, new):
     url = '%sfiles' % g_url if new else '%sfiles/%s' % (g_url, id)
-    with session.request('POST' if new else 'PATCH', url, json=data) as r:
+    method = 'POST' if new else 'PATCH'
+    with session.request(method, url, json=data) as r:
         print("drivetools.updateItem()1 %s - %s" % (r.status_code, r.headers))
         print("drivetools.updateItem()2 %s - %s" % (r.content, data))
         if r.status_code == session.codes.ok:
             return id
     return False
-
-def getResourceLocation(ctx, path='gDriveOOo'):
-    service = '/singletons/com.sun.star.deployment.PackageInformationProvider'
-    provider = ctx.getValueByName(service)
-    return '%s/%s' % (provider.getPackageLocation(g_plugin), path)
 
 def parseDateTime(timestr=None):
     if timestr is None:

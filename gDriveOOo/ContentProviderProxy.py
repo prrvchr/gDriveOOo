@@ -31,9 +31,10 @@ class ContentProviderProxy(unohelper.Base,
         self.template = ''
         self.arguments = ''
         self.replace = True
+        print("ContentProviderProxy.__init__()")
 
     def __del__(self):
-        print("ContentProviderProxy.__del__()***********************")
+        print("ContentProviderProxy.__del__(): %s - %s" % (g_plugin, g_provider))
 
     # XContentProviderFactory
     def createContentProvider(self, service):
@@ -44,17 +45,18 @@ class ContentProviderProxy(unohelper.Base,
 
     # XContentProviderSupplier
     def getContentProvider(self):
-        provider = self._getUcp()
         print("ContentProviderProxy.getContentProvider() 1")
+        provider = self._getUcp()
+        print("ContentProviderProxy.getContentProvider() 2")
         if provider.supportsService('com.sun.star.ucb.ContentProviderProxy'):
-            print("ContentProviderProxy.getContentProvider() 2")
-            provider = self.createContentProvider(g_provider)
             print("ContentProviderProxy.getContentProvider() 3")
+            provider = self.createContentProvider('%s.ContentProvider' % g_provider)
+            print("ContentProviderProxy.getContentProvider() 4")
         return provider
 
     # XParameterizedContentProvider
     def registerInstance(self, template, arguments, replace):
-        print("ContentProviderProxy.registerInstance() 1")
+        print("ContentProviderProxy.registerInstance(): %s - %s" % (template, arguments))
         self.template = template
         self.arguments = arguments
         self.replace = replace
@@ -80,8 +82,7 @@ class ContentProviderProxy(unohelper.Base,
     def getSupportedServiceNames(self):
         return g_ImplementationHelper.getSupportedServiceNames(g_ImplementationName)
 
-    def _getUcb(self, arguments=None):
-        arguments = ('Local', 'Office') if arguments is None else arguments
+    def _getUcb(self, arguments=('Local', 'Office')):
         name = 'com.sun.star.ucb.UniversalContentBroker'
         return self.ctx.ServiceManager.createInstanceWithArguments(name, (arguments, ))
 

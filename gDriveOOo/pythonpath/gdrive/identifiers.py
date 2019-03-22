@@ -5,10 +5,11 @@ from .drivelib import IdGenerator
 from .drivetools import g_IdentifierRange
 
 
-def isIdentifier(connection, id):
+def isIdentifier(connection, userid, id):
     retreived = False
-    call = connection.prepareCall('CALL "isIdentifier"(?)')
-    call.setString(1, id)
+    call = connection.prepareCall('CALL "isIdentifier"(?, ?)')
+    call.setString(1, userid)
+    call.setString(2, id)
     result = call.executeQuery()
     if result.next():
         retreived = result.getBoolean(1)

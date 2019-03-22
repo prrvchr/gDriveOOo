@@ -4,10 +4,11 @@
 from .drivelib import OutputStream
 
 from .drivetools import updateItem
-from .drivetools import getResourceLocation
 from .drivetools import getUploadLocation
 from .drivetools import parseDateTime
 from .drivetools import unparseDateTime
+
+from .drivetools import g_plugin
 
 from .drivetools import RETRIEVED
 from .drivetools import CREATED
@@ -17,12 +18,14 @@ from .drivetools import RENAMED
 from .drivetools import REWRITED
 from .drivetools import TRASHED
 
+from .lazytools import getResourceLocation
 
-def selectUser(connection, username, mode):
-    user, select = None, connection.prepareCall('CALL "selectUser"(?, ?)')
-    # selectUser(IN USERNAME VARCHAR(100),IN MODE SMALLINT)
+
+def selectUser(connection, username):
+    user = None
+    # selectUser(IN USERNAME VARCHAR(100))
+    select = connection.prepareCall('CALL "selectUser"(?)')
     select.setString(1, username)
-    select.setLong(2, mode)
     result = select.executeQuery()
     if result.next():
         user = _getItemFromResult(result)
@@ -33,8 +36,8 @@ def selectItem(connection, userid, id):
     item = None
     data = ('Name', 'DateCreated', 'DateModified', 'MimeType', 'Size', 'Trashed',
             'CanAddChild', 'CanRename', 'IsReadOnly', 'IsVersionable', 'Loaded')
-    select = connection.prepareCall('CALL "selectItem"(?, ?)')
     # selectItem(IN USERID VARCHAR(100),IN ID VARCHAR(100))
+    select = connection.prepareCall('CALL "selectItem"(?, ?)')
     select.setString(1, userid)
     select.setString(2, id)
     result = select.executeQuery()
@@ -43,28 +46,27 @@ def selectItem(connection, userid, id):
     select.close()
     return item
 
-def mergeJsonUser(connection, user, data, mode):
+def mergeJsonUser(connection, user, data):
     root = None
-    merge = connection.prepareCall('CALL "mergeJsonUser"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    merge = connection.prepareCall('CALL "mergeJsonUser"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
     merge.setString(1, user.get('permissionId'))
     merge.setString(2, user.get('emailAddress'))
     merge.setString(3, user.get('displayName'))
     index = _setJsonData(merge, data, unparseDateTime(), 4)
-    merge.setLong(index, mode)
     result = merge.executeQuery()
     if result.next():
         root = _getItemFromResult(result)
     merge.close()
     return root
 
-def insertJsonItem(connection, userid, data):
+def insertJsonItem(connection, userid, rootid, data):
     item = None
     fields = ('Name', 'DateCreated', 'DateModified', 'MimeType', 'Size', 'Trashed',
               'CanAddChild', 'CanRename', 'IsReadOnly', 'IsVersionable', 'Loaded')
     insert = connection.prepareCall('CALL "insertJsonItem"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
     insert.setString(1, userid)
     index = _setJsonData(insert, data, unparseDateTime(), 2)
-    parents = ','.join(data.get('parents', ()))
+    parents = ','.join(data.get('parents', rootid))
     insert.setString(index, parents)
     result = insert.executeQuery()
     if result.next():
@@ -77,9 +79,9 @@ def mergeJsonItemCall(connection, userid):
     merge.setString(1, userid)
     return merge, 2
 
-def mergeJsonItem(merge, data, index=1):
+def mergeJsonItem(merge, data, rootid, index=1):
     index = _setJsonData(merge, data, unparseDateTime(), index)
-    parents = ','.join(data.get('parents', ()))
+    parents = ','.join(data.get('parents', rootid))
     merge.setString(index, parents)
     merge.execute()
     return merge.getLong(index +1)
@@ -102,6 +104,7 @@ def doSync(ctx, scheme, connection, session, userid):
         update.setLong(3, RETRIEVED)
         update.execute()
         r = update.getLong(4)
+        update.close()
         print("items.doSync(): all -> Ok %s" % r)
     else:
         print("items.doSync(): all -> Error")
@@ -149,7 +152,7 @@ def _uploadItem(ctx, scheme, session, id, data, mimetype, new):
 
 def _getInputStream(ctx, scheme, id):
     sf = ctx.ServiceManager.createInstance('com.sun.star.ucb.SimpleFileAccess')
-    url = getResourceLocation(ctx, '%s/%s' % (scheme, id))
+    url = getResourceLocation(ctx, g_plugin, '%s/%s' % (scheme, id))
     if sf.exists(url):
         return sf.getSize(url), sf.openFileRead(url)
     return 0, None

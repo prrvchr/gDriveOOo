@@ -6,6 +6,6 @@
     <manifest:file-entry manifest:media-type="application/vnd.sun.star.uno-component;type=Python" manifest:full-path="ContentUser.py"/>
     <manifest:file-entry manifest:media-type="application/vnd.sun.star.uno-component;type=Python" manifest:full-path="ContentIdentifier.py"/>
     <manifest:file-entry manifest:media-type="application/vnd.sun.star.uno-component;type=Python" manifest:full-path="DocumentContent.py"/>
-    <manifest:file-entry manifest:media-type="application/vnd.sun.star.configuration-data" manifest:full-path="OAuth2Ooo.xcu"/>
-    <manifest:file-entry manifest:media-type="application/vnd.sun.star.configuration-data" manifest:full-path="gDriveOoo.xcu"/>
+    <manifest:file-entry manifest:media-type="application/vnd.sun.star.configuration-data" manifest:full-path="OAuth2OOo.xcu"/>
+    <manifest:file-entry manifest:media-type="application/vnd.sun.star.configuration-data" manifest:full-path="gDriveOOo.xcu"/>
 </manifest:manifest>

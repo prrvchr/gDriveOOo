@@ -14,6 +14,7 @@ try:
     from .lazylib import PropertySetInfoChangeNotifier
     from .lazylib import Row
 
+    from .lazytools import createContent
     from .lazytools import createContentIdentifier
     from .lazytools import getCommandInfo
     from .lazytools import getConnectionMode
@@ -23,6 +24,7 @@ try:
     from .lazytools import getNamedValueSet
     from .lazytools import getPropertiesValues
     from .lazytools import getProperty
+    from .lazytools import getResourceLocation
     from .lazytools import getSession
     from .lazytools import getSimpleFile
     from .lazytools import getUcb
@@ -35,7 +37,6 @@ try:
 
     from .drivelib import InputStream
 
-    from .drivetools import getResourceLocation
     from .drivetools import getUser
     from .drivetools import getItem
     
@@ -46,6 +47,7 @@ try:
     from .drivetools import g_folder
     from .drivetools import g_host
     from .drivetools import g_link
+    from .drivetools import g_office
     from .drivetools import g_plugin
     from .drivetools import g_provider
     from .drivetools import g_scheme
