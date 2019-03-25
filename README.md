@@ -1,4 +1,4 @@
-# gDriveOOo v.0.0.1
+# gDriveOOo v.0.0.2
 
 ## Google Drive implementation for LibreOffice / OpenOffice.
 
@@ -6,13 +6,19 @@
 
 ## Use:
 
-### Install [OAuth2OOo](https://github.com/prrvchr/OAuth2OOo/raw/master/OAuth2OOo.oxt) extention v 0.0.2.
+### Install [OAuth2OOo](https://github.com/prrvchr/OAuth2OOo/raw/master/OAuth2OOo.oxt) extention v 0.0.3.
 
 You must install this extention first!!!
 
 Restart LibreOffice / OpenOffice after installation.
 
-### Install [gDriveOOo](https://github.com/prrvchr/gDriveOOo/releases/download/0.0.1/gDriveOOo.oxt) extention v 0.0.1.
+### Install [CloudUcpOOo](https://github.com/prrvchr/CloudUcpOOo/raw/master/OCloudUcpOOo.oxt) extention v 0.0.1.
+
+You must install this extention first!!!
+
+Restart LibreOffice / OpenOffice after installation.
+
+### Install [gDriveOOo](https://github.com/prrvchr/gDriveOOo/raw/master/gDriveOOo.oxt) extention v 0.0.2.
 
 Restart LibreOffice / OpenOffice after installation.
 
@@ -32,9 +38,9 @@ Edit or change "true" to "false" (set it to "false")
 
 ### Open your Google Drive:
 
-In File - Open - File name enter: vnd.google-apps://youraccount@gmail.com/ or vnd.google-apps:///
+In File - Open - File name enter: vnd.google-apps://your_account/ or vnd.google-apps:///
 
-If you don't give your Google account, you will be asked for...
+If you don't give your_account, you will be asked for...
 
 After authorizing the OAuthOOo application to access your Drive, your Google Drive should open!!! normally  ;-)
 
