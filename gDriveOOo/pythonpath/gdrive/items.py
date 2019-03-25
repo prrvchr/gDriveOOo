@@ -18,8 +18,6 @@ from .drivetools import RENAMED
 from .drivetools import REWRITED
 from .drivetools import TRASHED
 
-from .lazytools import getResourceLocation
-
 
 def selectUser(connection, username):
     user = None
@@ -86,7 +84,7 @@ def mergeJsonItem(merge, data, rootid, index=1):
     merge.execute()
     return merge.getLong(index +1)
 
-def doSync(ctx, scheme, connection, session, userid):
+def doSync(ctx, connection, session, path, userid):
     items = []
     transform = {'parents': lambda value: value.split(',')}
     select = connection.prepareCall('CALL "selectSync"(?, ?)')
@@ -95,7 +93,7 @@ def doSync(ctx, scheme, connection, session, userid):
     result = select.executeQuery()
     while result.next():
         item = _getItemFromResult(result, None, transform)
-        items.append(_syncItem(ctx, scheme, session, item))
+        items.append(_syncItem(ctx, session, path, item))
     select.close()
     if items and all(items):
         update = connection.prepareCall('CALL "updateSync"(?, ?, ?, ?)')
@@ -110,7 +108,7 @@ def doSync(ctx, scheme, connection, session, userid):
         print("items.doSync(): all -> Error")
     return all(items)
 
-def _syncItem(ctx, scheme, session, item):
+def _syncItem(ctx, session, path, item):
     result = False
     id = item.get('id')
     mode = item.get('mode')
@@ -124,11 +122,11 @@ def _syncItem(ctx, scheme, session, item):
             result = updateItem(session, id, data, True)
         if mode & FILE:
             mimetype = item.get('mimeType')
-            result = _uploadItem(ctx, scheme, session, id, data, mimetype, True)
+            result = _uploadItem(ctx, session, path, id, data, mimetype, True)
     else:
         if mode & REWRITED:
             mimetype = None if item.get('size') else item.get('mimeType')
-            result = _uploadItem(ctx, scheme, session, id, data, mimetype, False)
+            result = _uploadItem(ctx, session, path, id, data, mimetype, False)
         if mode & RENAMED:
             data = {'name': item.get('name')}
             result = updateItem(session, id, data, False)
@@ -137,8 +135,8 @@ def _syncItem(ctx, scheme, session, item):
         result = updateItem(session, id, data, False)
     return result
 
-def _uploadItem(ctx, scheme, session, id, data, mimetype, new):
-    size, stream = _getInputStream(ctx, scheme, id)
+def _uploadItem(ctx, session, path, id, data, mimetype, new):
+    size, stream = _getInputStream(ctx, path, id)
     if size: 
         location = getUploadLocation(session, id, data, mimetype, new, size)
         if location is not None:
@@ -150,9 +148,9 @@ def _uploadItem(ctx, scheme, session, id, data, mimetype, new):
             return id
     return False
 
-def _getInputStream(ctx, scheme, id):
+def _getInputStream(ctx, path, id):
+    url = '%s/%s' % (path, id)
     sf = ctx.ServiceManager.createInstance('com.sun.star.ucb.SimpleFileAccess')
-    url = getResourceLocation(ctx, g_plugin, '%s/%s' % (scheme, id))
     if sf.exists(url):
         return sf.getSize(url), sf.openFileRead(url)
     return 0, None

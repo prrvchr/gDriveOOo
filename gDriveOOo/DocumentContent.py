@@ -24,7 +24,7 @@ g_ImplementationName = '%s.DocumentContent' % g_plugin
 class DocumentContent(DocumentContentBase,
                       XServiceInfo):
     def __init__(self, ctx, *namedvalues):
-        super(DocumentContent, self).__init__(ctx, namedvalues)
+        DocumentContentBase.__init__(self, ctx, namedvalues)
         self.ContentType = 'application/vnd.google-apps.document'
 
     def getDocumentMap(self):
