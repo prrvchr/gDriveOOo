@@ -6,8 +6,7 @@ import unohelper
 from com.sun.star.lang import XServiceInfo
 
 from gdrive import getUser
-from gdrive import mergeJsonUser
-from gdrive import selectUser
+from gdrive import setJsonData
 from gdrive import g_host
 from gdrive import g_plugin
 from gdrive import checkIdentifiers
@@ -32,13 +31,30 @@ class ContentUser(ContentUserBase,
     def getHost(self):
         return g_host
     def selectUser(self):
-        return selectUser(self.Connection, self.Name)
+        user = None
+        select = self.Connection.prepareCall('CALL "selectUser"(?)')
+        select.setString(1, self.Name)
+        result = select.executeQuery()
+        if result.next():
+            user = self.getItemFromResult(result)
+        select.close()
+        return user
     def getUser(self, session):
         return getUser(session)
     def checkIdentifiers(self, session):
         checkIdentifiers(self.Connection, session, self.Id)
-    def mergeJsonUser(self, data, root):
-        return mergeJsonUser(self.Connection, data, root)
+    def mergeJsonUser(self, user, data):
+        root = None
+        merge = self.Connection.prepareCall('CALL "mergeJsonUser"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+        merge.setString(1, user.get('permissionId'))
+        merge.setString(2, user.get('emailAddress'))
+        merge.setString(3, user.get('displayName'))
+        index = setJsonData(merge, data, self.getDateTimeParser(), self.unparseDateTime(), 4)
+        result = merge.executeQuery()
+        if result.next():
+            root = self.getItemFromResult(result)
+        merge.close()
+        return root
 
     # XServiceInfo
     def supportsService(self, service):

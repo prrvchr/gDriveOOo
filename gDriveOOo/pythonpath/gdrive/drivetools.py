@@ -37,17 +37,6 @@ g_doc_map = {'application/vnd.google-apps.document':     'application/vnd.oasis.
              'application/vnd.google-apps.drawing':      'application/pdf'}
 
 
-g_datetime = '%Y-%m-%dT%H:%M:%S.%fZ'
-
-RETRIEVED = 0
-CREATED = 1
-FOLDER = 2
-FILE = 4
-RENAMED = 8
-REWRITED = 16
-TRASHED = 32
-
-
 def getUser(session):
     user, root = None, None
     url = '%sabout' % g_url
@@ -93,35 +82,87 @@ def updateItem(session, id, data, new):
             return id
     return False
 
-def parseDateTime(timestr=None):
-    if timestr is None:
-        t = datetime.datetime.now()
-    else:
-        t = datetime.datetime.strptime(timestr, g_datetime)
-    return _getDateTime(t.microsecond, t.second, t.minute, t.hour, t.day, t.month, t.year)
+def selectChildId(connection, userid, parent, title):
+    id = None
+    call = connection.prepareCall('CALL "selectChildId"(?, ?, ?)')
+    call.setString(1, userid)
+    call.setString(2, parent)
+    call.setString(3, title)
+    result = call.executeQuery()
+    if result.next():
+        id = result.getString(1)
+    call.close()
+    return id
 
-def unparseDateTime(t=None):
-    if t is None:
-        return datetime.datetime.now().strftime(g_datetime)
-    millisecond = 0
-    if hasattr(t, 'HundredthSeconds'):
-        millisecond = t.HundredthSeconds * 10
-    elif hasattr(t, 'NanoSeconds'):
-        millisecond = t.NanoSeconds // 1000000
-    return '%s-%s-%sT%s:%s:%s.%03dZ' % (t.Year, t.Month, t.Day, t.Hours, t.Minutes, t.Seconds, millisecond)
+def isIdentifier(connection, userid, id):
+    retreived = False
+    call = connection.prepareCall('CALL "isIdentifier"(?, ?)')
+    call.setString(1, userid)
+    call.setString(2, id)
+    result = call.executeQuery()
+    if result.next():
+        retreived = result.getBoolean(1)
+    call.close()
+    return retreived
 
-def _getDateTime(microsecond=0, second=0, minute=0, hour=0, day=1, month=1, year=1970, utc=True):
-    t = uno.createUnoStruct('com.sun.star.util.DateTime')
-    t.Year = year
-    t.Month = month
-    t.Day = day
-    t.Hours = hour
-    t.Minutes = minute
-    t.Seconds = second
-    if hasattr(t, 'HundredthSeconds'):
-        t.HundredthSeconds = microsecond // 10000
-    elif hasattr(t, 'NanoSeconds'):
-        t.NanoSeconds = microsecond * 1000
-    if hasattr(t, 'IsUTC'):
-        t.IsUTC = utc
-    return t
+def checkIdentifiers(connection, session, userid):
+    result = True
+    if _countIdentifier(connection, userid) < min(g_IdentifierRange):
+        result = _insertIdentifier(connection, session, userid, max(g_IdentifierRange))
+    return result
+
+def getNewIdentifier(connection, userid):
+    select = connection.prepareCall('CALL "selectIdentifier"(?)')
+    select.setString(1, userid)
+    result = select.executeQuery()
+    if result.next():
+        id = result.getString(1)
+    select.close()
+    return id
+
+def _countIdentifier(connection, id):
+    count = 0
+    call = connection.prepareCall('CALL "countIdentifier"(?)')
+    call.setString(1, id)
+    result = call.executeQuery()
+    if result.next():
+        count = result.getLong(1)
+    call.close()
+    return count
+
+def _insertIdentifier(connection, session, userid, count):
+    insert = connection.prepareCall('CALL "insertIdentifier"(?, ?, ?)')
+    insert.setString(1, userid)
+    result = all(_doInsert(insert, id) for id in IdGenerator(session, count))
+    insert.close()
+    return result
+
+def _doInsert(insert, id):
+    insert.setString(2, id)
+    insert.execute()
+    return insert.getLong(3)
+
+def setJsonData(call, data, parser, timestamp, index=1):
+    call.setString(index, data.get('id'))
+    index += 1
+    call.setString(index, data.get('name'))
+    index += 1
+    call.setTimestamp(index, parser(data.get('createdTime', timestamp)))
+    index += 1
+    call.setTimestamp(index, parser(data.get('modifiedTime', timestamp)))
+    index += 1
+    call.setString(index, data.get('mimeType', 'application/octet-stream'))
+    index += 1
+    call.setLong(index, int(data.get('size', 0)))
+    index += 1
+    call.setBoolean(index, data.get('trashed', False))
+    index += 1
+    call.setBoolean(index, data.get('capabilities', {}).get('canAddChildren', False))
+    index += 1
+    call.setBoolean(index, data.get('capabilities', {}).get('canRename', False))
+    index += 1
+    call.setBoolean(index, not data.get('capabilities', {}).get('canEdit', False))
+    index += 1
+    call.setBoolean(index, data.get('capabilities', {}).get('canReadRevisions', False))
+    index += 1
+    return index

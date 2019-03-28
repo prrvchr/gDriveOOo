@@ -8,7 +8,6 @@ from com.sun.star.io import XOutputStream
 from com.sun.star.io import XInputStream
 from com.sun.star.io import IOException
 
-from .drivetools import unparseDateTime
 from .drivetools import g_childfields
 from .drivetools import g_chunk
 from .drivetools import g_length
@@ -45,7 +44,6 @@ class ChildGenerator():
         self.session = session
         self.params = {'fields': g_childfields, 'pageSize': g_pages}
         self.params['q'] = "'%s' in parents" % id
-        self.timestamp = unparseDateTime()
         self.url = '%sfiles' % g_url
         print("google.ChildGenerator.__init__()")
     def __iter__(self):
