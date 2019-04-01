@@ -13,7 +13,7 @@ g_provider = 'com.gmail.prrvchr.extensions.CloudUcpOOo'
 
 g_host = 'www.googleapis.com'
 g_version = 'v3'
-g_url = 'https://%s/drive/%s/' % (g_host, g_version)
+g_url = 'https://%s/drive/%s' % (g_host, g_version)
 g_upload = 'https://%s/upload/drive/%s/files' % (g_host, g_version)
 
 g_userfields = 'user(displayName,permissionId,emailAddress)'
@@ -39,7 +39,7 @@ g_doc_map = {'application/vnd.google-apps.document':     'application/vnd.oasis.
 
 def getUser(session):
     user, root = None, None
-    url = '%sabout' % g_url
+    url = '%s/about' % g_url
     params = {'fields': g_userfields}
     with session.get(url, params=params, timeout=g_timeout) as r:
         print("drivetools.getUser(): %s - %s" % (r.status_code, r.json()))
@@ -49,7 +49,7 @@ def getUser(session):
     return user, root
 
 def getItem(session, id):
-    url = '%sfiles/%s' % (g_url, id)
+    url = '%s/files/%s' % (g_url, id)
     params = {'fields': g_itemfields}
     with session.get(url, params=params, timeout=g_timeout) as r:
         print("drivetools.getItem(): %s - %s" % (r.status_code, r.json()))
@@ -73,7 +73,7 @@ def getUploadLocation(session, id, data, mimetype, new, size):
     return None
 
 def updateItem(session, id, data, new):
-    url = '%sfiles' % g_url if new else '%sfiles/%s' % (g_url, id)
+    url = '%s/files' % g_url if new else '%s/files/%s' % (g_url, id)
     method = 'POST' if new else 'PATCH'
     with session.request(method, url, json=data) as r:
         print("drivetools.updateItem()1 %s - %s" % (r.status_code, r.headers))

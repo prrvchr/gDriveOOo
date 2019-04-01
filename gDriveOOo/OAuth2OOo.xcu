@@ -23,4 +23,41 @@
             </prop>
         </node>
     </node>
+    <node oor:name="Providers">
+        <node oor:name="Google" oor:op="fuse">
+            <prop oor:name="ClientId">
+                <value>398845255454-npksu301220b4f52g3ktevk4pd9lu8t9.apps.googleusercontent.com</value>
+            </prop>
+            <prop oor:name="ClientSecret">
+                <value></value>
+            </prop>
+            <prop oor:name="AuthorizationUrl">
+                <value>https://accounts.google.com/o/oauth2/v2/auth</value>
+            </prop>
+            <prop oor:name="AuthorizationParameters">
+                <value>{"prompt": "consent", "response_mode": "query", "scope": null, "login_hint": "current_user", "hl": "current_language"}</value>
+            </prop>
+            <prop oor:name="TokenUrl">
+                <value>https://www.googleapis.com/oauth2/v4/token</value>
+            </prop>
+            <prop oor:name="TokenParameters">
+                <value>{"scope": null}</value>
+            </prop>
+            <prop oor:name="CodeChallenge">
+                <value>true</value>
+            </prop>
+            <prop oor:name="CodeChallengeMethod">
+                <value>S256</value>
+            </prop>
+            <prop oor:name="HttpHandler">
+                <value>true</value>
+            </prop>
+            <prop oor:name="RedirectAddress">
+                <value>127.0.0.1</value>
+            </prop>
+            <prop oor:name="RedirectPort">
+                <value>8080</value>
+            </prop>
+        </node>
+    </node>
 </oor:component-data>
