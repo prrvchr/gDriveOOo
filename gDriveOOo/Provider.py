@@ -4,16 +4,16 @@
 import uno
 import unohelper
 
-from com.sun.star.ucb.RestRequestTokenType import TOKEN_NONE
-from com.sun.star.ucb.RestRequestTokenType import TOKEN_URL
-from com.sun.star.ucb.RestRequestTokenType import TOKEN_REDIRECT
-from com.sun.star.ucb.RestRequestTokenType import TOKEN_QUERY
-from com.sun.star.ucb.RestRequestTokenType import TOKEN_JSON
+from com.sun.star.auth.RestRequestTokenType import TOKEN_NONE
+from com.sun.star.auth.RestRequestTokenType import TOKEN_URL
+from com.sun.star.auth.RestRequestTokenType import TOKEN_REDIRECT
+from com.sun.star.auth.RestRequestTokenType import TOKEN_QUERY
+from com.sun.star.auth.RestRequestTokenType import TOKEN_JSON
 
 # clouducp is only available after CloudUcpOOo as been loaded...
 try:
     from clouducp import ProviderBase
-    from clouducp import KeyMap
+    from oauth2 import KeyMap
 except ImportError:
     class ProviderBase():
         pass
@@ -55,12 +55,6 @@ class Provider(ProviderBase):
     def UploadUrl(self):
         return g_upload
     @property
-    def Folder(self):
-        return g_folder
-    @property
-    def Link(self):
-        return g_link
-    @property
     def Office(self):
         return g_office
     @property
@@ -88,15 +82,15 @@ class Provider(ProviderBase):
         return value
 
     def getRequestParameter(self, method, data=None):
-        parameter = uno.createUnoStruct('com.sun.star.ucb.RestRequestParameter')
+        parameter = uno.createUnoStruct('com.sun.star.auth.RestRequestParameter')
         parameter.Name = method
         if method == 'getNewIdentifier':
             parameter.Method = 'GET'
             parameter.Url = '%s/files/generateIds' % self.BaseUrl
             parameter.Query = '{"count": "%s", "space": "drive"}' % max(g_IdentifierRange)
-            token = uno.createUnoStruct('com.sun.star.ucb.RestRequestToken')
+            token = uno.createUnoStruct('com.sun.star.auth.RestRequestToken')
             token.Type = TOKEN_NONE
-            enumerator = uno.createUnoStruct('com.sun.star.ucb.RestRequestEnumerator')
+            enumerator = uno.createUnoStruct('com.sun.star.auth.RestRequestEnumerator')
             enumerator.Field = 'ids'
             enumerator.Token = token
             parameter.Enumerator = enumerator
@@ -118,11 +112,11 @@ class Provider(ProviderBase):
             query = "'%s' in parents" % data.getValue('Id')
             parameter.Query = '{"fields": "%s", "pageSize": "%s", "q": "%s"}' % \
                 (g_childfields, g_pages, query)
-            token = uno.createUnoStruct('com.sun.star.ucb.RestRequestToken')
+            token = uno.createUnoStruct('com.sun.star.auth.RestRequestToken')
             token.Type = TOKEN_QUERY
             token.Field = 'nextPageToken'
             token.Value = 'pageToken'
-            enumerator = uno.createUnoStruct('com.sun.star.ucb.RestRequestEnumerator')
+            enumerator = uno.createUnoStruct('com.sun.star.auth.RestRequestEnumerator')
             enumerator.Field = 'files'
             enumerator.Token = token
             parameter.Enumerator = enumerator

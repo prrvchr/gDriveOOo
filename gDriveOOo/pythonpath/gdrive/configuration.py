@@ -2,10 +2,11 @@
 # -*- coding: utf_8 -*-
 
 
-g_scheme = 'vnd.google-apps'    #vnd.google-apps
+g_scheme = 'vnd.google-apps'
 
 g_plugin = 'com.gmail.prrvchr.extensions.gDriveOOo'
-g_provider = 'com.gmail.prrvchr.extensions.CloudUcpOOo'
+g_provider = 'com.gmail.prrvchr.extensions.CloudUcpOOo.ContentProvider'
+g_oauth2 = 'com.gmail.prrvchr.extensions.OAuth2OOo.OAuth2Service'
 
 g_host = 'www.googleapis.com'
 g_version = 'v3'
