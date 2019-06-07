@@ -178,26 +178,22 @@ class Provider(ProviderBase):
         return user.getValue('user').getValue('displayName')
 
     def getItemParent(self, item, rootid):
-        return ','.join(item.getDefaultValue('parents', (rootid, )))
+        return item.getDefaultValue('parents', (rootid, ))
 
     def getItemId(self, item):
         return item.getDefaultValue('id', None)
     def getItemName(self, item):
         return item.getDefaultValue('name', None)
     def getItemCreated(self, item, timestamp=None):
-        if timestamp:
-            created = item.getDefaultValue('createdTime', timestamp)
-            created = created[:22]
-        else:
-            created = item.getValue('createdTime')
-        return created
+        created = item.getDefaultValue('createdTime', None)
+        if created:
+            return self.parseDateTime(created)
+        return timestamp
     def getItemModified(self, item, timestamp=None):
-        if timestamp:
-            modified = item.getDefaultValue('modifiedTime', timestamp)
-            modified = modified[:22]
-        else:
-            modified = item.getValue('modifiedTime')
-        return modified
+        modified = item.getDefaultValue('modifiedTime', None)
+        if modified:
+            return self.parseDateTime(modified)
+        return timestamp
     def getItemMediaType(self, item):
         return item.getValue('mimeType')
     def getItemSize(self, item):

@@ -1,4 +1,4 @@
-# gDriveOOo v.0.0.2
+# gDriveOOo v.0.0.3
 
 ## Google Drive implementation for LibreOffice / OpenOffice.
 
@@ -12,13 +12,13 @@ You must install this extention first!!!
 
 Restart LibreOffice / OpenOffice after installation.
 
-### Install [CloudUcpOOo](https://github.com/prrvchr/CloudUcpOOo/raw/master/CloudUcpOOo.oxt) extention v 0.0.1.
+### Install [CloudUcpOOo](https://github.com/prrvchr/CloudUcpOOo/raw/master/CloudUcpOOo.oxt) extention v 0.0.3.
 
 You must install this extention first!!!
 
 Restart LibreOffice / OpenOffice after installation.
 
-### Install [gDriveOOo](https://github.com/prrvchr/gDriveOOo/raw/master/gDriveOOo.oxt) extention v 0.0.2.
+### Install [gDriveOOo](https://github.com/prrvchr/gDriveOOo/raw/master/gDriveOOo.oxt) extention v 0.0.3.
 
 Restart LibreOffice / OpenOffice after installation.
 
