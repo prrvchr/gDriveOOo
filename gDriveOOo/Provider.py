@@ -76,11 +76,6 @@ class Provider(ProviderBase):
     def IdentifierRange(self):
         return g_IdentifierRange
 
-    def transform(self, name, value):
-        if name == 'parents':
-            value = value.split(',')
-        return value
-
     def getRequestParameter(self, method, data=None):
         parameter = uno.createUnoStruct('com.sun.star.auth.RestRequestParameter')
         parameter.Name = method
@@ -131,44 +126,42 @@ class Provider(ProviderBase):
                 parameter.Query = '{"alt": "media"}'
         elif method == 'updateTitle':
             parameter.Method = 'PATCH'
-            parameter.Url = '%s/files/%s' % (self.BaseUrl, data.getValue('id'))
-            parameter.Json = '{"name": "%s"}' % data.getValue('name')
+            parameter.Url = '%s/files/%s' % (self.BaseUrl, data.getValue('Id'))
+            parameter.Json = '{"name": "%s"}' % data.getValue('Title')
         elif method == 'updateTrashed':
             parameter.Method = 'PATCH'
-            parameter.Url = '%s/files/%s' % (self.BaseUrl, data.getValue('id'))
+            parameter.Url = '%s/files/%s' % (self.BaseUrl, data.getValue('Id'))
             parameter.Json = '{"trashed": true}'
         elif method == 'insertContent':
             parameter.Method = 'POST'
             parameter.Url = '%s/files' % self.BaseUrl
             parameter.Json = '{"id": "%s", "parents": "%s", "name": "%s", "mimeType": "%s"}' % \
-                                (data.getValue('id'), data.getValue('parents'),
-                                 data.getValue('name'), data.getValue('mimeType'))
+                                (data.getValue('Id'), data.getValue('ParentId'),
+                                 data.getValue('Title'), data.getValue('MediaType'))
         elif method == 'getUploadLocation':
             parameter.Method = 'PATCH'
-            parameter.Url = '%s/%s' % (self.UploadUrl, data.getValue('id'))
+            parameter.Url = '%s/%s' % (self.UploadUrl, data.getValue('Id'))
             parameter.Query = '{"uploadType": "resumable"}'
-            parameter.Header = '{"X-Upload-Content-Type": "%s"}' % data.getValue('mimeType')
+            parameter.Header = '{"X-Upload-Content-Type": "%s"}' % data.getValue('MediaType')
         elif method == 'getNewUploadLocation':
-            mimetype = None if data.getValue('size') else data.getValue('mimeType')
+            mimetype = None if data.getValue('Size') else data.getValue('MediaType')
             parameter.Method = 'POST'
             parameter.Url = self.UploadUrl
             parameter.Query = '{"uploadType": "resumable"}'
-            properties = {}
-            for key in ('id', 'name', 'parents', 'createdTime', 'modifiedTime', 'mimeType'):
-                if key == 'parents':
-                    print('Provider.getNewUploadLocation() parent %s' % data.getValue(key))
-                properties[key] = data.getValue(key)
-            parameter.Json = json.dumps(properties)
-            parameter.Header = '{"X-Upload-Content-Type": "%s"}' % data.getValue('mimeType')
-            #length = '"X-Upload-Content-Length": "%s"' % data.getValue('size')
-            #mimetype = '"X-Upload-Content-Type": "%s"' % data.getValue('mimeType')
-            #parameter.Header = '{%s, %s}' % (length, mimetype)
+            parameter.Json = '{"id": "%s", "parents": "%s", "name": "%s", "mimeType": "%s"}' % \
+                                (data.getValue('Id'), data.getValue('ParentId'),
+                                 data.getValue('Title'), data.getValue('MediaType'))
+            parameter.Header = '{"X-Upload-Content-Type": "%s"}' % data.getValue('MediaType')
         elif method == 'getUploadStream':
             parameter.Method = 'PUT'
             parameter.Url = data.getValue('Location')
-            parameter.Optional = 'id'
         print("gDriveOOo.Provider.getRequestParameter() %s - %s" % (method, parameter.Url))
         return parameter
+
+    def transform(self, name, value):
+        if name == 'ParentId':
+            value = [value]
+        return value
 
     def getUserId(self, user):
         return user.getValue('user').getValue('permissionId')
@@ -182,7 +175,7 @@ class Provider(ProviderBase):
 
     def getItemId(self, item):
         return item.getDefaultValue('id', None)
-    def getItemName(self, item):
+    def getItemTitle(self, item):
         return item.getDefaultValue('name', None)
     def getItemCreated(self, item, timestamp=None):
         created = item.getDefaultValue('createdTime', None)
@@ -208,25 +201,6 @@ class Provider(ProviderBase):
         return not item.getValue('capabilities').getValue('canEdit')
     def getItemIsVersionable(self, item):
         return item.getValue('capabilities').getValue('canReadRevisions')
-
-    def getUploadParameter(self, identifier, new):
-        if new:
-            parameter = self.getRequestParameter('getNewUploadLocation', identifier)
-        else:
-            parameter = self.getRequestParameter('getUploadLocation', identifier)
-        response = self.Request.execute(parameter)
-        if response.IsPresent:
-            return self.getRequestParameter('getUploadStream', response.Value)
-        return None
-
-    def getUpdateParameter(self, identifier, new, key):
-        if new:
-            parameter = self.getRequestParameter('insertContent', identifier)
-        elif key == 'Title':
-            parameter = self.getRequestParameter('updateTitle', identifier)
-        elif key == 'Trashed':
-            parameter = self.getRequestParameter('updateTrashed', identifier)
-        return parameter
 
     # XServiceInfo
     def supportsService(self, service):
