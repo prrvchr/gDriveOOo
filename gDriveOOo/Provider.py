@@ -132,7 +132,7 @@ class Provider(ProviderBase):
             parameter.Method = 'PATCH'
             parameter.Url = '%s/files/%s' % (self.BaseUrl, data.getValue('Id'))
             parameter.Json = '{"trashed": true}'
-        elif method == 'insertContent':
+        elif method == 'createNewFolder':
             parameter.Method = 'POST'
             parameter.Url = '%s/files' % self.BaseUrl
             parameter.Json = '{"id": "%s", "parents": "%s", "name": "%s", "mimeType": "%s"}' % \
