@@ -13,7 +13,6 @@ from com.sun.star.auth.RestRequestTokenType import TOKEN_JSON
 # clouducp is only available after CloudUcpOOo as been loaded...
 try:
     from clouducp import ProviderBase
-    from oauth2 import KeyMap
 except ImportError:
     class ProviderBase():
         pass
