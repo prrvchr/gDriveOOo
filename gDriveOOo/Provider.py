@@ -165,7 +165,6 @@ class Provider(ProviderBase):
         elif method == 'getUploadStream':
             parameter.Method = 'PUT'
             parameter.Url = data.getValue('Location')
-        print("gDriveOOo.Provider.getRequestParameter() %s - %s" % (method, parameter.Url))
         return parameter
 
     def transform(self, name, value):
