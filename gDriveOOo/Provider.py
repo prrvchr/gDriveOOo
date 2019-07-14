@@ -46,7 +46,6 @@ g_ImplementationName = '%s.Provider' % g_plugin
 class Provider(ProviderBase):
     def __init__(self, ctx):
         self.ctx = ctx
-        self.Request = self._getRequest(self.ctx)
         self.Scheme = None
         self.Plugin = None
         self.Link = None
@@ -54,6 +53,7 @@ class Provider(ProviderBase):
         self.SourceURL = None
         self.SessionMode = OFFLINE
         self._Error = ''
+        self.Request = self._getRequest()
 
     @property
     def Host(self):

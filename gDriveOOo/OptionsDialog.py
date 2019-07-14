@@ -6,39 +6,34 @@ import unohelper
 
 from com.sun.star.lang import XServiceInfo
 from com.sun.star.awt import XContainerWindowEventHandler
+from com.sun.star.awt import XDialogEventHandler
 
-from gdrive import getFileSequence
+from gdrive import g_scheme
+from gdrive import g_plugin
 from gdrive import getLoggerUrl
 from gdrive import getLoggerSetting
-from gdrive import getStringResource
-from gdrive import getUcb
-from gdrive import getUcp
-from gdrive import registerDataBase
 from gdrive import setLoggerSetting
-from gdrive import g_scheme
-from gdrive import getSession
+from gdrive import getFileSequence
+from gdrive import getStringResource
+from gdrive import getResourceLocation
 
 import traceback
 
 # pythonloader looks for a static g_ImplementationHelper variable
 g_ImplementationHelper = unohelper.ImplementationHelper()
-g_ImplementationName = 'com.gmail.prrvchr.extensions.gDriveOOo.OptionsDialog'
+g_ImplementationName = '%s.OptionsDialog' % g_plugin
 
 g_scheme = 'vnd.google-apps'
 
 class OptionsDialog(unohelper.Base,
                     XServiceInfo,
-                    XContainerWindowEventHandler):
+                    XContainerWindowEventHandler,
+                    XDialogEventHandler):
     def __init__(self, ctx):
         try:
             self.ctx = ctx
-            self.stringResource = getStringResource(self.ctx, None, 'OptionsDialog')
+            self.stringResource = getStringResource(self.ctx, g_plugin, 'gDriveOOo', 'OptionsDialog')
             print("PyOptionsDialog.__init__() 1")
-            #identifier = getUcb(self.ctx).createContentIdentifier('%s:///' % g_scheme)
-            #print("PyOptionsDialog.__init__() 2 %s" % identifier.getContentIdentifier())
-            identifier = 'com.gmail.prrvchr.extensions.gDriveOOo'
-            #self.Connection = getDbConnection(self.ctx, g_scheme, identifier, True)
-            print("PyOptionsDialog.__init__() 3")
         except Exception as e:
             print("PyOptionsDialog.__init__().Error: %s - %s" % (e, traceback.print_exc()))
 
@@ -46,7 +41,7 @@ class OptionsDialog(unohelper.Base,
         #self.Connection.close()
         print("PyOptionsDialog.__del__()***********************")
 
-    # XContainerWindowEventHandler
+    # XContainerWindowEventHandler, XDialogEventHandler
     def callHandlerMethod(self, dialog, event, method):
         handled = False
         if method == 'external_event':
@@ -77,8 +72,8 @@ class OptionsDialog(unohelper.Base,
 
     def _doViewDataBase(self, dialog):
         try:
-            print("PyOptionsDialog._doConnect() 1")
-            url = registerDataBase(self.ctx, g_scheme)
+            path = getResourceLocation(ctx, g_plugin, 'hsqldb')
+            url = '%s/%s.odb' % (path, g_scheme)
             desktop = self.ctx.ServiceManager.createInstance('com.sun.star.frame.Desktop')
             desktop.loadComponentFromURL(url, '_default', 0, ())
             #mri = self.ctx.ServiceManager.createInstance('mytools.Mri')
@@ -94,7 +89,7 @@ class OptionsDialog(unohelper.Base,
         print("PyOptionsDialog._initialize()")
         provider = getUcp(self.ctx, g_scheme)
         loaded = provider.supportsService('com.sun.star.ucb.ContentProvider')
-        print("OptionsDialog._initialize() %s" % loaded) 
+        print("OptionsDialog._initialize() %s" % loaded)
         self._toogleSync(dialog, loaded)
         self._loadLoggerSetting(dialog)
 
@@ -126,7 +121,7 @@ class OptionsDialog(unohelper.Base,
             dialog.dispose()
         except Exception as e:
             print("PyOptionsDialog._doViewLog().Error: %s - %s" % (e, traceback.print_exc()))
-    
+
     def _doLoadUcp(self, dialog):
         try:
             print("PyOptionsDialog._doLoadUcp() 1")
