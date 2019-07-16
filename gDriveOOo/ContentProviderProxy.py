@@ -39,6 +39,7 @@ class ContentProviderProxy(unohelper.Base,
         self.plugin = ''
         self.replace = True
         self.Logger = getLogger(self.ctx)
+        self.listeners = []
         msg += " Done"
         self.Logger.logp(INFO, 'ContentProviderProxy', '__init__()', msg)
 
@@ -59,6 +60,7 @@ class ContentProviderProxy(unohelper.Base,
 
     # XContentProviderSupplier
     def getContentProvider(self):
+        provider = None
         provider = None
         level = INFO
         msg = "Need to get UCP: %s ..." % g_provider
