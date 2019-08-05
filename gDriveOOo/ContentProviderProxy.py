@@ -12,6 +12,8 @@ from com.sun.star.ucb import XContentProvider
 from com.sun.star.ucb import XContentProviderFactory
 from com.sun.star.ucb import XContentProviderSupplier
 from com.sun.star.ucb import XParameterizedContentProvider
+from com.sun.star.beans.PropertyAttribute import BOUND
+from com.sun.star.beans.PropertyAttribute import READONLY
 from com.sun.star.logging.LogLevel import INFO
 from com.sun.star.logging.LogLevel import SEVERE
 
@@ -20,6 +22,8 @@ from gdrive import g_plugin
 from gdrive import g_provider
 from gdrive import getLogger
 from gdrive import getUcp
+from gdrive import PropertySet
+from gdrive import getProperty
 
 g_proxy = 'com.sun.star.ucb.ContentProviderProxy'
 g_pro = 'com.sun.star.ucb.ContentProvider'
@@ -31,41 +35,29 @@ g_ImplementationName = '%s.ContentProviderProxy' % g_plugin
 
 class ContentProviderProxy(unohelper.Base,
                            XServiceInfo,
-                           XInitialization,
                            XContentIdentifierFactory,
                            XContentProvider,
                            XContentProviderFactory,
-                           XContentProviderSupplier):
+                           XContentProviderSupplier,
+                           PropertySet):
 
-    _IsRegistred = False
     _Provider = None
 
-    def __init__(self, *args):
+    @property
+    def IsLoaded(self):
+        return ContentProviderProxy._Provider is not None
+
+    def __init__(self, ctx):
         print("ContentProviderProxy.__init__()")
         msg = "ContentProviderProxy for plugin: %s loading ..." % g_plugin
-        self.ctx = uno.getComponentContext()
+        self.ctx = ctx
         self.scheme = ''
         self.plugin = ''
         self.replace = True
-        self.provider = None
         self.Logger = getLogger(self.ctx)
-        self.listeners = []
         msg += " Done"
         self.Logger.logp(INFO, 'ContentProviderProxy', '__init__()', msg)
         print(msg)
-
-    # XInitialization
-    def initialize(self, arguments):
-        print("ContentProviderProxy.initialize() %s" % (arguments, ))
-
-    # XInterface
-    def queryInterface(self, atype):
-        print("ContentProviderProxy.queryInterface() %s" % atype)
-        return self.getContentProvider()
-    def acquire(self):
-        pass
-    def release(self):
-        pass
 
     # XContentProviderFactory
     def createContentProvider(self, service):
@@ -73,7 +65,7 @@ class ContentProviderProxy(unohelper.Base,
         provider = None
         level = INFO
         msg = "Service: %s loading ..." % service
-        ucp = self.ctx.ServiceManager.createInstanceWithContext(g_provider, self.ctx)
+        ucp = self.ctx.ServiceManager.createInstanceWithContext(service, self.ctx)
         if not ucp:
             level = SEVERE
             msg += " ERROR: requested service is not available..."
@@ -88,7 +80,7 @@ class ContentProviderProxy(unohelper.Base,
         print('ContentProviderProxy.getContentProvider()')
         level = INFO
         msg = "Need to get UCP: %s ..." % g_provider
-        if ContentProviderProxy._Provider is None:
+        if not self.IsLoaded:
             provider = self.createContentProvider(g_provider)
             if not provider:
                 level = SEVERE
@@ -141,6 +133,10 @@ class ContentProviderProxy(unohelper.Base,
     def getSupportedServiceNames(self):
         return g_ImplementationHelper.getSupportedServiceNames(g_ImplementationName)
 
+    def _getPropertySetInfo(self):
+        properties = {}
+        properties['IsLoaded'] = getProperty('IsLoaded', 'boolean', BOUND | READONLY)
+        return properties
 
 g_ImplementationHelper.addImplementation(ContentProviderProxy,
                                          g_ImplementationName,
