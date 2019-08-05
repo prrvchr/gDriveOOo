@@ -46,11 +46,11 @@ g_ImplementationName = '%s.Provider' % g_plugin
 class Provider(ProviderBase):
     def __init__(self, ctx):
         self.ctx = ctx
-        self.Scheme = None
-        self.Plugin = None
-        self.Link = None
-        self.Folder = None
-        self.SourceURL = None
+        self.Scheme = ''
+        self.Plugin = ''
+        self.Link = ''
+        self.Folder = ''
+        self.SourceURL = ''
         self.SessionMode = OFFLINE
         self._Error = ''
         self.Request = self._getRequest()

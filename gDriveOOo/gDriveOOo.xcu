@@ -19,7 +19,7 @@
                                 <value>vnd.google-apps</value>
                             </prop>
                             <prop oor:name="Arguments">
-                                <value>com.gmail.prrvchr.extensions.gDriveOOo</value>
+                                <value/>
                             </prop>
                         </node>
                     </node>

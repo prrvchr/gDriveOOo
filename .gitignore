@@ -1,0 +1,5 @@
+#Ignore Link File
+/gDriveOOo/pythonpath/gdrive/logger.py
+/gDriveOOo/pythonpath/gdrive/contenttools.py
+/gDriveOOo/pythonpath/gdrive/unolib.py
+/gDriveOOo/pythonpath/gdrive/unotools.py
