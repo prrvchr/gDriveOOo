@@ -53,7 +53,7 @@ class Provider(ProviderBase):
         self.SourceURL = ''
         self.SessionMode = OFFLINE
         self._Error = ''
-        self.Request = self._getRequest()
+        self.Request = self._getRequest(ctx)
 
     @property
     def Host(self):
