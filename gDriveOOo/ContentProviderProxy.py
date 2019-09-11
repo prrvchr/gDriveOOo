@@ -117,12 +117,15 @@ class ContentProviderProxy(unohelper.Base,
 
     # XContentIdentifierFactory
     def createContentIdentifier(self, identifier):
+        print('ContentProviderProxy.createContentIdentifier()')
         return self.getContentProvider().createContentIdentifier(identifier)
 
     # XContentProvider
     def queryContent(self, identifier):
+        print('ContentProviderProxy.queryContent()')
         return self.getContentProvider().queryContent(identifier)
     def compareContentIds(self, identifier1, identifier2):
+        print('ContentProviderProxy.compareContentIds()')
         return self.getContentProvider().compareContentIds(identifier1, identifier2)
 
     # XServiceInfo
