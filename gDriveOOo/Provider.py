@@ -35,6 +35,7 @@ from gdrive import g_doc_map
 from gdrive import g_chunk
 from gdrive import g_buffer
 from gdrive import g_IdentifierRange
+from gdrive import getLogger
 
 import json
 
@@ -53,7 +54,8 @@ class Provider(ProviderBase):
         self.SourceURL = ''
         self.SessionMode = OFFLINE
         self._Error = ''
-        self.Request = self._getRequest(ctx)
+        self.Logger = getLogger(self.ctx)
+        #self.Request = self._getRequest(ctx)
 
     @property
     def Host(self):
