@@ -1,5 +1,22 @@
 #Ignore Link File
-/gDriveOOo/pythonpath/gdrive/logger.py
-/gDriveOOo/pythonpath/gdrive/contenttools.py
-/gDriveOOo/pythonpath/gdrive/unolib.py
-/gDriveOOo/pythonpath/gdrive/unotools.py
+/gDriveOOo/types.rdb
+/gDriveOOo/ContentProvider.py
+/gDriveOOo/Content.py
+/gDriveOOo/pythonpath/clouducp/content.py
+/gDriveOOo/pythonpath/clouducp/contentcore.py
+/gDriveOOo/pythonpath/clouducp/contentlib.py
+/gDriveOOo/pythonpath/clouducp/contenttools.py
+/gDriveOOo/pythonpath/clouducp/datasource.py
+/gDriveOOo/pythonpath/clouducp/dbinit.py
+/gDriveOOo/pythonpath/clouducp/dbqueries.py
+/gDriveOOo/pythonpath/clouducp/dbtools.py
+/gDriveOOo/pythonpath/clouducp/identifier.py
+/gDriveOOo/pythonpath/clouducp/keymap.py
+/gDriveOOo/pythonpath/clouducp/logger.py
+/gDriveOOo/pythonpath/clouducp/oauth2core.py
+/gDriveOOo/pythonpath/clouducp/oauth2lib.py
+/gDriveOOo/pythonpath/clouducp/providerbase.py
+/gDriveOOo/pythonpath/clouducp/unocore.py
+/gDriveOOo/pythonpath/clouducp/unolib.py
+/gDriveOOo/pythonpath/clouducp/unotools.py
+/gDriveOOo/pythonpath/clouducp/user.py

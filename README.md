@@ -1,6 +1,6 @@
 **The use of this software subjects you to our** [Terms Of Use](https://prrvchr.github.io/gDriveOOo/gDriveOOo/registration/TermsOfUse_en) **and** [Data Protection Policy](https://prrvchr.github.io/gDriveOOo/gDriveOOo/registration/PrivacyPolicy_en)
 
-## gDriveOOo v.0.0.3
+## gDriveOOo v.0.0.4
 
 ### Google Drive implementation for LibreOffice / OpenOffice.
 
