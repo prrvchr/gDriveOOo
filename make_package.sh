@@ -1,6 +1,9 @@
 #!/bin/bash
 
-cd ./gDriveOOo/
+cd ./CloudUcpOOo/
+./make_rdb.sh
+
+cd ../gDriveOOo/
 zip -0 gDriveOOo.zip mimetype
 zip -r gDriveOOo.zip *
 cd ..
