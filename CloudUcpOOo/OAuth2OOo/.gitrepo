@@ -4,9 +4,9 @@
 ; git-subrepo command. See https://github.com/git-commands/git-subrepo#readme
 ;
 [subrepo]
-	remote = https://github.com/prrvchr/CloudUcpOOo.git
+	remote = https://github.com/prrvchr/OAuth2OOo.git
 	branch = master
-	commit = 3888f1b9a66f70d305b809983b3f63c47606f750
-	parent = 0c26315bebe53b48470e95bed38784fa6a0f2f7f
+	commit = 5b4e619503d4d03c14780754086c9657f53f86a6
+	parent = 0adf3e08ab136954b9e47839947893ea9095e6cf
 	method = merge
 	cmdver = 0.4.0

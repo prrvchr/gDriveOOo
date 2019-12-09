@@ -1,9 +1,0 @@
-#Ignore Link File
-/CloudUcpOOo/pythonpath/clouducp/keymap.py
-/CloudUcpOOo/pythonpath/clouducp/logger.py
-/CloudUcpOOo/pythonpath/clouducp/oauth2lib.py
-/CloudUcpOOo/pythonpath/clouducp/oauth2core.py
-/CloudUcpOOo/pythonpath/clouducp/unolib.py
-/CloudUcpOOo/pythonpath/clouducp/unotools.py
-/CloudUcpOOo/pythonpath/clouducp/dbtools.py
-/rdb/idl/com/sun/star/auth/*
