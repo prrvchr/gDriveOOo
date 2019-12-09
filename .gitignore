@@ -1,7 +1,4 @@
 #Ignore Link File
-/gDriveOOo/types.rdb
-/gDriveOOo/ContentProvider.py
-/gDriveOOo/Content.py
 /gDriveOOo/pythonpath/clouducp/content.py
 /gDriveOOo/pythonpath/clouducp/contentcore.py
 /gDriveOOo/pythonpath/clouducp/contentlib.py
