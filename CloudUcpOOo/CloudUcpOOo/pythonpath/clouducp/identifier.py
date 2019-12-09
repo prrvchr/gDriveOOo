@@ -17,8 +17,8 @@ from com.sun.star.beans.PropertyAttribute import TRANSIENT
 from com.sun.star.ucb.ConnectionMode import OFFLINE
 from com.sun.star.ucb.ConnectionMode import ONLINE
 
-from .configuration import g_plugin
-#from .content import Content
+#from .configuration import g_plugin
+from .content import Content
 
 from .contenttools import getUri
 from .oauth2core import getUserNameFromHandler
@@ -167,9 +167,9 @@ class Identifier(unohelper.Base,
             else:
                 data = self.User.getItem(self.DataSource, self.MetaData)
             data.insertValue('BaseURI', self.MetaData.getValue('BaseURI'))
-            service = '%s.Content' % g_plugin
-            content = self.ctx.ServiceManager.createInstanceWithContext(service, self.ctx)
-            content.initialize(self, data)
+            #service = '%s.Content' % g_plugin
+            content = Content(self.ctx, self, data)
+            #content.initialize()
             return content
         except Exception as e:
             print("Identifier.getContent() ERROR: %s - %s" % (e, traceback.print_exc()))

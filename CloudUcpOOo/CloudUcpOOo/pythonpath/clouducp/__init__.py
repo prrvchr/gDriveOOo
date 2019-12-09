@@ -4,6 +4,7 @@
 import traceback
 try:
 
+    from .contentprovider import ContentProvider
     from .datasource import DataSource
     from .user import User
     from .identifier import Identifier
