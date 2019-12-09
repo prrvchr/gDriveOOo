@@ -17,12 +17,14 @@ from com.sun.star.beans.PropertyAttribute import READONLY
 from com.sun.star.logging.LogLevel import INFO
 from com.sun.star.logging.LogLevel import SEVERE
 
-from clouducp import g_scheme
-from clouducp import g_plugin
+from clouducp import ContentProvider
 from clouducp import logMessage
 from clouducp import getUcp
 from clouducp import PropertySet
 from clouducp import getProperty
+from gdrive import g_scheme
+from gdrive import g_plugin
+
 
 g_proxy = 'com.sun.star.ucb.ContentProviderProxy'
 g_pro = 'com.sun.star.ucb.ContentProvider'
@@ -63,7 +65,7 @@ class ContentProviderProxy(unohelper.Base,
         provider = None
         level = INFO
         msg = "Service: %s loading ..." % service
-        ucp = self.ctx.ServiceManager.createInstanceWithContext(service, self.ctx)
+        ucp = ContentProvider(self.ctx, service)
         if not ucp:
             level = SEVERE
             msg += " ERROR: requested service is not available..."
@@ -79,8 +81,7 @@ class ContentProviderProxy(unohelper.Base,
         level = INFO
         msg = "Need to get UCP: %s ..." % g_plugin
         if not self.IsLoaded:
-            service = '%s.ContentProvider' % g_plugin
-            provider = self.createContentProvider(service)
+            provider = self.createContentProvider(g_plugin)
             if not provider:
                 level = SEVERE
                 msg += " ERROR: requested service is not available..."

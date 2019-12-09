@@ -13,7 +13,6 @@ try:
     from com.sun.star.ucb import XContentIdentifierFactory
     from com.sun.star.ucb import XContentProvider
     from com.sun.star.ucb import XParameterizedContentProvider
-    from com.sun.star.ucb import XContentProvider
     from com.sun.star.ucb import IllegalIdentifierException
 
     from com.sun.star.ucb import XRestContentProvider
@@ -51,8 +50,8 @@ class ContentProvider(unohelper.Base,
         logMessage(self.ctx, INFO, msg, 'ContentProvider', '__init__()')
 
     def __del__(self):
-       msg = "ContentProvider; %s unloading ... Done" % g_plugin
-       logMessage(self.ctx, INFO, msg, 'ContentProvider', '__del__()')
+        msg = "ContentProvider; %s unloading ... Done" % g_plugin
+        logMessage(self.ctx, INFO, msg, 'ContentProvider', '__del__()')
 
     # XParameterizedContentProvider
     def registerInstance(self, scheme, plugin, replace):
