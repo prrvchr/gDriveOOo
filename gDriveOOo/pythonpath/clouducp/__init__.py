@@ -49,6 +49,7 @@ from .contenttools import getContentInfo
 from .contenttools import propertyChange
 
 from .logger import getLogger
+from .logger import logMessage
 from .logger import getLoggerSetting
 from .logger import setLoggerSetting
 from .logger import getLoggerUrl
@@ -79,9 +80,3 @@ from .unotools import getConfiguration
 from .oauth2lib import InteractionRequest
 
 from .keymap import KeyMap
-
-from .logger import getLogger
-from .logger import getLoggerSetting
-from .logger import setLoggerSetting
-from .logger import getLoggerUrl
-from .logger import isLoggerEnabled

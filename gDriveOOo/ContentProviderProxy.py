@@ -19,7 +19,7 @@ from com.sun.star.logging.LogLevel import SEVERE
 
 from clouducp import g_scheme
 from clouducp import g_plugin
-from clouducp import getLogger
+from clouducp import logMessage
 from clouducp import getUcp
 from clouducp import PropertySet
 from clouducp import getProperty
@@ -53,9 +53,8 @@ class ContentProviderProxy(unohelper.Base,
         self.scheme = ''
         self.plugin = ''
         self.replace = True
-        self.Logger = getLogger(self.ctx)
         msg += " Done"
-        self.Logger.logp(INFO, 'ContentProviderProxy', '__init__()', msg)
+        logMessage(self.ctx, INFO, msg, 'ContentProviderProxy', '__init__()')
         print(msg)
 
     # XContentProviderFactory
@@ -71,7 +70,7 @@ class ContentProviderProxy(unohelper.Base,
         else:
             msg += " Done"
             provider = ucp.registerInstance(g_scheme, g_plugin, True)
-        self.Logger.logp(level, 'ContentProviderProxy', 'createContentProvider()', msg)
+        logMessage(self.ctx, level, msg, 'ContentProviderProxy', 'createContentProvider()')
         return provider
 
     # XContentProviderSupplier
@@ -90,7 +89,7 @@ class ContentProviderProxy(unohelper.Base,
                msg += " Done"
         else:
             msg += " Done"
-        self.Logger.logp(level, 'ContentProviderProxy', 'getContentProvider()', msg)
+        logMessage(self.ctx, level, msg, 'ContentProviderProxy', 'getContentProvider()')
         return ContentProviderProxy._Provider
 
     # XParameterizedContentProvider
@@ -105,14 +104,14 @@ class ContentProviderProxy(unohelper.Base,
         self.plugin = plugin
         self.replace = replace
         msg += " Done"
-        self.Logger.logp(INFO, 'ContentProviderProxy', 'registerInstance()', msg)
+        logMessage(self.ctx, INFO, msg, 'ContentProviderProxy', 'registerInstance()')
         print('ContentProviderProxy.registerInstance() OK')
         return self
     def deregisterInstance1(self, scheme, plugin):
         print('ContentProviderProxy.deregisterInstance()')
         provider = self.getContentProvider().deregisterInstance(scheme, plugin)
         msg = "ContentProviderProxy.deregisterInstance(): %s - %s ... Done" % (scheme, plugin)
-        self.Logger.logp(INFO, 'ContentProviderProxy', 'deregisterInstance()', msg)
+        logMessage(self.ctx, INFO, msg, 'ContentProviderProxy', 'deregisterInstance()')
         return provider
 
     # XContentIdentifierFactory

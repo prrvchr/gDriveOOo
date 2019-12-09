@@ -36,7 +36,6 @@ from clouducp import g_chunk
 from clouducp import g_buffer
 from clouducp import g_IdentifierRange
 from clouducp import ProviderBase
-from clouducp import getLogger
 
 import json
 
@@ -55,8 +54,6 @@ class Provider(ProviderBase):
         self.SourceURL = ''
         self.SessionMode = OFFLINE
         self._Error = ''
-        self.Logger = getLogger(self.ctx)
-        #self.Request = self._getRequest(ctx)
 
     @property
     def Host(self):
