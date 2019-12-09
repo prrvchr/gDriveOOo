@@ -58,6 +58,7 @@ try:
     from .keymap import KeyMap
 
     from .logger import getLogger
+    from .logger import logMessage
     from .logger import getLoggerSetting
     from .logger import setLoggerSetting
     from .logger import getLoggerUrl
