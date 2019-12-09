@@ -18,12 +18,12 @@ from .unotools import getSimpleFile
 
 from .dbqueries import getSqlQuery
 
-from .configuration import g_protocol
-from .configuration import g_path
-from .configuration import g_jar
-from .configuration import g_class
-from .configuration import g_options
-from .configuration import g_shutdown
+from .dbconfig import g_protocol
+from .dbconfig import g_path
+from .dbconfig import g_jar
+from .dbconfig import g_class
+from .dbconfig import g_options
+from .dbconfig import g_shutdown
 
 import traceback
 

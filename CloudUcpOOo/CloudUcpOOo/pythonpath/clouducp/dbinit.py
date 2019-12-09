@@ -13,7 +13,7 @@ from .dbtools import getDataSourceInfo
 from .dbtools import getDataSourceJavaInfo
 
 from .dbqueries import getSqlQuery
-from .configuration import g_path
+from .dbconfig import g_path
 
 import traceback
 

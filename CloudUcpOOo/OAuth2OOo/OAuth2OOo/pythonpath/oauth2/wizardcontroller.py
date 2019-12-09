@@ -97,7 +97,7 @@ class WizardController(unohelper.Base,
                     if self.AutoClose:
                         logMessage(self.ctx, INFO, "WizardController.notify() 2", 'WizardController', 'notify()')
                         self.Wizard.DialogWindow.endDialog(OK)
-                        logMessage(self.ctx, "WizardController.notify() 3", 'WizardController', 'notify()')
+                        logMessage(self.ctx, INFO, "WizardController.notify() 3", 'WizardController', 'notify()')
                     else:
                         logMessage(self.ctx, INFO, "WizardController.notify() 4", 'WizardController', 'notify()')
                         self.Wizard.travelNext()
@@ -121,11 +121,11 @@ class WizardController(unohelper.Base,
                               self.Uuid,
                               self.AuthorizationCode)
             msg += " Done"
-            logMessage(self.ctx, INFO, msg, "WizardController", "createPage()")
+            logMessage(self.ctx, INFO, msg, 'WizardController', 'createPage()')
             return page
         except Exception as e:
             msg = "Error: %s - %s" % (e, traceback.print_exc())
-            logMessage(self.ctx, SEVERE, msg, "WizardController", "createPage()")
+            logMessage(self.ctx, SEVERE, msg, 'WizardController', 'createPage()')
 
     def getPageTitle(self, id):
         title = self.stringResource.resolveString('PageWizard%s.Step' % (id, ))
@@ -167,10 +167,10 @@ class WizardController(unohelper.Base,
                 self.Wizard.enableButton(finish, True)
             self.Wizard.updateTravelUI()
             msg += " Done"
-            logMessage(self.ctx, INFO, msg, "WizardController", "onActivatePage()")
+            logMessage(self.ctx, INFO, msg, 'WizardController', 'onActivatePage()')
         except Exception as e:
             msg = "Error: %s - %s" % (e, traceback.print_exc())
-            logMessage(self.ctx, SEVERE, msg, "WizardController", "onActivatePage()")
+            logMessage(self.ctx, SEVERE, msg, 'WizardController', 'onActivatePage()')
 
     def onDeactivatePage(self, id):
         try:
