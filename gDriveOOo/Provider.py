@@ -19,23 +19,22 @@ from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_RENAMED
 from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_REWRITED
 from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_TRASHED
 
-from clouducp import g_oauth2
-from clouducp import g_plugin
-from clouducp import g_host
-from clouducp import g_url
-from clouducp import g_upload
-from clouducp import g_userfields
-from clouducp import g_itemfields
-from clouducp import g_childfields
-from clouducp import g_pages
-from clouducp import g_folder
-from clouducp import g_office
-from clouducp import g_link
-from clouducp import g_doc_map
-from clouducp import g_chunk
-from clouducp import g_buffer
-from clouducp import g_IdentifierRange
 from clouducp import ProviderBase
+from gdrive import g_plugin
+from gdrive import g_host
+from gdrive import g_url
+from gdrive import g_upload
+from gdrive import g_userfields
+from gdrive import g_itemfields
+from gdrive import g_childfields
+from gdrive import g_pages
+from gdrive import g_folder
+from gdrive import g_office
+from gdrive import g_link
+from gdrive import g_doc_map
+from gdrive import g_chunk
+from gdrive import g_buffer
+from gdrive import g_IdentifierRange
 
 import json
 
