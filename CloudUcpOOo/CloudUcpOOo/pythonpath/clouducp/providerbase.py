@@ -21,7 +21,6 @@ from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_TRASHED
 
 from .unotools import parseDateTime
 from .unotools import getResourceLocation
-from .configuration import g_oauth2
 from .keymap import KeyMap
 
 import datetime
