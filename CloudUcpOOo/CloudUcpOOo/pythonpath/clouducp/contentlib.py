@@ -17,7 +17,7 @@ from com.sun.star.ucb import XCommandInfo
 from com.sun.star.ucb import XCommandInfoChangeNotifier
 from com.sun.star.ucb import UnsupportedCommandException
 
-from .configuration import g_oauth2
+from .oauth2config import g_oauth2
 from .contenttools import getUcb
 from .contenttools import getParametersRequest
 from .unolib import PropertySet
