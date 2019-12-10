@@ -25,9 +25,7 @@ from clouducp import getProperty
 from gdrive import g_scheme
 from gdrive import g_plugin
 
-
 g_proxy = 'com.sun.star.ucb.ContentProviderProxy'
-g_pro = 'com.sun.star.ucb.ContentProvider'
 
 # pythonloader looks for a static g_ImplementationHelper variable
 g_ImplementationHelper = unohelper.ImplementationHelper()
@@ -49,7 +47,6 @@ class ContentProviderProxy(unohelper.Base,
         return ContentProviderProxy._Provider is not None
 
     def __init__(self, ctx):
-        print("ContentProviderProxy.__init__()")
         msg = "ContentProviderProxy for plugin: %s loading ..." % g_plugin
         self.ctx = ctx
         self.scheme = ''
@@ -57,7 +54,6 @@ class ContentProviderProxy(unohelper.Base,
         self.replace = True
         msg += " Done"
         logMessage(self.ctx, INFO, msg, 'ContentProviderProxy', '__init__()')
-        print(msg)
 
     # XContentProviderFactory
     def createContentProvider(self, service):
@@ -143,4 +139,4 @@ class ContentProviderProxy(unohelper.Base,
 
 g_ImplementationHelper.addImplementation(ContentProviderProxy,
                                          g_ImplementationName,
-                                        (g_ImplementationName, g_proxy, g_pro))
+                                        (g_ImplementationName, g_proxy))

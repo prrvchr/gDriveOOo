@@ -24,7 +24,6 @@ import traceback
 g_ImplementationHelper = unohelper.ImplementationHelper()
 g_ImplementationName = '%s.OptionsDialog' % g_plugin
 
-g_scheme = 'vnd.google-apps'
 
 class OptionsDialog(unohelper.Base,
                     XServiceInfo,

@@ -27,16 +27,14 @@ from gdrive import g_upload
 from gdrive import g_userfields
 from gdrive import g_itemfields
 from gdrive import g_childfields
+from gdrive import g_chunk
+from gdrive import g_buffer
 from gdrive import g_pages
+from gdrive import g_IdentifierRange
 from gdrive import g_folder
 from gdrive import g_office
 from gdrive import g_link
 from gdrive import g_doc_map
-from gdrive import g_chunk
-from gdrive import g_buffer
-from gdrive import g_IdentifierRange
-
-import json
 
 # pythonloader looks for a static g_ImplementationHelper variable
 g_ImplementationHelper = unohelper.ImplementationHelper()
