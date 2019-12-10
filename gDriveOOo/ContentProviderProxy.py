@@ -39,8 +39,7 @@ class ContentProviderProxy(unohelper.Base,
                            XContentIdentifierFactory,
                            XContentProvider,
                            XContentProviderFactory,
-                           XContentProviderSupplier,
-                           PropertySet):
+                           XContentProviderSupplier):
 
     _Provider = None
 
@@ -134,10 +133,6 @@ class ContentProviderProxy(unohelper.Base,
     def getSupportedServiceNames(self):
         return g_ImplementationHelper.getSupportedServiceNames(g_ImplementationName)
 
-    def _getPropertySetInfo(self):
-        properties = {}
-        properties['IsLoaded'] = getProperty('IsLoaded', 'boolean', BOUND | READONLY)
-        return properties
 
 g_ImplementationHelper.addImplementation(ContentProviderProxy,
                                          g_ImplementationName,
