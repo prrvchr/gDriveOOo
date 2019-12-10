@@ -8,12 +8,12 @@ from com.sun.star.lang import XServiceInfo
 from com.sun.star.awt import XContainerWindowEventHandler
 from com.sun.star.awt import XDialogEventHandler
 
-from clouducp import getLoggerUrl
-from clouducp import getLoggerSetting
-from clouducp import setLoggerSetting
-from clouducp import getFileSequence
-from clouducp import getStringResource
-from clouducp import getResourceLocation
+from oauth2 import getLoggerUrl
+from oauth2 import getLoggerSetting
+from oauth2 import setLoggerSetting
+from oauth2 import getFileSequence
+from oauth2 import getStringResource
+from oauth2 import getResourceLocation
 
 from gdrive import g_scheme
 from gdrive import g_plugin
