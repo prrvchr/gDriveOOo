@@ -10,7 +10,7 @@ from com.sun.star.ucb.ConnectionMode import OFFLINE
 from com.sun.star.ucb.ConnectionMode import ONLINE
 from com.sun.star.ucb import XRestUser
 
-from .configuration import g_oauth2
+from .oauth2config import g_oauth2
 from .identifier import Identifier
 from .keymap import KeyMap
 from .logger import logMessage
