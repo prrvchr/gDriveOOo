@@ -270,7 +270,7 @@ class Content(unohelper.Base,
     def _getCreatableContentsInfo(self):
         content = []
         if self.IsFolder and self.CanAddChild:
-            provider = self.Identifier.User.DataSource.Provider
+            provider = self.Identifier.DataSource.Provider
             properties = (getProperty('Title', 'string', BOUND), )
             content.append(getContentInfo(provider.Folder, KIND_FOLDER, properties))
             content.append(getContentInfo(provider.Office, KIND_DOCUMENT, properties))
