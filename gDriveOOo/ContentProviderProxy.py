@@ -1,6 +1,9 @@
 #!
 # -*- coding: utf_8 -*-
 
+import sys
+print(sys.path)
+
 import uno
 import unohelper
 
