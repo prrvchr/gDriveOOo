@@ -49,9 +49,13 @@ def getDataSourceCall(connection, name, format=None):
     return call
 
 def checkDataBase(connection):
+    error = None
     version = connection.getMetaData().getDriverVersion()
-    print("dbtools.checkDataBase() %s - %s - %s" % (version, type(version), g_version))
-    return None
+    if version != g_version:
+        error = SQLException()
+        error.Message = "DataBase ERROR: hsqldb driver %s is not the correct version... " % g_jar
+        error.Message += "Requiered version: %s - loaded version: %s" % (g_version, version)
+    return error
 
 def executeQueries(statement, queries):
     for query in queries:
@@ -197,6 +201,7 @@ def getTablesAndStatements(statement):
     call = getDataSourceCall(statement.getConnection(), 'getTables')
     for table in getSequenceFromResult(statement.executeQuery(getSqlQuery('getTableName'))):
         statement = False
+        versioned = False
         columns = []
         primary = []
         unique = []
@@ -206,6 +211,7 @@ def getTablesAndStatements(statement):
         while result.next():
             data = getKeyMapFromResult(result, KeyMap())
             statement = data.getValue('View')
+            versioned = data.getValue('Versioned')
             column = data.getValue('Column')
             definition = '"%s"' % column
             definition += ' %s' % data.getValue('Type')
@@ -231,8 +237,12 @@ def getTablesAndStatements(statement):
             columns.append(getSqlQuery('getUniqueConstraint', format))
         for format in constraint:
             columns.append(getSqlQuery('getForeignConstraint', format))
+        if versioned:
+            columns.append(getSqlQuery('getPeriodColumns'))
         format = (table, ','.join(columns))
         query = getSqlQuery('createTable', format)
+        if versioned:
+            query += getSqlQuery('getSystemVersioning')
         print("dbtool._createDynamicTable(): %s" % query)
         tables.append(query)
         if statement:
