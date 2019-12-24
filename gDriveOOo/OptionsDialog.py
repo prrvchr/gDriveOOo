@@ -15,8 +15,8 @@ from oauth2 import getFileSequence
 from oauth2 import getStringResource
 from oauth2 import getResourceLocation
 
-from gdrive import g_scheme
-from gdrive import g_plugin
+from clouducp import g_scheme
+from clouducp import g_plugin
 
 import traceback
 

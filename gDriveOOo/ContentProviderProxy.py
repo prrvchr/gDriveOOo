@@ -26,9 +26,8 @@ from oauth2 import logMessage
 
 from clouducp import ContentProvider
 from clouducp import getUcp
-
-from gdrive import g_scheme
-from gdrive import g_plugin
+from clouducp import g_scheme
+from clouducp import g_plugin
 
 g_proxy = 'com.sun.star.ucb.ContentProviderProxy'
 
