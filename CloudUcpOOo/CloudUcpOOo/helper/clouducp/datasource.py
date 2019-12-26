@@ -40,6 +40,7 @@ class DataSource(unohelper.Base,
         level = SEVERE
         msg = "DataSource for Scheme: %s loading ... " % scheme
         self.ctx = ctx
+        logMessage(self.ctx, INFO, "stage 1", 'DataSource', '__init__()')
         self._Statement = None
         self._CahedUser = {}
         self._Calls = {}
@@ -47,20 +48,27 @@ class DataSource(unohelper.Base,
         service = '%s.Provider' % plugin
         self.Provider = self.ctx.ServiceManager.createInstanceWithContext(service, self.ctx)
         dbcontext = self.ctx.ServiceManager.createInstance('com.sun.star.sdb.DatabaseContext')
+        logMessage(self.ctx, INFO, "stage 2", 'DataSource', '__init__()')
         url, error = getDataSourceUrl(self.ctx, dbcontext, scheme, plugin, True)
+        logMessage(self.ctx, INFO, "stage 3", 'DataSource', '__init__()')
         if error is None:
+            logMessage(self.ctx, INFO, "stage 4", 'DataSource', '__init__()')
             connection, error = getDataBaseConnection(dbcontext, url)
             if error is not None:
                 msg += " ... Error: %s - %s" % (error, traceback.print_exc())
                 msg += "Could not connect to DataSource at URL: %s" % url
                 self._Error = msg
             else:
+                logMessage(self.ctx, INFO, "stage 5", 'DataSource', '__init__()')
                 # Piggyback DataBase Connections (easy and clean ShutDown ;-) )
                 self._Statement = connection.createStatement()
                 folder, link = self._getContentType()
                 self.Provider.initialize(scheme, plugin, folder, link)
                 level = INFO
                 msg += "Done"
+        else:
+            logMessage(self.ctx, INFO, "stage 6", 'DataSource', '__init__()')
+            self._Error = error.Message
         logMessage(self.ctx, level, msg, 'DataSource', '__init__()')
 
     @property
