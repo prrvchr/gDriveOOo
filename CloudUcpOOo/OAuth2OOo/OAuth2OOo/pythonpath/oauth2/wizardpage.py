@@ -17,14 +17,15 @@ from .unotools import getStringResource
 
 from .logger import logMessage
 
-from .oauth2tools import g_identifier
-from .oauth2tools import g_wizard_paths
 from .oauth2tools import getActivePath
 from .oauth2tools import getAuthorizationStr
 from .oauth2tools import getAuthorizationUrl
 from .oauth2tools import checkUrl
 from .oauth2tools import openUrl
 from .oauth2tools import updatePageTokenUI
+
+from .configuration import g_identifier
+from .configuration import g_wizard_paths
 
 import traceback
 

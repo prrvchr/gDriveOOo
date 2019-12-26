@@ -15,10 +15,13 @@ from com.sun.star.io import IOException
 from com.sun.star.logging.LogLevel import INFO
 from com.sun.star.logging.LogLevel import SEVERE
 
-from .oauth2tools import g_identifier
+from .configuration import g_identifier
+
 from .unotools import createService
 from .unotools import getStringResource
+
 from .requests.compat import unquote_plus
+
 from .logger import getLogger
 from .logger import logMessage
 

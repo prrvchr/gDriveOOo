@@ -10,9 +10,10 @@ from com.sun.star.util import XUpdatable
 from .unolib import PropertySet
 from .unotools import getProperty
 from .unotools import getConfiguration
-from .oauth2tools import g_identifier
-from .oauth2tools import g_refresh_overlap
 from .keymap import KeyMap
+from .configuration import g_identifier
+from .configuration import g_refresh_overlap
+
 
 import time
 

@@ -11,8 +11,8 @@ from .unolib import PropertySet
 from .unotools import getProperty
 from .unotools import getConfiguration
 from .logger import getLogger
-from .oauth2tools import g_identifier
-from .oauth2tools import g_refresh_overlap
+from .configuration import g_identifier
+from .configuration import g_refresh_overlap
 
 import time
 

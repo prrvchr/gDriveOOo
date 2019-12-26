@@ -22,10 +22,10 @@ from .unotools import getStringResource
 from .oauth2tools import getActivePath
 from .oauth2tools import openUrl
 from .oauth2tools import updatePageTokenUI
-#from .oauth2tools import g_wizard_paths
-from .oauth2tools import g_identifier
 from .oauth2tools import getRefreshToken
 from .oauth2tools import saveTokenToConfiguration
+
+from .configuration import g_identifier
 
 from .logger import logMessage
 

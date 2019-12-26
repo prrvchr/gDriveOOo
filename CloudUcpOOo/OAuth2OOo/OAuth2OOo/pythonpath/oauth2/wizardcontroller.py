@@ -32,9 +32,9 @@ from .oauth2tools import getActivePath
 from .oauth2tools import getTokenParameters
 from .oauth2tools import getResponseFromRequest
 from .oauth2tools import registerTokenFromResponse
-from .oauth2tools import g_identifier
-from .oauth2tools import g_wizard_paths
-from .oauth2tools import g_advance_to
+from .configuration import g_identifier
+from .configuration import g_wizard_paths
+from .configuration import g_advance_to
 
 import traceback
 
