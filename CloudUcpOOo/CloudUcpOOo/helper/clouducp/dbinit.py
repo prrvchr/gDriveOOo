@@ -1,6 +1,8 @@
 #!
 # -*- coding: utf_8 -*-
 
+from com.sun.star.logging.LogLevel import INFO
+from com.sun.star.logging.LogLevel import SEVERE
 
 from unolib import getResourceLocation
 from unolib import getSimpleFile
@@ -15,19 +17,25 @@ from .dbtools import getDataSourceInfo
 from .dbtools import getDataSourceJavaInfo
 from .dbtools import getDataSourceConnection
 from .dbtools import checkDataBase
+from .logger import logMessage
 
 import traceback
 
 
 def getDataSourceUrl(ctx, dbctx, dbname, plugin, register):
-    error = None
-    location = getResourceLocation(ctx, plugin, g_path)
-    url = '%s/%s.odb' % (location, dbname)
-    if not getSimpleFile(ctx).exists(url):
-        error = _createDataSource(ctx, dbctx, url, location, dbname)
-        if register:
-            registerDataSource(dbctx, dbname, url)
-    return url, error
+    try:
+        error = None
+        location = getResourceLocation(ctx, plugin, g_path)
+        url = '%s/%s.odb' % (location, dbname)
+        if not getSimpleFile(ctx).exists(url):
+            error = _createDataSource(ctx, dbctx, url, location, dbname)
+            if register and error is None:
+                registerDataSource(dbctx, dbname, url)
+        return url, error
+    except Exception as e:
+        msg = "getDataSourceUrl: ERROR: %s - %s" % (e, traceback.print_exc())
+        logMessage(ctx, SEVERE, msg, 'dbinit', 'getDataSourceUrl()')
+
 
 def _createDataSource(ctx, dbcontext, url, location, dbname):
     datasource = dbcontext.createInstance()
