@@ -8,9 +8,9 @@ from com.sun.star.lang import XServiceInfo
 from com.sun.star.awt import XContainerWindowEventHandler
 from com.sun.star.awt import XDialogEventHandler
 
-from oauth2 import getFileSequence
-from oauth2 import getStringResource
-from oauth2 import getResourceLocation
+from unolib import getFileSequence
+from unolib import getStringResource
+from unolib import getResourceLocation
 
 from clouducp import getLoggerUrl
 from clouducp import getLoggerSetting
