@@ -12,7 +12,6 @@ from com.sun.star.logging.LogLevel import SEVERE
 
 from oauth2 import createService
 from oauth2 import getFileSequence
-from oauth2 import getLogger
 from oauth2 import getLoggerUrl
 from oauth2 import getLoggerSetting
 from oauth2 import setLoggerSetting
@@ -20,11 +19,12 @@ from oauth2 import clearLogger
 from oauth2 import logMessage
 from oauth2 import getStringResource
 from oauth2 import getNamedValueSet
-from oauth2 import g_identifier
 from oauth2 import getConfiguration
 from oauth2 import getInteractionHandler
 from oauth2 import InteractionRequest
 from oauth2 import getUserNameFromHandler
+from oauth2 import g_identifier
+from oauth2 import g_oauth2
 
 import traceback
 
@@ -41,7 +41,7 @@ class OptionsDialog(unohelper.Base,
         try:
             self.ctx = ctx
             self.stringResource = getStringResource(self.ctx, g_identifier, 'OAuth2OOo', 'OptionsDialog')
-            self.service = createService(self.ctx, '%s.OAuth2Service' % g_identifier)
+            self.service = createService(self.ctx, g_oauth2)
             logMessage(self.ctx, INFO, "Loading ... Done", 'OptionsDialog', '__init__()')
         except Exception as e:
             msg = "Error: %s - %s" % (e, traceback.print_exc())

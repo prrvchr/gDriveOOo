@@ -37,6 +37,7 @@ from oauth2 import createService
 from oauth2 import getConfiguration
 from oauth2 import getRefreshToken
 from oauth2 import g_identifier
+from oauth2 import g_oauth2
 from oauth2 import g_wizard_paths
 from oauth2 import g_refresh_overlap
 
@@ -48,7 +49,7 @@ import traceback
 
 # pythonloader looks for a static g_ImplementationHelper variable
 g_ImplementationHelper = unohelper.ImplementationHelper()
-g_ImplementationName = '%s.OAuth2Service' % g_identifier
+g_ImplementationName = g_oauth2
 
 
 class OAuth2Service(unohelper.Base,

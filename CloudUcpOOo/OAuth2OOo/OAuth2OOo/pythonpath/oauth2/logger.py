@@ -14,12 +14,15 @@ from com.sun.star.logging.LogLevel import OFF
 from .unotools import getConfiguration
 from .unotools import getSimpleFile
 
+try:
+    from .configuration import g_logger
+except ImportError:
+    g_logger = 'org.openoffice.logging.DefaultLogger'
 
 g_loggerPool = {}
-g_defaultLogger = 'org.openoffice.logging.DefaultLogger'
 
 
-def logMessage(ctx, level, msg, cls=None, mtd=None, logger=g_defaultLogger):
+def logMessage(ctx, level, msg, cls=None, mtd=None, logger=g_logger):
     log = getLogger(ctx, logger)
     if log.isLoggable(level):
         if cls is None or mtd is None:
@@ -27,37 +30,37 @@ def logMessage(ctx, level, msg, cls=None, mtd=None, logger=g_defaultLogger):
         else:
             log.logp(level, cls, mtd, msg)
 
-def getLogger(ctx, logger=g_defaultLogger):
+def getLogger(ctx, logger=g_logger):
     if logger not in g_loggerPool:
         log = ctx.getValueByName('/singletons/com.sun.star.logging.LoggerPool').getNamedLogger(logger)
         g_loggerPool[logger] = log
     return g_loggerPool[logger]
 
-def clearLogger(logger=g_defaultLogger):
+def clearLogger(logger=g_logger):
     if logger in g_loggerPool:
         del g_loggerPool[logger]
 
-def isLoggerEnabled(ctx, logger=g_defaultLogger):
+def isLoggerEnabled(ctx, logger=g_logger):
     level = _getLoggerConfiguration(ctx, logger).LogLevel
     enabled = _isLoggerEnabled(level)
     return enabled
 
-def getLoggerSetting(ctx, logger=g_defaultLogger):
+def getLoggerSetting(ctx, logger=g_logger):
     configuration = _getLoggerConfiguration(ctx, logger)
     enabled, index = _getLogIndex(configuration)
     handler, viewer = _getLogHandler(configuration)
     return enabled, index, handler, viewer
 
-def setLoggerSetting(ctx, enabled, index, handler, logger=g_defaultLogger):
+def setLoggerSetting(ctx, enabled, index, handler, logger=g_logger):
     configuration = _getLoggerConfiguration(ctx, logger)
     _setLogIndex(configuration, enabled, index)
     _setLogHandler(configuration, handler, index)
     if configuration.hasPendingChanges():
         print("logger.setLoggerSetting() configuration.hasPendingChanges")
         configuration.commitChanges()
-        clearLogger(ctx)
+        clearLogger(ctx, logger)
 
-def getLoggerUrl(ctx, logger=g_defaultLogger):
+def getLoggerUrl(ctx, logger=g_logger):
     url = '$(userurl)/$(loggername).log'
     settings = _getLoggerConfiguration(ctx, logger).getByName('HandlerSettings')
     if settings.hasByName('FileURL'):

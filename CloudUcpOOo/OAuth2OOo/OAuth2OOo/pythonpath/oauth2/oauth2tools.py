@@ -21,10 +21,10 @@ import time
 
 import traceback
 
-g_advance_to = 0 # 0 to disable
-g_wizard_paths = ((1, 2, 3, 5), (1, 2, 4, 5), (1, 5))
-g_identifier = 'com.gmail.prrvchr.extensions.OAuth2OOo'
-g_refresh_overlap = 10 # must be positive, in second
+#g_advance_to = 0 # 0 to disable
+#g_wizard_paths = ((1, 2, 3, 5), (1, 2, 4, 5), (1, 5))
+#g_identifier = 'com.gmail.prrvchr.extensions.OAuth2OOo'
+#g_refresh_overlap = 10 # must be positive, in second
 
 
 def getActivePath(configuration):
