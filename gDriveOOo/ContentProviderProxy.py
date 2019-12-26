@@ -20,8 +20,8 @@ from com.sun.star.beans.PropertyAttribute import READONLY
 from com.sun.star.logging.LogLevel import INFO
 from com.sun.star.logging.LogLevel import SEVERE
 
-from oauth2 import PropertySet
-from oauth2 import getProperty
+from unolib import PropertySet
+from unolib import getProperty
 
 from clouducp import logMessage
 from clouducp import ContentProvider
