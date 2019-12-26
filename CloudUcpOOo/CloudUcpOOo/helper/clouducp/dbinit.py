@@ -25,12 +25,19 @@ import traceback
 def getDataSourceUrl(ctx, dbctx, dbname, plugin, register):
     try:
         error = None
+        logMessage(ctx, INFO, "Stage 1", 'dbinit', 'getDataSourceUrl()')
         location = getResourceLocation(ctx, plugin, g_path)
+        logMessage(ctx, INFO, "Stage 2", 'dbinit', 'getDataSourceUrl()')
         url = '%s/%s.odb' % (location, dbname)
+        logMessage(ctx, INFO, "Stage 3", 'dbinit', 'getDataSourceUrl()')
         if not getSimpleFile(ctx).exists(url):
+            logMessage(ctx, INFO, "Stage 4", 'dbinit', 'getDataSourceUrl()')
             error = _createDataSource(ctx, dbctx, url, location, dbname)
+            logMessage(ctx, INFO, "Stage 5", 'dbinit', 'getDataSourceUrl()')
             if register and error is None:
+                logMessage(ctx, INFO, "Stage 6", 'dbinit', 'getDataSourceUrl()')
                 registerDataSource(dbctx, dbname, url)
+        logMessage(ctx, INFO, "Stage 7", 'dbinit', 'getDataSourceUrl()')
         return url, error
     except Exception as e:
         msg = "getDataSourceUrl: ERROR: %s - %s" % (e, traceback.print_exc())
