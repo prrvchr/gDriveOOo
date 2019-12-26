@@ -20,7 +20,6 @@ from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_TRASHED
 
 from oauth2 import KeyMap
 from oauth2 import parseDateTime
-from oauth2 import logMessage
 from oauth2 import getResourceLocation
 
 from .user import User
@@ -29,6 +28,7 @@ from .dbqueries import getSqlQuery
 from .dbtools import getDataBaseConnection
 from .dbtools import getKeyMapFromResult
 from .dbtools import getSequenceFromResult
+from .logger import logMessage
 
 import binascii
 import traceback

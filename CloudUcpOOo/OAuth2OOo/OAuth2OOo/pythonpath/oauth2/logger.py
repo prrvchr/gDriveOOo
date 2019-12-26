@@ -11,8 +11,7 @@ from com.sun.star.logging.LogLevel import FINEST
 from com.sun.star.logging.LogLevel import ALL
 from com.sun.star.logging.LogLevel import OFF
 
-from .unotools import getConfiguration
-from .unotools import getSimpleFile
+from oauth2 import getConfiguration
 
 try:
     from .configuration import g_logger

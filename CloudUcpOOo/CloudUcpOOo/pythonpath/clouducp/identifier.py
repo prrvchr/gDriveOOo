@@ -19,13 +19,13 @@ from com.sun.star.ucb.ConnectionMode import ONLINE
 
 from oauth2 import KeyMap
 from oauth2 import getUserNameFromHandler
-from oauth2 import logMessage
 from oauth2 import getProperty
 from oauth2 import getResourceLocation
 from oauth2 import parseDateTime
 
 from .contenttools import getUri
 from .content import Content
+from .logger import logMessage
 
 import traceback
 
