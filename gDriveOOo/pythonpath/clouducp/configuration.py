@@ -5,6 +5,7 @@
 g_scheme = 'vnd.google-apps'
 g_extension = 'gDriveOOo'
 g_plugin = 'com.gmail.prrvchr.extensions.%s' % g_extension
+g_logger = '%s.Logger' % g_plugin
 
 g_host = 'www.googleapis.com'
 g_version = 'v3'
