@@ -54,19 +54,27 @@ def _createDataSource(ctx, dbcontext, url, location, dbname):
     return error
 
 def _createDataBase(datasource):
+    logMessage(ctx, INFO, "Stage 1", 'dbinit', '_createDataBase()')
     connection, error = getDataSourceConnection(datasource)
+    logMessage(ctx, INFO, "Stage 2", 'dbinit', '_createDataBase()')
     if error is not None:
+        logMessage(ctx, INFO, "Stage 3", 'dbinit', '_createDataBase()')
         return error
+    logMessage(ctx, INFO, "Stage 4", 'dbinit', '_createDataBase()')
     error = checkDataBase(connection)
+    logMessage(ctx, INFO, "Stage 5", 'dbinit', '_createDataBase()')
     if error is None:
-        print("dbinit._createDataBase()")
+        logMessage(ctx, INFO, "Stage 6", 'dbinit', '_createDataBase()')
         statement = connection.createStatement()
+        logMessage(ctx, INFO, "Stage 7", 'dbinit', '_createDataBase()')
         _createStaticTable(statement, _getStaticTables())
         tables, statements = getTablesAndStatements(statement)
         _executeQueries(statement, tables)
+        logMessage(ctx, INFO, "Stage 8", 'dbinit', '_createDataBase()')
         executeQueries(statement, _getViews())
     connection.close()
     connection.dispose()
+    logMessage(ctx, INFO, "Stage 9", 'dbinit', '_createDataBase()')
     return error
 
 def _createStaticTable(statement, tables):
