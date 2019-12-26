@@ -47,8 +47,8 @@ def isLoggerEnabled(ctx, logger=g_logger):
 def getLoggerSetting(ctx, logger=g_logger):
     configuration = _getLoggerConfiguration(ctx, logger)
     enabled, index = _getLogIndex(configuration)
-    handler, viewer = _getLogHandler(configuration)
-    return enabled, index, handler, viewer
+    handler = _getLogHandler(configuration)
+    return enabled, index, handler
 
 def setLoggerSetting(ctx, enabled, index, handler, logger=g_logger):
     configuration = _getLoggerConfiguration(ctx, logger)
@@ -82,7 +82,7 @@ def _setLogIndex(configuration, enabled, index):
 
 def _getLogHandler(configuration):
     handler = 1 if configuration.DefaultHandler != 'com.sun.star.logging.FileHandler' else 2
-    return handler, handler != 1
+    return handler
 
 def _setLogHandler(configuration, console, index):
     handler = 'com.sun.star.logging.ConsoleHandler' if console else 'com.sun.star.logging.FileHandler'

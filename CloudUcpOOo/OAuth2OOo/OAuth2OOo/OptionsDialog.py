@@ -18,7 +18,7 @@ from unolib import getConfiguration
 from unolib import getInteractionHandler
 from unolib import InteractionRequest
 from unolib import getUserNameFromHandler
-
+from unolib import getDialog
 
 from oauth2 import getLoggerUrl
 from oauth2 import getLoggerSetting
@@ -102,9 +102,6 @@ class OptionsDialog(unohelper.Base,
         enabled = control.SelectedText != ''
         dialog.getControl('CommandButton2').Model.Enabled = enabled
 
-    def _toogleViewer(self, dialog, enabled):
-        dialog.getControl('CommandButton1').Model.Enabled = enabled
-
     def _doConnect(self, dialog):
         try:
             user = ''
@@ -150,11 +147,12 @@ class OptionsDialog(unohelper.Base,
         dialog.getControl('Label1').Model.Enabled = enabled
         dialog.getControl('ComboBox1').Model.Enabled = enabled
         dialog.getControl('OptionButton1').Model.Enabled = enabled
-        dialog.getControl('OptionButton2').Model.Enabled = enabled
-        #dialog.getControl('CommandButton1').Model.Enabled = enabled
+        control = dialog.getControl('OptionButton2')
+        control.Model.Enabled = enabled
+        dialog.getControl('CommandButton1').Model.Enabled = enabled and control.State
 
     def _doViewLog(self, window):
-        dialog = self._getDialog(window, 'LogDialog')
+        dialog = getDialog(self.ctx, window.Peer, self, 'OAuth2OOo', 'LogDialog')
         url = getLoggerUrl(self.ctx)
         dialog.Title = url
         self._setDialogText(dialog, url)
@@ -175,21 +173,12 @@ class OptionsDialog(unohelper.Base,
         length, sequence = getFileSequence(self.ctx, url)
         dialog.getControl('TextField1').Text = sequence.value.decode('utf-8')
 
-    def _getDialog(self, window, name):
-        url = 'vnd.sun.star.script:OAuth2OOo.%s?location=application' % name
-        service = 'com.sun.star.awt.DialogProvider'
-        provider = self.ctx.ServiceManager.createInstanceWithContext(service, self.ctx)
-        arguments = getNamedValueSet({'ParentWindow': window.Peer, 'EventHandler': self})
-        dialog = provider.createDialogWithArguments(url, arguments)
-        return dialog
-
     def _loadLoggerSetting(self, dialog):
-        enabled, index, handler, viewer = getLoggerSetting(self.ctx)
+        enabled, index, handler = getLoggerSetting(self.ctx)
         dialog.getControl('CheckBox1').State = int(enabled)
         self._setLoggerLevel(dialog.getControl('ComboBox1'), index)
         dialog.getControl('OptionButton%s' % handler).State = 1
         self._toggleLogger(dialog, enabled)
-        self._toogleViewer(dialog, enabled and viewer)
 
     def _setLoggerLevel(self, control, index):
         control.Text = self._getLoggerLevelText(control.Model.Name, index)

@@ -11,6 +11,7 @@ from com.sun.star.awt import XDialogEventHandler
 from unolib import getFileSequence
 from unolib import getStringResource
 from unolib import getResourceLocation
+from unolib import getDialog
 
 from clouducp import getLoggerUrl
 from clouducp import getLoggerSetting
@@ -56,7 +57,7 @@ class OptionsDialog(unohelper.Base,
                 self._loadSetting(dialog)
                 handled = True
             elif event == 'initialize':
-                self._initialize(dialog)
+                self._loadSetting(dialog)
                 handled = True
         elif method == 'Logger':
             enabled = event.Source.State == 1
@@ -67,15 +68,10 @@ class OptionsDialog(unohelper.Base,
             handled = True
         elif method == 'ClearLog':
             self._doClearLog(dialog)
-        elif method == 'LoadUcp':
-            self._doLoadUcp(dialog)
-            handled = True
-        elif method == 'ViewFile':
-            self._doViewFile(dialog)
             handled = True
         return handled
     def getSupportedMethodNames(self):
-        return ('external_event', 'Logger', 'ViewLog', 'ClearLog', 'LoadUcp', 'ViewFile')
+        return ('external_event', 'Logger', 'ViewLog', 'ClearLog')
 
     def _doViewDataBase(self, dialog):
         try:
@@ -89,49 +85,22 @@ class OptionsDialog(unohelper.Base,
         except Exception as e:
             print("PyOptionsDialog._doConnect().Error: %s - %s" % (e, traceback.print_exc()))
 
-    def _doViewFile(self, dialog):
-        print("PyOptionsDialog._doViewFile().Error: %s - %s" % (e, traceback.print_exc()))
-
-    def _initialize(self, dialog):
-        print("PyOptionsDialog._initialize()")
-        provider = getUcp(self.ctx, g_scheme)
-        loaded = provider.supportsService('com.sun.star.ucb.ContentProvider')
-        print("OptionsDialog._initialize() %s" % loaded)
-        self._toogleSync(dialog, loaded)
-        self._loadLoggerSetting(dialog)
-
     def _loadSetting(self, dialog):
         self._loadLoggerSetting(dialog)
 
     def _saveSetting(self, dialog):
         self._saveLoggerSetting(dialog)
 
-    def _toogleSync(self, dialog, enabled):
-        dialog.getControl('CommandButton2').Model.Enabled = not enabled
-
-    def _doLoadUcp(self, dialog):
-        try:
-            print("PyOptionsDialog._doLoadUcp() 1")
-            provider = getUcp(self.ctx, g_scheme)
-            if provider.supportsService('com.sun.star.ucb.ContentProviderProxy'):
-                #ucp = provider.getContentProvider()
-                #ucp = createService('com.gmail.prrvchr.extensions.gDriveOOo.ContentProvider', self.ctx)
-                provider = ucp.registerInstance(g_scheme, '', True)
-                self._toogleSync(dialog, True)
-            print("PyOptionsDialog._doLoadUcp() 2")
-            #identifier = getUcb(self.ctx).createContentIdentifier('%s:///' % g_scheme)
-        except Exception as e:
-            print("PyOptionsDialog._doLoadUcp().Error: %s - %s" % (e, traceback.print_exc()))
-
     def _toggleLogger(self, dialog, enabled):
         dialog.getControl('Label1').Model.Enabled = enabled
         dialog.getControl('ComboBox1').Model.Enabled = enabled
         dialog.getControl('OptionButton1').Model.Enabled = enabled
-        dialog.getControl('OptionButton2').Model.Enabled = enabled
-        #dialog.getControl('CommandButton1').Model.Enabled = enabled
+        control = dialog.getControl('OptionButton2')
+        control.Model.Enabled = enabled
+        dialog.getControl('CommandButton1').Model.Enabled = enabled and control.State
 
     def _doViewLog(self, window):
-        dialog = self._getDialog(window, 'LogDialog')
+        dialog = getDialog(self.ctx, window.Peer, self, g_extension, 'LogDialog')
         url = getLoggerUrl(self.ctx)
         dialog.Title = url
         self._setDialogText(dialog, url)
@@ -152,16 +121,8 @@ class OptionsDialog(unohelper.Base,
         length, sequence = getFileSequence(self.ctx, url)
         dialog.getControl('TextField1').Text = sequence.value.decode('utf-8')
 
-    def _getDialog(self, window, name):
-        url = 'vnd.sun.star.script:%s.%s?location=application' % (g_extension, name)
-        service = 'com.sun.star.awt.DialogProvider'
-        provider = self.ctx.ServiceManager.createInstanceWithContext(service, self.ctx)
-        arguments = getNamedValueSet({'ParentWindow': window.Peer, 'EventHandler': self})
-        dialog = provider.createDialogWithArguments(url, arguments)
-        return dialog
-
     def _loadLoggerSetting(self, dialog):
-        enabled, index, handler, viewer = getLoggerSetting(self.ctx)
+        enabled, index, handler = getLoggerSetting(self.ctx)
         dialog.getControl('CheckBox1').State = int(enabled)
         self._setLoggerLevel(dialog.getControl('ComboBox1'), index)
         dialog.getControl('OptionButton%s' % handler).State = 1
