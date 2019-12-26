@@ -57,7 +57,7 @@ def setLoggerSetting(ctx, enabled, index, handler, logger=g_logger):
     if configuration.hasPendingChanges():
         print("logger.setLoggerSetting() configuration.hasPendingChanges")
         configuration.commitChanges()
-        clearLogger(ctx, logger)
+        clearLogger(logger)
 
 def getLoggerUrl(ctx, logger=g_logger):
     url = '$(userurl)/$(loggername).log'

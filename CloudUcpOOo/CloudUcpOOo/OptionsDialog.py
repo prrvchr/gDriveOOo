@@ -61,15 +61,19 @@ class OptionsDialog(unohelper.Base,
             elif event == 'initialize':
                 self._loadSetting(dialog)
                 handled = True
-        elif method == 'Logger':
+        elif method == 'ToggleLogger':
             enabled = event.Source.State == 1
             self._toggleLogger(dialog, enabled)
             handled = True
+        elif method == 'ToggleViewer':
+            enabled = event.Source.State == 1
+            self._toggleViewer(dialog, enabled)
+            handled = True
         elif method == 'ViewLog':
-            self._doViewLog(dialog)
+            self._viewLog(dialog)
             handled = True
         elif method == 'ClearLog':
-            self._doClearLog(dialog)
+            self._clearLog(dialog)
             handled = True
         return handled
     def getSupportedMethodNames(self):
@@ -99,9 +103,12 @@ class OptionsDialog(unohelper.Base,
         dialog.getControl('OptionButton1').Model.Enabled = enabled
         control = dialog.getControl('OptionButton2')
         control.Model.Enabled = enabled
-        dialog.getControl('CommandButton1').Model.Enabled = enabled and control.State
+        self._toggleViewer(dialog, enabled and control.State)
 
-    def _doViewLog(self, window):
+    def _toggleViewer(self, dialog, enabled):
+        dialog.getControl('CommandButton1').Model.Enabled = enabled
+
+    def _viewLog(self, window):
         dialog = getDialog(self.ctx, window.Peer, self, g_extension, 'LogDialog')
         url = getLoggerUrl(self.ctx)
         dialog.Title = url
@@ -109,7 +116,7 @@ class OptionsDialog(unohelper.Base,
         dialog.execute()
         dialog.dispose()
 
-    def _doClearLog(self, dialog):
+    def _clearLog(self, dialog):
         try:
             clearLogger()
             logMessage(self.ctx, INFO, "ClearingLog ... Done", 'OptionsDialog', '_doClearLog()')

@@ -71,28 +71,33 @@ class OptionsDialog(unohelper.Base,
         elif method == 'Connect':
             self._doConnect(dialog)
             handled = True
-        elif method == 'Logger':
-            enabled = event.Source.State == 1
-            self._toggleLogger(dialog, enabled)
-            handled = True
         elif method == 'Remove':
             self._doRemove(dialog)
             handled = True
         elif method == 'Reset':
             self._doReset(dialog)
             handled = True
-        elif method == 'ViewLog':
-            self._doViewLog(dialog)
-            handled = True
-        elif method == 'ClearLog':
-            self._doClearLog(dialog)
-            handled = True
         elif method == 'AutoClose':
             handled = True
+        elif method == 'ToggleLogger':
+            enabled = event.Source.State == 1
+            self._toggleLogger(dialog, enabled)
+            handled = True
+        elif method == 'ToggleViewer':
+            enabled = event.Source.State == 1
+            self._toggleViewer(dialog, enabled)
+            handled = True
+        elif method == 'ViewLog':
+            self._viewLog(dialog)
+            handled = True
+        elif method == 'ClearLog':
+            self._clearLog(dialog)
+            handled = True
+
         return handled
     def getSupportedMethodNames(self):
-        return ('external_event', 'Logger', 'TextChanged', 'SelectionChanged', 'Connect',
-                'Remove', 'Reset', 'ViewLog', 'ClearLog', 'AutoClose')
+        return ('external_event', 'TextChanged', 'SelectionChanged', 'Connect', 'Remove', 'Reset',
+                'AutoClose', 'ToggleLogger', 'ToggleViewer', 'ViewLog', 'ClearLog')
 
     def _doTextChanged(self, dialog, control):
         enabled = control.Text != ''
@@ -149,9 +154,12 @@ class OptionsDialog(unohelper.Base,
         dialog.getControl('OptionButton1').Model.Enabled = enabled
         control = dialog.getControl('OptionButton2')
         control.Model.Enabled = enabled
-        dialog.getControl('CommandButton1').Model.Enabled = enabled and control.State
+        self._toggleViewer(dialog, enabled and control.State)
 
-    def _doViewLog(self, window):
+    def _toggleViewer(self, dialog, enabled):
+        dialog.getControl('CommandButton1').Model.Enabled = enabled
+
+    def _viewLog(self, window):
         dialog = getDialog(self.ctx, window.Peer, self, 'OAuth2OOo', 'LogDialog')
         url = getLoggerUrl(self.ctx)
         dialog.Title = url
@@ -159,7 +167,7 @@ class OptionsDialog(unohelper.Base,
         dialog.execute()
         dialog.dispose()
 
-    def _doClearLog(self, dialog):
+    def _clearLog(self, dialog):
         try:
             clearLogger()
             logMessage(self.ctx, INFO, "ClearingLog ... Done", 'OptionsDialog', '_doClearLog()')
