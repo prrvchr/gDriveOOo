@@ -83,9 +83,11 @@ class OptionsDialog(unohelper.Base,
             enabled = event.Source.State == 1
             self._toggleLogger(dialog, enabled)
             handled = True
-        elif method == 'ToggleViewer':
-            enabled = event.Source.State == 1
-            self._toggleViewer(dialog, enabled)
+        elif method == 'EnableViewer':
+            self._toggleViewer(dialog, True)
+            handled = True
+        elif method == 'DisableViewer':
+            self._toggleViewer(dialog, False)
             handled = True
         elif method == 'ViewLog':
             self._viewLog(dialog)
@@ -97,7 +99,7 @@ class OptionsDialog(unohelper.Base,
         return handled
     def getSupportedMethodNames(self):
         return ('external_event', 'TextChanged', 'SelectionChanged', 'Connect', 'Remove', 'Reset',
-                'AutoClose', 'ToggleLogger', 'ToggleViewer', 'ViewLog', 'ClearLog')
+                'AutoClose', 'ToggleLogger', 'EnableViewer', 'DisableViewer', 'ViewLog', 'ClearLog')
 
     def _doTextChanged(self, dialog, control):
         enabled = control.Text != ''
