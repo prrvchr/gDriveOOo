@@ -3,8 +3,8 @@
 
 # Provider configuration
 g_scheme = 'vnd.google-apps'
-
-g_plugin = 'com.gmail.prrvchr.extensions.gDriveOOo'
+g_extension = 'gDriveOOo'
+g_plugin = 'com.gmail.prrvchr.extensions.%s' % g_extension
 
 g_host = 'www.googleapis.com'
 g_version = 'v3'

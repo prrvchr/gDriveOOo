@@ -50,6 +50,7 @@ try:
     from .logger import logMessage
 
     from .configuration import g_scheme
+    from .configuration import g_extension
     from .configuration import g_plugin
     from .configuration import g_host
     from .configuration import g_url
