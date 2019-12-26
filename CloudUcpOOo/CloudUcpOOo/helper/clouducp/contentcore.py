@@ -13,8 +13,8 @@ from com.sun.star.ucb.ContentAction import EXCHANGED
 from com.sun.star.beans.PropertyAttribute import READONLY
 from com.sun.star.uno import Exception as UnoException
 
-from oauth2 import getNamedValue
-from oauth2 import getPropertyValueSet
+from unolib import getNamedValue
+from unolib import getPropertyValueSet
 
 from .contenttools import getCommand
 from .contenttools import getContentEvent

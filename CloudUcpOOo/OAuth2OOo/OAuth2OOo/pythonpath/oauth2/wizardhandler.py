@@ -8,16 +8,15 @@ from com.sun.star.awt import XContainerWindowEventHandler
 from com.sun.star.ui.dialogs.ExecutableDialogResults import OK
 from com.sun.star.ui.dialogs.ExecutableDialogResults import CANCEL
 
-from .unolib import PropertySet
+from unolib import PropertySet
+from unolib import getDialog
+from unolib import createMessageBox
+from unolib import createService
+from unolib import getCurrentLocale
+from unolib import getProperty
+from unolib import getStringResource
 
 from .dialoghandler import DialogHandler
-
-from .unotools import getDialog
-from .unotools import createMessageBox
-from .unotools import createService
-from .unotools import getCurrentLocale
-from .unotools import getProperty
-from .unotools import getStringResource
 
 from .oauth2tools import getActivePath
 from .oauth2tools import openUrl

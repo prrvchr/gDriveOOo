@@ -9,11 +9,11 @@ from com.sun.star.sdbc import SQLWarning
 from com.sun.star.logging.LogLevel import INFO
 from com.sun.star.logging.LogLevel import SEVERE
 
-from oauth2 import KeyMap
-from oauth2 import getPropertyValue
-from oauth2 import getPropertyValueSet
-from oauth2 import getResourceLocation
-from oauth2 import getSimpleFile
+from unolib import KeyMap
+from unolib import getPropertyValue
+from unolib import getPropertyValueSet
+from unolib import getResourceLocation
+from unolib import getSimpleFile
 
 from .dbqueries import getSqlQuery
 

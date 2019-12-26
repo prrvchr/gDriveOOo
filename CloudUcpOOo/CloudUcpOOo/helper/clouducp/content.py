@@ -33,10 +33,10 @@ from com.sun.star.logging.LogLevel import SEVERE
 
 from com.sun.star.ucb import XRestContent
 
-from oauth2 import getSimpleFile
-from oauth2 import getProperty
-from oauth2 import getPropertyValueSet
-from oauth2 import PropertySetInfo
+from unolib import getSimpleFile
+from unolib import getProperty
+from unolib import getPropertyValueSet
+from unolib import PropertySetInfo
 
 from .contentlib import CommandInfo
 from .contentlib import Row

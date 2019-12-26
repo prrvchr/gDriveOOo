@@ -10,19 +10,21 @@ from com.sun.star.awt import XDialogEventHandler
 from com.sun.star.logging.LogLevel import INFO
 from com.sun.star.logging.LogLevel import SEVERE
 
-from oauth2 import createService
-from oauth2 import getFileSequence
+from unolib import createService
+from unolib import getFileSequence
+from unolib import getStringResource
+from unolib import getNamedValueSet
+from unolib import getConfiguration
+from unolib import getInteractionHandler
+from unolib import InteractionRequest
+from unolib import getUserNameFromHandler
+
+
 from oauth2 import getLoggerUrl
 from oauth2 import getLoggerSetting
 from oauth2 import setLoggerSetting
 from oauth2 import clearLogger
 from oauth2 import logMessage
-from oauth2 import getStringResource
-from oauth2 import getNamedValueSet
-from oauth2 import getConfiguration
-from oauth2 import getInteractionHandler
-from oauth2 import InteractionRequest
-from oauth2 import getUserNameFromHandler
 from oauth2 import g_identifier
 from oauth2 import g_oauth2
 

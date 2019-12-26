@@ -2,8 +2,8 @@
 # -*- coding: utf_8 -*-
 
 
-from oauth2 import getResourceLocation
-from oauth2 import getSimpleFile
+from unolib import getResourceLocation
+from unolib import getSimpleFile
 
 from .dbconfig import g_path
 from .dbqueries import getSqlQuery

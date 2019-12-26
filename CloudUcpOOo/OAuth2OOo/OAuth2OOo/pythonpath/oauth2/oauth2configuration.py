@@ -7,9 +7,10 @@ import unohelper
 from com.sun.star.embed import XTransactedObject
 from com.sun.star.util import XUpdatable
 
-from .unolib import PropertySet
-from .unotools import getProperty
-from .unotools import getConfiguration
+from unolib import PropertySet
+from unolib import getProperty
+from unolib import getConfiguration
+
 from .configuration import g_identifier
 from .configuration import g_refresh_overlap
 

@@ -15,15 +15,14 @@ from com.sun.star.io import IOException
 from com.sun.star.logging.LogLevel import INFO
 from com.sun.star.logging.LogLevel import SEVERE
 
-from .configuration import g_identifier
-
-from .unotools import createService
-from .unotools import getStringResource
+from unolib import createService
+from unolib import getStringResource
 
 from .requests.compat import unquote_plus
 
-from .logger import getLogger
 from .logger import logMessage
+
+from .configuration import g_identifier
 
 import time
 from threading import Thread

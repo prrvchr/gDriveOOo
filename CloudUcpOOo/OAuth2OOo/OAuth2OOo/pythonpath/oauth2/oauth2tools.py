@@ -8,10 +8,10 @@ import uno
 from com.sun.star.logging.LogLevel import INFO
 from com.sun.star.logging.LogLevel import SEVERE
 
-from .unotools import getCurrentLocale
+from unolib import KeyMap
+from unolib import NoOAuth2
+from unolib import getCurrentLocale
 
-from .oauth2lib import NoOAuth2
-from .keymap import KeyMap
 from .requests.compat import urlencode
 
 import json

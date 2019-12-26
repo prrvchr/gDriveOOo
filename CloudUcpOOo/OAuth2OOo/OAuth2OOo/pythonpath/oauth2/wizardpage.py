@@ -8,12 +8,11 @@ from com.sun.star.ui.dialogs import XWizardPage
 from com.sun.star.logging.LogLevel import INFO
 from com.sun.star.logging.LogLevel import SEVERE
 
-from .unolib import PropertySet
-
-from .unotools import createService
-from .unotools import getContainerWindow
-from .unotools import getProperty
-from .unotools import getStringResource
+from unolib import PropertySet
+from unolib import createService
+from unolib import getContainerWindow
+from unolib import getProperty
+from unolib import getStringResource
 
 from .logger import logMessage
 
