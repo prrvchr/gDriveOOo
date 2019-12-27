@@ -49,11 +49,11 @@ def _createDataSource(ctx, dbcontext, url, location, dbname):
     datasource.URL = getDataSourceLocation(location, dbname, False)
     datasource.Info = getDataSourceInfo() + getDataSourceJavaInfo(location)
     datasource.DatabaseDocument.storeAsURL(url, ())
-    error = _createDataBase(datasource)
+    error = _createDataBase(ctx, datasource)
     datasource.DatabaseDocument.store()
     return error
 
-def _createDataBase(datasource):
+def _createDataBase(ctx, datasource):
     logMessage(ctx, INFO, "Stage 1", 'dbinit', '_createDataBase()')
     connection, error = getDataSourceConnection(datasource)
     logMessage(ctx, INFO, "Stage 2", 'dbinit', '_createDataBase()')
