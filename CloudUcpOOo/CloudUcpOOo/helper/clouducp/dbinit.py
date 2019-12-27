@@ -48,9 +48,11 @@ def _createDataSource(ctx, dbcontext, url, location, dbname):
     datasource = dbcontext.createInstance()
     datasource.URL = getDataSourceLocation(location, dbname, False)
     datasource.Info = getDataSourceInfo() + getDataSourceJavaInfo(location)
-    datasource.DatabaseDocument.storeAsURL(url, ())
+    #datasource.DatabaseDocument.storeAsURL(url, ())
     error = _createDataBase(ctx, datasource)
-    datasource.DatabaseDocument.store()
+    if error is None:
+        datasource.DatabaseDocument.storeAsURL(url, ())
+    #datasource.DatabaseDocument.store()
     return error
 
 def _createDataBase(ctx, datasource):
