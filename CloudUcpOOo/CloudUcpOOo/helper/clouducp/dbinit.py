@@ -54,9 +54,16 @@ def _createDataSource(ctx, dbcontext, url, location, dbname):
     return error
 
 def _createDataBase(ctx, datasource):
+    #connection, error = getDataSourceConnection(datasource)
     logMessage(ctx, INFO, "Stage 1", 'dbinit', '_createDataBase()')
-    connection, error = getDataSourceConnection(datasource)
-    logMessage(ctx, INFO, "Stage 2", 'dbinit', '_createDataBase()')
+    error = None
+    try:
+        logMessage(ctx, INFO, "Stage 2", 'dbinit', '_createDataBase()')
+        connection = datasource.getConnection('', '')
+    except Exception as e:
+        error = e
+        msg = "_createDataBase: ERROR: %s - %s" % (e, traceback.print_exc())
+        logMessage(ctx, SEVERE, msg, 'dbinit', '_createDataBase()')
     if error is not None:
         logMessage(ctx, INFO, "Stage 3", 'dbinit', '_createDataBase()')
         return error
