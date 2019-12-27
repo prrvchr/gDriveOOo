@@ -48,6 +48,12 @@ def getDataSourceCall(connection, name, format=None):
     call = connection.prepareCall(query)
     return call
 
+def createDataSource(dbcontext, location, dbname, shutdown=False):
+    datasource = dbcontext.createInstance()
+    datasource.URL = getDataSourceLocation(location, dbname, shutdown)
+    datasource.Info = getDataSourceInfo() + getDataSourceJavaInfo(location)
+    return datasource
+
 def checkDataBase(connection):
     error = None
     version = connection.getMetaData().getDriverVersion()
@@ -261,3 +267,16 @@ def getTablesAndStatements(statement):
             statements['update%s' % table] = update
     call.close()
     return tables, statements
+
+def createStaticTable(statement, tables, readonly=False):
+    for table in tables:
+        query = getSqlQuery('createTable' + table)
+        statement.executeQuery(query)
+    for table in tables:
+        statement.executeQuery(getSqlQuery('setTableSource', table))
+        if readonly:
+            statement.executeQuery(getSqlQuery('setTableReadOnly', table))
+
+def executeSqlQueries(statement, queries):
+    for query in queries:
+        statement.executeQuery(query)
