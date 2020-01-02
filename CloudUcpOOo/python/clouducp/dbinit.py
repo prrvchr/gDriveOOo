@@ -30,7 +30,7 @@ def getDataSourceUrl(ctx, dbname, plugin, register):
         if not getSimpleFile(ctx).exists(odb):
             dbcontext = ctx.ServiceManager.createInstance('com.sun.star.sdb.DatabaseContext')
             datasource = createDataSource(dbcontext, url, dbname)
-            error = _createDataBase(ctx, datasource)
+            error = _createDataBase(ctx, datasource, url, dbname)
             logMessage(ctx, INFO, "Stage 5", 'dbinit', 'getDataSourceUrl()')
             if error is None:
                 datasource.DatabaseDocument.storeAsURL(odb, ())
