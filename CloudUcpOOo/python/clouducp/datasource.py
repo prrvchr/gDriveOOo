@@ -26,6 +26,7 @@ from .user import User
 from .dbinit import getDataSourceUrl
 from .dbqueries import getSqlQuery
 from .dbtools import getDataBaseConnection
+from .dbtools import getDataSourceConnection
 from .dbtools import getKeyMapFromResult
 from .dbtools import getSequenceFromResult
 from .logger import logMessage
@@ -52,7 +53,7 @@ class DataSource(unohelper.Base,
         logMessage(self.ctx, INFO, "stage 3", 'DataSource', '__init__()')
         if error is None:
             logMessage(self.ctx, INFO, "stage 4", 'DataSource', '__init__()')
-            connection, error = getDataBaseConnection(self.ctx, url, scheme)
+            connection, error = getDataSourceConnection(self.ctx, url, scheme)
             if error is not None:
                 msg += " ... Error: %s - %s" % (error, traceback.print_exc())
                 msg += "Could not connect to DataSource at URL: %s" % url

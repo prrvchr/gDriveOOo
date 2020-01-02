@@ -28,21 +28,20 @@ from .dbconfig import g_version
 import traceback
 
 
-def getDataBaseConnection(ctx, url, dbname, name='', password=''):
-    connection, error = getDataSourceConnection(ctx, url, dbname, name, password)
-    print("dbtools.getDataSourceConnection()")
-    return connection, error
-
-def getDataSourceConnection1(datasource, name='', password=''):
+def getDataSourceConnection(ctx, url, dbname, name='', password=''):
+    dbcontext = ctx.ServiceManager.createInstance('com.sun.star.sdb.DatabaseContext')
+    odb = '%s/%s.odb' % (url, dbname)
+    print("dbtools.getDataSourceConnection() 1")
+    datasource = dbcontext.getByName(odb)
     connection, error = None, None
     try:
         connection = datasource.getConnection(name, password)
     except SQLException as e:
         error = e
-    print("dbtools.getDataSourceConnection()")
+    print("dbtools.getDataSourceConnection() 2")
     return connection, error
 
-def getDataSourceConnection(ctx, url, dbname, name='', password='', shutdown=False):
+def getDataBaseConnection(ctx, url, dbname, name='', password='', shutdown=False):
     info = getDataSourceJavaInfo(url)
     if name:
         info += getPropertyValueSet({'user', name})
@@ -55,7 +54,7 @@ def getDataSourceConnection(ctx, url, dbname, name='', password='', shutdown=Fal
         connection = manager.getConnectionWithInfo(path, info)
     except SQLException as e:
         error = e
-    print("dbtools.getDataSourceConnection()")
+    print("dbtools.getDataBaseConnection()")
     return connection, error
 
 def getDataSourceCall(connection, name, format=None):
