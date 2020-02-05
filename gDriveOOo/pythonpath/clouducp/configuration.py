@@ -7,6 +7,7 @@ g_extension = 'gDriveOOo'
 g_identifier = 'com.gmail.prrvchr.extensions.%s' % g_extension
 g_logger = '%s.Logger' % g_identifier
 
+g_provider = 'Google'
 g_host = 'www.googleapis.com'
 g_version = 'v3'
 g_url = 'https://%s/drive/%s' % (g_host, g_version)
