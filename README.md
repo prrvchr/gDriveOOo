@@ -63,5 +63,5 @@ After authorizing the OAuthOOo application to access your Drive, your Google Dri
 * OpenOffice 4.1.5 x86_64 - Ubuntu 17.10 - LxQt 0.11.1
 
 I encourage you in case of problem :-(  
-to create an [issue](https://github.com/prrvchr/gDriveOOo/issues/new)
+to create an [issue](https://github.com/prrvchr/gDriveOOo/issues/new)  
 I will try to solve it ;-)
