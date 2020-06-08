@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/prrvchr/CloudUcpOOo.git
 	branch = master
-	commit = bd377244e2514ef1df96ecbbd78c060123662da7
-	parent = 95540c2b2058bf62b714c09d1651d9ec142620ac
+	commit = 50179bdb26111bfcbb78f1ead2245d5504afce87
+	parent = c147f27f858784842d6bad134394d63973c77f72
 	method = merge
 	cmdver = 0.4.0
