@@ -24,6 +24,7 @@ try:
 except Exception as e:
     print("clouducp.__init__() ERROR: %s - %s" % (e, traceback.print_exc()))
 
+from threading import Event
 
 class ContentProvider(unohelper.Base,
                       XContentIdentifierFactory,
@@ -36,6 +37,7 @@ class ContentProvider(unohelper.Base,
         self.Scheme = ''
         self.Plugin = plugin
         self.DataSource = None
+        self.event = Event()
         self._defaultUser = ''
         msg = "ContentProvider: %s loading ... Done" % self.Plugin
         logMessage(self.ctx, INFO, msg, 'ContentProvider', '__init__()')
@@ -47,15 +49,20 @@ class ContentProvider(unohelper.Base,
     # XParameterizedContentProvider
     def registerInstance(self, scheme, plugin, replace):
         msg = "ContentProvider registerInstance: Scheme/Plugin: %s/%s ... Started" % (scheme, plugin)
+        print(msg)
         logMessage(self.ctx, INFO, msg, 'ContentProvider', 'registerInstance()')
         try:
-            datasource = DataSource(self.ctx, scheme, plugin)
+            print("ContentProvider.registerInstance() 1")
+            datasource = DataSource(self.ctx, self.event, scheme, plugin)
+            print("ContentProvider.registerInstance() 2")
         except Exception as e:
             msg = "ContentProvider registerInstance: Error: %s - %s" % (e, traceback.print_exc())
             logMessage(self.ctx, SEVERE, msg, 'ContentProvider', 'registerInstance()')
+            print("ContentProvider.registerInstance() 3")
             return None
         if not datasource.IsValid:
             logMessage(self.ctx, SEVERE, datasource.Error, 'ContentProvider', 'registerInstance()')
+            print("ContentProvider.registerInstance() 4")
             return None
         self.Scheme = scheme
         self.Plugin = plugin
@@ -63,7 +70,9 @@ class ContentProvider(unohelper.Base,
         logMessage(self.ctx, INFO, msg, 'ContentProvider', 'registerInstance()')
         datasource.Connection.Parent.DatabaseDocument.addCloseListener(self)
         self.DataSource = datasource
+        print("ContentProvider.registerInstance() 5")
         msg = "ContentProvider registerInstance: Scheme/Plugin: %s/%s ... Done" % (scheme, plugin)
+        print(msg)
         logMessage(self.ctx, INFO, msg, 'ContentProvider', 'registerInstance()')
         return self
     def deregisterInstance(self, scheme, argument):
@@ -72,12 +81,16 @@ class ContentProvider(unohelper.Base,
 
     # XCloseListener
     def queryClosing(self, source, ownership):
+        print("ContentProvider.queryClosing() 1")
+        self.DataSource.replicator.cancel()
+        print("ContentProvider.queryClosing() 2")
         self.deregisterInstance(self.Scheme, self.Plugin)
         query = 'SHUTDOWN COMPACT;'
         statement = self.DataSource.Connection.createStatement()
         statement.execute(query)
         msg = "ContentProvider queryClosing: Scheme: %s ... Done" % self.Scheme
         logMessage(self.ctx, INFO, msg, 'ContentProvider', 'queryClosing()')
+        print("ContentProvider.queryClosing() 3")
     def notifyClosing(self, source):
         pass
 

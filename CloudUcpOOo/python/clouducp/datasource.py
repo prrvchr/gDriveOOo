@@ -19,17 +19,26 @@ from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_REWRITED
 from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_TRASHED
 
 from unolib import KeyMap
+from unolib import g_oauth2
+from unolib import createService
 from unolib import parseDateTime
 from unolib import getResourceLocation
 
+from .configuration import g_admin
 from .user import User
+from .replicator import Replicator
+
 from .dbinit import getDataSourceUrl
 from .dbqueries import getSqlQuery
+
 from .dbtools import getDataBaseConnection
 from .dbtools import getDataSourceConnection
 from .dbtools import getKeyMapFromResult
 from .dbtools import getSequenceFromResult
+from .dbtools import getSqlException
+
 from .logger import logMessage
+from .logger import getMessage
 
 import binascii
 import traceback
@@ -37,39 +46,54 @@ import traceback
 
 class DataSource(unohelper.Base,
                  XRestDataSource):
-    def __init__(self, ctx, scheme, plugin):
-        level = SEVERE
-        msg = "DataSource for Scheme: %s loading ... " % scheme
-        self.ctx = ctx
-        logMessage(self.ctx, INFO, "stage 1", 'DataSource', '__init__()')
-        self._Statement = None
-        self._CahedUser = {}
-        self._Calls = {}
-        self._Error = ''
-        service = '%s.Provider' % plugin
-        self.Provider = self.ctx.ServiceManager.createInstanceWithContext(service, self.ctx)
-        logMessage(self.ctx, INFO, "stage 2", 'DataSource', '__init__()')
-        url, error = getDataSourceUrl(self.ctx, scheme, plugin, True)
-        logMessage(self.ctx, INFO, "stage 3", 'DataSource', '__init__()')
-        if error is None:
-            logMessage(self.ctx, INFO, "stage 4", 'DataSource', '__init__()')
-            connection, error = getDataSourceConnection(self.ctx, url, scheme)
-            if error is not None:
-                msg += " ... Error: %s - %s" % (error, traceback.print_exc())
-                msg += "Could not connect to DataSource at URL: %s" % url
-                self._Error = msg
+    def __init__(self, ctx, event, scheme, plugin):
+        try:
+            level = SEVERE
+            msg = "DataSource for Scheme: %s loading ... " % scheme
+            print("DataSource __init__() 1")
+            self.ctx = ctx
+            logMessage(self.ctx, INFO, "stage 1", 'DataSource', '__init__()')
+            self._Statement = None
+            self._CahedUser = {}
+            self._Calls = {}
+            self._Error = ''
+            self.event = event
+            service = '%s.Provider' % plugin
+            self.Provider = createService(self.ctx, service)
+            print("DataSource __init__() 2")
+            self.replicator = None
+            logMessage(self.ctx, INFO, "stage 2", 'DataSource', '__init__()')
+            url, error = getDataSourceUrl(self.ctx, scheme, plugin, True)
+            print("DataSource __init__() 3")
+            logMessage(self.ctx, INFO, "stage 3", 'DataSource', '__init__()')
+            if error is None:
+                logMessage(self.ctx, INFO, "stage 4", 'DataSource', '__init__()')
+                print("DataSource __init__() 4")
+                connection, error = getDataSourceConnection(self.ctx, url, scheme)
+                print("DataSource __init__() 5")
+                if error is not None:
+                    msg += " ... Error: %s - %s" % (error, traceback.print_exc())
+                    msg += "Could not connect to DataSource at URL: %s" % url
+                    self._Error = msg
+                else:
+                    print("DataSource __init__() 6")
+                    logMessage(self.ctx, INFO, "stage 5", 'DataSource', '__init__()')
+                    # Piggyback DataBase Connections (easy and clean ShutDown ;-) )
+                    self._Statement = connection.createStatement()
+                    folder, link = self._getContentType()
+                    self.Provider.initialize(scheme, plugin, folder, link)
+                    self.replicator = Replicator(self.ctx, self)
+                    level = INFO
+                    msg += "Done"
             else:
-                logMessage(self.ctx, INFO, "stage 5", 'DataSource', '__init__()')
-                # Piggyback DataBase Connections (easy and clean ShutDown ;-) )
-                self._Statement = connection.createStatement()
-                folder, link = self._getContentType()
-                self.Provider.initialize(scheme, plugin, folder, link)
-                level = INFO
-                msg += "Done"
-        else:
-            logMessage(self.ctx, INFO, "stage 6", 'DataSource', '__init__()')
-            self._Error = error.Message
-        logMessage(self.ctx, level, msg, 'DataSource', '__init__()')
+                print("DataSource __init__() 7")
+                logMessage(self.ctx, INFO, "stage 6", 'DataSource', '__init__()')
+                self._Error = error.Message
+            logMessage(self.ctx, level, msg, 'DataSource', '__init__()')
+            print("DataSource __init__() 8")
+        except Exception as e:
+            msg = "DataSource __init__(): Error: %s - %s" % (e, traceback.print_exc())
+            print(msg)
 
     @property
     def Connection(self):
@@ -81,19 +105,65 @@ class DataSource(unohelper.Base,
     def Error(self):
         return self.Provider.Error if self.Provider and self.Provider.Error else self._Error
 
-    def getUser(self, name):
+    def getUser(self, name, password=''):
         print("DataSource.getUser() 1")
         # User never change... we can cache it...
         if name in self._CahedUser:
             user = self._CahedUser[name]
         else:
-            user = User(self.ctx)
-            if user.initialize(self, name):
-                self.checkNewIdentifier(user.Request, user.MetaData)
-                self._CahedUser[name] = user
-                print("DataSource.getUser() 2")
-        print("DataSource.getUser() 3")
+            print("DataSource.getUser() 2")
+            user = User(self.ctx, self, name)
+            print("DataSource.getUser() 3")
+            if not self._initializeUser(user, name, password):
+                print("DataSource.getUser() 4")
+                return None
+            #self.checkNewIdentifier(user.Request, user.MetaData)
+            self._CahedUser[name] = user
+            print("DataSource.getUser() 5")
+            self.event.set()
+        print("DataSource.getUser() 6")
         return user
+
+    def getRequest(self, name):
+        request = createService(self.ctx, g_oauth2)
+        if request is not None:
+            request.initializeSession(self.Provider.Scheme, name)
+        return request
+
+    def _initializeUser(self, user, name, password):
+        if user.Request is not None:
+            if user.MetaData is not None:
+                return True
+            if self.Provider.isOnLine():
+                data = self.Provider.getUser(user.Request, name)
+                if data.IsPresent:
+                    root = self.Provider.getRoot(user.Request, data.Value)
+                    if root.IsPresent:
+                        user.MetaData = self.insertUser(data.Value, root.Value)
+                        credential = user.getCredential(password)
+                        if self._createUser(*credential):
+                            if user.setConnection(self.Provider.Scheme, password):
+                                return True
+                            else:
+                                warning = user.getWarnings()
+                        else:
+                            warning = self._getWarning(1005, 1106, name)
+                    else:
+                        warning = self._getWarning(1006, 1107, name)
+                else:
+                    warning = self._getWarning(1006, 1107, name)
+            else:
+                warning = self._getWarning(1004, 1108, name)
+        else:
+            warning = self._getWarning(1003, 1105, g_oauth2)
+        self.Warnings = warning
+        return False
+
+    def _getWarning(self, state, code, format):
+        state = getMessage(self.ctx, state)
+        msg = getMessage(self.ctx, code, format)
+        warning = getSqlException(state, code, msg, self)
+        return warning
 
     def selectUser(self, name):
         user = None
@@ -127,6 +197,12 @@ class DataSource(unohelper.Base,
         data.insertValue('RootId', rootid)
         data.insertValue('RootName', self.Provider.getRootTitle(root))
         return data
+
+    def _createUser(self, name, password):
+        format = {'User': name, 'Password': password, 'Admin': g_admin}
+        sql = getSqlQuery('createUser', format)
+        status = self._Statement.executeUpdate(sql)
+        return status == 0
 
     def selectItem(self, user, identifier):
         item = None
@@ -281,6 +357,33 @@ class DataSource(unohelper.Base,
         select.setShort(5, self.Provider.SessionMode)
         return select
 
+    def getSyncToken(self, request, user):
+        token = self._getToken(user)
+        if not token:
+            data = self.Provider.getToken(request, user)
+            if data.IsPresent:
+                token = self.Provider.getUserToken(data.Value)
+                self._updateToken(user, token)
+        return token
+
+    def _getToken(self, user):
+        token = ''
+        select = self._getDataSourceCall('getToken')
+        select.setString(1, user.getValue('UserId'))
+        result = select.executeQuery()
+        if result.next():
+            token = result.getString(1)
+        select.close()
+        return token
+
+    def _updateToken(self, user, token):
+        update = self._getDataSourceCall('updateToken')
+        update.setString(1, token)
+        update.setString(2, user.getValue('UserId'))
+        result = update.executeUpdate()
+        update.close()
+        return result == 1
+
     def checkNewIdentifier(self, request, user):
         if self.Provider.isOffLine() or not self.Provider.GenerateIds:
             return
@@ -288,6 +391,7 @@ class DataSource(unohelper.Base,
         if self._countIdentifier(user) < min(self.Provider.IdentifierRange):
             result = self._insertIdentifier(request, user)
         return
+
     def getNewIdentifier(self, user):
         if self.Provider.GenerateIds:
             id = ''
@@ -389,10 +493,16 @@ class DataSource(unohelper.Base,
 
     def insertNewDocument(self, userid, itemid, parentid, content):
         modes = self.Provider.FileSyncModes
-        return self._insertNewContent(userid, itemid, parentid, content, modes)
+        inserted = self._insertNewContent(userid, itemid, parentid, content, modes)
+        if inserted:
+            self.event.set()
+        return inserted
     def insertNewFolder(self, userid, itemid, parentid, content):
         modes = self.Provider.FolderSyncModes
-        return self._insertNewContent(userid, itemid, parentid, content, modes)
+        inserted = self._insertNewContent(userid, itemid, parentid, content, modes)
+        if inserted:
+            self.event.set()
+        return inserted
 
     def _insertNewContent(self, userid, itemid, parentid, content, modes):
         c1 = self._getDataSourceCall('insertItem')

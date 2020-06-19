@@ -6,11 +6,14 @@ import unohelper
 
 from com.sun.star.ucb.ConnectionMode import OFFLINE
 from com.sun.star.ucb.ConnectionMode import ONLINE
+
 from com.sun.star.auth.RestRequestTokenType import TOKEN_NONE
 from com.sun.star.auth.RestRequestTokenType import TOKEN_URL
 from com.sun.star.auth.RestRequestTokenType import TOKEN_REDIRECT
 from com.sun.star.auth.RestRequestTokenType import TOKEN_QUERY
 from com.sun.star.auth.RestRequestTokenType import TOKEN_JSON
+from com.sun.star.auth.RestRequestTokenType import TOKEN_SYNC
+
 from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_RETRIEVED
 from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_CREATED
 from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_FOLDER
@@ -18,6 +21,8 @@ from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_FILE
 from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_RENAMED
 from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_REWRITED
 from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_TRASHED
+
+from unolib import getConnectionMode
 
 from gdrive import ProviderBase
 from gdrive import g_identifier
@@ -84,6 +89,11 @@ class Provider(ProviderBase):
     def IdentifierRange(self):
         return g_IdentifierRange
 
+    def isOnLine(self):
+        return getConnectionMode(self.ctx, self.Host) != OFFLINE
+    def isOffLine(self):
+        return getConnectionMode(self.ctx, self.Host) != ONLINE
+
     def getRequestParameter(self, method, data=None):
         parameter = uno.createUnoStruct('com.sun.star.auth.RestRequestParameter')
         parameter.Name = method
@@ -105,6 +115,22 @@ class Provider(ProviderBase):
             parameter.Method = 'GET'
             parameter.Url = '%s/files/root' % self.BaseUrl
             parameter.Query = '{"fields": "%s"}' % g_itemfields
+        elif method == 'getToken':
+            parameter.Method = 'GET'
+            parameter.Url = '%s/changes/startPageToken' % self.BaseUrl
+        elif method == 'getChanges':
+            parameter.Method = 'GET'
+            parameter.Url = '%s/changes' % self.BaseUrl
+            parameter.Query = '{"pageToken": %s}' % data
+            token = uno.createUnoStruct('com.sun.star.auth.RestRequestToken')
+            token.Type = TOKEN_QUERY | TOKEN_SYNC
+            token.Field = 'nextPageToken'
+            token.Value = 'pageToken'
+            token.SyncField = 'newStartPageToken'
+            enumerator = uno.createUnoStruct('com.sun.star.auth.RestRequestEnumerator')
+            enumerator.Field = 'changes'
+            enumerator.Token = token
+            parameter.Enumerator = enumerator
         elif method == 'getItem':
             parameter.Method = 'GET'
             parameter.Url = '%s/files/%s' % (self.BaseUrl, data.getValue('Id'))
@@ -176,6 +202,8 @@ class Provider(ProviderBase):
         return user.getValue('user').getValue('emailAddress')
     def getUserDisplayName(self, user):
         return user.getValue('user').getValue('displayName')
+    def getUserToken(self, keymap):
+        return keymap.getValue('startPageToken')
 
     def getItemParent(self, item, rootid):
         return item.getDefaultValue('parents', (rootid, ))

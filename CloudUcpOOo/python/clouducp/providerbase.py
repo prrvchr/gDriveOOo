@@ -95,6 +95,8 @@ class ProviderBase(ProviderObject,
         raise NotImplementedError
     def getUserDisplayName(self, item):
         raise NotImplementedError
+    def getUserToken(self, item):
+        raise NotImplementedError
 
     def getItemId(self, item):
         raise NotImplementedError
@@ -203,6 +205,9 @@ class ProviderBase(ProviderObject,
         return request.execute(parameter)
     def getRoot(self, request, user):
         parameter = self.getRequestParameter('getRoot', user)
+        return request.execute(parameter)
+    def getToken(self, request, user):
+        parameter = self.getRequestParameter('getToken', user)
         return request.execute(parameter)
     def getItem(self, request, identifier):
         parameter = self.getRequestParameter('getItem', identifier)

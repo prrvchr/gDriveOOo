@@ -53,17 +53,20 @@ def setPropertiesValues(ctx, source, context, properties):
             level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
             error = UnknownPropertyException(msg, source)
             result = uno.Any('com.sun.star.beans.UnknownPropertyException', error)
+            #result = error
         logMessage(ctx, level, msg, source.__class__.__name__, 'setPropertiesValues()')
         results.append(result)
     return tuple(results)
 
 def _setPropertyValue(source, context, property):
     name, value = property.Name, property.Value
+    print("Content._setPropertyValue() %s - %s" % (name, value))
     if source._propertySetInfo.get(name).Attributes & READONLY:
         msg = "ERROR: Requested property: %s is READONLY" % name
         level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
         error = IllegalAccessException(msg, source)
         result = uno.Any('com.sun.star.lang.IllegalAccessException', error)
+        #result = error
     else:
         result, level, msg = _setProperty(source, context, name, value)
     return result, level, msg
@@ -88,6 +91,7 @@ def _setTitle(source, context, title):
         data = getPropertyValueSet({'Uri': identifier.getContentIdentifier(),'ResourceName': title})
         error = getInteractiveAugmentedIOException(msg, context, 'ERROR', 'INVALID_CHARACTER', data)
         result = uno.Any('com.sun.star.ucb.InteractiveAugmentedIOException', error)
+        #result = error
     elif (identifier.IsNew and count == 1) or (not identifier.IsNew and count != 0):
         msg = "Can't set property: %s value: %s - Name Clash Error" % ('Title', title)
         level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
@@ -97,6 +101,7 @@ def _setTitle(source, context, title):
         #data = getPropertyValueSet({'Uri': identifier.getContentIdentifier(),'ResourceName': title})
         error = getInteractiveAugmentedIOException(msg, context, 'ERROR', 'ALREADY_EXISTING', data)
         result = uno.Any('com.sun.star.ucb.InteractiveAugmentedIOException', error)
+        #result = error
     else:
         if identifier.IsNew:
            source.MetaData.insertValue('Title', identifier.setTitle(title, source.IsFolder))

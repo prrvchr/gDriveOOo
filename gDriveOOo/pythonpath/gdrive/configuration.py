@@ -33,3 +33,6 @@ g_doc_map = {'application/vnd.google-apps.document':     'application/vnd.oasis.
              'application/vnd.google-apps.spreadsheet':  'application/x-vnd.oasis.opendocument.spreadsheet',
              'application/vnd.google-apps.presentation': 'application/vnd.oasis.opendocument.presentation',
              'application/vnd.google-apps.drawing':      'application/pdf'}
+
+g_sync = 600
+g_admin = False

@@ -204,6 +204,13 @@ def getSqlQuery(name, format=None):
         p = (','.join(c), ','.join(s), f)
         query = 'CREATE VIEW "Sync" (%s) AS SELECT %s FROM %s' % p
 
+# Create User
+    elif name == 'createUser':
+        q = 'CREATE USER "%(User)s" PASSWORD \'%(Password)s\''
+        if format.get('Admin', False):
+            q += ' ADMIN'
+        query = q % format
+
 # Select Queries
     elif name == 'getTableName':
         query = 'SELECT "Name" FROM "Tables" ORDER BY "Table"'
@@ -263,8 +270,9 @@ def getSqlQuery(name, format=None):
         c1 = '"U"."UserId"'
         c2 = '"U"."UserName"'
         c3 = '"U"."RootId"'
-        c4 = '"I"."Title" "RootName"'
-        c = (c1, c2, c3, c4)
+        c4 = '"U"."Token"'
+        c5 = '"I"."Title" "RootName"'
+        c = (c1, c2, c3, c4, c5)
         f = '"Users" "U" JOIN "Items" "I" ON "U"."RootId" = "I"."ItemId"'
         p = (','.join(c), f)
         query = 'SELECT %s FROM %s WHERE "U"."UserName" = ?' % p
@@ -334,6 +342,8 @@ def getSqlQuery(name, format=None):
         query = 'SELECT %s FROM "Items" WHERE "ItemId" = ?' % c
     elif name == 'getItemToSync':
         query = 'SELECT * FROM "Sync" WHERE "UserId" = ? ORDER BY "SyncId"'
+    elif name == 'getToken':
+        query = 'SELECT "Token" FROM "Users" WHERE "UserId" = ?'
 
 # Insert Queries
     elif name == 'insertUser':
@@ -354,6 +364,8 @@ def getSqlQuery(name, format=None):
         query = 'INSERT INTO "Identifiers"("UserId","Id")VALUES(?,?)'
 
 # Update Queries
+    elif name == 'updateToken':
+        query = 'UPDATE "Users" SET "Token"=? WHERE "UserId"=?'
     elif name == 'updateItem':
         c = '"Title"=?,"DateCreated"=?,"DateModified"=?,"MediaType"=?,"Size"=?,"Trashed"=?'
         query = 'UPDATE "Items" SET %s WHERE "ItemId"=?' % c

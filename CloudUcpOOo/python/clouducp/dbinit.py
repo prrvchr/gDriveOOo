@@ -6,6 +6,7 @@ from com.sun.star.logging.LogLevel import INFO
 from com.sun.star.logging.LogLevel import SEVERE
 
 from unolib import KeyMap
+from unolib import createService
 from unolib import getResourceLocation
 from unolib import getSimpleFile
 
@@ -32,14 +33,16 @@ def getDataSourceUrl(ctx, dbname, plugin, register):
     error = None
     url = getResourceLocation(ctx, plugin, g_path)
     odb = '%s/%s.odb' % (url, dbname)
+    dbcontext = createService(ctx, 'com.sun.star.sdb.DatabaseContext')
     if not getSimpleFile(ctx).exists(odb):
-        dbcontext = ctx.ServiceManager.createInstance('com.sun.star.sdb.DatabaseContext')
+        print("dbinit.getDataSourceUrl() 1")
         datasource = createDataSource(dbcontext, url, dbname)
         error = _createDataBase(ctx, datasource, url, dbname)
+        print("dbinit.getDataSourceUrl() 2 %s" % error)
         if error is None:
             datasource.DatabaseDocument.storeAsURL(odb, ())
-            if register:
-                registerDataSource(dbcontext, dbname, odb)
+    if error is None and register:
+        registerDataSource(dbcontext, dbname, odb)
     return url, error
 
 def _createDataBase(ctx, datasource, url, dbname):

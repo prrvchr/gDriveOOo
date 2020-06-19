@@ -114,9 +114,11 @@ class Content(unohelper.Base,
 
     # XContentCreator
     def queryCreatableContentsInfo(self):
+        print("Content.queryCreatableContentsInfo()")
         return self.MetaData.getValue('CreatableContentsInfo')
     def createNewContent(self, info):
         identifier = self.Identifier.createNewIdentifier(info.Type)
+        print("Content.createNewContent()")
         return identifier.getContent()
 
     # XContent
@@ -136,6 +138,8 @@ class Content(unohelper.Base,
         return 1
     def execute(self, command, id, environment):
         try:
+            url = self.getIdentifier().getContentIdentifier()
+            print("Content.execute() %s - %s - %s" % (command.Name, url, self.getIdentifier().Id))
             msg = "command.Name: %s" % command.Name
             logMessage(self.ctx, INFO, msg, "Content", "execute()")
             if command.Name == 'getCommandInfo':
@@ -172,9 +176,11 @@ class Content(unohelper.Base,
                     elif not isreadonly and s.queryInterface(stream):
                         s.setStream(sf.openFileReadWrite(url))
             elif command.Name == 'insert':
+                print("Content.execute() insert 1 - %s" % self.IsFolder)
                 if self.IsFolder:
-                    mediatype = self.Identifier.User.DataSource.Provider.Folder
+                    mediatype = self.Identifier.DataSource.Provider.Folder
                     self.MetaData.insertValue('MediaType', mediatype)
+                    print("Content.execute() insert 2")
                     if self.Identifier.insertNewFolder(self.MetaData):
                         pass
                     #identifier = self.getIdentifier()
@@ -190,7 +196,7 @@ class Content(unohelper.Base,
                     stream = command.Argument.Data
                     replace = command.Argument.ReplaceExisting
                     sf = getSimpleFile(self.ctx)
-                    url = self.Identifier.User.DataSource.Provider.SourceURL
+                    url = self.Identifier.DataSource.Provider.SourceURL
                     target = '%s/%s' % (url, self.Identifier.Id)
                     if sf.exists(target) and not replace:
                         pass
@@ -238,7 +244,7 @@ class Content(unohelper.Base,
                 if not sf.exists(source):
                     raise CommandAbortedException("Error while saving file: %s" % source, self)
                 inputstream = sf.openFileRead(source)
-                target = '%s/%s' % (self.Identifier.User.DataSource.Provider.SourceURL, id)
+                target = '%s/%s' % (self.Identifier.DataSource.Provider.SourceURL, id)
                 sf.writeFile(target, inputstream)
                 inputstream.closeInput()
                 # We need to commit change: Size is the property chainning all DataSource change

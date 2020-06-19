@@ -45,6 +45,7 @@ interface XRestUser: com::sun::star::uno::XInterface
     [attribute, readonly] string Id;
     [attribute, readonly] string Name;
     [attribute, readonly] string RootId;
+    [attribute, readonly] string Token;
     [attribute, readonly] boolean IsValid;
     [attribute, readonly] string Error;
 

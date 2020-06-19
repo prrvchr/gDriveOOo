@@ -62,6 +62,9 @@ class Identifier(unohelper.Base,
     @property
     def IsNew(self):
         return self.MetaData.getValue('IsNew')
+    #@property
+    #def IsNew(self):
+    #    return self._ContentType != ''
     @property
     def BaseURI(self):
         return self.MetaData.getValue('BaseURI')
@@ -80,23 +83,26 @@ class Identifier(unohelper.Base,
             if not uri:
                 self._Error = "Can't parse Uri from Url: %s" % url
                 return False
-            print("Identifier.initialize() 2 %s - %s" % (uri.hasAuthority(),uri.getPathSegmentCount()))
-            if not uri.hasAuthority() or not uri.getPathSegmentCount():
-                self._Error = "Can't retrieve a UserName from Url: %s" % url
+            isnew = self._ContentType != ''
+            print("Identifier.initialize() 2 %s - %s" % (isnew, url))
+            if not uri.hasAuthority() or uri.getPathSegmentCount() == 0:
+                self._Error = "Unable to retrieve Uri from an incomplete Url: %s" % url
+                print("Identifier.initialize() 3 ERROR %s - %s" % (uri.hasAuthority(), uri.getPathSegmentCount()))
                 return False
             name = self._getUserName(uri, name)
             if not name:
                 self._Error = "Can't retrieve a UserName from Handler for Url: %s" % url
+                print("Identifier.initialize() 4 ERROR")
                 return False
             self.User = self.DataSource.getUser(name)
             if self.Error:
+                print("Identifier.initialize() 5 ERROR")
                 return False
             paths = []
             position = -1
             basename = ''
             isroot = False
             isfolder = False
-            isnew = self._ContentType != ''
             for i in range(uri.getPathSegmentCount() -1, -1, -1):
                 path = uri.getPathSegment(i).strip()
                 if path not in ('','.'):
@@ -120,6 +126,7 @@ class Identifier(unohelper.Base,
                 id = self._searchId(paths[::-1], basename)
             if not id:
                 self._Error = "ERROR: Can't retrieve Uri: %s" % uri.getUriReference()
+                print("Identifier.initialize() 6 ERROR")
                 return False
             paths.insert(0, uri.getAuthority())
             baseuri = '%s://%s' % (uri.getScheme(), '/'.join(paths))
@@ -131,14 +138,16 @@ class Identifier(unohelper.Base,
             self.MetaData.insertValue('IsRoot', isroot)
             self.MetaData.insertValue('IsNew', isnew)
             self.MetaData.insertValue('BaseName', basename)
-            print("Identifier.initialize() 3 ")
+            print("Identifier.initialize() 7")
             return True
         except Exception as e:
             print("Identifier.initialize() ERROR: %s - %s" % (e, traceback.print_exc()))
 
     def getContent(self):
         try:
+            print("Identifier.getContent() 1")
             if self.IsNew:
+                print("Identifier.getContent() 2")
                 timestamp = parseDateTime()
                 isfolder = self.DataSource.Provider.isFolder(self._ContentType)
                 isdocument = self.DataSource.Provider.isDocument(self._ContentType)
@@ -168,6 +177,7 @@ class Identifier(unohelper.Base,
             data.insertValue('BaseURI', self.MetaData.getValue('BaseURI'))
             content = Content(self.ctx, self, data)
             #content.initialize()
+            print("Identifier.getContent() 3")
             return content
         except Exception as e:
             print("Identifier.getContent() ERROR: %s - %s" % (e, traceback.print_exc()))
@@ -181,10 +191,12 @@ class Identifier(unohelper.Base,
 
     def insertNewDocument(self, content):
         parentid = self.getParent().Id
-        return self.User.insertNewDocument(self.DataSource, self.Id, parentid, content)
+        return self.DataSource.insertNewDocument(self.User.Id, self.Id, parentid, content)
     def insertNewFolder(self, content):
+        print("Identifier.insertNewFolder() 1")
         parentid = self.getParent().Id
-        return self.User.insertNewFolder(self.DataSource, self.Id, parentid, content)
+        print("Identifier.insertNewFolder() 2 %s" % parentid)
+        return self.DataSource.insertNewFolder(self.User.Id, self.Id, parentid, content)
 
     def isChildId(self, title):
         return self.DataSource.isChildId(self.User.Id, self.Id, title)
@@ -212,7 +224,11 @@ class Identifier(unohelper.Base,
 
     # XRestIdentifier
     def createNewIdentifier(self, contenttype):
-        return Identifier(self.ctx, self.DataSource, self.BaseURL, contenttype)
+        url = '%s/' % self.BaseURL
+        print("Identifier.createNewIdentifier() %s - %s" % (contenttype, url))
+        identifier = Identifier(self.ctx, self.DataSource, url, contenttype)
+        identifier.initialize(self.User.Name)
+        return identifier
 
     def getDocumentContent(self, sf, content, size):
         size = 0

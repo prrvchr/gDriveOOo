@@ -10,9 +10,11 @@ from com.sun.star.ucb.ConnectionMode import OFFLINE
 from com.sun.star.ucb.ConnectionMode import ONLINE
 from com.sun.star.ucb import XRestUser
 
-from unolib import KeyMap
-from unolib import g_oauth2
 
+from .dbinit import getDataSourceUrl
+from .dbtools import getDataSourceConnection
+
+from .configuration import g_identifier
 from .identifier import Identifier
 from .logger import logMessage
 
@@ -21,12 +23,15 @@ import traceback
 
 class User(unohelper.Base,
            XRestUser):
-    def __init__(self, ctx):
+    def __init__(self, ctx, datasource, name):
         msg = "User loading"
         self.ctx = ctx
-        self.MetaData = KeyMap()
+        self._Statement = None
+        self._Warnings = None
+        self.Request = datasource.getRequest(name)
+        self.MetaData = datasource.selectUser(name)
         self._Error = ''
-        self.Request = self._getRequest()
+
         msg += " ... Done"
         logMessage(self.ctx, INFO, msg, "User", "__init__()")
 
@@ -43,18 +48,34 @@ class User(unohelper.Base,
     def RootName(self):
         return self.MetaData.getDefaultValue('RootName', None)
     @property
+    def Token(self):
+        return self.MetaData.getDefaultValue('Token', '')
+    @property
     def IsValid(self):
-        return all((self.Id, self.Name, self.RootId, self.RootName, not self.Error))
+        return all((self.Id, self.Name, self.RootId, self.RootName, not self.Error, self.Warnings is None))
     @property
     def Error(self):
         return self.Request.Error if self.Request and self.Request.Error else self._Error
+    @property
+    def Connection(self):
+        if self._statement is not None:
+            return self._statement.getConnection()
+        return None
 
-    def _getRequest(self):
-        request = self.ctx.ServiceManager.createInstanceWithContext(g_oauth2, self.ctx)
-        if not request:
-            error = "ERROR: service: %s is not available... Check your installed extensions"
-            self._Error = error % g_oauth2
-        return request
+    @property
+    def Warnings(self):
+        return self._Warnings
+    @Warnings.setter
+    def Warnings(self, warning):
+        if warning is None:
+            return
+        warning.NextException = self._Warnings
+        self._Warnings = warning
+
+    def getWarnings(self):
+        return self._Warnings
+    def clearWarnings(self):
+        self._Warnings = None
 
     def _setSessionMode(self, provider):
         provider.SessionMode = self.Request.getSessionMode(provider.Host)
@@ -95,6 +116,7 @@ class User(unohelper.Base,
         return self.synchronize(datasource, inserted)
     def insertNewFolder(self, datasource, itemid, parentid, content):
         inserted = datasource.insertNewFolder(self.Id, itemid, parentid, content)
+        print("User.insertNewFolder() %s" % inserted)
         return self.synchronize(datasource, inserted)
 
     # XRestUser
@@ -115,6 +137,20 @@ class User(unohelper.Base,
         if sf.exists(url):
             return sf.getSize(url), sf.openFileRead(url)
         return 0, None
+
+    def setConnection(self, dbname, password):
+        url, warning = getDataSourceUrl(self.ctx, dbname, g_identifier, True)
+        if warning is None:
+            credential = self.getCredential(password)
+            connection, warning = getDataSourceConnection(self.ctx, url, dbname, *credential)
+            if warning is None:
+                self._statement = connection.createStatement()
+                return True
+        self.Warnings = warning
+        return False
+
+    def getCredential(self, password):
+        return self.Name, password
 
     def synchronize(self, datasource, result):
         provider = datasource.Provider
