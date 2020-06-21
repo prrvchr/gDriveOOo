@@ -29,6 +29,7 @@ from unolib import getDialog
 from oauth2 import Request
 from oauth2 import Enumeration
 from oauth2 import Enumerator
+from oauth2 import Iterator
 from oauth2 import InputStream
 from oauth2 import Uploader
 from oauth2 import DialogHandler
@@ -227,6 +228,9 @@ class OAuth2Service(unohelper.Base,
 
     def getRequest(self, parameter, parser):
         return Request(self.Session, parameter, self.Timeout, parser)
+
+    def getIterator(self, parameter, parser):
+        return Iterator(self.Session, self.Timeout, parameter, parser)
 
     def getEnumeration(self, parameter, parser):
         return Enumeration(self.Session, parameter, self.Timeout, parser)
