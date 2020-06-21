@@ -94,10 +94,12 @@ class Identifier(unohelper.Base,
                 self._Error = "Can't retrieve a UserName from Handler for Url: %s" % url
                 print("Identifier.initialize() 4 ERROR")
                 return False
-            self.User = self.DataSource.getUser(name)
-            if self.Error:
+            user = self.DataSource.getUser(name)
+            if not user:
+                self._Error = "Can't retrieve a UserName: %s" % name
                 print("Identifier.initialize() 5 ERROR")
                 return False
+            self.User = user
             paths = []
             position = -1
             basename = ''

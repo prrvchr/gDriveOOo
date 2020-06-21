@@ -63,27 +63,49 @@ class Replicator(unohelper.Base,
             for user in self.datasource._CahedUser.values():
                 if self.canceled:
                     break
-                results = self._pullData(user, results)
-                results = self._pushData(user, results)
+                msg = getMessage(self.ctx, 110, user.Name)
+                logMessage(self.ctx, INFO, msg, 'Replicator', '_syncData()')
+                token = user.Token
+                if not token:
+                    token = self._initData(user, results)
+                results += self._pullData(user, token)
+                results += self._pushData(user)
+                msg = getMessage(self.ctx, 116, user.Name)
+                logMessage(self.ctx, INFO, msg, 'Replicator', '_syncData()')
             result = all(results)
             print("Replicator.synchronize() 2 %s" % result)
         except Exception as e:
             print("Replicator.synchronize() ERROR: %s - %s" % (e, traceback.print_exc()))
 
-    def _pullData(self, user, results):
-        pages = 0
+    def _initData(self, user, results):
+        rejected, rows, token, page, row = self.datasource.updateDrive(user.Request, user.MetaData)
+        print("Replicator._initData() %s - %s - %s - %s - %s" % (len(rows), all(rows), token, page, row))
+        msg = getMessage(self.ctx, 120, (page, row))
+        logMessage(self.ctx, INFO, msg, 'Replicator', '_syncData()')
+        if len(rejected):
+            msg = getMessage(self.ctx, 121, len(rejected))
+            logMessage(self.ctx, SEVERE, msg, 'Replicator', '_syncData()')
+        for item in rejected:
+            msg = getMessage(self.ctx, 122, item)
+            logMessage(self.ctx, SEVERE, msg, 'Replicator', '_syncData()')
+        return self.datasource.getSyncToken(user.Request, user.MetaData)
+
+    def _pullData(self, user, token):
+        results = []
         self.datasource.checkNewIdentifier(user.Request, user.MetaData)
         token = self.datasource.getSyncToken(user.Request, user.MetaData)
+        print("Replicator._pullData() 1 %s" % token)
         parameter = self.datasource.Provider.getRequestParameter('getChanges', token)
-        enumerator = user.Request.getEnumeration(parameter, token)
+        enumerator = user.Request.getIterator(parameter, None)
+        print("Replicator._pullData() 2 %s - %s" % (enumerator.PageCount, enumerator.SyncToken))
         while enumerator.hasMoreElements():
             response = enumerator.nextElement()
-            if response.IsPresent:
-                pages += 1
-                print("Replicator._pullData() %s" % response.Value)
+            print("Replicator._pullData() 3 %s" % response)
+        print("Replicator._pullData() 4 %s - %s" % (enumerator.PageCount, enumerator.SyncToken))
         return results
 
-    def _pushData(self, user, results):
+    def _pushData(self, user):
+        results = []
         uploader = user.Request.getUploader(self.datasource)
         for item in self.datasource.getItemToSync(user.MetaData):
             if self.canceled:
@@ -95,6 +117,6 @@ class Replicator(unohelper.Base,
                 results.append(self.datasource.updateSync(item, response.Value))
             else:
                 msg = "ERROR: ItemId: %s" % item.getDefaultValue('Id')
-                logMessage(self.ctx, SEVERE, msg, "DataSource", "synchronize()")
+                logMessage(self.ctx, SEVERE, msg, "Replicator", "_pushData()")
                 results.append(False)
         return results

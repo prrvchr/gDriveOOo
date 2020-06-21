@@ -22,6 +22,7 @@ from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_TRASHED
 from unolib import KeyMap
 from unolib import parseDateTime
 from unolib import getResourceLocation
+from unolib import getConnectionMode
 
 import datetime
 import traceback
@@ -84,6 +85,9 @@ class ProviderBase(ProviderObject,
     @property
     def FolderSyncModes(self):
         return (SYNC_FOLDER, )
+    @property
+    def SessionMode(self):
+        return getConnectionMode(self.ctx, self.Host)
 
     # Must be implemented method
     def getRequestParameter(self, method, data):
@@ -144,7 +148,6 @@ class ProviderBase(ProviderObject,
         #return True
 
     def initializeUser(self, user, name):
-        self.SessionMode = user.Request.getSessionMode(self.Host)
         if self.isOnLine():
             return user.Request.initializeUser(name)
         return True

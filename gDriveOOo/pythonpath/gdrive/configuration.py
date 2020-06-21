@@ -23,7 +23,7 @@ g_childfields = 'kind,nextPageToken,files(%s)' % g_itemfields
 # Minimun chunk: 262144 (256Ko) no more uploads if less... (must be a multiple of 64Ko (and 32Ko))
 g_chunk = 262144
 g_buffer = 32768  # InputStream (Downloader) maximum 'Buffers' size
-g_pages = 100
+g_pages = 200
 g_IdentifierRange = (10, 50)
 
 g_office = 'application/vnd.oasis.opendocument'

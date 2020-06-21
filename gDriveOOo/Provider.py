@@ -55,7 +55,6 @@ class Provider(ProviderBase):
         self.Link = ''
         self.Folder = ''
         self.SourceURL = ''
-        self.SessionMode = OFFLINE
         self._Error = ''
 
     @property
@@ -135,12 +134,33 @@ class Provider(ProviderBase):
             parameter.Method = 'GET'
             parameter.Url = '%s/files/%s' % (self.BaseUrl, data.getValue('Id'))
             parameter.Query = '{"fields": "%s"}' % g_itemfields
+        elif method == 'getDriveContent':
+            parameter.Method = 'GET'
+            parameter.Url = '%s/files' % self.BaseUrl
+            query = ['"orderBy": "folder,createdTime"']
+            query += ['"fields": "%s"' % g_childfields]
+            query += ['"pageSize": "%s"' % g_pages]
+            #query += ['"corpora": "drive"']
+            #query += ['"spaces": "drive"']
+            #owner = "'%s' in owners" % data.getValue('UserName')
+            #query += ['"q": "%s"' % owner]
+            parameter.Query = '{%s}' % ','.join(query)
+            token = uno.createUnoStruct('com.sun.star.auth.RestRequestToken')
+            token.Type = TOKEN_QUERY
+            token.Field = 'nextPageToken'
+            token.Value = 'pageToken'
+            enumerator = uno.createUnoStruct('com.sun.star.auth.RestRequestEnumerator')
+            enumerator.Field = 'files'
+            enumerator.Token = token
+            parameter.Enumerator = enumerator
         elif method == 'getFolderContent':
             parameter.Method = 'GET'
             parameter.Url = '%s/files' % self.BaseUrl
-            query = "'%s' in parents" % data.getValue('Id')
-            parameter.Query = '{"fields": "%s", "pageSize": "%s", "q": "%s"}' % \
-                (g_childfields, g_pages, query)
+            query = ['"fields": "%s"' % g_childfields]
+            query += ['"pageSize": "%s"' % g_pages]
+            parents = "'%s' in parents" % data.getValue('Id')
+            query += ['"q": "%s"' % parents]
+            parameter.Query = '{%s}' % ','.join(query)
             token = uno.createUnoStruct('com.sun.star.auth.RestRequestToken')
             token.Type = TOKEN_QUERY
             token.Field = 'nextPageToken'

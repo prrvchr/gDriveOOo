@@ -53,6 +53,7 @@ class DataSource(unohelper.Base,
             print("DataSource __init__() 1")
             self.ctx = ctx
             logMessage(self.ctx, INFO, "stage 1", 'DataSource', '__init__()')
+            self.Warnings = None
             self._Statement = None
             self._CahedUser = {}
             self._Calls = {}
@@ -115,7 +116,7 @@ class DataSource(unohelper.Base,
             user = User(self.ctx, self, name)
             print("DataSource.getUser() 3")
             if not self._initializeUser(user, name, password):
-                print("DataSource.getUser() 4")
+                print("DataSource.getUser() 4 %s" % self.Warnings.Message)
                 return None
             #self.checkNewIdentifier(user.Request, user.MetaData)
             self._CahedUser[name] = user
@@ -180,6 +181,7 @@ class DataSource(unohelper.Base,
         username = self.Provider.getUserName(user)
         displayname = self.Provider.getUserDisplayName(user)
         rootid = self.Provider.getRootId(root)
+        rootname = self.Provider.getRootTitle(root)
         timestamp = parseDateTime()
         insert = self._getDataSourceCall('insertUser')
         insert.setString(1, username)
@@ -195,7 +197,8 @@ class DataSource(unohelper.Base,
         data.insertValue('UserId', userid)
         data.insertValue('UserName', username)
         data.insertValue('RootId', rootid)
-        data.insertValue('RootName', self.Provider.getRootTitle(root))
+        data.insertValue('RootName', rootname)
+        data.insertValue('Token', '')
         return data
 
     def _createUser(self, name, password):
@@ -302,10 +305,119 @@ class DataSource(unohelper.Base,
                 c4.executeUpdate()
         return row
 
+    def updateDrive(self, request, user):
+        rootid = user.getValue('RootId')
+        items, parents, token, page, row = self._getDriveContent(request, user, rootid)
+        filtered = self._filterParents(parents, rootid)
+        rejected = self._getRejectedItems(parents, items)
+        rows = self._updateDrive(user, items, filtered, rootid)
+        return rejected, rows, token, page, row
+
+    def _getDriveContent(self, request, user, rootid):
+        items = {}
+        parents = []
+        parameter = self.Provider.getRequestParameter('getDriveContent', user)
+        enumerator = request.getIterator(parameter, None)
+        while enumerator.hasMoreElements():
+            item = enumerator.nextElement()
+            id = self.Provider.getItemId(item)
+            items[id] = item
+            parents.append((id, self.Provider.getItemParent(item, rootid)))
+        token = enumerator.SyncToken
+        page = enumerator.PageCount
+        row = enumerator.RowCount
+        return items, parents, token, page, row
+
+    def _filterParents(self, items, rootid):
+        i = -1
+        filtered = []
+        roots = [rootid]
+        while len(items) and len(items) != i:
+            i = len(items)
+            print("datasource._filterParents() %s" % len(items))
+            for item in items:
+                id, parents = item
+                if all(parent in roots for parent in parents):
+                    roots.append(id)
+                    filtered.append(item)
+                    items.remove(item)
+            items.reverse()
+        return filtered
+
+    def _getRejectedItems(self, items, data):
+        rejected = []
+        for id, parents in items:
+            title = self.Provider.getItemTitle(data[id])
+            rejected.append((title, id, ','.join(parents)))
+        return rejected
+
+    def _updateDrive(self, user, items, parents, rootid):
+        rows = []
+        c1 = self._getDataSourceCall('updateItem')
+        c2 = self._getDataSourceCall('updateCapability')
+        c3 = self._getDataSourceCall('insertItem')
+        c4 = self._getDataSourceCall('insertCapability')
+        c5 = self._getDataSourceCall('deleteParent')
+        c6 = self._getDataSourceCall('insertParent')
+        userid = user.getValue('UserId')
+        timestamp = parseDateTime()
+        for id, parent in parents:
+            item = items[id]
+            rows.append(self._updateItem(c1, c2, c3, c4, userid, rootid, item, id, timestamp))
+        self._mergeParents(c5, c6, userid, parents)
+        c1.close()
+        c2.close()
+        c3.close()
+        c4.close()
+        c5.close()
+        c6.close()
+        return rows
+
+    def _updateItem(self, c1, c2, c3, c4, userid, rootid, item, id, timestamp):
+        row = self._updateItemCall(c1, c2, userid, rootid, item, id, timestamp)
+        if not row:
+            row = self._updateItemCall(c3, c4, userid, rootid, item, id, timestamp)
+        return row
+
+    def _updateItemCall(self, c1, c2, userid, rootid, item, id, timestamp):
+        row = 0
+        c1.setString(1, self.Provider.getItemTitle(item))
+        c1.setTimestamp(2, self.Provider.getItemCreated(item, timestamp))
+        c1.setTimestamp(3, self.Provider.getItemModified(item, timestamp))
+        c1.setString(4, self.Provider.getItemMediaType(item))
+        c1.setLong(5, self.Provider.getItemSize(item))
+        c1.setBoolean(6, self.Provider.getItemTrashed(item))
+        c1.setString(7, id)
+        row = c1.executeUpdate()
+        if row:
+            c2.setBoolean(1, self.Provider.getItemCanAddChild(item))
+            c2.setBoolean(2, self.Provider.getItemCanRename(item))
+            c2.setBoolean(3, self.Provider.getItemIsReadOnly(item))
+            c2.setBoolean(4, self.Provider.getItemIsVersionable(item))
+            c2.setString(5, userid)
+            c2.setString(6, id)
+            c2.executeUpdate()
+        return row
+
+    def _mergeParents(self, c1, c2, userid, items):
+        for id, parents in items:
+            c1.setString(1, userid)
+            c1.setString(2, id)
+            c1.executeUpdate()
+            c2.setString(1, userid)
+            c2.setString(2, id)
+            for parent in parents:
+                c2.setString(3, parent)
+                c2.executeUpdate()
+
     def getDocumentContent(self, request, content):
         return self.Provider.getDocumentContent(request, content)
     def getFolderContent(self, request, user, identifier, content, updated):
-        if ONLINE == content.getValue('Loaded') == self.Provider.SessionMode:
+        if user.getValue('Token'):
+            print("DataSource.getFolderContent() no request")
+            updated = True
+        elif ONLINE == content.getValue('Loaded') == self.Provider.SessionMode:
+            print("DataSource.getFolderContent() whith request")
             updated = self._updateFolderContent(request, user, content)
         select = self._getChildren(user, identifier)
         return select, updated
@@ -380,9 +492,10 @@ class DataSource(unohelper.Base,
         update = self._getDataSourceCall('updateToken')
         update.setString(1, token)
         update.setString(2, user.getValue('UserId'))
-        result = update.executeUpdate()
+        updated = update.executeUpdate() == 1
         update.close()
-        return result == 1
+        if updated:
+            user.setValue('Token', token)
 
     def checkNewIdentifier(self, request, user):
         if self.Provider.isOffLine() or not self.Provider.GenerateIds:
