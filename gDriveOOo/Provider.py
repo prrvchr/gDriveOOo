@@ -120,7 +120,7 @@ class Provider(ProviderBase):
         elif method == 'getChanges':
             parameter.Method = 'GET'
             parameter.Url = '%s/changes' % self.BaseUrl
-            parameter.Query = '{"pageToken": %s}' % data
+            parameter.Query = '{"pageToken": %s}' % data.getValue('Token')
             token = uno.createUnoStruct('com.sun.star.auth.RestRequestToken')
             token.Type = TOKEN_QUERY | TOKEN_SYNC
             token.Field = 'nextPageToken'
@@ -140,10 +140,6 @@ class Provider(ProviderBase):
             query = ['"orderBy": "folder,createdTime"']
             query += ['"fields": "%s"' % g_childfields]
             query += ['"pageSize": "%s"' % g_pages]
-            #query += ['"corpora": "drive"']
-            #query += ['"spaces": "drive"']
-            #owner = "'%s' in owners" % data.getValue('UserName')
-            #query += ['"q": "%s"' % owner]
             parameter.Query = '{%s}' % ','.join(query)
             token = uno.createUnoStruct('com.sun.star.auth.RestRequestToken')
             token.Type = TOKEN_QUERY

@@ -65,11 +65,11 @@ class Replicator(unohelper.Base,
                     break
                 msg = getMessage(self.ctx, 110, user.Name)
                 logMessage(self.ctx, INFO, msg, 'Replicator', '_syncData()')
-                token = user.Token
-                if not token:
-                    token = self._initData(user, results)
-                results += self._pullData(user, token)
-                results += self._pushData(user)
+                if not user.Token:
+                    self._initUser(user)
+                if user.Token:
+                    results += self._pullData(user)
+                    results += self._pushData(user)
                 msg = getMessage(self.ctx, 116, user.Name)
                 logMessage(self.ctx, INFO, msg, 'Replicator', '_syncData()')
             result = all(results)
@@ -77,10 +77,10 @@ class Replicator(unohelper.Base,
         except Exception as e:
             print("Replicator.synchronize() ERROR: %s - %s" % (e, traceback.print_exc()))
 
-    def _initData(self, user, results):
-        rejected, rows, token, page, row = self.datasource.updateDrive(user.Request, user.MetaData)
-        print("Replicator._initData() %s - %s - %s - %s - %s" % (len(rows), all(rows), token, page, row))
-        msg = getMessage(self.ctx, 120, (page, row))
+    def _initUser(self, user):
+        rejected, rows, page, row = self.datasource.updateDrive(user.Request, user.MetaData)
+        print("Replicator._initData() %s - %s - %s - %s" % (len(rows), all(rows), page, row))
+        msg = getMessage(self.ctx, 120, (page, row, len(rows)))
         logMessage(self.ctx, INFO, msg, 'Replicator', '_syncData()')
         if len(rejected):
             msg = getMessage(self.ctx, 121, len(rejected))
@@ -88,14 +88,14 @@ class Replicator(unohelper.Base,
         for item in rejected:
             msg = getMessage(self.ctx, 122, item)
             logMessage(self.ctx, SEVERE, msg, 'Replicator', '_syncData()')
-        return self.datasource.getSyncToken(user.Request, user.MetaData)
+        if all(rows):
+            self.datasource.setSyncToken(user.Request, user.MetaData)
 
-    def _pullData(self, user, token):
+    def _pullData(self, user):
         results = []
         self.datasource.checkNewIdentifier(user.Request, user.MetaData)
-        token = self.datasource.getSyncToken(user.Request, user.MetaData)
-        print("Replicator._pullData() 1 %s" % token)
-        parameter = self.datasource.Provider.getRequestParameter('getChanges', token)
+        print("Replicator._pullData() 1")
+        parameter = self.datasource.Provider.getRequestParameter('getChanges', user.MetaData)
         enumerator = user.Request.getIterator(parameter, None)
         print("Replicator._pullData() 2 %s - %s" % (enumerator.PageCount, enumerator.SyncToken))
         while enumerator.hasMoreElements():

@@ -307,11 +307,11 @@ class DataSource(unohelper.Base,
 
     def updateDrive(self, request, user):
         rootid = user.getValue('RootId')
-        items, parents, token, page, row = self._getDriveContent(request, user, rootid)
+        items, parents, page, row = self._getDriveContent(request, user, rootid)
         filtered = self._filterParents(parents, rootid)
         rejected = self._getRejectedItems(parents, items)
         rows = self._updateDrive(user, items, filtered, rootid)
-        return rejected, rows, token, page, row
+        return rejected, rows, page, row
 
     def _getDriveContent(self, request, user, rootid):
         items = {}
@@ -323,10 +323,9 @@ class DataSource(unohelper.Base,
             id = self.Provider.getItemId(item)
             items[id] = item
             parents.append((id, self.Provider.getItemParent(item, rootid)))
-        token = enumerator.SyncToken
         page = enumerator.PageCount
         row = enumerator.RowCount
-        return items, parents, token, page, row
+        return items, parents, page, row
 
     def _filterParents(self, items, rootid):
         i = -1
@@ -469,24 +468,11 @@ class DataSource(unohelper.Base,
         select.setShort(5, self.Provider.SessionMode)
         return select
 
-    def getSyncToken(self, request, user):
-        token = self._getToken(user)
-        if not token:
-            data = self.Provider.getToken(request, user)
-            if data.IsPresent:
-                token = self.Provider.getUserToken(data.Value)
-                self._updateToken(user, token)
-        return token
-
-    def _getToken(self, user):
-        token = ''
-        select = self._getDataSourceCall('getToken')
-        select.setString(1, user.getValue('UserId'))
-        result = select.executeQuery()
-        if result.next():
-            token = result.getString(1)
-        select.close()
-        return token
+    def setSyncToken(self, request, user):
+        data = self.Provider.getToken(request, user)
+        if data.IsPresent:
+            token = self.Provider.getUserToken(data.Value)
+            self._updateToken(user, token)
 
     def _updateToken(self, user, token):
         update = self._getDataSourceCall('updateToken')
