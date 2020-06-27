@@ -10,7 +10,7 @@ from com.sun.star.ucb.ConnectionMode import OFFLINE
 from com.sun.star.ucb.ConnectionMode import ONLINE
 from com.sun.star.ucb import XRestUser
 
-
+from .database import DataBase
 from .dbinit import getDataSourceUrl
 from .dbtools import getDataSourceConnection
 
@@ -29,9 +29,10 @@ class User(unohelper.Base,
         self._Statement = None
         self._Warnings = None
         self.Request = datasource.getRequest(name)
-        self.MetaData = datasource.selectUser(name)
+        self.Provider = datasource.Provider
+        self.MetaData = datasource.DataBase.selectUser(name)
+        self.DataBase = None
         self._Error = ''
-
         msg += " ... Done"
         logMessage(self.ctx, INFO, msg, "User", "__init__()")
 
@@ -58,9 +59,7 @@ class User(unohelper.Base,
         return self.Request.Error if self.Request and self.Request.Error else self._Error
     @property
     def Connection(self):
-        if self._statement is not None:
-            return self._statement.getConnection()
-        return None
+        return self.DataBase.Connection
 
     @property
     def Warnings(self):
@@ -103,12 +102,11 @@ class User(unohelper.Base,
         return init
 
     def getItem(self, datasource, identifier):
-        item = datasource.selectItem(self.MetaData, identifier)
-        provider = datasource.Provider
-        if not item and provider.isOnLine():
-            data = provider.getItem(self.Request, identifier)
+        item = self.DataBase.selectItem(self.MetaData, identifier)
+        if not item and self.Provider.isOnLine():
+            data = self.Provider.getItem(self.Request, identifier)
             if data.IsPresent:
-                item = datasource.insertItem(self.MetaData, data.Value)
+                item = self.DataBase.insertItem(self.MetaData, data.Value)
         return item
 
     def insertNewDocument(self, datasource, itemid, parentid, content):
@@ -138,19 +136,15 @@ class User(unohelper.Base,
             return sf.getSize(url), sf.openFileRead(url)
         return 0, None
 
-    def setConnection(self, dbname, password):
-        url, warning = getDataSourceUrl(self.ctx, dbname, g_identifier, True)
-        if warning is None:
-            credential = self.getCredential(password)
-            connection, warning = getDataSourceConnection(self.ctx, url, dbname, *credential)
-            if warning is None:
-                self._statement = connection.createStatement()
-                return True
-        self.Warnings = warning
-        return False
+    def setDataBase(self, datasource, password):
+        name, password = self.getCredential(password)
+        self.DataBase = DataBase(self.ctx, datasource, name, password)
 
     def getCredential(self, password):
         return self.Name, password
+
+    def getViewName(self):
+        return self.Name.split('@').pop(0)
 
     def synchronize(self, datasource, result):
         provider = datasource.Provider

@@ -5,6 +5,8 @@ import uno
 import unohelper
 
 from com.sun.star.lang import XEventListener
+from com.sun.star.util import XCloseListener
+
 from com.sun.star.logging.LogLevel import INFO
 from com.sun.star.logging.LogLevel import SEVERE
 from com.sun.star.sdb.CommandType import QUERY
@@ -23,14 +25,18 @@ from unolib import g_oauth2
 from unolib import createService
 from unolib import parseDateTime
 from unolib import getResourceLocation
+from unolib import getSimpleFile
 
 from .configuration import g_admin
 from .user import User
 from .replicator import Replicator
+from .database import DataBase
 
-from .dbinit import getDataSourceUrl
 from .dbqueries import getSqlQuery
 
+from .dbconfig import g_path
+
+from .dbtools import getDataSource
 from .dbtools import getDataBaseConnection
 from .dbtools import getDataSourceConnection
 from .dbtools import getKeyMapFromResult
@@ -43,9 +49,12 @@ from .logger import getMessage
 import binascii
 import traceback
 
+from threading import Thread
+from threading import Event
 
 class DataSource(unohelper.Base,
-                 XRestDataSource):
+                 XRestDataSource,
+                 XCloseListener):
     def __init__(self, ctx, event, scheme, plugin):
         try:
             level = SEVERE
@@ -53,52 +62,41 @@ class DataSource(unohelper.Base,
             print("DataSource __init__() 1")
             self.ctx = ctx
             logMessage(self.ctx, INFO, "stage 1", 'DataSource', '__init__()')
+            self.scheme = scheme
+            self.plugin = plugin
             self.Warnings = None
             self._Statement = None
             self._CahedUser = {}
             self._Calls = {}
             self._Error = ''
-            self.event = event
-            service = '%s.Provider' % plugin
-            self.Provider = createService(self.ctx, service)
+            self.sync = event
+            self.ready = Event()
+            self.Provider = createService(self.ctx, '%s.Provider' % plugin)
+            self.dninit = None
             print("DataSource __init__() 2")
-            self.replicator = None
+            self.datasource, url, created = getDataSource(self.ctx, scheme, plugin, True)
+            print("DataSource __init__() 3 %s" % created)
+            self.DataBase = DataBase(self.ctx, self.datasource)
+            if created:
+                self.DataBase.initDataBase(url)
+            self.DataBase.addCloseListener(self)
+            folder, link = self.DataBase.getContentType()
+            self.Provider.initialize(scheme, plugin, folder, link)
+            self.replicator = Replicator(ctx, self.datasource, url, created, self.Provider, self._CahedUser, self.ready, self.sync)
+            print("DataSource __init__() 4")
+            self.initialized = False
             logMessage(self.ctx, INFO, "stage 2", 'DataSource', '__init__()')
-            url, error = getDataSourceUrl(self.ctx, scheme, plugin, True)
-            print("DataSource __init__() 3")
-            logMessage(self.ctx, INFO, "stage 3", 'DataSource', '__init__()')
-            if error is None:
-                logMessage(self.ctx, INFO, "stage 4", 'DataSource', '__init__()')
-                print("DataSource __init__() 4")
-                connection, error = getDataSourceConnection(self.ctx, url, scheme)
-                print("DataSource __init__() 5")
-                if error is not None:
-                    msg += " ... Error: %s - %s" % (error, traceback.print_exc())
-                    msg += "Could not connect to DataSource at URL: %s" % url
-                    self._Error = msg
-                else:
-                    print("DataSource __init__() 6")
-                    logMessage(self.ctx, INFO, "stage 5", 'DataSource', '__init__()')
-                    # Piggyback DataBase Connections (easy and clean ShutDown ;-) )
-                    self._Statement = connection.createStatement()
-                    folder, link = self._getContentType()
-                    self.Provider.initialize(scheme, plugin, folder, link)
-                    self.replicator = Replicator(self.ctx, self)
-                    level = INFO
-                    msg += "Done"
-            else:
-                print("DataSource __init__() 7")
-                logMessage(self.ctx, INFO, "stage 6", 'DataSource', '__init__()')
-                self._Error = error.Message
+            print("DataSource __init__() 5")
+            level = INFO
+            msg += "Done"
             logMessage(self.ctx, level, msg, 'DataSource', '__init__()')
-            print("DataSource __init__() 8")
         except Exception as e:
             msg = "DataSource __init__(): Error: %s - %s" % (e, traceback.print_exc())
             print(msg)
 
     @property
     def Connection(self):
-        return self._Statement.getConnection()
+        return self.DataBase.Connection
     @property
     def IsValid(self):
         return not self.Error
@@ -106,23 +104,38 @@ class DataSource(unohelper.Base,
     def Error(self):
         return self.Provider.Error if self.Provider and self.Provider.Error else self._Error
 
+    # XCloseListener
+    def queryClosing(self, source, ownership):
+        print("DataSource.queryClosing() 1")
+        self.replicator.cancel()
+        print("DataSource.queryClosing() 2")
+        self.replicator.join()
+        #self.deregisterInstance(self.Scheme, self.Plugin)
+        self.DataBase.shutdownDataBase()
+        msg = "DataSource queryClosing: Scheme: %s ... Done" % self.scheme
+        logMessage(self.ctx, INFO, msg, 'DataSource', 'queryClosing()')
+        print("DataSource.queryClosing() 3")
+    def notifyClosing(self, source):
+        pass
+
     def getUser(self, name, password=''):
         print("DataSource.getUser() 1")
         # User never change... we can cache it...
         if name in self._CahedUser:
+            print("DataSource.getUser() 3")
             user = self._CahedUser[name]
         else:
-            print("DataSource.getUser() 2")
+            print("DataSource.getUser() 4")
             user = User(self.ctx, self, name)
-            print("DataSource.getUser() 3")
+            print("DataSource.getUser() 5")
             if not self._initializeUser(user, name, password):
-                print("DataSource.getUser() 4 %s" % self.Warnings.Message)
+                print("DataSource.getUser() 6 ERROR")
                 return None
             #self.checkNewIdentifier(user.Request, user.MetaData)
             self._CahedUser[name] = user
-            print("DataSource.getUser() 5")
-            self.event.set()
-        print("DataSource.getUser() 6")
+            print("DataSource.getUser() 7")
+            self.sync.set()
+        print("DataSource.getUser() 8")
         return user
 
     def getRequest(self, name):
@@ -134,19 +147,17 @@ class DataSource(unohelper.Base,
     def _initializeUser(self, user, name, password):
         if user.Request is not None:
             if user.MetaData is not None:
+                user.setDataBase(self.datasource, password)
                 return True
             if self.Provider.isOnLine():
                 data = self.Provider.getUser(user.Request, name)
                 if data.IsPresent:
                     root = self.Provider.getRoot(user.Request, data.Value)
                     if root.IsPresent:
-                        user.MetaData = self.insertUser(data.Value, root.Value)
-                        credential = user.getCredential(password)
-                        if self._createUser(*credential):
-                            if user.setConnection(self.Provider.Scheme, password):
-                                return True
-                            else:
-                                warning = user.getWarnings()
+                        user.MetaData = self.DataBase.insertUser(user.Provider, data.Value, root.Value)
+                        if self.DataBase.createUser(user, password):
+                            user.setDataBase(self.datasource, password)
+                            return True
                         else:
                             warning = self._getWarning(1005, 1106, name)
                     else:
@@ -176,37 +187,6 @@ class DataSource(unohelper.Base,
         select.close()
         return user
 
-    def insertUser(self, user, root):
-        userid = self.Provider.getUserId(user)
-        username = self.Provider.getUserName(user)
-        displayname = self.Provider.getUserDisplayName(user)
-        rootid = self.Provider.getRootId(root)
-        rootname = self.Provider.getRootTitle(root)
-        timestamp = parseDateTime()
-        insert = self._getDataSourceCall('insertUser')
-        insert.setString(1, username)
-        insert.setString(2, displayname)
-        insert.setString(3, rootid)
-        insert.setTimestamp(4, timestamp)
-        insert.setString(5, userid)
-        insert.execute()
-        insert.close()
-        if not self._executeRootCall('update', userid, root, timestamp):
-            self._executeRootCall('insert', userid, root, timestamp)
-        data = KeyMap()
-        data.insertValue('UserId', userid)
-        data.insertValue('UserName', username)
-        data.insertValue('RootId', rootid)
-        data.insertValue('RootName', rootname)
-        data.insertValue('Token', '')
-        return data
-
-    def _createUser(self, name, password):
-        format = {'User': name, 'Password': password, 'Admin': g_admin}
-        sql = getSqlQuery('createUser', format)
-        status = self._Statement.executeUpdate(sql)
-        return status == 0
-
     def selectItem(self, user, identifier):
         item = None
         select = self._getDataSourceCall('getItem')
@@ -221,8 +201,8 @@ class DataSource(unohelper.Base,
     def insertItem(self, user, item):
         timestamp = parseDateTime()
         rootid = user.getValue('RootId')
-        c1 = self._getDataSourceCall('deleteParent')
-        c2 = self._getDataSourceCall('insertParent')
+        c1 = self._getDataSourceCall('deleteParent1')
+        c2 = self._getDataSourceCall('insertParent1')
         if not self._prepareItemCall('update', c1, c2, user, item, timestamp):
             self._prepareItemCall('insert', c1, c2, user, item, timestamp)
         c1.close()
@@ -243,7 +223,7 @@ class DataSource(unohelper.Base,
     def _executeRootCall(self, method, userid, root, timestamp):
         row = 0
         id = self.Provider.getRootId(root)
-        call = self._getDataSourceCall('%sItem' % method)
+        call = self._getDataSourceCall('%sItem1' % method)
         call.setString(1, self.Provider.getRootTitle(root))
         call.setTimestamp(2, self.Provider.getRootCreated(root, timestamp))
         call.setTimestamp(3, self.Provider.getRootModified(root, timestamp))
@@ -254,7 +234,7 @@ class DataSource(unohelper.Base,
         row = call.executeUpdate()
         call.close()
         if row:
-            call = self._getDataSourceCall('%sCapability' % method)
+            call = self._getDataSourceCall('%sCapability1' % method)
             call.setBoolean(1, self.Provider.getRootCanAddChild(root))
             call.setBoolean(2, self.Provider.getRootCanRename(root))
             call.setBoolean(3, self.Provider.getRootIsReadOnly(root))
@@ -269,8 +249,8 @@ class DataSource(unohelper.Base,
         row = 0
         userid = user.getValue('UserId')
         rootid = user.getValue('RootId')
-        c1 = self._getDataSourceCall('%sItem' % method)
-        c2 = self._getDataSourceCall('%sCapability' % method)
+        c1 = self._getDataSourceCall('%sItem1' % method)
+        c2 = self._getDataSourceCall('%sCapability1' % method)
         row = self._executeItemCall(c1, c2, delete, insert, userid, rootid, item, timestamp)
         c1.close()
         c2.close()
@@ -304,73 +284,6 @@ class DataSource(unohelper.Base,
                 c4.setString(3, parent)
                 c4.executeUpdate()
         return row
-
-    def updateDrive(self, request, user):
-        rootid = user.getValue('RootId')
-        items, parents, page, row = self._getDriveContent(request, user, rootid)
-        filtered = self._filterParents(parents, rootid)
-        rejected = self._getRejectedItems(parents, items)
-        rows = self._updateDrive(user, items, filtered, rootid)
-        return rejected, rows, page, row
-
-    def _getDriveContent(self, request, user, rootid):
-        items = {}
-        parents = []
-        parameter = self.Provider.getRequestParameter('getDriveContent', user)
-        enumerator = request.getIterator(parameter, None)
-        while enumerator.hasMoreElements():
-            item = enumerator.nextElement()
-            id = self.Provider.getItemId(item)
-            items[id] = item
-            parents.append((id, self.Provider.getItemParent(item, rootid)))
-        page = enumerator.PageCount
-        row = enumerator.RowCount
-        return items, parents, page, row
-
-    def _filterParents(self, items, rootid):
-        i = -1
-        filtered = []
-        roots = [rootid]
-        while len(items) and len(items) != i:
-            i = len(items)
-            print("datasource._filterParents() %s" % len(items))
-            for item in items:
-                id, parents = item
-                if all(parent in roots for parent in parents):
-                    roots.append(id)
-                    filtered.append(item)
-                    items.remove(item)
-            items.reverse()
-        return filtered
-
-    def _getRejectedItems(self, items, data):
-        rejected = []
-        for id, parents in items:
-            title = self.Provider.getItemTitle(data[id])
-            rejected.append((title, id, ','.join(parents)))
-        return rejected
-
-    def _updateDrive(self, user, items, parents, rootid):
-        rows = []
-        c1 = self._getDataSourceCall('updateItem')
-        c2 = self._getDataSourceCall('updateCapability')
-        c3 = self._getDataSourceCall('insertItem')
-        c4 = self._getDataSourceCall('insertCapability')
-        c5 = self._getDataSourceCall('deleteParent')
-        c6 = self._getDataSourceCall('insertParent')
-        userid = user.getValue('UserId')
-        timestamp = parseDateTime()
-        for id, parent in parents:
-            item = items[id]
-            rows.append(self._updateItem(c1, c2, c3, c4, userid, rootid, item, id, timestamp))
-        self._mergeParents(c5, c6, userid, parents)
-        c1.close()
-        c2.close()
-        c3.close()
-        c4.close()
-        c5.close()
-        c6.close()
-        return rows
 
     def _updateItem(self, c1, c2, c3, c4, userid, rootid, item, id, timestamp):
         row = self._updateItemCall(c1, c2, userid, rootid, item, id, timestamp)
@@ -411,24 +324,23 @@ class DataSource(unohelper.Base,
 
     def getDocumentContent(self, request, content):
         return self.Provider.getDocumentContent(request, content)
-    def getFolderContent(self, request, user, identifier, content, updated):
-        if user.getValue('Token'):
-            print("DataSource.getFolderContent() no request")
-            updated = True
-        elif ONLINE == content.getValue('Loaded') == self.Provider.SessionMode:
+    def getFolderContent(self, user, identifier, content, updated):
+        if ONLINE == content.getValue('Loaded') == self.Provider.SessionMode:
             print("DataSource.getFolderContent() whith request")
-            updated = self._updateFolderContent(request, user, content)
-        select = self._getChildren(user, identifier)
+            updated = user.DataBase.updateFolderContent(self.Provider, user, content)
+        else:
+            print("DataSource.getFolderContent() no request")
+        select = user.DataBase.getChildren(self.Provider, user.MetaData, identifier)
         return select, updated
 
     def _updateFolderContent(self, request, user, content):
         updated = []
-        c1 = self._getDataSourceCall('updateItem')
-        c2 = self._getDataSourceCall('updateCapability')
-        c3 = self._getDataSourceCall('insertItem')
-        c4 = self._getDataSourceCall('insertCapability')
-        c5 = self._getDataSourceCall('deleteParent')
-        c6 = self._getDataSourceCall('insertParent')
+        c1 = self._getDataSourceCall('updateItem1')
+        c2 = self._getDataSourceCall('updateCapability1')
+        c3 = self._getDataSourceCall('insertItem1')
+        c4 = self._getDataSourceCall('insertCapability1')
+        c5 = self._getDataSourceCall('deleteParent1')
+        c6 = self._getDataSourceCall('insertParent1')
         userid = user.getValue('UserId')
         rootid = user.getValue('RootId')
         timestamp = parseDateTime()
@@ -594,17 +506,17 @@ class DataSource(unohelper.Base,
         modes = self.Provider.FileSyncModes
         inserted = self._insertNewContent(userid, itemid, parentid, content, modes)
         if inserted:
-            self.event.set()
+            self.sync.set()
         return inserted
     def insertNewFolder(self, userid, itemid, parentid, content):
         modes = self.Provider.FolderSyncModes
         inserted = self._insertNewContent(userid, itemid, parentid, content, modes)
         if inserted:
-            self.event.set()
+            self.sync.set()
         return inserted
 
     def _insertNewContent(self, userid, itemid, parentid, content, modes):
-        c1 = self._getDataSourceCall('insertItem')
+        c1 = self._getDataSourceCall('insertItem1')
         c1.setString(1, content.getValue("Title"))
         c1.setTimestamp(2, content.getValue('DateCreated'))
         c1.setTimestamp(3, content.getValue('DateModified'))
@@ -614,7 +526,7 @@ class DataSource(unohelper.Base,
         c1.setString(7, itemid)
         row = c1.executeUpdate()
         c1.close()
-        c2 = self._getDataSourceCall('insertCapability')
+        c2 = self._getDataSourceCall('insertCapability1')
         c2.setBoolean(1, content.getValue('CanAddChild'))
         c2.setBoolean(2, content.getValue('CanRename'))
         c2.setBoolean(3, content.getValue('IsReadOnly'))
@@ -623,7 +535,7 @@ class DataSource(unohelper.Base,
         c2.setString(6, itemid)
         row += c2.executeUpdate()
         c2.close()
-        c3 = self._getDataSourceCall('insertParent')
+        c3 = self._getDataSourceCall('insertParent1')
         c3.setString(1, userid)
         c3.setString(2, itemid)
         c3.setString(3, parentid)
@@ -638,14 +550,6 @@ class DataSource(unohelper.Base,
             row += c4.execute()
         c4.close()
         return row == 3 + len(modes)
-
-    def updateLoaded(self, userid, itemid, value, default):
-        update = self._getDataSourceCall('updateLoaded')
-        update.setLong(1, value)
-        update.setString(2, itemid)
-        row = update.executeUpdate()
-        update.close()
-        return default if row != 1 else value
 
     def updateTitle(self, userid, itemid, parentid, value, default):
         row = 0

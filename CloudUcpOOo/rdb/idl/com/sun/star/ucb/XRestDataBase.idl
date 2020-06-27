@@ -1,9 +1,8 @@
-#ifndef __com_sun_star_ucb_XRestDataSource_idl__
-#define __com_sun_star_ucb_XRestDataSource_idl__
+#ifndef __com_sun_star_ucb_XRestDataBase_idl__
+#define __com_sun_star_ucb_XRestDataBase_idl__
 
 #include <com/sun/star/io/XInputStream.idl>
 #include <com/sun/star/uno/XInterface.idl>
-#include <com/sun/star/ucb/XRestDataBase.idl>
 #include <com/sun/star/ucb/XRestProvider.idl>
 #include <com/sun/star/auth/XRestKeyMap.idl>
 #include <com/sun/star/sdbc/XConnection.idl>
@@ -13,7 +12,7 @@
 
 module com { module sun { module star { module ucb {
 
-interface XRestDataSource: com::sun::star::uno::XInterface
+interface XRestDataBase: com::sun::star::uno::XInterface
 {
 
     boolean initializeUser([in] string Name);
@@ -84,10 +83,6 @@ interface XRestDataSource: com::sun::star::uno::XInterface
     string getNewIdentifier([in] ::com::sun::star::auth::XRestKeyMap User);
 
     [attribute, readonly] ::com::sun::star::sdbc::XConnection Connection;
-    [attribute, readonly] ::com::sun::star::ucb::XRestProvider Provider;
-    [attribute, readonly] ::com::sun::star::ucb::XRestDataBase DataBase;
-    [attribute, readonly] boolean IsValid;
-    [attribute, readonly] string Error;
 
 };
 

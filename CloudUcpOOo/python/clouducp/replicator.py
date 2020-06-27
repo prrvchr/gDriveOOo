@@ -14,6 +14,14 @@ from unolib import KeyMap
 from unolib import getDateTime
 
 from .configuration import g_sync
+from .database import DataBase
+
+from .dbinit import getDataSourceUrl
+from .dbinit import createDataBase
+
+from .dbtools import getDataSourceConnection
+from .dbtools import createDataSource
+from .dbtools import registerDataSource
 
 from .logger import logMessage
 from .logger import getMessage
@@ -25,31 +33,59 @@ import traceback
 class Replicator(unohelper.Base,
                  XCancellable,
                  Thread):
-    def __init__(self, ctx, datasource):
+    def __init__(self, ctx, datasource, url, created, provider, users, ready, sync):
         Thread.__init__(self)
         self.ctx = ctx
-        self.datasource = datasource
+        self.database = DataBase(self.ctx, datasource)
+        self.url = url
+        self.created = created
+        self.provider = provider
+        self.users = users
+        self.created = created
         self.canceled = False
-        datasource.event.clear()
+        self.register = True
+        self.ready = ready
+        ready.clear()
+        self.sync = sync
+        sync.clear()
+        self.error = None
         self.start()
+        #self.run()
 
     # XCancellable
     def cancel(self):
         self.canceled = True
-        self.datasource.event.set()
+        self.sync.set()
         self.join()
 
     def run(self):
-        print("replicator.run() 1 *************************************************************")
-        while not self.canceled:
-            self.datasource.event.wait(g_sync)
-            self._synchronize()
-            self.datasource.event.clear()
-            print("replicator.run() 2")
-        print("replicator.run() 3 *************************************************************")
+        try:
+            msg = "Replicator for Scheme: %s loading ... " % self.url
+            print("Replicator.run() 1 *************************************************************")
+            logMessage(self.ctx, INFO, "stage 1", 'Replicator', 'run()')
+            print("Replicator run() 2")
+            #if self.created:
+            #    print("Replicator run() 3")
+            #    self.error = self.database.createDataBase()
+            #    if self.error is not None:
+            #        print("Replicator run() 4 %s" % self.error)
+            #        return
+            #    print("Replicator run() 5")
+            #    self.database.storeDataBase(self.url)
+            #self.ready.set()
+            print("Replicator run() 6")
+            while not self.canceled:
+                self.sync.wait(g_sync)
+                self._synchronize()
+                self.sync.clear()
+                print("replicator.run() 7")
+            print("replicator.run() 8 *************************************************************")
+        except Exception as e:
+            msg = "Replicator run(): Error: %s - %s" % (e, traceback.print_exc())
+            print(msg)
 
     def _synchronize(self):
-        if self.datasource.Provider.isOffLine():
+        if self.provider.isOffLine():
             msg = getMessage(self.ctx, 111)
             logMessage(self.ctx, INFO, msg, 'Replicator', '_synchronize()')
         elif not self.canceled:
@@ -60,7 +96,7 @@ class Replicator(unohelper.Base,
         try:
             print("Replicator.synchronize() 1")
             results = []
-            for user in self.datasource._CahedUser.values():
+            for user in self.users.values():
                 if self.canceled:
                     break
                 msg = getMessage(self.ctx, 110, user.Name)
@@ -69,7 +105,7 @@ class Replicator(unohelper.Base,
                     self._initUser(user)
                 if user.Token:
                     results += self._pullData(user)
-                    results += self._pushData(user)
+                    #results += self._pushData(user)
                 msg = getMessage(self.ctx, 116, user.Name)
                 logMessage(self.ctx, INFO, msg, 'Replicator', '_syncData()')
             result = all(results)
@@ -78,8 +114,8 @@ class Replicator(unohelper.Base,
             print("Replicator.synchronize() ERROR: %s - %s" % (e, traceback.print_exc()))
 
     def _initUser(self, user):
-        rejected, rows, page, row = self.datasource.updateDrive(user.Request, user.MetaData)
-        print("Replicator._initData() %s - %s - %s - %s" % (len(rows), all(rows), page, row))
+        rejected, rows, page, row = self.database.updateDrive(self.provider, user)
+        print("Replicator._initUser() 1 %s - %s - %s - %s" % (len(rows), all(rows), page, row))
         msg = getMessage(self.ctx, 120, (page, row, len(rows)))
         logMessage(self.ctx, INFO, msg, 'Replicator', '_syncData()')
         if len(rejected):
@@ -89,13 +125,14 @@ class Replicator(unohelper.Base,
             msg = getMessage(self.ctx, 122, item)
             logMessage(self.ctx, SEVERE, msg, 'Replicator', '_syncData()')
         if all(rows):
-            self.datasource.setSyncToken(user.Request, user.MetaData)
+            self.database.setSyncToken(self.provider, user)
+        print("Replicator._initUser() 2 %s" % (all(rows), ))
 
     def _pullData(self, user):
         results = []
-        self.datasource.checkNewIdentifier(user.Request, user.MetaData)
+        self.database.checkNewIdentifier(self.provider, user.Request, user.MetaData)
         print("Replicator._pullData() 1")
-        parameter = self.datasource.Provider.getRequestParameter('getChanges', user.MetaData)
+        parameter = self.provider.getRequestParameter('getChanges', user.MetaData)
         enumerator = user.Request.getIterator(parameter, None)
         print("Replicator._pullData() 2 %s - %s" % (enumerator.PageCount, enumerator.SyncToken))
         while enumerator.hasMoreElements():
@@ -106,15 +143,15 @@ class Replicator(unohelper.Base,
 
     def _pushData(self, user):
         results = []
-        uploader = user.Request.getUploader(self.datasource)
-        for item in self.datasource.getItemToSync(user.MetaData):
+        uploader = user.Request.getUploader(self.database)
+        for item in self.database.getItemToSync(user.MetaData):
             if self.canceled:
                 break
-            response = self.datasource.syncItem(user.Request, uploader, item)
+            response = self.database.syncItem(user.Request, uploader, item)
             if response is None:
                 results.append(True)
             elif response and response.IsPresent:
-                results.append(self.datasource.updateSync(item, response.Value))
+                results.append(self.database.updateSync(item, response.Value))
             else:
                 msg = "ERROR: ItemId: %s" % item.getDefaultValue('Id')
                 logMessage(self.ctx, SEVERE, msg, "Replicator", "_pushData()")

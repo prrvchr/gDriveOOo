@@ -221,8 +221,7 @@ class ProviderBase(ProviderObject,
         return request.getInputStream(parameter, self.Chunk, self.Buffer)
     def getFolderContent(self, request, content):
         parameter = self.getRequestParameter('getFolderContent', content)
-        return request.getEnumerator(parameter)
-
+        return request.getIterator(parameter, None)
 
     def createFolder(self, request, item):
         parameter = self.getRequestParameter('createNewFolder', item)

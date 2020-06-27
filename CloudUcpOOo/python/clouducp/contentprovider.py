@@ -68,7 +68,7 @@ class ContentProvider(unohelper.Base,
         self.Plugin = plugin
         msg = "ContentProvider registerInstance: addCloseListener ... Done"
         logMessage(self.ctx, INFO, msg, 'ContentProvider', 'registerInstance()')
-        datasource.Connection.Parent.DatabaseDocument.addCloseListener(self)
+        #datasource.Connection.Parent.DatabaseDocument.addCloseListener(self)
         self.DataSource = datasource
         print("ContentProvider.registerInstance() 5")
         msg = "ContentProvider registerInstance: Scheme/Plugin: %s/%s ... Done" % (scheme, plugin)

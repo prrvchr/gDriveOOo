@@ -247,17 +247,16 @@ class Identifier(unohelper.Base,
                 logMessage(self.ctx, SEVERE, msg, "Identifier", "getDocumentContent()")
             else:
                 size = sf.getSize(url)
-                loaded = self.DataSource.updateLoaded(self.User.Id, self.Id, OFFLINE, ONLINE)
+                loaded = self.User.DataBase.updateLoaded(self.User.Id, self.Id, OFFLINE, ONLINE)
                 content.insertValue('Loaded', loaded)
             finally:
                 stream.closeInput()
         return url, size
 
     def getFolderContent(self, content):
-        select, updated = self.DataSource.getFolderContent(self.User.Request, self.User.MetaData,
-                                                           self.MetaData, content, False)
+        select, updated = self.DataSource.getFolderContent(self.User, self.MetaData, content, False)
         if updated:
-            loaded = self.DataSource.updateLoaded(self.User.Id, self.Id, OFFLINE, ONLINE)
+            loaded = self.User.DataBase.updateLoaded(self.User.Id, self.Id, OFFLINE, ONLINE)
             content.insertValue('Loaded', loaded)
         return select
 

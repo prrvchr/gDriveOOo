@@ -31,6 +31,28 @@ from .logger import getMessage
 import traceback
 
 
+def getDataSource(ctx, dbname, plugin, register):
+    print("dbinit.getDataSource() 1")
+    location = getResourceLocation(ctx, plugin, g_path)
+    url = '%s/%s.odb' % (location, dbname)
+    print("dbinit.getDataSource() 2")
+    dbcontext = createService(ctx, 'com.sun.star.sdb.DatabaseContext')
+    print("dbinit.getDataSource() 3")
+    if getSimpleFile(ctx).exists(url):
+        print("dbinit.getDataSource() 4")
+        odb = dbname if dbcontext.hasByName(dbname) else url
+        datasource = dbcontext.getByName(odb)
+        created = False
+    else:
+        print("dbinit.getDataSource() 5")
+        datasource = createDataSource(dbcontext, location, dbname)
+        created = True
+    if register:
+        print("dbinit.getDataSource() 6")
+        registerDataSource(dbcontext, dbname, url)
+    print("dbinit.getDataSource() 7")
+    return datasource, url, created
+
 def getDataSourceConnection(ctx, url, dbname, name='', password=''):
     print("getDataSourceConnection() 1")
     dbcontext = createService(ctx, 'com.sun.star.sdb.DatabaseContext')
@@ -70,9 +92,13 @@ def getDataSourceCall(connection, name, format=None):
     return call
 
 def createDataSource(dbcontext, location, dbname, shutdown=False):
+    print("dbtools.createDataSource() 1")
     datasource = dbcontext.createInstance()
+    print("dbtools.createDataSource() 2")
     datasource.URL = getDataSourceLocation(location, dbname, shutdown)
+    print("dbtools.createDataSource() 3")
     datasource.Info = getDataSourceInfo() + getDataSourceJavaInfo(location)
+    print("dbtools.createDataSource() 4")
     return datasource
 
 def checkDataBase(ctx, connection):
@@ -85,9 +111,11 @@ def checkDataBase(ctx, connection):
         error = getSqlException(state, 1110, msg)
     return version, error
 
-def executeQueries(statement, queries):
+def executeQueries(statement, queries, format=None):
     for query in queries:
-        statement.executeQuery(getSqlQuery(query))
+        q = getSqlQuery(query, format)
+        print("dbtools.executeQueries() %s - %s" % (query, q))
+        statement.executeQuery(getSqlQuery(query, format))
 
 def getDataSourceJavaInfo(location):
     info = {}
@@ -174,7 +202,8 @@ def registerDataSource(dbcontext, dbname, url):
     elif dbcontext.getDatabaseLocation(dbname) != url:
         dbcontext.changeDatabaseLocation(dbname, url)
 
-def getKeyMapFromResult(result, keymap=KeyMap(), provider=None):
+def getKeyMapFromResult(result, keymap=None, provider=None):
+    keymap = KeyMap() if keymap is None else keymap
     for i in range(1, result.MetaData.ColumnCount +1):
         name = result.MetaData.getColumnName(i)
         value = getValueFromResult(result, i)
@@ -233,8 +262,7 @@ def getKeyMapKeyMapFromResult(result):
     return sequence
 
 def getSequenceFromResult(result, sequence=None, index=1, provider=None):
-    if sequence is None:
-        sequence = []
+    sequence = [] if sequence is None else sequence
     i = result.MetaData.ColumnCount
     if 0 < index < i:
         i = index
@@ -279,13 +307,17 @@ def getValueFromResult(result, index, default=None):
     return value
 
 def createStaticTable(statement, tables, readonly=False):
+    print("dbtools.createStaticTable() 1")
     for table in tables:
+        print("dbtools.createStaticTable() 2 %s" % table)
         query = getSqlQuery('createTable' + table)
-        statement.executeQuery(query)
+        print("dbtools.createStaticTable() 3 %s" % query)
+        statement.executeUpdate(query)
     for table in tables:
-        statement.executeQuery(getSqlQuery('setTableSource', table))
+        print("dbtools.createStaticTable() 4 %s" % table)
+        statement.executeUpdate(getSqlQuery('setTableSource', table))
         if readonly:
-            statement.executeQuery(getSqlQuery('setTableReadOnly', table))
+            statement.executeUpdate(getSqlQuery('setTableReadOnly', table))
 
 def executeSqlQueries(statement, queries):
     for query in queries:

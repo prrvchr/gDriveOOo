@@ -1,7 +1,7 @@
 Table|Name|Identity|View|Versioned
 0|Users|0||false
-1|Items|5||false
-2|Parents|||false
-3|Capabilities|||false
+1|Items|5||true
+2|Parents|||true
+3|Capabilities|||true
 4|Identifiers|||false
 5|Synchronizes|||false
