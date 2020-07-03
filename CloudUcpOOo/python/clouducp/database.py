@@ -55,16 +55,19 @@ import traceback
 
 class DataBase(unohelper.Base,
                XRestDataBase):
-    def __init__(self, ctx, datasource, name='', password=''):
+    def __init__(self, ctx, datasource, name='', password='', sync=None):
         self.ctx = ctx
         self._statement = datasource.getConnection(name, password).createStatement()
         self._CallsPool = OrderedDict()
         self._batchedCall = []
+        if sync is not None:
+            self.sync = sync
 
     @property
     def Connection(self):
         return self._statement.getConnection()
 
+# Procedures called by the DataSource
     def addCloseListener(self, listener):
         self.Connection.Parent.DatabaseDocument.addCloseListener(listener)
 
@@ -76,31 +79,19 @@ class DataBase(unohelper.Base,
         self._statement.execute(query)
 
     def initDataBase(self, url):
-        error = self.createDataBase()
+        error = self._createDataBase()
         if error is None:
-            self.storeDataBase(url)
+            self._storeDataBase(url)
 
-    def createDataBase(self):
-        try:
-            print("DataBase.createDataBase() 1")
-            version, error = checkDataBase(self.ctx, self._statement.getConnection())
-            print("DataBase.createDataBase() 2")
-            if error is None:
-                print("DataBase.createDataBase() 3")
-                tables = getStaticTables()
-                print("DataBase.createDataBase() 4 %s" % (tables, ))
-                createStaticTable(self._statement, getStaticTables(), True)
-                print("DataBase.createDataBase() 5")
-                tables, statements = getTablesAndStatements(self._statement, version)
-                print("DataBase.createDataBase() 6")
-                executeSqlQueries(self._statement, tables)
-                print("DataBase.createDataBase() 7")
-                self._executeQueries(getQueries())
-            print("DataBase.createDataBase() 8")
-            return error
-        except Exception as e:
-            msg = "DataBase createDataBase(): Error: %s - %s" % (e, traceback.print_exc())
-            print(msg)
+    def _createDataBase(self):
+        version, error = checkDataBase(self.ctx, self._statement.getConnection())
+        print("DataBase.createDataBase() Hsqldb Version: %s" % version)
+        if error is None:
+            createStaticTable(self._statement, getStaticTables(), True)
+            tables, statements = getTablesAndStatements(self._statement, version)
+            executeSqlQueries(self._statement, tables)
+            self._executeQueries(getQueries())
+        return error
 
     def _executeQueries(self, queries):
         for name, format in queries:
@@ -108,7 +99,7 @@ class DataBase(unohelper.Base,
             print("DataBase._executeQueries() %s" % query)
             self._statement.executeQuery(query)
 
-    def storeDataBase(self, url):
+    def _storeDataBase(self, url):
         self._statement.getConnection().getParent().DatabaseDocument.storeAsURL(url, ())
 
     def createUser(self, user, password):
@@ -146,8 +137,7 @@ class DataBase(unohelper.Base,
         insert.setString(5, userid)
         insert.execute()
         insert.close()
-        if not self._executeRootCall(provider, 'update', userid, root, timestamp):
-            self._executeRootCall(provider, 'insert', userid, root, timestamp)
+        self._mergeRoot(provider, userid, rootid, rootname, root, timestamp)
         data = KeyMap()
         data.insertValue('UserId', userid)
         data.insertValue('UserName', username)
@@ -156,6 +146,35 @@ class DataBase(unohelper.Base,
         data.insertValue('Token', '')
         return data
 
+    def _mergeRoot(self, provider, userid, rootid, rootname, root, timestamp):
+        call = self._getDataSourceCall('mergeItem')
+        call.setString(1, userid)
+        call.setString(2, ',')
+        call.setLong(3, 0)
+        call.setString(4, rootid)
+        call.setString(5, rootname)
+        call.setTimestamp(6, provider.getRootCreated(root, timestamp))
+        call.setTimestamp(7, provider.getRootModified(root, timestamp))
+        call.setString(8, provider.getRootMediaType(root))
+        call.setLong(9, provider.getRootSize(root))
+        call.setBoolean(10, provider.getRootTrashed(root))
+        call.setBoolean(11, provider.getRootCanAddChild(root))
+        call.setBoolean(12, provider.getRootCanRename(root))
+        call.setBoolean(13, provider.getRootIsReadOnly(root))
+        call.setBoolean(14, provider.getRootIsVersionable(root))
+        call.setString(15, '')
+        call.executeUpdate()
+        call.close()
+
+    def getContentType(self):
+        call = self._getDataSourceCall('getContentType')
+        result = call.executeQuery()
+        if result.next():
+            item = getKeyMapFromResult(result)
+        call.close()
+        return item.getValue('Folder'), item.getValue('Link')
+
+# Procedures called by the User
     def selectItem(self, user, identifier):
         item = None
         select = self._getDataSourceCall('getItem')
@@ -167,11 +186,11 @@ class DataBase(unohelper.Base,
         select.close()
         return item
 
-    def insertItem(self, provider, user, data):
+    def insertAndSelectItem(self, provider, user, data):
         item = None
         separator = ','
         timestamp = parseDateTime()
-        call = self._getDataSourceCall('insertItem')
+        call = self._getDataSourceCall('insertAndSelectItem')
         call.setString(1, user.getValue('UserId'))
         call.setString(2, separator)
         call.setLong(3, 0)
@@ -183,116 +202,37 @@ class DataBase(unohelper.Base,
             item = getKeyMapFromResult(result)
         return item
 
-    def getContentType(self):
-        call = self._getDataSourceCall('getContentType')
-        result = call.executeQuery()
-        if result.next():
-            item = getKeyMapFromResult(result)
-        call.close()
-        return item.getValue('Folder'), item.getValue('Link')
+    def getFolderContent(self, identifier, content, updated):
+        if ONLINE == content.getValue('Loaded') == identifier.User.Provider.SessionMode:
+            print("DataSource.getFolderContent() whith request")
+            updated = self._updateFolderContent(identifier.User, content)
+        else:
+            print("DataSource.getFolderContent() no request")
+        select = self._getChildren(identifier)
+        return select, updated
 
-    def updateDrive(self, provider, user):
-        timestamp = parseDateTime()
+    def _updateFolderContent(self, user, content):
+        rows = []
         separator = ','
+        timestamp = parseDateTime()
         call = self._getDataSourceCall('mergeItem', True)
         call.setString(1, user.Id)
         call.setString(2, separator)
-        call.setLong(3, 1)
-        rootid = user.RootId
-        roots = [rootid]
-        rows, items, parents, page, row = self._getDriveContent(call, provider, user, rootid, roots, separator, timestamp)
-        rows += self._filterParents(call, provider, items, parents, roots, separator, timestamp)
-        rejected = self._getRejectedItems(provider, parents, items)
-        self._closeDataSourceCall()
-        return rejected, rows, page, row
-
-    def _getDriveContent(self, call, provider, user, rootid, roots, separator, timestamp):
-        rows = []
-        items = {}
-        childs = []
-        parameter = provider.getRequestParameter('getDriveContent', user.MetaData)
-        enumerator = user.Request.getIterator(parameter, None)
+        call.setLong(3, 0)
+        enumerator = user.Provider.getFolderContent(user.Request, content)
         while enumerator.hasMoreElements():
             item = enumerator.nextElement()
-            id = provider.getItemId(item)
-            parents = provider.getItemParent(item, user.RootId)
-            if all(parent in roots for parent in parents):
-                roots.append(id)
-                rows.append(self._setCallItem(call, provider, item, id, parents, separator, timestamp))
-                call.addBatch()
-            else:
-                items[id] = item
-                childs.append((id, parents))
-        page = enumerator.PageCount
-        row = enumerator.RowCount
-        return rows, items, childs, page, row
+            id = user.Provider.getItemId(item)
+            parents = user.Provider.getItemParent(item, user.RootId)
+            rows.append(self._setCallItem(call, user.Provider, item, id, parents, separator, timestamp))
+            call.addBatch()
+        self._closeDataSourceCall()
+        print("DataBase._updateFolderContent() %s - %s" % (all(rows), len(rows)))
+        return all(rows)
 
-    def _filterParents(self, call, provider, items, childs, roots, separator, timestamp):
-        i = -1
-        rows = []
-        while len(childs) and len(childs) != i:
-            i = len(childs)
-            print("datasource._filterParents() %s" % len(childs))
-            for item in childs:
-                id, parents = item
-                if all(parent in roots for parent in parents):
-                    roots.append(id)
-                    rows.append(self._setCallItem(call, provider, items[id], id, parents, separator, timestamp))
-                    call.addBatch()
-                    childs.remove(item)
-            childs.reverse()
-        return rows
-
-    def _getRejectedItems(self, provider, items, data):
-        rejected = []
-        for id, parents in items:
-            title = provider.getItemTitle(data[id])
-            rejected.append((title, id, ','.join(parents)))
-        return rejected
-
-    def _setCallItem(self, call, provider, item, id, parents, separator, timestamp):
-        call.setString(4, id)
-        call.setString(5, separator.join(parents))
-        call.setString(6, provider.getItemTitle(item))
-        call.setTimestamp(7, provider.getItemCreated(item, timestamp))
-        call.setTimestamp(8, provider.getItemModified(item, timestamp))
-        call.setString(9, provider.getItemMediaType(item))
-        call.setLong(10, provider.getItemSize(item))
-        call.setBoolean(11, provider.getItemTrashed(item))
-        call.setBoolean(12, provider.getItemCanAddChild(item))
-        call.setBoolean(13, provider.getItemCanRename(item))
-        call.setBoolean(14, provider.getItemIsReadOnly(item))
-        call.setBoolean(15, provider.getItemIsVersionable(item))
-        return 1
-
-    def updateFolderContent(self, provider, user, content):
-        try:
-            rows = []
-            separator = ','
-            timestamp = parseDateTime()
-            print("datasource._updateFolderContent() 1")
-            call = self._getDataSourceCall('mergeItem', True)
-            print("datasource._updateFolderContent() 2")
-            call.setString(1, user.Id)
-            call.setString(2, separator)
-            call.setLong(3, 0)
-            print("datasource._updateFolderContent() 3")
-            enumerator = provider.getFolderContent(user.Request, content)
-            print("datasource._updateFolderContent() 4")
-            while enumerator.hasMoreElements():
-                item = enumerator.nextElement()
-                print("datasource._updateFolderContent() 5 - %s" % (item, ))
-                id = provider.getItemId(item)
-                parents = provider.getItemParent(item, user.RootId)
-                rows.append(self._setCallItem(call, provider, item, id, parents, separator, timestamp))
-                call.addBatch()
-            self._closeDataSourceCall()
-            print("datasource._updateFolderContent() 6 - %s" % (rows, ))
-            return all(rows)
-        except Exception as e:
-            print("DataBase.updateFolderContent() ERROR: %s - %s" % (e, traceback.print_exc()))
-
-    def getChildren(self, provider, user, identifier):
+    def _getChildren(self, identifier):
+        #TODO: Can't have a ResultSet of type SCROLL_INSENSITIVE with a Procedure,
+        #TODO: as a workaround we use a simple quey...
         select = self._getDataSourceCall('getChildren1')
         scroll = 'com.sun.star.sdbc.ResultSetType.SCROLL_INSENSITIVE'
         select.ResultSetType = uno.getConstantByName(scroll)
@@ -300,16 +240,18 @@ class DataBase(unohelper.Base,
         #    ['Title', 'Size', 'DateModified', 'DateCreated', 'IsFolder', 'TargetURL', 'IsHidden',
         #    'IsVolume', 'IsRemote', 'IsRemoveable', 'IsFloppy', 'IsCompactDisc']
         # "TargetURL" is done by:
-        #    CONCAT(BaseURL,'/',Id) for Foder or CONCAT(BaseURL,'/',Title) for File.
-        url = identifier.getValue('BaseURL')
+        #    CONCAT(identifier.getContentIdentifier(), Uri) for File and Foder
+        url = identifier.getContentIdentifier()
+        if not url.endswith('/'):
+            url += '/'
         select.setString(1, url)
-        select.setString(2, url)
-        select.setString(3, user.getValue('UserId'))
-        select.setString(4, identifier.getValue('Id'))
-        select.setShort(5, provider.SessionMode)
+        select.setString(2, identifier.User.Id)
+        select.setString(3, identifier.Id)
+        select.setShort(4, identifier.User.Provider.SessionMode)
         return select
 
-    def getChildren1(self, provider, user, identifier):
+    def _getChildren1(self, user, identifier):
+        #TODO: Can't have a ResultSet of type SCROLL_INSENSITIVE with a Procedure...
         select = self._getDataSourceCall('getChildren')
         scroll = 'com.sun.star.sdbc.ResultSetType.SCROLL_INSENSITIVE'
         select.ResultSetType = uno.getConstantByName(scroll)
@@ -332,110 +274,41 @@ class DataBase(unohelper.Base,
         update.close()
         return default if row != 1 else value
 
-
-
-
-
-
-    def _executeRootCall(self, provider, method, userid, root, timestamp):
-        row = 0
-        id = provider.getRootId(root)
-        call = self._getDataSourceCall('%sItem1' % method)
-        call.setString(1, provider.getRootTitle(root))
-        call.setTimestamp(2, provider.getRootCreated(root, timestamp))
-        call.setTimestamp(3, provider.getRootModified(root, timestamp))
-        call.setString(4, provider.getRootMediaType(root))
-        call.setLong(5, provider.getRootSize(root))
-        call.setBoolean(6, provider.getRootTrashed(root))
-        call.setString(7, id)
-        row = call.executeUpdate()
+    def getIdentifier(self, user, uri, new):
+        identifier = KeyMap()
+        if not user.isValid():
+            # Uri with Scheme but without a Path generate invalid user but we need
+            # to return an Identifier, and raise an 'IllegalIdentifierException'
+            # when ContentProvider try to get the Content...(ie: Identifier.getContent())
+            return identifier
+        call = self._getDataSourceCall('getIdentifier')
+        call.setString(1, user.Id)
+        call.setString(2, user.RootId)
+        call.setString(3, uri.getPath())
+        print("DataBase.getIdentifier() %s - %s - %s" % (user.Id, user.RootId, uri.getPath()))
+        call.setString(4, '/')
+        call.execute()
+        id = call.getString(5)
+        parentid = call.getString(6)
+        path = call.getString(7)
         call.close()
-        if row:
-            call = self._getDataSourceCall('%sCapability1' % method)
-            call.setBoolean(1, provider.getRootCanAddChild(root))
-            call.setBoolean(2, provider.getRootCanRename(root))
-            call.setBoolean(3, provider.getRootIsReadOnly(root))
-            call.setBoolean(4, provider.getRootIsVersionable(root))
-            call.setString(5, userid)
-            call.setString(6, id)
-            call.executeUpdate()
-            call.close()
-        return row
+        if new:
+            # New Identifier are created by the parent folder...
+            identifier.setValue('Id', self._getNewIdentifier(user))
+            identifier.setValue('ParentId', id)
+            baseuri = uri.getUriReference()
+        else:
+            identifier.setValue('Id', id)
+            identifier.setValue('ParentId', parentid)
+            baseuri = '%s://%s/%s' % (uri.getScheme(), uri.getAuthority(), path)
+        identifier.setValue('BaseURI', baseuri)
+        return identifier
 
-    def _prepareItemCall(self, provider, method, delete, insert, user, item, timestamp):
-        row = 0
-        userid = user.getValue('UserId')
-        rootid = user.getValue('RootId')
-        c1 = self._getDataSourceCall('%sItem1' % method)
-        c2 = self._getDataSourceCall('%sCapability1' % method)
-        row = self._executeItemCall(provider, c1, c2, delete, insert, userid, rootid, item, timestamp)
-        c1.close()
-        c2.close()
-        return row
-
-    def _executeItemCall(self, provider, c1, c2, c3, c4, userid, rootid, item, timestamp):
-        row = 0
-        id = provider.getItemId(item)
-        c1.setString(1, provider.getItemTitle(item))
-        c1.setTimestamp(2, provider.getItemCreated(item, timestamp))
-        c1.setTimestamp(3, provider.getItemModified(item, timestamp))
-        c1.setString(4, provider.getItemMediaType(item))
-        c1.setLong(5, provider.getItemSize(item))
-        c1.setBoolean(6, provider.getItemTrashed(item))
-        c1.setString(7, id)
-        row = c1.executeUpdate()
-        if row:
-            c2.setBoolean(1, provider.getItemCanAddChild(item))
-            c2.setBoolean(2, provider.getItemCanRename(item))
-            c2.setBoolean(3, provider.getItemIsReadOnly(item))
-            c2.setBoolean(4, provider.getItemIsVersionable(item))
-            c2.setString(5, userid)
-            c2.setString(6, id)
-            c2.executeUpdate()
-            c3.setString(1, userid)
-            c3.setString(2, id)
-            c3.executeUpdate()
-            c4.setString(1, userid)
-            c4.setString(2, id)
-            for parent in provider.getItemParent(item, rootid):
-                c4.setString(3, parent)
-                c4.executeUpdate()
-        return row
-
-    def _updateItem(self, provider, c1, c2, c3, c4, c5, c6, userid, rootid, item, timestamp):
-        row = self._executeItemCall(provider, c1, c2, c5, c6, userid, rootid, item, timestamp)
-        if not row:
-            row = self._executeItemCall(provider, c3, c4, c5, c6, userid, rootid, item, timestamp)
-        return row
-
-    def setSyncToken(self, provider, user):
-        data = provider.getToken(user.Request, user.MetaData)
-        if data.IsPresent:
-            token = provider.getUserToken(data.Value)
-            self._updateToken(user.MetaData, token)
-
-    def _updateToken(self, user, token):
-        update = self._getDataSourceCall('updateToken')
-        update.setString(1, token)
-        update.setString(2, user.getValue('UserId'))
-        updated = update.executeUpdate() == 1
-        update.close()
-        if updated:
-            user.setValue('Token', token)
-
-    def checkNewIdentifier(self, provider, request, user):
-        if provider.isOffLine() or not provider.GenerateIds:
-            return
-        result = False
-        if self._countIdentifier(user) < min(provider.IdentifierRange):
-            result = self._insertIdentifier(provider, request, user)
-        return
-
-    def getNewIdentifier(self, provider, user):
-        if provider.GenerateIds:
+    def _getNewIdentifier(self, user):
+        if user.Provider.GenerateIds:
             id = ''
             select = self._getDataSourceCall('getNewIdentifier')
-            select.setString(1, user.getValue('UserId'))
+            select.setString(1, user.Id)
             result = select.executeQuery()
             if result.next():
                 id = result.getString(1)
@@ -444,31 +317,93 @@ class DataBase(unohelper.Base,
             id = binascii.hexlify(uno.generateUuid().value).decode('utf-8')
         return id
 
-    def _countIdentifier(self, user):
-        count = 0
-        call = self._getDataSourceCall('countNewIdentifier')
-        call.setString(1, user.getValue('UserId'))
+    def getItem(self, userid, itemid):
+        item = None
+        select = self._getDataSourceCall('getItem')
+        select.setString(1, userid)
+        select.setString(2, itemid)
+        result = select.executeQuery()
+        if result.next():
+            item = getKeyMapFromResult(result)
+        select.close()
+        return item
+
+    def insertNewDocument(self, provider, userid, itemid, parentid, content):
+        inserted = self._insertNewContent(userid, itemid, parentid, content)
+        if inserted:
+            self.event.set()
+        return inserted
+
+    def insertNewFolder(self, provider, userid, itemid, parentid, content):
+        inserted = self._insertNewContent(userid, itemid, parentid, content)
+        if inserted:
+            self.event.set()
+        return inserted
+
+    def insertNewContent(self, userid, itemid, parentid, content):
+        if self._insertNewContent(userid, itemid, parentid, content):
+            # Start Replicator for uploading changes...
+            self.sync.set()
+
+    def _insertNewContent(self, userid, itemid, parentid, content):
+        call = self._getDataSourceCall('insertItem')
+        call.setString(1, userid)
+        call.setString(2, ',')
+        call.setLong(3, 1)
+        call.setString(4, itemid)
+        call.setString(5, content.getValue("Title"))
+        call.setTimestamp(6, content.getValue('DateCreated'))
+        call.setTimestamp(7, content.getValue('DateModified'))
+        call.setString(8, content.getValue('MediaType'))
+        call.setLong(9, content.getValue('Size'))
+        call.setBoolean(10, content.getValue('Trashed'))
+        call.setBoolean(11, content.getValue('CanAddChild'))
+        call.setBoolean(12, content.getValue('CanRename'))
+        call.setBoolean(13, content.getValue('IsReadOnly'))
+        call.setBoolean(14, content.getValue('IsVersionable'))
+        call.setString(15, parentid)
+        result = call.execute()
+        call.close()
+        return result == 0
+
+    def countChildTitle(self, userid, parentid, title):
+        count = 1
+        call = self._getDataSourceCall('countChildTitle')
+        call.setString(1, userid)
+        call.setString(2, parentid)
+        call.setString(3, title)
         result = call.executeQuery()
         if result.next():
             count = result.getLong(1)
         call.close()
         return count
 
-    def _insertIdentifier(self, provider, request, user):
-        result = []
-        enumerator = provider.getIdentifier(request, user)
-        insert = self._getDataSourceCall('insertIdentifier')
-        insert.setString(1, user.getValue('UserId'))
-        while enumerator.hasMoreElements():
-            item = enumerator.nextElement()
-            print("datasource._insertIdentifier() %s" % (item, ))
-            result.append(self._doInsert(insert, item))
-        insert.close()
-        return all(result)
+    def getChangedItems(self, userid):
+        items = []
+        select = self._getDataSourceCall('getChangedCapabilities')
+        select.setString(1, userid)
+        select.setString(2, userid)
+        result = select.executeQuery()
+        while result.next():
+            items.append(getKeyMapFromResult(result))
+        select.close()
+        msg = "Items to Sync 2: %s, %s" % (len(items), items)
+        print(msg)
 
-    def _doInsert(self, insert, id):
-        insert.setString(2, id)
-        return insert.executeUpdate()
+    def getChangedItems1(self, userid):
+        items = []
+        select = self._getDataSourceCall('getChangedCapabilities1')
+        select.setString(1, userid)
+        result = select.executeQuery()
+        while result.next():
+            items.append(getKeyMapFromResult(result))
+        select.close()
+        msg = "Items to Sync 1: %s, %s" % (len(items), items)
+        print(msg)
+
+
+
+
 
     def getItemToSync(self, provider, user):
         items = []
@@ -532,55 +467,8 @@ class DataBase(unohelper.Base,
             update.close()
         return '' if row != 1 else newid
 
-    def insertNewDocument(self, provider, userid, itemid, parentid, content):
-        modes = provider.FileSyncModes
-        inserted = self._insertNewContent(userid, itemid, parentid, content, modes)
-        if inserted:
-            self.event.set()
-        return inserted
 
-    def insertNewFolder(self, provider, userid, itemid, parentid, content):
-        modes = provider.FolderSyncModes
-        inserted = self._insertNewContent(userid, itemid, parentid, content, modes)
-        if inserted:
-            self.event.set()
-        return inserted
 
-    def _insertNewContent(self, userid, itemid, parentid, content, modes):
-        c1 = self._getDataSourceCall('insertItem1')
-        c1.setString(1, content.getValue("Title"))
-        c1.setTimestamp(2, content.getValue('DateCreated'))
-        c1.setTimestamp(3, content.getValue('DateModified'))
-        c1.setString(4, content.getValue('MediaType'))
-        c1.setLong(5, content.getValue('Size'))
-        c1.setBoolean(6, content.getValue('Trashed'))
-        c1.setString(7, itemid)
-        row = c1.executeUpdate()
-        c1.close()
-        c2 = self._getDataSourceCall('insertCapability1')
-        c2.setBoolean(1, content.getValue('CanAddChild'))
-        c2.setBoolean(2, content.getValue('CanRename'))
-        c2.setBoolean(3, content.getValue('IsReadOnly'))
-        c2.setBoolean(4, content.getValue('IsVersionable'))
-        c2.setString(5, userid)
-        c2.setString(6, itemid)
-        row += c2.executeUpdate()
-        c2.close()
-        c3 = self._getDataSourceCall('insertParent1')
-        c3.setString(1, userid)
-        c3.setString(2, itemid)
-        c3.setString(3, parentid)
-        row += c3.executeUpdate()
-        c3.close()
-        c4 = self._getDataSourceCall('insertSyncMode')
-        c4.setString(1, userid)
-        c4.setString(2, itemid)
-        c4.setString(3, parentid)
-        for mode in modes:
-            c4.setLong(4, mode)
-            row += c4.execute()
-        c4.close()
-        return row == 3 + len(modes)
 
     def updateTitle(self, userid, itemid, parentid, value, default):
         row = 0
@@ -642,41 +530,150 @@ class DataBase(unohelper.Base,
         call.close()
         return ischild
 
-    def countChildTitle(self, userid, parent, title):
-        count = 1
-        call = self._getDataSourceCall('countChildTitle')
-        call.setString(1, userid)
-        call.setString(2, parent)
-        call.setString(3, title)
+
+
+# Procedures called by the Replicator
+    def setSyncToken(self, provider, user):
+        data = provider.getToken(user.Request, user.MetaData)
+        if data.IsPresent:
+            token = provider.getUserToken(data.Value)
+            self._updateToken(user.MetaData, token)
+
+    def _updateToken(self, user, token):
+        update = self._getDataSourceCall('updateToken')
+        update.setString(1, token)
+        update.setString(2, user.getValue('UserId'))
+        updated = update.executeUpdate() == 1
+        update.close()
+        if updated:
+            user.setValue('Token', token)
+
+    def checkNewIdentifier(self, provider, request, user):
+        if provider.isOffLine() or not provider.GenerateIds:
+            return
+        result = False
+        if self._countIdentifier(user) < min(provider.IdentifierRange):
+            result = self._insertIdentifier(provider, request, user)
+        return
+
+    def _countIdentifier(self, user):
+        count = 0
+        call = self._getDataSourceCall('countNewIdentifier')
+        call.setString(1, user.getValue('UserId'))
         result = call.executeQuery()
         if result.next():
             count = result.getLong(1)
         call.close()
         return count
 
-    # User.initializeIdentifier() helper
-    def selectChildId(self, userid, parent, basename):
-        id = ''
-        call = self._getDataSourceCall('getChildId')
-        call.setString(1, userid)
-        call.setString(2, parent)
-        call.setString(3, basename)
-        result = call.executeQuery()
-        if result.next():
-            id = result.getString(1)
-        call.close()
-        return id
+    def _insertIdentifier(self, provider, request, user):
+        result = []
+        enumerator = provider.getIdentifier(request, user)
+        insert = self._getDataSourceCall('insertIdentifier')
+        insert.setString(1, user.getValue('UserId'))
+        while enumerator.hasMoreElements():
+            item = enumerator.nextElement()
+            print("datasource._insertIdentifier() %s" % (item, ))
+            result.append(self._doInsert(insert, item))
+        insert.close()
+        return all(result)
 
-    # User.initializeIdentifier() helper
-    def isIdentifier(self, userid, id):
-        isit = False
-        call = self._getDataSourceCall('isIdentifier')
-        call.setString(1, id)
-        result = call.executeQuery()
-        if result.next():
-            isit = result.getBoolean(1)
+    def _doInsert(self, insert, id):
+        insert.setString(2, id)
+        return insert.executeUpdate()
+
+    def updateDrive(self, provider, user):
+        starttime = parseDateTime()
+        separator = ','
+        call = self._getDataSourceCall('mergeItem', True)
+        call.setString(1, user.Id)
+        call.setString(2, separator)
+        call.setLong(3, 1)
+        rootid = user.RootId
+        roots = [rootid]
+        rows, items, parents, page, row = self._getDriveContent(call, provider, user, rootid, roots, separator, starttime)
+        rows += self._filterParents(call, provider, items, parents, roots, separator, starttime)
+        rejected = self._getRejectedItems(provider, parents, items)
+        self._closeDataSourceCall()
+        endtime = parseDateTime()
+        self._updateUserTimeStamp(user.Id, endtime)
+        return rejected, rows, page, row
+
+    def _getDriveContent(self, call, provider, user, rootid, roots, separator, timestamp):
+        rows = []
+        items = {}
+        childs = []
+        parameter = provider.getRequestParameter('getDriveContent', user.MetaData)
+        enumerator = user.Request.getIterator(parameter, None)
+        while enumerator.hasMoreElements():
+            item = enumerator.nextElement()
+            id = provider.getItemId(item)
+            parents = provider.getItemParent(item, user.RootId)
+            if all(parent in roots for parent in parents):
+                roots.append(id)
+                rows.append(self._setCallItem(call, provider, item, id, parents, separator, timestamp))
+                call.addBatch()
+            else:
+                items[id] = item
+                childs.append((id, parents))
+        page = enumerator.PageCount
+        row = enumerator.RowCount
+        return rows, items, childs, page, row
+
+    def _filterParents(self, call, provider, items, childs, roots, separator, timestamp):
+        i = -1
+        rows = []
+        while len(childs) and len(childs) != i:
+            i = len(childs)
+            print("datasource._filterParents() %s" % len(childs))
+            for item in childs:
+                id, parents = item
+                if all(parent in roots for parent in parents):
+                    roots.append(id)
+                    rows.append(self._setCallItem(call, provider, items[id], id, parents, separator, timestamp))
+                    call.addBatch()
+                    childs.remove(item)
+            childs.reverse()
+        return rows
+
+    def _getRejectedItems(self, provider, items, data):
+        rejected = []
+        for id, parents in items:
+            title = provider.getItemTitle(data[id])
+            rejected.append((title, id, ','.join(parents)))
+        return rejected
+
+    def _updateUserTimeStamp(self, userid, timestamp):
+        call = self._getDataSourceCall('updateUserTimeStamp')
+        call.setTimestamp(1, timestamp)
+        call.setString(2, userid)
+        call.executeUpdate()
         call.close()
-        return isit
+
+    def getUserTimeStamp(self, userid):
+        select = self._getDataSourceCall('getUserTimeStamp')
+        select.setString(1, userid)
+        result = select.executeQuery()
+        if result.next():
+            timestamp = result.getTimestamp(1)
+        select.close()
+        return timestamp
+
+# Procedures called internally
+    def _setCallItem(self, call, provider, item, id, parents, separator, timestamp):
+        call.setString(4, id)
+        call.setString(5, provider.getItemTitle(item))
+        call.setTimestamp(6, provider.getItemCreated(item, timestamp))
+        call.setTimestamp(7, provider.getItemModified(item, timestamp))
+        call.setString(8, provider.getItemMediaType(item))
+        call.setLong(9, provider.getItemSize(item))
+        call.setBoolean(10, provider.getItemTrashed(item))
+        call.setBoolean(11, provider.getItemCanAddChild(item))
+        call.setBoolean(12, provider.getItemCanRename(item))
+        call.setBoolean(13, provider.getItemIsReadOnly(item))
+        call.setBoolean(14, provider.getItemIsVersionable(item))
+        call.setString(15, separator.join(parents))
+        return 1
 
     def _getDataSourceCall(self, key, batched=False, name=None, format=None):
         name = key if name is None else name

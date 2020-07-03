@@ -6,33 +6,31 @@ import unohelper
 
 from com.sun.star.logging.LogLevel import INFO
 from com.sun.star.logging.LogLevel import SEVERE
+
 from com.sun.star.ucb.ConnectionMode import OFFLINE
 from com.sun.star.ucb.ConnectionMode import ONLINE
+
 from com.sun.star.ucb import XRestUser
 
 from .database import DataBase
-from .dbinit import getDataSourceUrl
-from .dbtools import getDataSourceConnection
-
-from .configuration import g_identifier
-from .identifier import Identifier
 from .logger import logMessage
+from .logger import getMessage
 
 import traceback
 
 
 class User(unohelper.Base,
            XRestUser):
-    def __init__(self, ctx, datasource, name):
+    def __init__(self, ctx, datasource, name, error=None):
         msg = "User loading"
         self.ctx = ctx
-        self._Statement = None
-        self._Warnings = None
-        self.Request = datasource.getRequest(name)
-        self.Provider = datasource.Provider
-        self.MetaData = datasource.DataBase.selectUser(name)
         self.DataBase = None
-        self._Error = ''
+        self.Error = error
+        # Incomplete Url generate invalid User
+        if self.isValid():
+            self.Request = datasource.getRequest(name)
+            self.MetaData = datasource.DataBase.selectUser(name)
+            self.Provider = datasource.Provider
         msg += " ... Done"
         logMessage(self.ctx, INFO, msg, "User", "__init__()")
 
@@ -51,62 +49,16 @@ class User(unohelper.Base,
     @property
     def Token(self):
         return self.MetaData.getDefaultValue('Token', '')
-    @property
-    def IsValid(self):
-        return all((self.Id, self.Name, self.RootId, self.RootName, not self.Error, self.Warnings is None))
-    @property
-    def Error(self):
-        return self.Request.Error if self.Request and self.Request.Error else self._Error
-    @property
-    def Connection(self):
-        return self.DataBase.Connection
 
-    @property
-    def Warnings(self):
-        return self._Warnings
-    @Warnings.setter
-    def Warnings(self, warning):
-        if warning is None:
-            return
-        warning.NextException = self._Warnings
-        self._Warnings = warning
-
-    def getWarnings(self):
-        return self._Warnings
-    def clearWarnings(self):
-        self._Warnings = None
-
-    def _setSessionMode(self, provider):
-        provider.SessionMode = self.Request.getSessionMode(provider.Host)
-
-    def initialize(self, datasource, name):
-        print("User.initialize() 1")
-        init = False
-        provider = datasource.Provider
-        self.Request.initializeSession(provider.Scheme, name)
-        self._setSessionMode(provider)
-        user = datasource.selectUser(name)
-        if user is not None:
-            self.MetaData = user
-            init = True
-        elif provider.isOnLine():
-            user = provider.getUser(self.Request, name)
-            if user.IsPresent:
-                root = provider.getRoot(self.Request, user.Value)
-                if root.IsPresent:
-                    self.MetaData = datasource.insertUser(user.Value, root.Value)
-                    init = True
-        else:
-            self._Error = "ERROR: Can't retrieve User: %s from provider network is OffLine" % name
-        print("User.initialize() 2 %s" % self.MetaData)
-        return init
+    def isValid(self):
+        return self.Error is None
 
     def getItem(self, datasource, identifier):
         item = self.DataBase.selectItem(self.MetaData, identifier)
-        if not item and self.Provider.isOnLine():
+        if item is None and self.Provider.isOnLine():
             data = self.Provider.getItem(self.Request, identifier)
             if data.IsPresent:
-                item = self.DataBase.insertItem(self.MetaData, data.Value)
+                item = self.DataBase.insertAndSelectItem(self.MetaData, data.Value)
         return item
 
     def insertNewDocument(self, datasource, itemid, parentid, content):
@@ -136,9 +88,9 @@ class User(unohelper.Base,
             return sf.getSize(url), sf.openFileRead(url)
         return 0, None
 
-    def setDataBase(self, datasource, password):
+    def setDataBase(self, datasource, password, sync):
         name, password = self.getCredential(password)
-        self.DataBase = DataBase(self.ctx, datasource, name, password)
+        self.DataBase = DataBase(self.ctx, datasource, name, password, sync)
 
     def getCredential(self, password):
         return self.Name, password

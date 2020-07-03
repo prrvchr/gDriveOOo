@@ -53,7 +53,6 @@ def setPropertiesValues(ctx, source, context, properties):
             level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
             error = UnknownPropertyException(msg, source)
             result = uno.Any('com.sun.star.beans.UnknownPropertyException', error)
-            #result = error
         logMessage(ctx, level, msg, source.__class__.__name__, 'setPropertiesValues()')
         results.append(result)
     return tuple(results)
@@ -66,7 +65,6 @@ def _setPropertyValue(source, context, property):
         level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
         error = IllegalAccessException(msg, source)
         result = uno.Any('com.sun.star.lang.IllegalAccessException', error)
-        #result = error
     else:
         result, level, msg = _setProperty(source, context, name, value)
     return result, level, msg
@@ -83,16 +81,16 @@ def _setProperty(source, context, name, value):
 
 def _setTitle(source, context, title):
     identifier = source.Identifier
-    parent = identifier.getParent()
-    count = parent.countChildTitle(title)
+    userid = identifier.User.Id
+    parentid = identifier.ParentId
+    count = identifier.User.DataBase.countChildTitle(userid, parentid, title)
     if u'~' in title:
         msg = "Can't set property: Title value: %s contains invalid character: '~'." % title
         level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
         data = getPropertyValueSet({'Uri': identifier.getContentIdentifier(),'ResourceName': title})
         error = getInteractiveAugmentedIOException(msg, context, 'ERROR', 'INVALID_CHARACTER', data)
         result = uno.Any('com.sun.star.ucb.InteractiveAugmentedIOException', error)
-        #result = error
-    elif (identifier.IsNew and count == 1) or (not identifier.IsNew and count != 0):
+    elif (identifier.isNew() and count == 1) or (not identifier.isNew() and count != 0):
         msg = "Can't set property: %s value: %s - Name Clash Error" % ('Title', title)
         level = uno.getConstantByName('com.sun.star.logging.LogLevel.SEVERE')
         data = getPropertyValueSet({'TargetFolderURL': parent.getContentIdentifier(),
@@ -101,17 +99,27 @@ def _setTitle(source, context, title):
         #data = getPropertyValueSet({'Uri': identifier.getContentIdentifier(),'ResourceName': title})
         error = getInteractiveAugmentedIOException(msg, context, 'ERROR', 'ALREADY_EXISTING', data)
         result = uno.Any('com.sun.star.ucb.InteractiveAugmentedIOException', error)
-        #result = error
     else:
-        if identifier.IsNew:
-           source.MetaData.insertValue('Title', identifier.setTitle(title, source.IsFolder))
+        # When you change Title you must change also the Identifier.getContentIdentifier()
+        # It's done by Identifier.setTitle() or Identifier.updateTitle()
+        if identifier.isNew():
+           source.MetaData.insertValue('Title', identifier.setTitle(title))
         else:
             default = source.MetaData.getValue('Title')
             source.MetaData.insertValue('Title', identifier.updateTitle(title, default))
         msg = "Set property: %s value: %s" % ('Title', title)
         level = uno.getConstantByName('com.sun.star.logging.LogLevel.INFO')
         result = None
+    print("ContentCore._setTitle() OK")
     return result, level, msg
+
+def insertNewContent(identifier, content):
+    print("ContentCore.insertNewContent() 1")
+    userid = identifier.User.Id
+    itemid = identifier.Id
+    parentid = identifier.ParentId
+    identifier.User.DataBase.insertNewContent(userid, itemid, parentid, content)
+    print("ContentCore.insertNewContent() 2")
 
 def notifyContentListener(ctx, source, action, identifier=None):
     if action == INSERTED:

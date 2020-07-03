@@ -49,7 +49,6 @@ from .logger import getMessage
 import binascii
 import traceback
 
-from threading import Thread
 from threading import Event
 
 class DataSource(unohelper.Base,
@@ -57,22 +56,16 @@ class DataSource(unohelper.Base,
                  XCloseListener):
     def __init__(self, ctx, event, scheme, plugin):
         try:
-            level = SEVERE
             msg = "DataSource for Scheme: %s loading ... " % scheme
             print("DataSource __init__() 1")
             self.ctx = ctx
-            logMessage(self.ctx, INFO, "stage 1", 'DataSource', '__init__()')
             self.scheme = scheme
             self.plugin = plugin
-            self.Warnings = None
-            self._Statement = None
             self._CahedUser = {}
             self._Calls = {}
-            self._Error = ''
+            self.Error = None
             self.sync = event
-            self.ready = Event()
             self.Provider = createService(self.ctx, '%s.Provider' % plugin)
-            self.dninit = None
             print("DataSource __init__() 2")
             self.datasource, url, created = getDataSource(self.ctx, scheme, plugin, True)
             print("DataSource __init__() 3 %s" % created)
@@ -82,14 +75,12 @@ class DataSource(unohelper.Base,
             self.DataBase.addCloseListener(self)
             folder, link = self.DataBase.getContentType()
             self.Provider.initialize(scheme, plugin, folder, link)
-            self.replicator = Replicator(ctx, self.datasource, url, created, self.Provider, self._CahedUser, self.ready, self.sync)
+            self.replicator = Replicator(ctx, self.datasource, self.Provider, self._CahedUser, self.sync)
             print("DataSource __init__() 4")
-            self.initialized = False
             logMessage(self.ctx, INFO, "stage 2", 'DataSource', '__init__()')
             print("DataSource __init__() 5")
-            level = INFO
             msg += "Done"
-            logMessage(self.ctx, level, msg, 'DataSource', '__init__()')
+            logMessage(self.ctx, INFO, msg, 'DataSource', '__init__()')
         except Exception as e:
             msg = "DataSource __init__(): Error: %s - %s" % (e, traceback.print_exc())
             print(msg)
@@ -100,16 +91,14 @@ class DataSource(unohelper.Base,
     @property
     def IsValid(self):
         return not self.Error
-    @property
-    def Error(self):
-        return self.Provider.Error if self.Provider and self.Provider.Error else self._Error
 
     # XCloseListener
     def queryClosing(self, source, ownership):
         print("DataSource.queryClosing() 1")
-        self.replicator.cancel()
-        print("DataSource.queryClosing() 2")
-        self.replicator.join()
+        if self.replicator.is_alive():
+            self.replicator.cancel()
+            print("DataSource.queryClosing() 2")
+            self.replicator.join()
         #self.deregisterInstance(self.Scheme, self.Plugin)
         self.DataBase.shutdownDataBase()
         msg = "DataSource queryClosing: Scheme: %s ... Done" % self.scheme
@@ -131,7 +120,6 @@ class DataSource(unohelper.Base,
             if not self._initializeUser(user, name, password):
                 print("DataSource.getUser() 6 ERROR")
                 return None
-            #self.checkNewIdentifier(user.Request, user.MetaData)
             self._CahedUser[name] = user
             print("DataSource.getUser() 7")
             self.sync.set()
@@ -156,19 +144,18 @@ class DataSource(unohelper.Base,
                     if root.IsPresent:
                         user.MetaData = self.DataBase.insertUser(user.Provider, data.Value, root.Value)
                         if self.DataBase.createUser(user, password):
-                            user.setDataBase(self.datasource, password)
+                            user.setDataBase(self.datasource, password, self.sync)
                             return True
                         else:
-                            warning = self._getWarning(1005, 1106, name)
+                            self.Error = getMessage(self.ctx, 1106, name)
                     else:
-                        warning = self._getWarning(1006, 1107, name)
+                        self.Error = getMessage(self.ctx, 1107, name)
                 else:
-                    warning = self._getWarning(1006, 1107, name)
+                    self.Error = getMessage(self.ctx, 1107, name)
             else:
-                warning = self._getWarning(1004, 1108, name)
+                self.Error = getMessage(self.ctx, 1108, name)
         else:
-            warning = self._getWarning(1003, 1105, g_oauth2)
-        self.Warnings = warning
+            self.Error = getMessage(self.ctx, 1105, g_oauth2)
         return False
 
     def _getWarning(self, state, code, format):
@@ -321,17 +308,6 @@ class DataSource(unohelper.Base,
             for parent in parents:
                 c2.setString(3, parent)
                 c2.executeUpdate()
-
-    def getDocumentContent(self, request, content):
-        return self.Provider.getDocumentContent(request, content)
-    def getFolderContent(self, user, identifier, content, updated):
-        if ONLINE == content.getValue('Loaded') == self.Provider.SessionMode:
-            print("DataSource.getFolderContent() whith request")
-            updated = user.DataBase.updateFolderContent(self.Provider, user, content)
-        else:
-            print("DataSource.getFolderContent() no request")
-        select = user.DataBase.getChildren(self.Provider, user.MetaData, identifier)
-        return select, updated
 
     def _updateFolderContent(self, request, user, content):
         updated = []

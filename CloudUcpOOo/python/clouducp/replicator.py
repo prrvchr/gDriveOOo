@@ -12,6 +12,7 @@ from com.sun.star.logging.LogLevel import SEVERE
 
 from unolib import KeyMap
 from unolib import getDateTime
+from unolib import unparseTimeStamp
 
 from .configuration import g_sync
 from .database import DataBase
@@ -28,29 +29,22 @@ from .logger import getMessage
 
 from threading import Thread
 import traceback
-
+import time
 
 class Replicator(unohelper.Base,
                  XCancellable,
                  Thread):
-    def __init__(self, ctx, datasource, url, created, provider, users, ready, sync):
+    def __init__(self, ctx, datasource, provider, users, sync):
         Thread.__init__(self)
         self.ctx = ctx
         self.database = DataBase(self.ctx, datasource)
-        self.url = url
-        self.created = created
         self.provider = provider
         self.users = users
-        self.created = created
         self.canceled = False
-        self.register = True
-        self.ready = ready
-        ready.clear()
         self.sync = sync
         sync.clear()
         self.error = None
         self.start()
-        #self.run()
 
     # XCancellable
     def cancel(self):
@@ -60,26 +54,16 @@ class Replicator(unohelper.Base,
 
     def run(self):
         try:
-            msg = "Replicator for Scheme: %s loading ... " % self.url
+            msg = "Replicator for Scheme: %s loading ... " % self.provider.Scheme
             print("Replicator.run() 1 *************************************************************")
             logMessage(self.ctx, INFO, "stage 1", 'Replicator', 'run()')
             print("Replicator run() 2")
-            #if self.created:
-            #    print("Replicator run() 3")
-            #    self.error = self.database.createDataBase()
-            #    if self.error is not None:
-            #        print("Replicator run() 4 %s" % self.error)
-            #        return
-            #    print("Replicator run() 5")
-            #    self.database.storeDataBase(self.url)
-            #self.ready.set()
-            print("Replicator run() 6")
             while not self.canceled:
                 self.sync.wait(g_sync)
                 self._synchronize()
                 self.sync.clear()
-                print("replicator.run() 7")
-            print("replicator.run() 8 *************************************************************")
+                print("replicator.run() 3")
+            print("replicator.run() 4 *************************************************************")
         except Exception as e:
             msg = "Replicator run(): Error: %s - %s" % (e, traceback.print_exc())
             print(msg)
@@ -105,7 +89,7 @@ class Replicator(unohelper.Base,
                     self._initUser(user)
                 if user.Token:
                     results += self._pullData(user)
-                    #results += self._pushData(user)
+                    results += self._pushData(user)
                 msg = getMessage(self.ctx, 116, user.Name)
                 logMessage(self.ctx, INFO, msg, 'Replicator', '_syncData()')
             result = all(results)
@@ -142,6 +126,12 @@ class Replicator(unohelper.Base,
         return results
 
     def _pushData(self, user):
+        results = []
+        self.database.getChangedItems1(user.Id)
+        self.database.getChangedItems(user.Id)
+        return results
+
+    def _pushData1(self, user):
         results = []
         uploader = user.Request.getUploader(self.database)
         for item in self.database.getItemToSync(user.MetaData):

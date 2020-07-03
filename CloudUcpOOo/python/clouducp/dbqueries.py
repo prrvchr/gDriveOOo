@@ -144,13 +144,12 @@ def getSqlQuery(name, format=None):
         s19 = '"U"."RootId"'
         s = (s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12,s13,s14,s15,s16,s17,s18,s19)
         f1 = '"Settings" AS "S","Items" AS "I"'
-        f2 = 'JOIN "Capabilities" AS "C" ON "I"."ItemId"="C"."ItemId"'
+        f2 = 'JOIN "Capabilities" AS "C" ON "I"."ItemId"="C"."ItemId" AND "I"."Trashed"=FALSE'
         f3 = 'JOIN "Users" AS "U" ON "C"."UserId"="U"."UserId"'
         f = (f1,f2,f3)
-        w1 = '"I"."Trashed"=FALSE'
-        w2 = '"S"."Name"=%s' % "'ContentType'"
-        w3 = '"U"."UserName"=CURRENT_USER'
-        w = (w1,w2,w3)
+        w1 = '"S"."Name"=%s' % "'ContentType'"
+        w2 = '"U"."UserName"=CURRENT_USER'
+        w = (w1,w2)
         p = (','.join(c), ','.join(s), ' '.join(f), ' AND '.join(w))
         query = 'CREATE VIEW "Item" (%s) AS SELECT %s FROM %s WHERE %s;' % p
         query += 'GRANT SELECT ON "Item" TO "%(Role)s";' % format
@@ -391,6 +390,9 @@ def getSqlQuery(name, format=None):
 
     elif name == 'getContentType':
         query = 'SELECT "Value2" "Folder","Value3" "Link" FROM "Settings" WHERE "Name"=\'ContentType\';'
+    elif name == 'getUserTimeStamp':
+        query = 'SELECT "TimeStamp" FROM "Users" WHERE "UserId"=?;'
+
     elif name == 'getUser':
         c1 = '"U"."UserId"'
         c2 = '"U"."UserName"'
@@ -436,8 +438,8 @@ def getSqlQuery(name, format=None):
         c3 = '"DateModified"'
         c4 = '"DateCreated"'
         c5 = '"IsFolder"'
-        c6 = "CASE WHEN %s = TRUE THEN ? || '/' || %s ELSE ? || '/' || %s END %s" % (c5, c0, c1, '"TargetURL"')
-        #c6 = "? || '/' || %s %s" % ('"Uri"', '"TargetURL"')
+        #c6 = "CASE WHEN %s = TRUE THEN ? || '/' || %s ELSE ? || '/' || %s END %s" % (c5, c0, c1, '"TargetURL"')
+        c6 = '? || "Uri" "TargetURL"'
         c7 = '"IsHidden"'
         c8 = '"IsVolume"'
         c9 = '"IsRemote"'
@@ -470,6 +472,30 @@ def getSqlQuery(name, format=None):
     elif name == 'getToken':
         query = 'SELECT "Token" FROM "Users" WHERE "UserId" = ?;'
 
+# System Time Period Select Queries
+    elif name == 'getChangedCapabilities':
+        query = '''\
+SELECT "Previous".* FROM "Capabilities" AS "Current",
+                         "Capabilities" FOR SYSTEM_TIME FROM CURRENT_TIMESTAMP - 1 YEAR TO CURRENT_TIMESTAMP AS "Previous"
+WHERE "Current"."UserId" = ? AND "Previous"."UserId" = ? AND "Current"."Start" = "Previous"."Stop";'''
+
+    elif name == 'getChangedCapabilities1':
+        query = '''\
+SELECT "ItemId","Start","Stop" FROM "Capabilities" FOR SYSTEM_TIME FROM CURRENT_TIMESTAMP - 1 YEAR TO CURRENT_TIMESTAMP
+WHERE "Capabilities"."UserId" = ?;'''
+
+    elif name == 'getChangedItems':
+        query = 'SELECT DISTINCT "ItemId" FROM "Items" FOR SYSTEM_TIME AS OF TIMESTAMP_WITH_ZONE(?);'
+
+    elif name == 'getChangedItems2':
+        query = 'SELECT "ItemId" FROM "Items" WHERE "ItemId" NOT IN(SELECT DISTINCT "ItemId" FROM "Items" FOR SYSTEM_TIME AS OF ?);'
+    elif name == 'getChangedItems1':
+        query = 'SELECT DISTINCT "ItemId" FROM "Items" FOR SYSTEM_TIME FROM CURRENT_TIMESTAMP - 1 YEAR TO ?;'
+    elif name == 'getChangedCapabilities2':
+        query = 'SELECT DISTINCT "UserId", "ItemId" FROM "Capabilities" FOR SYSTEM_TIME FROM ? TO CURRENT_TIMESTAMP;'
+    elif name == 'getChangedParents':
+        query = 'SELECT DISTINCT "UserId", "ItemId" FROM "Parents" FOR SYSTEM_TIME FROM ? TO CURRENT_TIMESTAMP;'
+
 # Insert Queries
     elif name == 'insertUser':
         c = '"UserName","DisplayName","RootId","TimeStamp","UserId"'
@@ -491,6 +517,9 @@ def getSqlQuery(name, format=None):
 # Update Queries
     elif name == 'updateToken':
         query = 'UPDATE "Users" SET "Token"=? WHERE "UserId"=?;'
+    elif name == 'updateUserTimeStamp':
+        query = 'UPDATE "Users" SET "TimeStamp"=? WHERE "UserId"=?;'
+
     elif name == 'updateItem1':
         c = '"Title"=?,"DateCreated"=?,"DateModified"=?,"MediaType"=?,"Size"=?,"Trashed"=?'
         query = 'UPDATE "Items" SET %s WHERE "ItemId"=?;' % c
@@ -515,6 +544,61 @@ def getSqlQuery(name, format=None):
         query = 'DELETE FROM "Synchronizes" WHERE "SyncId"=?;'
 
 # Create Procedure Query
+    elif name == 'createGetIdentifier':
+        query = '''\
+CREATE PROCEDURE "GetIdentifier"(IN "UserId" VARCHAR(100),
+                                 IN "RootId" VARCHAR(100),
+                                 IN "UriPath" VARCHAR(500),
+                                 IN "Separator" VARCHAR(1),
+                                 OUT "ItemId" VARCHAR(100),
+                                 OUT "ParentId" VARCHAR(100),
+                                 OUT "BaseUri" VARCHAR(500))
+  SPECIFIC "GetIdentifier_1"
+  READS SQL DATA
+  BEGIN ATOMIC
+    DECLARE "Index" INTEGER DEFAULT 1;
+    DECLARE "Pattern" VARCHAR(5) DEFAULT '[^$]+';
+    DECLARE "Paths" VARCHAR(100) ARRAY[50];
+    DECLARE "Length" INTEGER DEFAULT 0;
+    DECLARE "Item" VARCHAR(100);
+    DECLARE "Parent" VARCHAR(100);
+    DECLARE "Uri" VARCHAR(500) DEFAULT '';
+    SET "Pattern" = REPLACE("Pattern", '$', "Separator");
+    SET "Paths" = REGEXP_SUBSTRING_ARRAY("UriPath", "Pattern");
+    SET "Length" = CARDINALITY("Paths");
+    IF "Length" = 0 THEN
+      SET "Item" = "RootId";
+      SET "ParentId" = NULL;
+    ELSE
+      SET "Parent" = "RootId";
+      SET "ParentId" = "RootId";
+      WHILE "Index" <= "Length" DO
+        SET "Item" = SELECT "ItemId" FROM "Children"
+        WHERE "ParentId" = "Parent" AND "Uri" = "Paths"["Index"];
+        IF "Item" IS NULL THEN 
+          SET "Length" = 0;
+        ELSE
+          IF "Index" = "Length" - 1 THEN
+            SET "ParentId" = "Item";
+          END IF;
+          SET "Parent" = "Item";
+          SET "Index" = "Index" + 1;
+        END IF;
+      END WHILE;
+      SET "Index" = 1;
+      WHILE "Index" < "Length" DO
+        IF "Index" = 1 THEN
+          SET "Uri" = "Paths"["Index"];
+        ELSE
+          SET "Uri" = "Uri" || "Separator" || "Paths"["Index"];
+        END IF;
+        SET "Index" = "Index" + 1;
+      END WHILE;
+    END IF;
+    SET "ItemId" = "Item";
+    SET "BaseUri" = "Uri";
+  END;
+  GRANT EXECUTE ON SPECIFIC ROUTINE "GetIdentifier_1" TO "%(Role)s";''' % format
 
     elif name == 'createGetChildren':
         query = '''\
@@ -561,7 +645,6 @@ CREATE PROCEDURE "MergeItem"(IN "UserId" VARCHAR(100),
                              IN "Separator" VARCHAR(1),
                              IN "Loaded" SMALLINT,
                              IN "ItemId" VARCHAR(100),
-                             IN "ParentIds" VARCHAR(500),
                              IN "Title" VARCHAR(100),
                              IN "DateCreated" TIMESTAMP(6),
                              IN "DateModified" TIMESTAMP(6),
@@ -571,7 +654,8 @@ CREATE PROCEDURE "MergeItem"(IN "UserId" VARCHAR(100),
                              IN "CanAddChild" BOOLEAN,
                              IN "CanRename" BOOLEAN,
                              IN "IsReadOnly" BOOLEAN,
-                             IN "IsVersionable" BOOLEAN)
+                             IN "IsVersionable" BOOLEAN,
+                             IN "ParentIds" VARCHAR(1000))
   SPECIFIC "MergeItem_1"
   MODIFIES SQL DATA
   BEGIN ATOMIC
@@ -580,21 +664,27 @@ CREATE PROCEDURE "MergeItem"(IN "UserId" VARCHAR(100),
     DECLARE "Parents" VARCHAR(100) ARRAY[100];
     SET "Pattern" = REPLACE("Pattern", '$', "Separator");
     SET "Parents" = REGEXP_SUBSTRING_ARRAY("ParentIds", "Pattern");
-    MERGE INTO "Items" USING (VALUES("ItemId","Title","DateCreated","DateModified","MediaType","Size","Trashed","Loaded"))
+    MERGE INTO "Items" USING (VALUES("ItemId","Title","DateCreated","DateModified",
+      "MediaType","Size","Trashed","Loaded"))
       AS vals(s,t,u,v,w,x,y,z) ON "Items"."ItemId"=vals.s
         WHEN MATCHED THEN UPDATE
-          SET "Title"=vals.t, "DateCreated"=vals.u, "DateModified"=vals.v, "MediaType"=vals.w, "Size"=vals.x, "Trashed"=vals.y, "Loaded"=vals.z
-        WHEN NOT MATCHED THEN INSERT ("ItemId","Title","DateCreated","DateModified","MediaType","Size","Trashed","Loaded")
+          SET "Title"=vals.t, "DateCreated"=vals.u, "DateModified"=vals.v, "MediaType"=vals.w,
+          "Size"=vals.x, "Trashed"=vals.y, "Loaded"=vals.z
+        WHEN NOT MATCHED THEN INSERT ("ItemId","Title","DateCreated","DateModified",
+        "MediaType","Size","Trashed","Loaded")
           VALUES vals.s, vals.t, vals.u, vals.v, vals.w, vals.x, vals.y, vals.z;
-    MERGE INTO "Capabilities" USING (VALUES("UserId","ItemId","CanAddChild","CanRename","IsReadOnly","IsVersionable"))
+    MERGE INTO "Capabilities" USING (VALUES("UserId","ItemId","CanAddChild","CanRename",
+      "IsReadOnly","IsVersionable"))
       AS vals(u,v,w,x,y,z) ON "Capabilities"."UserId"=vals.u AND "Capabilities"."ItemId"=vals.v
         WHEN MATCHED THEN UPDATE
           SET "CanAddChild"=vals.w, "CanRename"=vals.x, "IsReadOnly"=vals.y, "IsVersionable"=vals.z
-        WHEN NOT MATCHED THEN INSERT ("UserId","ItemId","CanAddChild","CanRename","IsReadOnly","IsVersionable")
+        WHEN NOT MATCHED THEN INSERT ("UserId","ItemId","CanAddChild","CanRename","IsReadOnly",
+        "IsVersionable")
           VALUES vals.u, vals.v, vals.w, vals.x, vals.y, vals.z;
     DELETE FROM "Parents" WHERE "UserId"="UserId" AND "ChildId"="ItemId";
     WHILE "Index" <= CARDINALITY("Parents") DO
-      INSERT INTO "Parents" ("UserId","ChildId","ItemId") VALUES ("UserId","ItemId","Parents"["Index"]);
+      INSERT INTO "Parents" ("UserId","ChildId","ItemId") VALUES ("UserId","ItemId",
+      "Parents"["Index"]);
       SET "Index" = "Index" + 1;
     END WHILE;
   END;
@@ -606,7 +696,6 @@ CREATE PROCEDURE "InsertItem"(IN "UserId" VARCHAR(100),
                               IN "Separator" VARCHAR(1),
                               IN "Loaded" SMALLINT,
                               IN "ItemId" VARCHAR(100),
-                              IN "ParentIds" VARCHAR(500),
                               IN "Title" VARCHAR(100),
                               IN "DateCreated" TIMESTAMP(6),
                               IN "DateModified" TIMESTAMP(6),
@@ -616,8 +705,50 @@ CREATE PROCEDURE "InsertItem"(IN "UserId" VARCHAR(100),
                               IN "CanAddChild" BOOLEAN,
                               IN "CanRename" BOOLEAN,
                               IN "IsReadOnly" BOOLEAN,
-                              IN "IsVersionable" BOOLEAN)
+                              IN "IsVersionable" BOOLEAN,
+                              IN "ParentIds" VARCHAR(1000))
   SPECIFIC "InsertItem_1"
+  MODIFIES SQL DATA
+  DYNAMIC RESULT SETS 1
+  BEGIN ATOMIC
+    DECLARE "Index" INTEGER DEFAULT 1;
+    DECLARE "Pattern" VARCHAR(5) DEFAULT '[^$]+';
+    DECLARE "Parents" VARCHAR(100) ARRAY[100];
+    SET "Pattern" = REPLACE("Pattern", '$', "Separator");
+    SET "Parents" = REGEXP_SUBSTRING_ARRAY("ParentIds", "Pattern");
+    INSERT INTO "Items" ("ItemId","Title","DateCreated","DateModified","MediaType",
+      "Size","Trashed","Loaded") VALUES ("ItemId","Title","DateCreated","DateModified",
+      "MediaType","Size","Trashed","Loaded");
+    INSERT INTO "Capabilities" ("UserId","ItemId","CanAddChild","CanRename","IsReadOnly",
+      "IsVersionable") VALUES ("UserId","ItemId","CanAddChild","CanRename","IsReadOnly",
+      "IsVersionable");
+    WHILE "Index" <= CARDINALITY("Parents") DO
+      INSERT INTO "Parents" ("UserId","ChildId","ItemId") VALUES ("UserId","ItemId",
+      "Parents"["Index"]);
+      SET "Index" = "Index" + 1;
+    END WHILE;
+  END;
+  GRANT EXECUTE ON SPECIFIC ROUTINE "InsertItem_1" TO "%(Role)s";''' % format
+
+
+    elif name == 'createInsertAndSelectItem':
+        query = '''\
+CREATE PROCEDURE "InsertAndSelectItem"(IN "UserId" VARCHAR(100),
+                                       IN "Separator" VARCHAR(1),
+                                       IN "Loaded" SMALLINT,
+                                       IN "ItemId" VARCHAR(100),
+                                       IN "Title" VARCHAR(100),
+                                       IN "DateCreated" TIMESTAMP(6),
+                                       IN "DateModified" TIMESTAMP(6),
+                                       IN "MediaType" VARCHAR(100),
+                                       IN "Size" BIGINT,
+                                       IN "Trashed" BOOLEAN,
+                                       IN "CanAddChild" BOOLEAN,
+                                       IN "CanRename" BOOLEAN,
+                                       IN "IsReadOnly" BOOLEAN,
+                                       IN "IsVersionable" BOOLEAN,
+                                       IN "ParentIds" VARCHAR(1000))
+  SPECIFIC "InsertAndSelectItem_1"
   MODIFIES SQL DATA
   DYNAMIC RESULT SETS 1
   BEGIN ATOMIC
@@ -628,14 +759,16 @@ CREATE PROCEDURE "InsertItem"(IN "UserId" VARCHAR(100),
       "Loaded",'' "CasePreservingURL",FALSE "IsHidden",FALSE "IsVolume",FALSE "IsRemote",
       FALSE "IsRemoveable",FALSE "IsFloppy",FALSE "IsCompactDisc"
       FROM "Item" WHERE "UserId" = "UserId" AND "ItemId" = "ItemId" FOR READ ONLY;
-    CALL "MergeItem"("UserId","Separator","Loaded","ItemId","ParentIds","Title",
-      "DateCreated","DateModified","MediaType","Size","Trashed","CanAddChild",
-      "CanRename","IsReadOnly","IsVersionable");
+    CALL "InsertItem"("UserId","Separator","Loaded","ItemId","Title","DateCreated",
+      "DateModified","MediaType","Size","Trashed","CanAddChild","CanRename","IsReadOnly",
+      "IsVersionable","ParentIds");
     OPEN "Result";
   END;
-  GRANT EXECUTE ON SPECIFIC ROUTINE "InsertItem_1" TO "%(Role)s";''' % format
+  GRANT EXECUTE ON SPECIFIC ROUTINE "InsertAndSelectItem_1" TO "%(Role)s";''' % format
 
 # Get Procedure Query
+    elif name == 'getIdentifier':
+        query = 'CALL "GetIdentifier"(?,?,?,?,?,?,?)'
     elif name == 'getItem':
         query = 'CALL "GetItem"(?,?)'
     elif name == 'getChildren':
@@ -644,6 +777,8 @@ CREATE PROCEDURE "InsertItem"(IN "UserId" VARCHAR(100),
         query = 'CALL "MergeItem"(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
     elif name == 'insertItem':
         query = 'CALL "InsertItem"(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+    elif name == 'insertAndSelectItem':
+        query = 'CALL "InsertAndSelectItem"(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
 
 # Get DataBase Version Query
     elif name == 'getVersion':

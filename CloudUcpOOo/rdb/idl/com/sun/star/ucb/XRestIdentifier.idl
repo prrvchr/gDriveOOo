@@ -37,8 +37,7 @@ interface XRestIdentifier: com::sun::star::uno::XInterface
                           [in] boolean Default);
     string updateTitle([in] string Value,
                        [in] string Default);
-    string setTitle([in] string Value,
-                    [in] boolean IsFolder);
+    string setTitle([in] string Value);
 
     [attribute, readonly] ::com::sun::star::ucb::XRestDataSource DataSource;
     [attribute, readonly] ::com::sun::star::ucb::XRestUser User;

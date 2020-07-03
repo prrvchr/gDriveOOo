@@ -57,7 +57,7 @@ class ContentProviderProxy(unohelper.Base,
 
     # XContentProviderFactory
     def createContentProvider(self, service):
-        print('ContentProviderProxy.createContentProvider()')
+        #print('ContentProviderProxy.createContentProvider()')
         provider = None
         level = INFO
         msg = "Service: %s loading ..." % service
@@ -73,7 +73,7 @@ class ContentProviderProxy(unohelper.Base,
 
     # XContentProviderSupplier
     def getContentProvider(self):
-        print('ContentProviderProxy.getContentProvider()')
+        #print('ContentProviderProxy.getContentProvider()')
         level = INFO
         msg = "Need to get UCP: %s ..." % g_identifier
         if not self.IsLoaded:
@@ -91,10 +91,10 @@ class ContentProviderProxy(unohelper.Base,
 
     # XParameterizedContentProvider
     def registerInstance1(self, scheme, plugin, replace):
-        print('ContentProviderProxy.registerInstance()')
+        #print('ContentProviderProxy.registerInstance()')
         msg = "Register Scheme/Plugin/Replace: %s/%s/%s ..." % (scheme, plugin, replace)
         if ContentProviderProxy._IsRegistred and not replace:
-            print('ContentProviderProxy.registerInstance() ***** None')
+            #print('ContentProviderProxy.registerInstance() ***** None')
             return None
         ContentProviderProxy._IsRegistred = True
         self.scheme = scheme
@@ -102,7 +102,7 @@ class ContentProviderProxy(unohelper.Base,
         self.replace = replace
         msg += " Done"
         logMessage(self.ctx, INFO, msg, 'ContentProviderProxy', 'registerInstance()')
-        print('ContentProviderProxy.registerInstance() OK')
+        #print('ContentProviderProxy.registerInstance() OK')
         return self
     def deregisterInstance1(self, scheme, plugin):
         print('ContentProviderProxy.deregisterInstance()')
@@ -113,15 +113,15 @@ class ContentProviderProxy(unohelper.Base,
 
     # XContentIdentifierFactory
     def createContentIdentifier(self, identifier):
-        print('ContentProviderProxy.createContentIdentifier()')
+        #print('ContentProviderProxy.createContentIdentifier()')
         return self.getContentProvider().createContentIdentifier(identifier)
 
     # XContentProvider
     def queryContent(self, identifier):
-        print('ContentProviderProxy.queryContent()')
+        #print('ContentProviderProxy.queryContent()')
         return self.getContentProvider().queryContent(identifier)
     def compareContentIds(self, identifier1, identifier2):
-        print('ContentProviderProxy.compareContentIds()')
+        #print('ContentProviderProxy.compareContentIds()')
         return self.getContentProvider().compareContentIds(identifier1, identifier2)
 
     # XServiceInfo

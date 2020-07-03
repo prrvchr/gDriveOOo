@@ -37,8 +37,11 @@ from unolib import PropertySetInfo
 from .contentlib import CommandInfo
 from .contentlib import Row
 from .contentlib import DynamicResultSet
+
 from .contentcore import getPropertiesValues
 from .contentcore import setPropertiesValues
+from .contentcore import insertNewContent
+
 from .contenttools import getCommandInfo
 from .contenttools import getContentInfo
 from .contenttools import getUcb
@@ -51,7 +54,6 @@ import traceback
 
 
 class Content(unohelper.Base,
-              XComponent,
               XContent,
               XCommandProcessor2,
               XContentCreator,
@@ -82,13 +84,21 @@ class Content(unohelper.Base,
     def CanAddChild(self):
         return self.MetaData.getValue('CanAddChild')
 
-    # XComponent
-    def dispose(self):
-        print("Content.dispose()")
-    def addEventListener(self, listener):
-        print("Content.addEventListener()")
-    def removeEventListener(self, listener):
-        print("Content.removeEventListener()")
+    # XChild
+    def getParent(self):
+        content = None
+        if not self.Identifier.isRoot():
+            identifier = self.Identifier.getParent()
+            content = identifier.getContent()
+        return content
+    def setParent(self, parent):
+        raise NoSupportException('Parent can not be set', self)
+
+
+
+
+
+
 
     # XPropertiesChangeNotifier
     def addPropertiesChangeListener(self, names, listener):
@@ -102,15 +112,6 @@ class Content(unohelper.Base,
             if name in self._propertiesListener:
                 if listener in self._propertiesListener[name]:
                     self._propertiesListener[name].remove(listener)
-
-    # XChild
-    def getParent(self):
-        if self.Identifier.IsRoot:
-            return XInterface()
-        identifier = self.Identifier.getParent()
-        return identifier.getContent()
-    def setParent(self, parent):
-        raise NoSupportException('Parent can not be set', self)
 
     # XContentCreator
     def queryCreatableContentsInfo(self):
@@ -176,13 +177,13 @@ class Content(unohelper.Base,
                     elif not isreadonly and s.queryInterface(stream):
                         s.setStream(sf.openFileReadWrite(url))
             elif command.Name == 'insert':
-                print("Content.execute() insert 1 - %s" % self.IsFolder)
+                print("Content.execute() insert 1 - %s - %s" % (self.IsFolder, self.Identifier.Id))
                 if self.IsFolder:
-                    mediatype = self.Identifier.DataSource.Provider.Folder
+                    mediatype = self.Identifier.User.Provider.Folder
                     self.MetaData.insertValue('MediaType', mediatype)
                     print("Content.execute() insert 2")
-                    if self.Identifier.insertNewFolder(self.MetaData):
-                        pass
+                    insertNewContent(self.Identifier, self.MetaData)
+                    print("Content.execute() insert 3")
                     #identifier = self.getIdentifier()
                     #ucp = getUcp(self.ctx, identifier.getContentProviderScheme())
                     #self.addPropertiesChangeListener(('Id', 'Name', 'Size', 'Trashed', 'Loaded'), ucp)
@@ -196,7 +197,7 @@ class Content(unohelper.Base,
                     stream = command.Argument.Data
                     replace = command.Argument.ReplaceExisting
                     sf = getSimpleFile(self.ctx)
-                    url = self.Identifier.DataSource.Provider.SourceURL
+                    url = self.Identifier.User.Provider.SourceURL
                     target = '%s/%s' % (url, self.Identifier.Id)
                     if sf.exists(target) and not replace:
                         pass
@@ -244,7 +245,7 @@ class Content(unohelper.Base,
                 if not sf.exists(source):
                     raise CommandAbortedException("Error while saving file: %s" % source, self)
                 inputstream = sf.openFileRead(source)
-                target = '%s/%s' % (self.Identifier.DataSource.Provider.SourceURL, id)
+                target = '%s/%s' % (self.Identifier.User.Provider.SourceURL, id)
                 sf.writeFile(target, inputstream)
                 inputstream.closeInput()
                 # We need to commit change: Size is the property chainning all DataSource change
@@ -275,7 +276,7 @@ class Content(unohelper.Base,
     def _getCreatableContentsInfo(self):
         content = []
         if self.IsFolder and self.CanAddChild:
-            provider = self.Identifier.DataSource.Provider
+            provider = self.Identifier.User.Provider
             properties = (getProperty('Title', 'string', BOUND), )
             content.append(getContentInfo(provider.Folder, KIND_FOLDER, properties))
             content.append(getContentInfo(provider.Office, KIND_DOCUMENT, properties))
@@ -301,7 +302,7 @@ class Content(unohelper.Base,
         except RuntimeError as e:
             t4 = uno.getTypeByName('com.sun.star.ucb.InsertCommandArgument')
         commands['insert'] = getCommandInfo('insert', t4)
-        if not self.Identifier.IsRoot:
+        if not self.Identifier.isRoot():
             commands['delete'] = getCommandInfo('delete', uno.getTypeByName('boolean'))
         if self.CanAddChild:
             t5 = uno.getTypeByName('com.sun.star.ucb.ContentInfo')
@@ -315,7 +316,7 @@ class Content(unohelper.Base,
         return commands
 
     def _getPropertySetInfo(self):
-        RO = 0 if self.Identifier.IsNew else READONLY
+        RO = 0 if self.Identifier.isNew() else READONLY
         properties = {}
         properties['ContentType'] = getProperty('ContentType', 'string', BOUND | RO)
         properties['MediaType'] = getProperty('MediaType', 'string', BOUND | READONLY)
