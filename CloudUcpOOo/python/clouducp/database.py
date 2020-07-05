@@ -21,6 +21,7 @@ from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_TRASHED
 from unolib import KeyMap
 from unolib import g_oauth2
 from unolib import createService
+from unolib import getDateTime
 from unolib import parseDateTime
 from unolib import getResourceLocation
 
@@ -66,6 +67,7 @@ class DataBase(unohelper.Base,
     @property
     def Connection(self):
         return self._statement.getConnection()
+
 
 # Procedures called by the DataSource
     def addCloseListener(self, listener):
@@ -174,6 +176,7 @@ class DataBase(unohelper.Base,
         call.close()
         return item.getValue('Folder'), item.getValue('Link')
 
+
 # Procedures called by the User
     def selectItem(self, user, identifier):
         item = None
@@ -204,10 +207,10 @@ class DataBase(unohelper.Base,
 
     def getFolderContent(self, identifier, content, updated):
         if ONLINE == content.getValue('Loaded') == identifier.User.Provider.SessionMode:
-            print("DataSource.getFolderContent() whith request")
+            print("DataBase.getFolderContent() whith request")
             updated = self._updateFolderContent(identifier.User, content)
         else:
-            print("DataSource.getFolderContent() no request")
+            print("DataBase.getFolderContent() no request")
         select = self._getChildren(identifier)
         return select, updated
 
@@ -248,22 +251,6 @@ class DataBase(unohelper.Base,
         select.setString(2, identifier.User.Id)
         select.setString(3, identifier.Id)
         select.setShort(4, identifier.User.Provider.SessionMode)
-        return select
-
-    def _getChildren1(self, user, identifier):
-        #TODO: Can't have a ResultSet of type SCROLL_INSENSITIVE with a Procedure...
-        select = self._getDataSourceCall('getChildren')
-        scroll = 'com.sun.star.sdbc.ResultSetType.SCROLL_INSENSITIVE'
-        select.ResultSetType = uno.getConstantByName(scroll)
-        # OpenOffice / LibreOffice Columns:
-        #    ['Title', 'Size', 'DateModified', 'DateCreated', 'IsFolder', 'TargetURL', 'IsHidden',
-        #    'IsVolume', 'IsRemote', 'IsRemoveable', 'IsFloppy', 'IsCompactDisc']
-        # "TargetURL" is done by:
-        #    CONCAT(BaseURL,'/',Id) for Foder or CONCAT(BaseURL,'/',Title) for File.
-        select.setString(1, user.getValue('UserId'))
-        select.setString(2, identifier.getValue('Id'))
-        select.setString(3, identifier.getValue('BaseURL'))
-        select.setShort(4, provider.SessionMode)
         return select
 
     def updateLoaded(self, userid, itemid, value, default):
@@ -316,6 +303,45 @@ class DataBase(unohelper.Base,
         else:
             id = binascii.hexlify(uno.generateUuid().value).decode('utf-8')
         return id
+
+    def updateContent(self, userid, itemid, property, value):
+        try:
+            print("DataBase.updateContent() 1 %s" % property)
+            if property == 'Title':
+                print("DataBase.updateContent() 2")
+                update = self._getDataSourceCall('updateTitle')
+                print("DataBase.updateContent() 3")
+                update.setString(1, userid)
+                print("DataBase.updateContent() 4")
+                update.setString(2, itemid)
+                print("DataBase.updateContent() 5 %s" % value)
+                update.setString(3, value)
+                print("DataBase.updateContent() 6")
+                update.execute()
+                update.close()
+                self.sync.set()
+            elif property == 'Size':
+                update = self._getDataSourceCall('updateSize')
+                update.setLong(1, value)
+                update.setString(2, itemid)
+                update.executeUpdate()
+                update.close()
+                self.sync.set()
+            elif property == 'Trashed':
+                update = self._getDataSourceCall('updateTrashed')
+                update.setBoolean(1, value)
+                update.setString(2, itemid)
+                update.executeUpdate()
+                update.close()
+                self.sync.set()
+            print("DataBase.updateContent() OK")
+        except Exception as e:
+            msg += " ERROR: %s" % e
+            print(msg)
+
+
+
+
 
     def getItem(self, userid, itemid):
         item = None
@@ -378,28 +404,6 @@ class DataBase(unohelper.Base,
         call.close()
         return count
 
-    def getChangedItems(self, userid):
-        items = []
-        select = self._getDataSourceCall('getChangedCapabilities')
-        select.setString(1, userid)
-        select.setString(2, userid)
-        result = select.executeQuery()
-        while result.next():
-            items.append(getKeyMapFromResult(result))
-        select.close()
-        msg = "Items to Sync 2: %s, %s" % (len(items), items)
-        print(msg)
-
-    def getChangedItems1(self, userid):
-        items = []
-        select = self._getDataSourceCall('getChangedCapabilities1')
-        select.setString(1, userid)
-        result = select.executeQuery()
-        while result.next():
-            items.append(getKeyMapFromResult(result))
-        select.close()
-        msg = "Items to Sync 1: %s, %s" % (len(items), items)
-        print(msg)
 
 
 
@@ -596,8 +600,8 @@ class DataBase(unohelper.Base,
         rejected = self._getRejectedItems(provider, parents, items)
         self._closeDataSourceCall()
         endtime = parseDateTime()
-        self._updateUserTimeStamp(user.Id, endtime)
-        return rejected, rows, page, row
+        #self._updateUserTimeStamp(user.Id, endtime)
+        return rejected, rows, page, row, starttime
 
     def _getDriveContent(self, call, provider, user, rootid, roots, separator, timestamp):
         rows = []
@@ -658,6 +662,70 @@ class DataBase(unohelper.Base,
             timestamp = result.getTimestamp(1)
         select.close()
         return timestamp
+
+    def getUpdated(self, userid, start, stop):
+        items = []
+        select = self._getDataSourceCall('getUpdated')
+        select.setTimestamp(1, start)
+        select.setTimestamp(2, stop)
+        select.setString(3, userid)
+        result = select.executeQuery()
+        while result.next():
+            items.append(getKeyMapFromResult(result))
+        select.close()
+        msg = "Get Updated to Sync: %s, %s" % (items, len(items))
+        print(msg)
+
+    def getUpdatedItems(self, userid, start, stop):
+        items = []
+        select = self._getDataSourceCall('getUpdatedItems')
+        select.setTimestamp(1, start)
+        select.setTimestamp(2, stop)
+        select.setString(3, userid)
+        result = select.executeQuery()
+        while result.next():
+            items.append(getKeyMapFromResult(result))
+        select.close()
+        msg = "Get UpdatedItems to Sync: %s, %s" % (items, len(items))
+        print(msg)
+
+    def getInserted(self, userid, start, stop):
+        items = []
+        select = self._getDataSourceCall('getInserted')
+        select.setTimestamp(1, start)
+        select.setString(2, userid)
+        result = select.executeQuery()
+        while result.next():
+            items.append(getKeyMapFromResult(result))
+        select.close()
+        msg = "Get Inserted to Sync: %s, %s" % (items, len(items))
+        print(msg)
+
+    def getInsertedItems(self, userid, start, stop):
+        items = []
+        select = self._getDataSourceCall('getInsertedItems')
+        select.setTimestamp(1, start)
+        select.setTimestamp(2, stop)
+        select.setString(3, userid)
+        result = select.executeQuery()
+        while result.next():
+            items.append(getKeyMapFromResult(result))
+        select.close()
+        msg = "Get InsertedItems to Sync: %s, %s" % (items, len(items))
+        print(msg)
+
+    def getDeletedItems(self, userid, start, stop):
+        items = []
+        select = self._getDataSourceCall('getDeletedItems')
+        select.setTimestamp(1, start)
+        select.setString(2, userid)
+        select.setString(3, userid)
+        result = select.executeQuery()
+        while result.next():
+            items.append(getKeyMapFromResult(result))
+        select.close()
+        msg = "Get DeletedItems to Sync: %s, %s" % (items, len(items))
+        print(msg)
 
 # Procedures called internally
     def _setCallItem(self, call, provider, item, id, parents, separator, timestamp):

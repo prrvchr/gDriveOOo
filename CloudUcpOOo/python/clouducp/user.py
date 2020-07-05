@@ -53,6 +53,18 @@ class User(unohelper.Base,
     def isValid(self):
         return self.Error is None
 
+    def setDataBase(self, datasource, password, sync):
+        name, password = self.getCredential(password)
+        self.DataBase = DataBase(self.ctx, datasource, name, password, sync)
+
+    def getCredential(self, password):
+        return self.Name, password
+
+
+
+
+
+
     def getItem(self, datasource, identifier):
         item = self.DataBase.selectItem(self.MetaData, identifier)
         if item is None and self.Provider.isOnLine():
@@ -70,7 +82,6 @@ class User(unohelper.Base,
         return self.synchronize(datasource, inserted)
 
     # XRestUser
-
     def updateTitle(self, datasource, itemid, parentid, value, default):
         result = datasource.updateTitle(self.Id, itemid, parentid, value, default)
         return self.synchronize(datasource, result)
@@ -87,13 +98,6 @@ class User(unohelper.Base,
         if sf.exists(url):
             return sf.getSize(url), sf.openFileRead(url)
         return 0, None
-
-    def setDataBase(self, datasource, password, sync):
-        name, password = self.getCredential(password)
-        self.DataBase = DataBase(self.ctx, datasource, name, password, sync)
-
-    def getCredential(self, password):
-        return self.Name, password
 
     def getViewName(self):
         return self.Name.split('@').pop(0)

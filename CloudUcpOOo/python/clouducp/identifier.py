@@ -87,15 +87,6 @@ class Identifier(unohelper.Base,
         print("Identifier.getContent() OK")
         return content
 
-    def _getNewMetaData(self):
-        id = self.User.DataBase.getNewIdentifier(self.User)
-        data = self.User.DataBase.getIdentifier(self.User.MetaData, self._uri)
-        metadata = KeyMap()
-        metadata.setValue('Id', id)
-        metadata.setValue('ParentId', data.getValue('Id'))
-        print("Identifier._getNewMetaData() %s" % (metadata, ))
-        return metadata
-
     def _getNewContent(self):
         try:
             print("Identifier._getNewContent() 1")
@@ -188,6 +179,10 @@ class Identifier(unohelper.Base,
             content.insertValue('Loaded', loaded)
         return select
 
+
+
+
+
     def insertNewDocument(self, content):
         parentid = self.getParent().Id
         return self.DataSource.insertNewDocument(self.User.Id, self.Id, parentid, content)
@@ -199,10 +194,6 @@ class Identifier(unohelper.Base,
 
     def countChildTitle(self, title):
         return self.User.DataBase.countChildTitle(self.User.Id, self.Id, title)
-
-
-
-
 
 
     def isChildId(self, title):
@@ -247,3 +238,11 @@ class Identifier(unohelper.Base,
         id = self._selectChildId(id, basename)
         return id
 
+    def _getNewMetaData1(self):
+        id = self.User.DataBase.getNewIdentifier(self.User)
+        data = self.User.DataBase.getIdentifier(self.User.MetaData, self._uri)
+        metadata = KeyMap()
+        metadata.setValue('Id', id)
+        metadata.setValue('ParentId', data.getValue('Id'))
+        print("Identifier._getNewMetaData() %s" % (metadata, ))
+        return metadata

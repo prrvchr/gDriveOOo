@@ -135,7 +135,7 @@ class DataSource(unohelper.Base,
     def _initializeUser(self, user, name, password):
         if user.Request is not None:
             if user.MetaData is not None:
-                user.setDataBase(self.datasource, password)
+                user.setDataBase(self.datasource, password, self.sync)
                 return True
             if self.Provider.isOnLine():
                 data = self.Provider.getUser(user.Request, name)

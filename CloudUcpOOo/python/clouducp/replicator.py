@@ -13,6 +13,7 @@ from com.sun.star.logging.LogLevel import SEVERE
 from unolib import KeyMap
 from unolib import getDateTime
 from unolib import unparseTimeStamp
+from unolib import parseDateTime
 
 from .configuration import g_sync
 from .database import DataBase
@@ -73,7 +74,7 @@ class Replicator(unohelper.Base,
             msg = getMessage(self.ctx, 111)
             logMessage(self.ctx, INFO, msg, 'Replicator', '_synchronize()')
         elif not self.canceled:
-            timestamp = getDateTime(False)
+            timestamp = parseDateTime()
             self._syncData(timestamp)
 
     def _syncData(self, timestamp):
@@ -86,10 +87,12 @@ class Replicator(unohelper.Base,
                 msg = getMessage(self.ctx, 110, user.Name)
                 logMessage(self.ctx, INFO, msg, 'Replicator', '_syncData()')
                 if not user.Token:
-                    self._initUser(user)
+                    timestamp = self._initUser(user)
+                else:
+                    timestamp = self.database.getUserTimeStamp(user.Id)
                 if user.Token:
                     results += self._pullData(user)
-                    results += self._pushData(user)
+                    results += self._pushData(user, timestamp)
                 msg = getMessage(self.ctx, 116, user.Name)
                 logMessage(self.ctx, INFO, msg, 'Replicator', '_syncData()')
             result = all(results)
@@ -98,7 +101,7 @@ class Replicator(unohelper.Base,
             print("Replicator.synchronize() ERROR: %s - %s" % (e, traceback.print_exc()))
 
     def _initUser(self, user):
-        rejected, rows, page, row = self.database.updateDrive(self.provider, user)
+        rejected, rows, page, row, timestamp = self.database.updateDrive(self.provider, user)
         print("Replicator._initUser() 1 %s - %s - %s - %s" % (len(rows), all(rows), page, row))
         msg = getMessage(self.ctx, 120, (page, row, len(rows)))
         logMessage(self.ctx, INFO, msg, 'Replicator', '_syncData()')
@@ -111,6 +114,7 @@ class Replicator(unohelper.Base,
         if all(rows):
             self.database.setSyncToken(self.provider, user)
         print("Replicator._initUser() 2 %s" % (all(rows), ))
+        return timestamp
 
     def _pullData(self, user):
         results = []
@@ -125,11 +129,18 @@ class Replicator(unohelper.Base,
         print("Replicator._pullData() 4 %s - %s" % (enumerator.PageCount, enumerator.SyncToken))
         return results
 
-    def _pushData(self, user):
-        results = []
-        self.database.getChangedItems1(user.Id)
-        self.database.getChangedItems(user.Id)
-        return results
+    def _pushData(self, user, start):
+        try:
+            results = []
+            stop = parseDateTime()
+            self.database.getInserted(user.Id, start, stop)
+            self.database.getInsertedItems(user.Id, start, stop)
+            self.database.getUpdated(user.Id, start, stop)
+            self.database.getUpdatedItems(user.Id, start, stop)
+            self.database.getDeletedItems(user.Id, start, stop)
+            return results
+        except Exception as e:
+            print("Replicator.synchronize() ERROR: %s - %s" % (e, traceback.print_exc()))
 
     def _pushData1(self, user):
         results = []

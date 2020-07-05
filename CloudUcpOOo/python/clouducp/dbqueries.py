@@ -473,28 +473,50 @@ def getSqlQuery(name, format=None):
         query = 'SELECT "Token" FROM "Users" WHERE "UserId" = ?;'
 
 # System Time Period Select Queries
-    elif name == 'getChangedCapabilities':
+    elif name == 'getUpdated':
         query = '''\
-SELECT "Previous".* FROM "Capabilities" AS "Current",
-                         "Capabilities" FOR SYSTEM_TIME FROM CURRENT_TIMESTAMP - 1 YEAR TO CURRENT_TIMESTAMP AS "Previous"
-WHERE "Current"."UserId" = ? AND "Previous"."UserId" = ? AND "Current"."Start" = "Previous"."Stop";'''
+SELECT DISTINCT "ItemId" FROM "Capabilities" FOR SYSTEM_TIME FROM ? + SESSION_TIMEZONE() TO ? + SESSION_TIMEZONE()
+WHERE "UserId" = ?;'''
 
-    elif name == 'getChangedCapabilities1':
+    elif name == 'getUpdatedItems2':
         query = '''\
-SELECT "ItemId","Start","Stop" FROM "Capabilities" FOR SYSTEM_TIME FROM CURRENT_TIMESTAMP - 1 YEAR TO CURRENT_TIMESTAMP
-WHERE "Capabilities"."UserId" = ?;'''
+SELECT "Current"."ItemId" FROM "Capabilities" AS "Current" INNER JOIN "Capabilities"
+FOR SYSTEM_TIME FROM ? + SESSION_TIMEZONE() TO ? + SESSION_TIMEZONE() AS "Previous"
+ON "Current"."ItemId" = "Previous"."ItemId" AND "Current"."Start" = "Previous"."Stop"
+WHERE "Current"."UserId" = ?;'''
 
-    elif name == 'getChangedItems':
-        query = 'SELECT DISTINCT "ItemId" FROM "Items" FOR SYSTEM_TIME AS OF TIMESTAMP_WITH_ZONE(?);'
+    elif name == 'getUpdatedItems':
+        query = '''\
+SELECT "Previous"."ItemId" FROM "Capabilities" AS "Current",
+"Capabilities" FOR SYSTEM_TIME FROM ? + SESSION_TIMEZONE() TO ? + SESSION_TIMEZONE() AS "Previous"
+WHERE "Current"."UserId" = "Previous"."UserId" AND "Current"."Start" = "Previous"."Stop" AND
+"Current"."UserId" = ?;'''
 
-    elif name == 'getChangedItems2':
-        query = 'SELECT "ItemId" FROM "Items" WHERE "ItemId" NOT IN(SELECT DISTINCT "ItemId" FROM "Items" FOR SYSTEM_TIME AS OF ?);'
-    elif name == 'getChangedItems1':
-        query = 'SELECT DISTINCT "ItemId" FROM "Items" FOR SYSTEM_TIME FROM CURRENT_TIMESTAMP - 1 YEAR TO ?;'
-    elif name == 'getChangedCapabilities2':
-        query = 'SELECT DISTINCT "UserId", "ItemId" FROM "Capabilities" FOR SYSTEM_TIME FROM ? TO CURRENT_TIMESTAMP;'
-    elif name == 'getChangedParents':
-        query = 'SELECT DISTINCT "UserId", "ItemId" FROM "Parents" FOR SYSTEM_TIME FROM ? TO CURRENT_TIMESTAMP;'
+    elif name == 'getUpdatedItems3':
+        query = '''\
+SELECT "ItemId" FROM "Capabilities" WHERE "UserId" = ? AND "ItemId" IN (SELECT "ItemId" FROM 
+"Capabilities" FOR SYSTEM_TIME FROM ? + SESSION_TIMEZONE() TO ? + SESSION_TIMEZONE()
+WHERE "UserId" = ?);'''
+
+    elif name == 'getInserted':
+        query = '''\
+SELECT DISTINCT "ItemId" FROM "Capabilities" FOR SYSTEM_TIME AS OF ? + SESSION_TIMEZONE()
+WHERE "UserId" = ?;'''
+
+    elif name == 'getInsertedItems':
+        query = '''\
+SELECT DISTINCT "ItemId" FROM "Capabilities" FOR SYSTEM_TIME FROM ? + SESSION_TIMEZONE() TO ? + SESSION_TIMEZONE()
+WHERE "UserId" = ?;'''
+
+    elif name == 'getInsertedItems1':
+        query = '''\
+SELECT "ItemId" FROM "Capabilities" WHERE "UserId" = ? AND "ItemId" NOT IN (SELECT "ItemId" FROM 
+"Capabilities" FOR SYSTEM_TIME AS OF ? + SESSION_TIMEZONE() WHERE "UserId" = ?);'''
+
+    elif name == 'getDeletedItems':
+        query = '''\
+SELECT "ItemId" FROM "Capabilities" FOR SYSTEM_TIME AS OF ? + SESSION_TIMEZONE()
+WHERE "UserId" = ? AND "ItemId" NOT IN (SELECT "ItemId" FROM "Capabilities" WHERE "UserId" = ?);'''
 
 # Insert Queries
     elif name == 'insertUser':
@@ -528,7 +550,7 @@ WHERE "Capabilities"."UserId" = ?;'''
         query = 'UPDATE "Capabilities" SET %s WHERE "UserId"=? AND "ItemId"=?;' % c
     elif name == 'updateLoaded':
         query = 'UPDATE "Items" SET "Loaded"=? WHERE "ItemId"=?;'
-    elif name == 'updateTitle':
+    elif name == 'updateTitle1':
         query = 'UPDATE "Items" SET "Title"=? WHERE "ItemId"=?;'
     elif name == 'updateSize':
         query = 'UPDATE "Items" SET "Size"=? WHERE "ItemId"=?;'
@@ -544,6 +566,19 @@ WHERE "Capabilities"."UserId" = ?;'''
         query = 'DELETE FROM "Synchronizes" WHERE "SyncId"=?;'
 
 # Create Procedure Query
+    elif name == 'createUpdateTitle':
+        query = '''\
+CREATE PROCEDURE "UpdateTitle"(IN "UserId" VARCHAR(100),
+                               IN "ItemId" VARCHAR(100),
+                               IN "Title" VARCHAR(100))
+  SPECIFIC "UpdateTitle_1"
+  MODIFIES SQL DATA
+  BEGIN ATOMIC
+    UPDATE "Items" SET "Title"="Title", "TimeStamp"=CURRENT_TIMESTAMP WHERE "ItemId"="ItemId";
+    UPDATE "Capabilities" SET "TimeStamp"=CURRENT_TIMESTAMP WHERE "UserId"="UserId" AND "ItemId"="ItemId";
+  END;
+  GRANT EXECUTE ON SPECIFIC ROUTINE "UpdateTitle_1" TO "%(Role)s";''' % format
+
     elif name == 'createGetIdentifier':
         query = '''\
 CREATE PROCEDURE "GetIdentifier"(IN "UserId" VARCHAR(100),
@@ -602,20 +637,23 @@ CREATE PROCEDURE "GetIdentifier"(IN "UserId" VARCHAR(100),
 
     elif name == 'createGetChildren':
         query = '''\
-CREATE PROCEDURE "GetChildren"(IN "UserId" VARCHAR(100),
+CREATE PROCEDURE "GetChildren"(IN "BaseUrl" VARCHAR(300),
+                               IN "UserId" VARCHAR(100),
                                IN "ParentId" VARCHAR(100),
-                               IN "BaseUrl" VARCHAR(300),
-                               IN "SessionMode" SMALLINT)
+                               IN "SessionMode" SMALLINT,
+                               OUT "ChildCount" INTEGER)
   SPECIFIC "GetChildren_1"
   READS SQL DATA
   DYNAMIC RESULT SETS 1
   BEGIN ATOMIC
-    DECLARE "Result" CURSOR WITH RETURN FOR
+    DECLARE "Result" INSENSITIVE SCROLL CURSOR WITH RETURN FOR
       SELECT "ItemId","Title","Size","DateModified","DateCreated","IsFolder",
-       CASE WHEN "IsFolder"=TRUE THEN "BaseUrl" || '/' || "ItemId" ELSE "BaseUrl" || '/' || "Title" END "TargetURL",
-      "IsHidden","IsVolume","IsRemote","IsRemoveable","IsFloppy","IsCompactDisc"
-      FROM "Child" WHERE "UserId"="UserId" AND "ParentId"="ParentId" AND
-      ("IsFolder"=TRUE OR "Loaded">="SessionMode");
+      "BaseUrl" || "Uri" "TargetURL","IsHidden","IsVolume","IsRemote",
+      "IsRemoveable","IsFloppy","IsCompactDisc"
+      FROM "Children" WHERE "UserId"="UserId" AND "ParentId"="ParentId" AND
+      ("IsFolder"=TRUE OR "Loaded">="SessionMode") FOR READ ONLY;
+    SET "ChildCount" = SELECT COUNT("ItemId") FROM "Children" WHERE "UserId"="UserId"
+      AND "ParentId"="ParentId" AND ("IsFolder"=TRUE OR "Loaded">="SessionMode");
     OPEN "Result";
   END;
   GRANT EXECUTE ON SPECIFIC ROUTINE "GetChildren_1" TO "%(Role)s";''' % format
@@ -767,12 +805,14 @@ CREATE PROCEDURE "InsertAndSelectItem"(IN "UserId" VARCHAR(100),
   GRANT EXECUTE ON SPECIFIC ROUTINE "InsertAndSelectItem_1" TO "%(Role)s";''' % format
 
 # Get Procedure Query
+    elif name == 'updateTitle':
+        query = 'CALL "UpdateTitle"(?,?,?)'
     elif name == 'getIdentifier':
         query = 'CALL "GetIdentifier"(?,?,?,?,?,?,?)'
     elif name == 'getItem':
         query = 'CALL "GetItem"(?,?)'
     elif name == 'getChildren':
-        query = 'CALL "GetChildren"(?,?,?,?)'
+        query = 'CALL "GetChildren"(?,?,?,?,?)'
     elif name == 'mergeItem':
         query = 'CALL "MergeItem"(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
     elif name == 'insertItem':
