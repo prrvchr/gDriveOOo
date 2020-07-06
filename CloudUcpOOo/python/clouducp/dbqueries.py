@@ -338,28 +338,6 @@ def getSqlQuery(name, format=None):
 # Select Queries
     elif name == 'getTableName':
         query = 'SELECT "Name" FROM "Tables" ORDER BY "Table";'
-    elif name == 'getTables1':
-        s1 = '"T"."Table" AS "TableId"'
-        s2 = '"C"."Column" AS "ColumnId"'
-        s3 = '"T"."Name" AS "Table"'
-        s4 = '"C"."Name" AS "Column"'
-        s5 = '"TC"."TypeName" AS "Type"'
-        s6 = '"TC"."TypeLenght" AS "Lenght"'
-        s7 = '"TC"."Default"'
-        s8 = '"TC"."Options"'
-        s9 = '"TC"."Primary"'
-        s10 = '"TC"."Unique"'
-        s11 = '"TC"."ForeignTable"'
-        s12 = '"TC"."ForeignColumn"'
-        s = (s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12)
-        f1 = '"Tables" AS "T"'
-        f2 = 'JOIN "TableColumn" AS "TC" ON "T"."Table"="TC"."Table"'
-        f3 = 'JOIN "Columns" AS "C" ON "TC"."Column"="C"."Column"'
-        f = (f1, f2, f3)
-        w = '"T"."Name"=?'
-        p = (','.join(s), ' '.join(f), w)
-        query = 'SELECT %s FROM %s WHERE %s' % p
-
     elif name == 'getTables':
         s1 = '"T"."Table" AS "TableId"'
         s2 = '"C"."Column" AS "ColumnId"'
@@ -387,12 +365,10 @@ def getSqlQuery(name, format=None):
         f = (f1, f2, f3, f4, f5)
         p = (','.join(s), ' '.join(f), w)
         query = 'SELECT %s FROM %s WHERE %s;' % p
-
     elif name == 'getContentType':
         query = 'SELECT "Value2" "Folder","Value3" "Link" FROM "Settings" WHERE "Name"=\'ContentType\';'
     elif name == 'getUserTimeStamp':
         query = 'SELECT "TimeStamp" FROM "Users" WHERE "UserId"=?;'
-
     elif name == 'getUser':
         c1 = '"U"."UserId"'
         c2 = '"U"."UserName"'
@@ -404,41 +380,39 @@ def getSqlQuery(name, format=None):
         p = (','.join(c), f)
         query = 'SELECT %s FROM %s WHERE "U"."UserName" = ?;' % p
     elif name == 'getItem':
-        c = []
-        c.append('"ItemId" "Id"')
-        c.append('"ItemId" "ObjectId"')
-        c.append('"Title"')
-        c.append('"Title" "TitleOnServer"')
-        c.append('"DateCreated"')
-        c.append('"DateModified"')
-        c.append('"ContentType"')
-        c.append('"MediaType"')
-        c.append('"Size"')
-        c.append('"Trashed"')
-        c.append('"IsRoot"')
-        c.append('"IsFolder"')
-        c.append('"IsDocument"')
-        c.append('"CanAddChild"')
-        c.append('"CanRename"')
-        c.append('"IsReadOnly"')
-        c.append('"IsVersionable"')
-        c.append('"Loaded"')
-        c.append('\'\' "CasePreservingURL"')
-        c.append('FALSE "IsHidden"')
-        c.append('FALSE "IsVolume"')
-        c.append('FALSE "IsRemote"')
-        c.append('FALSE "IsRemoveable"')
-        c.append('FALSE "IsFloppy"')
-        c.append('FALSE "IsCompactDisc"')
+        c1 = '"ItemId" "Id"'
+        c2 = '"ItemId" "ObjectId"'
+        c3 = '"Title"'
+        c4 = '"Title" "TitleOnServer"'
+        c5 = '"DateCreated"'
+        c6 = '"DateModified"'
+        c7 = '"ContentType"'
+        c8 = '"MediaType"'
+        c9 = '"Size"'
+        c10 = '"Trashed"'
+        c11 = '"IsRoot"'
+        c12 = '"IsFolder"'
+        c13 = '"IsDocument"'
+        c14 = '"CanAddChild"'
+        c15 = '"CanRename"'
+        c16 = '"IsReadOnly"'
+        c17 = '"IsVersionable"'
+        c18 = '"Loaded"'
+        c19 = '%s "CasePreservingURL"' % "''"
+        c20 = 'FALSE "IsHidden"'
+        c21 = 'FALSE "IsVolume"'
+        c22 = 'FALSE "IsRemote"'
+        c23 = 'FALSE "IsRemoveable"'
+        c24 = 'FALSE "IsFloppy"'
+        c25 = 'FALSE "IsCompactDisc"'
+        c = (c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13,c14,c15,c16,c17,c18,c19,c20,c21,c22,c23,c24,c25)
         query = 'SELECT %s FROM "Item" WHERE "UserId" = ? AND "ItemId" = ?;' % ','.join(c)
-    elif name == 'getChildren1':
-        c0 = '"ItemId"'
+    elif name == 'getChildren':
         c1 = '"Title"'
         c2 = '"Size"'
         c3 = '"DateModified"'
         c4 = '"DateCreated"'
         c5 = '"IsFolder"'
-        #c6 = "CASE WHEN %s = TRUE THEN ? || '/' || %s ELSE ? || '/' || %s END %s" % (c5, c0, c1, '"TargetURL"')
         c6 = '? || "Uri" "TargetURL"'
         c7 = '"IsHidden"'
         c8 = '"IsVolume"'
@@ -450,6 +424,8 @@ def getSqlQuery(name, format=None):
         w = '"UserId" = ? AND "ParentId" = ? AND ("IsFolder" = TRUE OR "Loaded" >= ?)'
         p = (','.join(c), w)
         query = 'SELECT %s FROM "Children" WHERE %s;' % p
+
+
     elif name == 'getChildId':
         w = '"UserId" = ? AND "ParentId" = ? AND "Title" = ?'
         query = 'SELECT "ItemId" FROM "Child" WHERE %s;' % w
@@ -473,15 +449,6 @@ def getSqlQuery(name, format=None):
         query = 'SELECT "Token" FROM "Users" WHERE "UserId" = ?;'
 
 # System Time Period Select Queries
-    elif name == 'getItemAt':
-        query = '''\
-SELECT DISTINCT "ItemId" FROM "Items" FOR SYSTEM_TIME AS OF ? + SESSION_TIMEZONE();'''
-
-    elif name == 'getItemAtStartStop':
-        query = '''\
-SELECT DISTINCT "ItemId" FROM "Items" FOR SYSTEM_TIME FROM ? + SESSION_TIMEZONE()
-TO ? + SESSION_TIMEZONE();'''
-
     elif name == 'getUpdatedItems':
         query = '''\
 SELECT "Current"."ItemId" FROM "Items" FOR SYSTEM_TIME AS OF ? + SESSION_TIMEZONE() AS "Current"
@@ -506,6 +473,9 @@ WHERE "Current"."ItemId" IS NULL;'''
     elif name == 'insertUser':
         c = '"UserName","DisplayName","RootId","TimeStamp","UserId"'
         query = 'INSERT INTO "Users" (%s) VALUES (?,?,?,?,?);' % c
+    elif name == 'insertIdentifier':
+        query = 'INSERT INTO "Identifiers"("UserId","Id")VALUES(?,?);'
+
     elif name == 'insertItem1':
         c = '"Title","DateCreated","DateModified","MediaType","Size","Trashed","ItemId"'
         query = 'INSERT INTO "Items" (%s) VALUES (?,?,?,?,?,?,?);' % c
@@ -517,8 +487,6 @@ WHERE "Current"."ItemId" IS NULL;'''
     elif name == 'insertSyncMode1':
         c = '"SyncId","UserId","ItemId","ParentId","SyncMode"'
         query = 'INSERT INTO "Synchronizes" (%s) VALUES (NULL,?,?,?,?);' % c
-    elif name == 'insertIdentifier':
-        query = 'INSERT INTO "Identifiers"("UserId","Id")VALUES(?,?);'
 
 # Update Queries
     elif name == 'updateToken':
@@ -607,14 +575,14 @@ CREATE PROCEDURE "GetIdentifier"(IN "UserId" VARCHAR(100),
   END;
   GRANT EXECUTE ON SPECIFIC ROUTINE "GetIdentifier_1" TO "%(Role)s";''' % format
 
-    elif name == 'createGetChildren':
+    elif name == 'createGetChildren1':
         query = '''\
-CREATE PROCEDURE "GetChildren"(IN "BaseUrl" VARCHAR(300),
+CREATE PROCEDURE "GetChildren1"(IN "BaseUrl" VARCHAR(300),
                                IN "UserId" VARCHAR(100),
                                IN "ParentId" VARCHAR(100),
                                IN "SessionMode" SMALLINT,
                                OUT "ChildCount" INTEGER)
-  SPECIFIC "GetChildren_1"
+  SPECIFIC "GetChildren1_1"
   READS SQL DATA
   DYNAMIC RESULT SETS 1
   BEGIN ATOMIC
@@ -628,17 +596,17 @@ CREATE PROCEDURE "GetChildren"(IN "BaseUrl" VARCHAR(300),
       AND "ParentId"="ParentId" AND ("IsFolder"=TRUE OR "Loaded">="SessionMode");
     OPEN "Result";
   END;
-  GRANT EXECUTE ON SPECIFIC ROUTINE "GetChildren_1" TO "%(Role)s";''' % format
+  GRANT EXECUTE ON SPECIFIC ROUTINE "GetChildren1_1" TO "%(Role)s";''' % format
 
-    elif name == 'createGetItem':
+    elif name == 'createGetItem1':
         query = '''\
-CREATE PROCEDURE "GetItem"(IN "UserId" VARCHAR(100),
+CREATE PROCEDURE "GetItem1"(IN "UserId" VARCHAR(100),
                            IN "ItemId" VARCHAR(100))
-  SPECIFIC "GetItem_1"
+  SPECIFIC "GetItem1_1"
   READS SQL DATA
   DYNAMIC RESULT SETS 1
   BEGIN ATOMIC
-    DECLARE "Result" CURSOR WITH RETURN FOR
+    DECLARE "Result" SCROLL CURSOR WITHOUT HOLD WITH RETURN FOR
       SELECT "ItemId" "Id", "ItemId" "ObjectId","Title","Title" "TitleOnServer",
       "DateCreated","DateModified","ContentType","MediaType","Size","Trashed","IsRoot",
       "IsFolder","IsDocument","CanAddChild","CanRename","IsReadOnly","IsVersionable",
@@ -647,7 +615,7 @@ CREATE PROCEDURE "GetItem"(IN "UserId" VARCHAR(100),
       FROM "Item" WHERE "UserId" = "UserId" AND "ItemId" = "ItemId" FOR READ ONLY;
     OPEN "Result";
   END;
-  GRANT EXECUTE ON SPECIFIC ROUTINE "GetItem_1" TO "%(Role)s";''' % format
+  GRANT EXECUTE ON SPECIFIC ROUTINE "GetItem1_1" TO "%(Role)s";''' % format
 
     elif name == 'createMergeItem':
         query = '''\
@@ -779,10 +747,10 @@ CREATE PROCEDURE "InsertAndSelectItem"(IN "UserId" VARCHAR(100),
 # Get Procedure Query
     elif name == 'getIdentifier':
         query = 'CALL "GetIdentifier"(?,?,?,?,?,?,?)'
-    elif name == 'getItem':
-        query = 'CALL "GetItem"(?,?)'
-    elif name == 'getChildren':
-        query = 'CALL "GetChildren"(?,?,?,?,?)'
+    elif name == 'getItem1':
+        query = 'CALL "GetItem1"(?,?)'
+    elif name == 'getChildren1':
+        query = 'CALL "GetChildren1"(?,?,?,?,?)'
     elif name == 'mergeItem':
         query = 'CALL "MergeItem"(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
     elif name == 'insertItem':

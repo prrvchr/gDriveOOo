@@ -33,6 +33,7 @@ from unolib import getSimpleFile
 from unolib import getProperty
 from unolib import getPropertyValueSet
 from unolib import PropertySetInfo
+from unolib import getInterfaceTypes
 
 from .contentlib import CommandInfo
 from .contentlib import Row
@@ -168,14 +169,15 @@ class Content(unohelper.Base,
                         title = self.MetaData.getValue('Title')
                         msg = "Error while downloading file: %s" % title
                         raise CommandAbortedException(msg, self)
-                    s = command.Argument.Sink
-                    sink = uno.getTypeByName('com.sun.star.io.XActiveDataSink')
-                    stream = uno.getTypeByName('com.sun.star.io.XActiveDataStreamer')
+                    sink = command.Argument.Sink
+                    interfaces = getInterfaceTypes(sink)
+                    datasink = uno.getTypeByName('com.sun.star.io.XActiveDataSink')
+                    datastream = uno.getTypeByName('com.sun.star.io.XActiveDataStreamer')
                     isreadonly = self.MetaData.getValue('IsReadOnly')
-                    if s.queryInterface(sink):
-                        s.setInputStream(sf.openFileRead(url))
-                    elif not isreadonly and s.queryInterface(stream):
-                        s.setStream(sf.openFileReadWrite(url))
+                    if datasink in interfaces:
+                        sink.setInputStream(sf.openFileRead(url))
+                    elif not isreadonly and datastream in interfaces:
+                        sink.setStream(sf.openFileReadWrite(url))
             elif command.Name == 'insert':
                 print("Content.execute() insert 1 - %s - %s" % (self.IsFolder, self.Identifier.Id))
                 if self.IsFolder:

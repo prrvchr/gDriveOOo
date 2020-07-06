@@ -102,7 +102,7 @@ class Replicator(unohelper.Base,
             print("Replicator.synchronize() ERROR: %s - %s" % (e, traceback.print_exc()))
 
     def _initUser(self, user):
-        rejected, rows, page, row, rowstart = self.database.updateDrive(self.provider, user)
+        rejected, rows, page, row, rowstart = self.database.updateDrive(user)
         print("Replicator._initUser() 1 %s - %s - %s - %s" % (len(rows), all(rows), page, row))
         msg = getMessage(self.ctx, 120, (page, row, len(rows)))
         logMessage(self.ctx, INFO, msg, 'Replicator', '_syncData()')
@@ -132,9 +132,6 @@ class Replicator(unohelper.Base,
         try:
             results = []
             stop = parseDateTime()
-            self.database.getItemAtStart(user.Id, start, stop)
-            self.database.getItemAtStop(user.Id, start, stop)
-            self.database.getItemAtStartStop(user.Id, start, stop)
             self.database.getInsertedItems(user.Id, start, stop)
             self.database.getUpdatedItems(user.Id, start, stop)
             self.database.getDeletedItems(user.Id, start, stop)

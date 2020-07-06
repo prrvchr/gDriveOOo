@@ -174,8 +174,10 @@ def getQueries():
             ('createChildrenView',{'Role': g_role}),
 
             ('createGetIdentifier',{'Role': g_role}),
-            ('createGetItem',{'Role': g_role}),
-            ('createGetChildren',{'Role': g_role}),
+
             ('createMergeItem',{'Role': g_role}),
             ('createInsertItem',{'Role': g_role}),
             ('createInsertAndSelectItem',{'Role': g_role}))
+
+#            ('createGetItem1',{'Role': g_role}),
+#            ('createGetChildren1',{'Role': g_role}),

@@ -236,7 +236,7 @@ class DataBase(unohelper.Base,
     def _getChildren(self, identifier):
         #TODO: Can't have a ResultSet of type SCROLL_INSENSITIVE with a Procedure,
         #TODO: as a workaround we use a simple quey...
-        select = self._getDataSourceCall('getChildren1')
+        select = self._getDataSourceCall('getChildren')
         scroll = 'com.sun.star.sdbc.ResultSetType.SCROLL_INSENSITIVE'
         select.ResultSetType = uno.getConstantByName(scroll)
         # OpenOffice / LibreOffice Columns:
@@ -268,11 +268,12 @@ class DataBase(unohelper.Base,
             # to return an Identifier, and raise an 'IllegalIdentifierException'
             # when ContentProvider try to get the Content...(ie: Identifier.getContent())
             return identifier
+        path = uri.getPath().lstrip('/')
         call = self._getDataSourceCall('getIdentifier')
         call.setString(1, user.Id)
         call.setString(2, user.RootId)
-        call.setString(3, uri.getPath())
-        print("DataBase.getIdentifier() %s - %s - %s" % (user.Id, user.RootId, uri.getPath()))
+        call.setString(3, path)
+        print("DataBase.getIdentifier() %s - %s - %s" % (user.Id, user.RootId, path))
         call.setString(4, '/')
         call.execute()
         id = call.getString(5)
@@ -289,6 +290,7 @@ class DataBase(unohelper.Base,
             identifier.setValue('ParentId', parentid)
             baseuri = '%s://%s/%s' % (uri.getScheme(), uri.getAuthority(), path)
         identifier.setValue('BaseURI', baseuri)
+        print("DataBase.getIdentifier() %s - %s - %s" % (id, parentid, baseuri))
         return identifier
 
     def _getNewIdentifier(self, user):
@@ -327,10 +329,6 @@ class DataBase(unohelper.Base,
         if updated:
             self.sync.set()
             print("DataBase.updateContent() OK")
-
-
-
-
 
     def getItem(self, userid, itemid):
         item = None
@@ -575,27 +573,27 @@ class DataBase(unohelper.Base,
         insert.setString(2, id)
         return insert.executeUpdate()
 
-    def updateDrive(self, provider, user):
-        starttime = parseDateTime()
-        separator = ','
+    def updateDrive(self, user):
+        sep = ','
+        start = parseDateTime()
         call = self._getDataSourceCall('mergeItem', True)
         call.setString(1, user.Id)
-        call.setString(2, separator)
+        call.setString(2, sep)
         call.setLong(3, 1)
-        rootid = user.RootId
-        roots = [rootid]
-        rows, items, parents, page, row = self._getDriveContent(call, provider, user, rootid, roots, separator, starttime)
-        rows += self._filterParents(call, provider, items, parents, roots, separator, starttime)
-        rejected = self._getRejectedItems(provider, parents, items)
+        roots = [user.RootId]
+        rows, items, parents, page, row = self._getDriveContent(call, user, roots, sep, start)
+        rows += self._filterParents(call, user.Provider, items, parents, roots, sep, start)
+        rejected = self._getRejectedItems(user.Provider, parents, items)
         self._closeDataSourceCall()
-        endtime = parseDateTime()
-        self._updateUserTimeStamp(user.Id, endtime)
-        return rejected, rows, page, row, endtime
+        end = parseDateTime()
+        self._updateUserTimeStamp(user.Id, end)
+        return rejected, rows, page, row, end
 
-    def _getDriveContent(self, call, provider, user, rootid, roots, separator, timestamp):
+    def _getDriveContent(self, call, user, roots, sep, start):
         rows = []
         items = {}
         childs = []
+        provider = user.Provider
         parameter = provider.getRequestParameter('getDriveContent', user.MetaData)
         enumerator = user.Request.getIterator(parameter, None)
         while enumerator.hasMoreElements():
@@ -604,16 +602,15 @@ class DataBase(unohelper.Base,
             parents = provider.getItemParent(item, user.RootId)
             if all(parent in roots for parent in parents):
                 roots.append(id)
-                rows.append(self._setCallItem(call, provider, item, id, parents, separator, timestamp))
+                row = self._setCallItem(call, provider, item, id, parents, sep, start)
+                rows.append(row)
                 call.addBatch()
             else:
                 items[id] = item
                 childs.append((id, parents))
-        page = enumerator.PageCount
-        row = enumerator.RowCount
-        return rows, items, childs, page, row
+        return rows, items, childs, enumerator.PageCount, enumerator.RowCount
 
-    def _filterParents(self, call, provider, items, childs, roots, separator, timestamp):
+    def _filterParents(self, call, provider, items, childs, roots, sep, start):
         i = -1
         rows = []
         while len(childs) and len(childs) != i:
@@ -623,7 +620,8 @@ class DataBase(unohelper.Base,
                 id, parents = item
                 if all(parent in roots for parent in parents):
                     roots.append(id)
-                    rows.append(self._setCallItem(call, provider, items[id], id, parents, separator, timestamp))
+                    row = self._setCallItem(call, provider, items[id], id, parents, sep, start)
+                    rows.append(row)
                     call.addBatch()
                     childs.remove(item)
             childs.reverse()
@@ -651,43 +649,6 @@ class DataBase(unohelper.Base,
             timestamp = result.getTimestamp(1)
         select.close()
         return timestamp
-
-    def getItemAtStartStop(self, userid, start, stop):
-        items = []
-        select = self._getDataSourceCall('getItemAtStartStop')
-        select.setTimestamp(1, start)
-        select.setTimestamp(2, stop)
-        #select.setString(3, userid)
-        result = select.executeQuery()
-        while result.next():
-            items.append(getKeyMapFromResult(result))
-        select.close()
-        msg = "getItemAtStartStop to Sync: %s" % (len(items), )
-        print(msg)
-
-    def getItemAtStart(self, userid, start, stop):
-        items = []
-        select = self._getDataSourceCall('getItemAt')
-        select.setTimestamp(1, start)
-        #select.setString(2, userid)
-        result = select.executeQuery()
-        while result.next():
-            items.append(getKeyMapFromResult(result))
-        select.close()
-        msg = "getItemAtStart to Sync: %s" % (len(items), )
-        print(msg)
-
-    def getItemAtStop(self, userid, start, stop):
-        items = []
-        select = self._getDataSourceCall('getItemAt')
-        select.setTimestamp(1, stop)
-        #select.setString(2, userid)
-        result = select.executeQuery()
-        while result.next():
-            items.append(getKeyMapFromResult(result))
-        select.close()
-        msg = "getItemAtStop to Sync: %s" % (len(items), )
-        print(msg)
 
     def getUpdatedItems(self, userid, start, stop):
         items = []

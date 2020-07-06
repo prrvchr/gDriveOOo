@@ -80,6 +80,7 @@ class Identifier(unohelper.Base,
             data = self._getNewContent()
         else:
             data = self.User.DataBase.getItem(self.User.Id, self.Id)
+            print("Identifier.getContent() %s" % data)
         if data is None:
             msg = "Error: can't retreive Identifier"
             raise IllegalIdentifierException(msg, self)
