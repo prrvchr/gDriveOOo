@@ -178,5 +178,4 @@ def getQueries():
             ('createGetChildren',{'Role': g_role}),
             ('createMergeItem',{'Role': g_role}),
             ('createInsertItem',{'Role': g_role}),
-            ('createInsertAndSelectItem',{'Role': g_role}),
-            ('createUpdateTitle',{'Role': g_role}))
+            ('createInsertAndSelectItem',{'Role': g_role}))

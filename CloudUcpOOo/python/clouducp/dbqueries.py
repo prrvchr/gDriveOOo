@@ -94,9 +94,9 @@ def getSqlQuery(name, format=None):
         query = 'CREATE CACHED TABLE "%s"(%s)' % format
 
     elif name == 'getPeriodColumns':
-        query = '"Start" TIMESTAMP GENERATED ALWAYS AS ROW START,'
-        query += '"Stop" TIMESTAMP GENERATED ALWAYS AS ROW END,'
-        query += 'PERIOD FOR SYSTEM_TIME("Start","Stop")'
+        query = '"RowStart" TIMESTAMP GENERATED ALWAYS AS ROW START,'
+        query += '"RowEnd" TIMESTAMP GENERATED ALWAYS AS ROW END,'
+        query += 'PERIOD FOR SYSTEM_TIME("RowStart","RowEnd")'
 
     elif name == 'getSystemVersioning':
         query = ' WITH SYSTEM VERSIONING'
@@ -473,50 +473,34 @@ def getSqlQuery(name, format=None):
         query = 'SELECT "Token" FROM "Users" WHERE "UserId" = ?;'
 
 # System Time Period Select Queries
-    elif name == 'getUpdated':
+    elif name == 'getItemAt':
         query = '''\
-SELECT DISTINCT "ItemId" FROM "Capabilities" FOR SYSTEM_TIME FROM ? + SESSION_TIMEZONE() TO ? + SESSION_TIMEZONE()
-WHERE "UserId" = ?;'''
+SELECT DISTINCT "ItemId" FROM "Items" FOR SYSTEM_TIME AS OF ? + SESSION_TIMEZONE();'''
 
-    elif name == 'getUpdatedItems2':
+    elif name == 'getItemAtStartStop':
         query = '''\
-SELECT "Current"."ItemId" FROM "Capabilities" AS "Current" INNER JOIN "Capabilities"
-FOR SYSTEM_TIME FROM ? + SESSION_TIMEZONE() TO ? + SESSION_TIMEZONE() AS "Previous"
-ON "Current"."ItemId" = "Previous"."ItemId" AND "Current"."Start" = "Previous"."Stop"
-WHERE "Current"."UserId" = ?;'''
+SELECT DISTINCT "ItemId" FROM "Items" FOR SYSTEM_TIME FROM ? + SESSION_TIMEZONE()
+TO ? + SESSION_TIMEZONE();'''
 
     elif name == 'getUpdatedItems':
         query = '''\
-SELECT "Previous"."ItemId" FROM "Capabilities" AS "Current",
-"Capabilities" FOR SYSTEM_TIME FROM ? + SESSION_TIMEZONE() TO ? + SESSION_TIMEZONE() AS "Previous"
-WHERE "Current"."UserId" = "Previous"."UserId" AND "Current"."Start" = "Previous"."Stop" AND
-"Current"."UserId" = ?;'''
-
-    elif name == 'getUpdatedItems3':
-        query = '''\
-SELECT "ItemId" FROM "Capabilities" WHERE "UserId" = ? AND "ItemId" IN (SELECT "ItemId" FROM 
-"Capabilities" FOR SYSTEM_TIME FROM ? + SESSION_TIMEZONE() TO ? + SESSION_TIMEZONE()
-WHERE "UserId" = ?);'''
-
-    elif name == 'getInserted':
-        query = '''\
-SELECT DISTINCT "ItemId" FROM "Capabilities" FOR SYSTEM_TIME AS OF ? + SESSION_TIMEZONE()
-WHERE "UserId" = ?;'''
+SELECT "Current"."ItemId" FROM "Items" FOR SYSTEM_TIME AS OF ? + SESSION_TIMEZONE() AS "Current"
+INNER JOIN "Items" FOR SYSTEM_TIME FROM ? + SESSION_TIMEZONE() TO ? + SESSION_TIMEZONE() AS "Previous"
+ON "Current"."ItemId" = "Previous"."ItemId" AND "Current"."RowStart" = "Previous"."RowEnd";'''
 
     elif name == 'getInsertedItems':
         query = '''\
-SELECT DISTINCT "ItemId" FROM "Capabilities" FOR SYSTEM_TIME FROM ? + SESSION_TIMEZONE() TO ? + SESSION_TIMEZONE()
-WHERE "UserId" = ?;'''
-
-    elif name == 'getInsertedItems1':
-        query = '''\
-SELECT "ItemId" FROM "Capabilities" WHERE "UserId" = ? AND "ItemId" NOT IN (SELECT "ItemId" FROM 
-"Capabilities" FOR SYSTEM_TIME AS OF ? + SESSION_TIMEZONE() WHERE "UserId" = ?);'''
+SELECT "Current"."ItemId" FROM "Items" FOR SYSTEM_TIME AS OF ? + SESSION_TIMEZONE() "Current"
+LEFT JOIN "Items" FOR SYSTEM_TIME AS OF ? + SESSION_TIMEZONE() "Previous"
+ON "Current"."ItemId" = "Previous"."ItemId"
+WHERE "Previous"."ItemId" IS NULL;'''
 
     elif name == 'getDeletedItems':
         query = '''\
-SELECT "ItemId" FROM "Capabilities" FOR SYSTEM_TIME AS OF ? + SESSION_TIMEZONE()
-WHERE "UserId" = ? AND "ItemId" NOT IN (SELECT "ItemId" FROM "Capabilities" WHERE "UserId" = ?);'''
+SELECT "Previous"."ItemId" FROM "Items" FOR SYSTEM_TIME AS OF ? + SESSION_TIMEZONE() "Previous"
+LEFT JOIN "Items" FOR SYSTEM_TIME AS OF ? + SESSION_TIMEZONE() "Current"
+ON "Previous"."ItemId" = "Current"."ItemId"
+WHERE "Current"."ItemId" IS NULL;'''
 
 # Insert Queries
     elif name == 'insertUser':
@@ -541,6 +525,13 @@ WHERE "UserId" = ? AND "ItemId" NOT IN (SELECT "ItemId" FROM "Capabilities" WHER
         query = 'UPDATE "Users" SET "Token"=? WHERE "UserId"=?;'
     elif name == 'updateUserTimeStamp':
         query = 'UPDATE "Users" SET "TimeStamp"=? WHERE "UserId"=?;'
+    elif name == 'updateTitle':
+        query = 'UPDATE "Items" SET "Title"=? WHERE "ItemId"=?;'
+    elif name == 'updateSize':
+        query = 'UPDATE "Items" SET "Size"=? WHERE "ItemId"=?;'
+    elif name == 'updateTrashed':
+        query = 'UPDATE "Items" SET "Trashed"=? WHERE "ItemId"=?;'
+
 
     elif name == 'updateItem1':
         c = '"Title"=?,"DateCreated"=?,"DateModified"=?,"MediaType"=?,"Size"=?,"Trashed"=?'
@@ -550,12 +541,6 @@ WHERE "UserId" = ? AND "ItemId" NOT IN (SELECT "ItemId" FROM "Capabilities" WHER
         query = 'UPDATE "Capabilities" SET %s WHERE "UserId"=? AND "ItemId"=?;' % c
     elif name == 'updateLoaded':
         query = 'UPDATE "Items" SET "Loaded"=? WHERE "ItemId"=?;'
-    elif name == 'updateTitle1':
-        query = 'UPDATE "Items" SET "Title"=? WHERE "ItemId"=?;'
-    elif name == 'updateSize':
-        query = 'UPDATE "Items" SET "Size"=? WHERE "ItemId"=?;'
-    elif name == 'updateTrashed':
-        query = 'UPDATE "Items" SET "Trashed"=? WHERE "ItemId"=?;'
     elif name == 'updateItemId':
         query = 'UPDATE "Items" SET "ItemId"=? WHERE "ItemId"=?;'
 
@@ -566,19 +551,6 @@ WHERE "UserId" = ? AND "ItemId" NOT IN (SELECT "ItemId" FROM "Capabilities" WHER
         query = 'DELETE FROM "Synchronizes" WHERE "SyncId"=?;'
 
 # Create Procedure Query
-    elif name == 'createUpdateTitle':
-        query = '''\
-CREATE PROCEDURE "UpdateTitle"(IN "UserId" VARCHAR(100),
-                               IN "ItemId" VARCHAR(100),
-                               IN "Title" VARCHAR(100))
-  SPECIFIC "UpdateTitle_1"
-  MODIFIES SQL DATA
-  BEGIN ATOMIC
-    UPDATE "Items" SET "Title"="Title", "TimeStamp"=CURRENT_TIMESTAMP WHERE "ItemId"="ItemId";
-    UPDATE "Capabilities" SET "TimeStamp"=CURRENT_TIMESTAMP WHERE "UserId"="UserId" AND "ItemId"="ItemId";
-  END;
-  GRANT EXECUTE ON SPECIFIC ROUTINE "UpdateTitle_1" TO "%(Role)s";''' % format
-
     elif name == 'createGetIdentifier':
         query = '''\
 CREATE PROCEDURE "GetIdentifier"(IN "UserId" VARCHAR(100),
@@ -805,8 +777,6 @@ CREATE PROCEDURE "InsertAndSelectItem"(IN "UserId" VARCHAR(100),
   GRANT EXECUTE ON SPECIFIC ROUTINE "InsertAndSelectItem_1" TO "%(Role)s";''' % format
 
 # Get Procedure Query
-    elif name == 'updateTitle':
-        query = 'CALL "UpdateTitle"(?,?,?)'
     elif name == 'getIdentifier':
         query = 'CALL "GetIdentifier"(?,?,?,?,?,?,?)'
     elif name == 'getItem':

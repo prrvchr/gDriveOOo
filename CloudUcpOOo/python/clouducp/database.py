@@ -304,40 +304,29 @@ class DataBase(unohelper.Base,
             id = binascii.hexlify(uno.generateUuid().value).decode('utf-8')
         return id
 
-    def updateContent(self, userid, itemid, property, value):
-        try:
-            print("DataBase.updateContent() 1 %s" % property)
-            if property == 'Title':
-                print("DataBase.updateContent() 2")
-                update = self._getDataSourceCall('updateTitle')
-                print("DataBase.updateContent() 3")
-                update.setString(1, userid)
-                print("DataBase.updateContent() 4")
-                update.setString(2, itemid)
-                print("DataBase.updateContent() 5 %s" % value)
-                update.setString(3, value)
-                print("DataBase.updateContent() 6")
-                update.execute()
-                update.close()
-                self.sync.set()
-            elif property == 'Size':
-                update = self._getDataSourceCall('updateSize')
-                update.setLong(1, value)
-                update.setString(2, itemid)
-                update.executeUpdate()
-                update.close()
-                self.sync.set()
-            elif property == 'Trashed':
-                update = self._getDataSourceCall('updateTrashed')
-                update.setBoolean(1, value)
-                update.setString(2, itemid)
-                update.executeUpdate()
-                update.close()
-                self.sync.set()
+    def updateContent(self, itemid, property, value):
+        updated = 0
+        if property == 'Title':
+            update = self._getDataSourceCall('updateTitle')
+            update.setString(1, value)
+            update.setString(2, itemid)
+            updated = update.executeUpdate()
+            update.close()
+        elif property == 'Size':
+            update = self._getDataSourceCall('updateSize')
+            update.setLong(1, value)
+            update.setString(2, itemid)
+            updated = update.executeUpdate()
+            update.close()
+        elif property == 'Trashed':
+            update = self._getDataSourceCall('updateTrashed')
+            update.setBoolean(1, value)
+            update.setString(2, itemid)
+            updated = update.executeUpdate()
+            update.close()
+        if updated:
+            self.sync.set()
             print("DataBase.updateContent() OK")
-        except Exception as e:
-            msg += " ERROR: %s" % e
-            print(msg)
 
 
 
@@ -537,10 +526,10 @@ class DataBase(unohelper.Base,
 
 
 # Procedures called by the Replicator
-    def setSyncToken(self, provider, user):
-        data = provider.getToken(user.Request, user.MetaData)
+    def setSyncToken(self, user):
+        data = user.Provider.getToken(user.Request, user.MetaData)
         if data.IsPresent:
-            token = provider.getUserToken(data.Value)
+            token = user.Provider.getUserToken(data.Value)
             self._updateToken(user.MetaData, token)
 
     def _updateToken(self, user, token):
@@ -600,8 +589,8 @@ class DataBase(unohelper.Base,
         rejected = self._getRejectedItems(provider, parents, items)
         self._closeDataSourceCall()
         endtime = parseDateTime()
-        #self._updateUserTimeStamp(user.Id, endtime)
-        return rejected, rows, page, row, starttime
+        self._updateUserTimeStamp(user.Id, endtime)
+        return rejected, rows, page, row, endtime
 
     def _getDriveContent(self, call, provider, user, rootid, roots, separator, timestamp):
         rows = []
@@ -663,68 +652,80 @@ class DataBase(unohelper.Base,
         select.close()
         return timestamp
 
-    def getUpdated(self, userid, start, stop):
+    def getItemAtStartStop(self, userid, start, stop):
         items = []
-        select = self._getDataSourceCall('getUpdated')
+        select = self._getDataSourceCall('getItemAtStartStop')
         select.setTimestamp(1, start)
         select.setTimestamp(2, stop)
-        select.setString(3, userid)
+        #select.setString(3, userid)
         result = select.executeQuery()
         while result.next():
             items.append(getKeyMapFromResult(result))
         select.close()
-        msg = "Get Updated to Sync: %s, %s" % (items, len(items))
+        msg = "getItemAtStartStop to Sync: %s" % (len(items), )
+        print(msg)
+
+    def getItemAtStart(self, userid, start, stop):
+        items = []
+        select = self._getDataSourceCall('getItemAt')
+        select.setTimestamp(1, start)
+        #select.setString(2, userid)
+        result = select.executeQuery()
+        while result.next():
+            items.append(getKeyMapFromResult(result))
+        select.close()
+        msg = "getItemAtStart to Sync: %s" % (len(items), )
+        print(msg)
+
+    def getItemAtStop(self, userid, start, stop):
+        items = []
+        select = self._getDataSourceCall('getItemAt')
+        select.setTimestamp(1, stop)
+        #select.setString(2, userid)
+        result = select.executeQuery()
+        while result.next():
+            items.append(getKeyMapFromResult(result))
+        select.close()
+        msg = "getItemAtStop to Sync: %s" % (len(items), )
         print(msg)
 
     def getUpdatedItems(self, userid, start, stop):
         items = []
         select = self._getDataSourceCall('getUpdatedItems')
-        select.setTimestamp(1, start)
-        select.setTimestamp(2, stop)
-        select.setString(3, userid)
+        select.setTimestamp(1, stop)
+        select.setTimestamp(2, start)
+        select.setTimestamp(3, stop)
         result = select.executeQuery()
         while result.next():
             items.append(getKeyMapFromResult(result))
         select.close()
-        msg = "Get UpdatedItems to Sync: %s, %s" % (items, len(items))
-        print(msg)
-
-    def getInserted(self, userid, start, stop):
-        items = []
-        select = self._getDataSourceCall('getInserted')
-        select.setTimestamp(1, start)
-        select.setString(2, userid)
-        result = select.executeQuery()
-        while result.next():
-            items.append(getKeyMapFromResult(result))
-        select.close()
-        msg = "Get Inserted to Sync: %s, %s" % (items, len(items))
+        msg = "getUpdatedItems to Sync: %s" % (len(items), )
         print(msg)
 
     def getInsertedItems(self, userid, start, stop):
         items = []
         select = self._getDataSourceCall('getInsertedItems')
-        select.setTimestamp(1, start)
-        select.setTimestamp(2, stop)
-        select.setString(3, userid)
+        select.setTimestamp(1, stop)
+        select.setTimestamp(2, start)
+        #select.setString(3, userid)
         result = select.executeQuery()
         while result.next():
             items.append(getKeyMapFromResult(result))
         select.close()
-        msg = "Get InsertedItems to Sync: %s, %s" % (items, len(items))
+        msg = "getInsertedItems to Sync: %s" % (len(items), )
         print(msg)
 
     def getDeletedItems(self, userid, start, stop):
         items = []
         select = self._getDataSourceCall('getDeletedItems')
         select.setTimestamp(1, start)
-        select.setString(2, userid)
-        select.setString(3, userid)
+        select.setTimestamp(2, stop)
+        #select.setString(3, userid)
         result = select.executeQuery()
         while result.next():
             items.append(getKeyMapFromResult(result))
         select.close()
-        msg = "Get DeletedItems to Sync: %s, %s" % (items, len(items))
+        msg = "getDeletedItems to Sync: %s" % (len(items), )
         print(msg)
 
 # Procedures called internally

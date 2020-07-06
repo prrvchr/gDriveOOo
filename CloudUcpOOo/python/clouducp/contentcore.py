@@ -77,9 +77,7 @@ def _setProperty(source, context, name, value):
         result, level, msg = _setTitle(source, context, value)
     else:
         source.MetaData.insertValue(name, value)
-        userid = source.Identifier.User.Id
-        itemid = source.Identifier.Id
-        source.Identifier.User.DataBase.updateContent(userid, itemid, name, value)
+        source.Identifier.User.DataBase.updateContent(source.Identifier.Id, name, value)
         msg = "Set property: %s value: %s" % (name, value)
         level = INFO
         result = None
@@ -111,7 +109,7 @@ def _setTitle(source, context, title):
             print("ContentCore._setTitle() 2")
             source.MetaData.setValue('Title', identifier.setTitle(title))
             print("ContentCore._setTitle() 3")
-            user.DataBase.updateContent(user.Id, identifier.Id, 'Title', title)
+            user.DataBase.updateContent(identifier.Id, 'Title', title)
             print("ContentCore._setTitle() 4")
             msg = "Set property: %s value: %s" % ('Title', title)
             level = INFO

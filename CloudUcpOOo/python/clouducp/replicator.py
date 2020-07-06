@@ -87,12 +87,13 @@ class Replicator(unohelper.Base,
                 msg = getMessage(self.ctx, 110, user.Name)
                 logMessage(self.ctx, INFO, msg, 'Replicator', '_syncData()')
                 if not user.Token:
-                    timestamp = self._initUser(user)
+                    rowstart = self._initUser(user)
+                    self.database.setSyncToken(user)
                 else:
-                    timestamp = self.database.getUserTimeStamp(user.Id)
+                    rowstart = self.database.getUserTimeStamp(user.Id)
                 if user.Token:
                     results += self._pullData(user)
-                    results += self._pushData(user, timestamp)
+                    results += self._pushData(user, rowstart)
                 msg = getMessage(self.ctx, 116, user.Name)
                 logMessage(self.ctx, INFO, msg, 'Replicator', '_syncData()')
             result = all(results)
@@ -101,7 +102,7 @@ class Replicator(unohelper.Base,
             print("Replicator.synchronize() ERROR: %s - %s" % (e, traceback.print_exc()))
 
     def _initUser(self, user):
-        rejected, rows, page, row, timestamp = self.database.updateDrive(self.provider, user)
+        rejected, rows, page, row, rowstart = self.database.updateDrive(self.provider, user)
         print("Replicator._initUser() 1 %s - %s - %s - %s" % (len(rows), all(rows), page, row))
         msg = getMessage(self.ctx, 120, (page, row, len(rows)))
         logMessage(self.ctx, INFO, msg, 'Replicator', '_syncData()')
@@ -111,10 +112,8 @@ class Replicator(unohelper.Base,
         for item in rejected:
             msg = getMessage(self.ctx, 122, item)
             logMessage(self.ctx, SEVERE, msg, 'Replicator', '_syncData()')
-        if all(rows):
-            self.database.setSyncToken(self.provider, user)
         print("Replicator._initUser() 2 %s" % (all(rows), ))
-        return timestamp
+        return rowstart
 
     def _pullData(self, user):
         results = []
@@ -133,9 +132,10 @@ class Replicator(unohelper.Base,
         try:
             results = []
             stop = parseDateTime()
-            self.database.getInserted(user.Id, start, stop)
+            self.database.getItemAtStart(user.Id, start, stop)
+            self.database.getItemAtStop(user.Id, start, stop)
+            self.database.getItemAtStartStop(user.Id, start, stop)
             self.database.getInsertedItems(user.Id, start, stop)
-            self.database.getUpdated(user.Id, start, stop)
             self.database.getUpdatedItems(user.Id, start, stop)
             self.database.getDeletedItems(user.Id, start, stop)
             return results
