@@ -1,86 +1,61 @@
 #ifndef __com_sun_star_ucb_XRestDataBase_idl__
 #define __com_sun_star_ucb_XRestDataBase_idl__
 
-#include <com/sun/star/io/XInputStream.idl>
 #include <com/sun/star/uno/XInterface.idl>
-#include <com/sun/star/ucb/XRestProvider.idl>
+#include <com/sun/star/util/XCloseListener.idl>
+#include <com/sun/star/uri/XUriReference.idl>
 #include <com/sun/star/auth/XRestKeyMap.idl>
 #include <com/sun/star/sdbc/XConnection.idl>
 #include <com/sun/star/sdbc/XPreparedStatement.idl>
 #include <com/sun/star/beans/Optional.idl>
-#include <com/sun/star/logging/XLogger.idl>
 
 module com { module sun { module star { module ucb {
 
 interface XRestDataBase: com::sun::star::uno::XInterface
 {
 
-    boolean initializeUser([in] string Name);
-    ::com::sun::star::uno::XInterface getUser([in] string Name);
+    void addCloseListener([in] ::com::sun::star::util::XCloseListener Listener);
+    void initDataBase([in] string Url);
+    void shutdownDataBase([in] boolean Compact);
+    boolean createUser([in] string Name,
+                       [in] string Password);
     ::com::sun::star::auth::XRestKeyMap selectUser([in] string Name);
-    ::com::sun::star::auth::XRestKeyMap inserUser([in] ::com::sun::star::auth::XRestKeyMap User,
+    ::com::sun::star::auth::XRestKeyMap inserUser([in] ::com::sun::star::uno::XInterface Provider,
+                                                  [in] ::com::sun::star::auth::XRestKeyMap User,
                                                   [in] ::com::sun::star::auth::XRestKeyMap Root);
+    string getContentType([out] string Link);
     ::com::sun::star::auth::XRestKeyMap selectItem([in] ::com::sun::star::auth::XRestKeyMap User,
                                                    [in] ::com::sun::star::auth::XRestKeyMap Item);
-    ::com::sun::star::auth::XRestKeyMap inserItem([in] ::com::sun::star::auth::XRestKeyMap User,
-                                                  [in] ::com::sun::star::auth::XRestKeyMap Item);
-    boolean isIdentifier([in] string UserId,
-                         [in] string ItemId);
-    void setSyncToken([in] ::com::sun::star::uno::XInterface Request,
-                      [in] ::com::sun::star::auth::XRestKeyMap User);
-    ::com::sun::star::io::XInputStream getDocumentContent([in] ::com::sun::star::uno::XInterface Request,
-                                                          [in] ::com::sun::star::auth::XRestKeyMap Content);
-    ::com::sun::star::sdbc::XPreparedStatement getFolderContent([in] ::com::sun::star::uno::XInterface Request,
-                                                                [in] ::com::sun::star::auth::XRestKeyMap User,
-                                                                [in] ::com::sun::star::auth::XRestKeyMap Identifier,
+    ::com::sun::star::auth::XRestKeyMap insertAndSelectItem([in] ::com::sun::star::auth::XRestKeyMap User,
+                                                            [in] ::com::sun::star::auth::XRestKeyMap Item);
+    ::com::sun::star::sdbc::XPreparedStatement getFolderContent([in] ::com::sun::star::uno::XInterface Identifier,
                                                                 [in] ::com::sun::star::auth::XRestKeyMap Content,
                                                                 [out] boolean Updated);
-    boolean insertNewDocument([in] string UserId,
-                              [in] string ItemId,
-                              [in] string ParentId,
-                              [in] ::com::sun::star::auth::XRestKeyMap Content);
-    boolean insertNewFolder([in] string UserId,
-                            [in] string ItemId,
-                            [in] string ParentId,
-                            [in] ::com::sun::star::auth::XRestKeyMap Content);
     short updateLoaded([in] string UserId,
                        [in] string ItemId,
                        [in] short Value,
                        [in] short Default);
-    string updateTitle([in] string UserId,
-                       [in] string ItemId,
-                       [in] string ParentId,
-                       [in] string Value,
-                       [in] string Default);
-    long updateSize([in] string UserId,
-                    [in] string ItemId,
-                    [in] string ParentId,
-                    [in] long Size);
-    boolean updateTrashed([in] string UserId,
+    ::com::sun::star::auth::XRestKeyMap getIdentifier([in] ::com::sun::star::uno::XInterface User,
+                                                      [in] ::com::sun::star::uri::XUriReference Uri,
+                                                      [in] boolean New);
+    void updateContent([in] string ItemId,
+                       [in] string Property,
+                       [in] any Value);
+    ::com::sun::star::auth::XRestKeyMap getItem([in] string UserId,
+                                                [in] string ItemId);
+    void insertNewContent([in] string UserId,
                           [in] string ItemId,
                           [in] string ParentId,
-                          [in] boolean Value,
-                          [in] boolean Default);
-    void synchronize();
-    sequence < ::com::sun::star::auth::XRestKeyMap > getItemToSync([in] ::com::sun::star::auth::XRestKeyMap User);
-    ::com::sun::star::beans::Optional<::com::sun::star::auth::XRestKeyMap> syncItem([in] ::com::sun::star::uno::XInterface Request,
-                                                                                    [in] ::com::sun::star::uno::XInterface Uploader,
-                                                                                    [in] ::com::sun::star::auth::XRestKeyMap Item);
-    string updateSync([in] ::com::sun::star::auth::XRestKeyMap Item,
-                      [in] ::com::sun::star::auth::XRestKeyMap Response);
-    void callBack([in] ::com::sun::star::auth::XRestKeyMap Item,
-                  [in] ::com::sun::star::beans::Optional<::com::sun::star::auth::XRestKeyMap> Response);
-    boolean isChildId([in] string UserId,
-                      [in] string ParentId,
-                      [in] string ItemId);
-    string selectChildId([in] string UserId,
-                         [in] string ParentId,
-                         [in] string Title);
+                          [in] ::com::sun::star::auth::XRestKeyMap Content);
     long countChildTitle([in] string UserId,
                          [in] string ParentId,
                          [in] string Title);
-    void checkNewIdentifier([in] ::com::sun::star::auth::XRestKeyMap User);
-    string getNewIdentifier([in] ::com::sun::star::auth::XRestKeyMap User);
+    string getChildId([in] string UserId,
+                      [in] string ParentId,
+                      [in] string Title);
+    void callBack([in] ::com::sun::star::uno::XInterface Provider,
+                  [in] ::com::sun::star::auth::XRestKeyMap Item,
+                  [in] ::com::sun::star::beans::Optional<::com::sun::star::auth::XRestKeyMap> Response);
 
     [attribute, readonly] ::com::sun::star::sdbc::XConnection Connection;
 

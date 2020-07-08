@@ -6,44 +6,17 @@
 #include <com/sun/star/ucb/XRestProvider.idl>
 #include <com/sun/star/ucb/XRestDataSource.idl>
 #include <com/sun/star/auth/XRestKeyMap.idl>
-#include <com/sun/star/uri/XUriReference.idl>
-#include <com/sun/star/sdbc/XPreparedStatement.idl>
-#include <com/sun/star/io/XInputStream.idl>
 
 module com { module sun { module star { module ucb {
 
 interface XRestUser: com::sun::star::uno::XInterface
 {
 
-    void setDataBase([in] ::com::sun::star::uno::XInterface DataSource,
-                     [in] string Name,
-                     [in] string Password);
-    boolean initialize([in] ::com::sun::star::ucb::XRestDataSource DataSource,
-                       [in] string Name);
-    ::com::sun::star::auth::XRestKeyMap getItem([in] ::com::sun::star::ucb::XRestDataSource DataSource,
-                                                [in] ::com::sun::star::auth::XRestKeyMap Identifier);
-    boolean insertNewDocument([in] string ItemId,
-                              [in] string ParentId,
-                              [in] ::com::sun::star::auth::XRestKeyMap Content);
-    boolean insertNewFolder([in] string ItemId,
-                            [in] string ParentId,
-                            [in] ::com::sun::star::auth::XRestKeyMap Content);
-    string updateTitle([in] ::com::sun::star::ucb::XRestDataSource DataSource,
-                       [in] string ItemId,
-                       [in] string ParentId,
-                       [in] string Value,
-                       [in] string Default);
-    long updateSize([in] ::com::sun::star::ucb::XRestDataSource DataSource,
-                    [in] string ItemId,
-                    [in] string ParentId,
-                    [in] long Size);
-    boolean updateTrashed([in] ::com::sun::star::ucb::XRestDataSource DataSource,
-                          [in] string ItemId,
-                          [in] string ParentId,
-                          [in] boolean Value,
-                          [in] boolean Default);
-    any synchronize([in] ::com::sun::star::ucb::XRestDataSource DataSource,
-                    [in] any Value);
+    boolean isValid();
+    void setDataBase([in] ::com::sun::star::ucb::XRestDataSource DataSource,
+                     [in] string Password,
+                     [in] ::com::sun::star::uno::XInterface Sync);
+    string getCredential([inout] string Password);
 
     [attribute, readonly] ::com::sun::star::ucb::XRestProvider Provider;
     [attribute, readonly] ::com::sun::star::uno::XInterface Request;
@@ -53,11 +26,8 @@ interface XRestUser: com::sun::star::uno::XInterface
     [attribute, readonly] string Name;
     [attribute, readonly] string RootId;
     [attribute, readonly] string Token;
-    [attribute, readonly] boolean IsValid;
-    [attribute, readonly] string Error;
 
 };
-
 
 }; }; }; };
 

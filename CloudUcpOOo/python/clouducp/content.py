@@ -118,8 +118,9 @@ class Content(unohelper.Base,
         print("Content.queryCreatableContentsInfo()")
         return self.MetaData.getValue('CreatableContentsInfo')
     def createNewContent(self, info):
-        # To avoid cyclic imports, the creation of identifiers is done by Identifier
-        # (ie: Identifier also creates Content)
+        # To avoid circular imports, the creation of new identifiers is delegated to
+        # Identifier.createNewIdentifier() since the identifier also creates Content
+        # with Identifier.getContent()
         identifier = self.Identifier.createNewIdentifier(info.Type)
         print("Content.createNewContent() New Id: %s" % identifier.Id)
         return identifier.getContent()

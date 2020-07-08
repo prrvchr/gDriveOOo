@@ -44,10 +44,9 @@ class Identifier(unohelper.Base,
     def __init__(self, ctx, user, uri, contenttype=''):
         msg = "Identifier loading"
         self.ctx = ctx
-        self._contenttype = contenttype
-        self._error = None
-        self._uri = uri
         self.User = user
+        self._uri = uri
+        self._contenttype = contenttype
         # Uri with Scheme but without a Path generate invalid user but we need
         # to return an Identifier, and raise an 'IllegalIdentifierException'
         # when ContentProvider try to get the Content...
@@ -69,9 +68,6 @@ class Identifier(unohelper.Base,
     @property
     def BaseURI(self):
         return self.MetaData.getDefaultValue('BaseURI', None)
-    @property
-    def Error(self):
-        return self.User.Error if self.User.Error is not None else self._error
 
     def isNew(self):
         return self._contenttype != ''
@@ -80,9 +76,28 @@ class Identifier(unohelper.Base,
     def isValid(self):
         return self.Id is not None
 
+    # XContentIdentifier
+    def getContentIdentifier(self):
+        return self._uri.getUriReference()
+    def getContentProviderScheme(self):
+        return self._uri.getScheme()
+
+    # XChild
+    def getParent(self):
+        parent = None
+        if not self.isRoot():
+            uri = getUri(self.ctx, self.BaseURI)
+            parent = Identifier(self.ctx, self.User, uri)
+        return parent
+    def setParent(self, parent):
+        raise NoSupportException('Parent can not be set', self)
+
+    # XRestIdentifier
+    def createNewIdentifier(self, contenttype):
+        print("Identifier.createNewIdentifier() %s" % (contenttype, ))
+        identifier = Identifier(self.ctx, self.User, self._uri, contenttype)
+        return identifier
     def getContent(self):
-        if not self.isValid:
-            raise IllegalIdentifierException(self.Error, self)
         if self.isNew():
             data = self._getNewContent()
         else:
@@ -98,6 +113,44 @@ class Identifier(unohelper.Base,
         content = Content(self.ctx, self, data)
         print("Identifier.getContent() OK")
         return content
+    def getFolderContent(self, content):
+        select, updated = self.User.DataBase.getFolderContent(self, content, False)
+        if updated:
+            loaded = self.User.DataBase.updateLoaded(self.User.Id, self.Id, OFFLINE, ONLINE)
+            content.insertValue('Loaded', loaded)
+        return select
+    def getDocumentContent(self, sf, content, size):
+        size = 0
+        url = '%s/%s' % (self.User.Provider.SourceURL, self.Id)
+        if content.getValue('Loaded') == OFFLINE and sf.exists(url):
+            size = sf.getSize(url)
+            return url, size
+        stream = self.User.Provider.getDocumentContent(self.User.Request, content)
+        if stream:
+            try:
+                sf.writeFile(url, stream)
+            except Exception as e:
+                msg = "ERROR: %s - %s" % (e, traceback.print_exc())
+                logMessage(self.ctx, SEVERE, msg, "Identifier", "getDocumentContent()")
+            else:
+                size = sf.getSize(url)
+                loaded = self.User.DataBase.updateLoaded(self.User.Id, self.Id, OFFLINE, ONLINE)
+                content.insertValue('Loaded', loaded)
+            finally:
+                stream.closeInput()
+        return url, size
+    def insertNewContent(self, content):
+        print("Identifier.insertNewContent() 1")
+        self.User.DataBase.insertNewContent(self.User.Id, self.Id, self.ParentId, content)
+        print("Identifier.insertNewContent() 2")
+    def setTitle(self, title):
+        # If Title change we need to change Identifier.getContentIdentifier()
+        url = self.BaseURI
+        if not url.endswith('/'):
+            url += '/'
+        url += title
+        self._uri = getUri(self.ctx, getUrl(self.ctx, url))
+        return title
 
     def _getNewContent(self):
         try:
@@ -130,68 +183,6 @@ class Identifier(unohelper.Base,
             return data
         except Exception as e:
             print("Identifier._getNewContent() ERROR: %s - %s" % (e, traceback.print_exc()))
-
-    def setTitle(self, title):
-        # if Title change we need to change Identifier.getContentIdentifier()
-        url = self.BaseURI
-        if not url.endswith('/'):
-            url += '/'
-        url += title
-        self._uri = getUri(self.ctx, getUrl(self.ctx, url))
-        return title
-
-    # XContentIdentifier
-    def getContentIdentifier(self):
-        uri = self._uri.getUriReference()
-        return uri
-    def getContentProviderScheme(self):
-        return self._uri.getScheme()
-
-    # XChild
-    def getParent(self):
-        parent = None
-        if not self.isRoot():
-            uri = getUri(self.ctx, self.BaseURI)
-            parent = Identifier(self.ctx, self.User, uri)
-        return parent
-    def setParent(self, parent):
-        raise NoSupportException('Parent can not be set', self)
-
-    # XRestIdentifier
-    def createNewIdentifier(self, contenttype):
-        print("Identifier.createNewIdentifier() %s" % (contenttype, ))
-        identifier = Identifier(self.ctx, self.User, self._uri, contenttype)
-        return identifier
-    def getFolderContent(self, content):
-        select, updated = self.User.DataBase.getFolderContent(self, content, False)
-        if updated:
-            loaded = self.User.DataBase.updateLoaded(self.User.Id, self.Id, OFFLINE, ONLINE)
-            content.insertValue('Loaded', loaded)
-        return select
-    def getDocumentContent(self, sf, content, size):
-        size = 0
-        url = '%s/%s' % (self.User.Provider.SourceURL, self.Id)
-        if content.getValue('Loaded') == OFFLINE and sf.exists(url):
-            size = sf.getSize(url)
-            return url, size
-        stream = self.User.Provider.getDocumentContent(self.User.Request, content)
-        if stream:
-            try:
-                sf.writeFile(url, stream)
-            except Exception as e:
-                msg = "ERROR: %s - %s" % (e, traceback.print_exc())
-                logMessage(self.ctx, SEVERE, msg, "Identifier", "getDocumentContent()")
-            else:
-                size = sf.getSize(url)
-                loaded = self.User.DataBase.updateLoaded(self.User.Id, self.Id, OFFLINE, ONLINE)
-                content.insertValue('Loaded', loaded)
-            finally:
-                stream.closeInput()
-        return url, size
-    def insertNewContent(self, content):
-        print("Identifier.insertNewContent() 1")
-        self.User.DataBase.insertNewContent(self.User.Id, self.Id, self.ParentId, content)
-        print("Identifier.insertNewContent() 2")
 
 
 # Procedures no more used

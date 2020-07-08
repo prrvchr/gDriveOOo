@@ -387,9 +387,9 @@ class DataBase(unohelper.Base,
 
     def callBack(self, provider, item, response):
         if response.IsPresent:
-            self.updateSync(provider, item, response.Value)
+            self._updateSync(provider, item, response.Value)
 
-    def updateSync(self, provider, item, response):
+    def _updateSync(self, provider, item, response):
         oldid = item.getValue('Id')
         newid = provider.getResponseId(response, oldid)
         oldname = item.getValue('Title')

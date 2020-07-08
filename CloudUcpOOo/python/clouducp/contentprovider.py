@@ -43,7 +43,8 @@ class ContentProvider(unohelper.Base,
         self.Plugin = plugin
         self.DataSource = None
         self.event = Event()
-        self._defaultUser = None
+        self._currentUserName = None
+        self._error = None
         msg = "ContentProvider: %s loading ... Done" % self.Plugin
         logMessage(self.ctx, INFO, msg, 'ContentProvider', '__init__()')
 
@@ -104,15 +105,19 @@ class ContentProvider(unohelper.Base,
     def queryContent(self, identifier):
         url = identifier.getContentIdentifier()
         print("ContentProvider.queryContent() 1 %s" % url)
+        if not identifier.isValid():
+            print("ContentProvider.queryContent() ERROR %s - %s" % (url, self._error))
+            raise IllegalIdentifierException(self._error, identifier)
         content = identifier.getContent()
-        self._defaultUser = identifier.User.Name
+        self._currentUserName = identifier.User.Name
         msg = "Identitifer: %s ... Done" % url
         logMessage(self.ctx, INFO, msg, 'ContentProvider', 'queryContent()')
         print("ContentProvider.queryContent() 2")
         return content
 
     def compareContentIds(self, id1, id2):
-        print("ContentProvider.compareContentIds() 1 %s - %s" % (id1, id2))
+        ids = (id1.getContentIdentifier(), id2.getContentIdentifier())
+        print("ContentProvider.compareContentIds() 1 %s - %s" % ids)
         msg = "Identifiers: %s - %s ..." % (id1, id2)
         if id1.Id == id2.Id and id1.User.Id == id2.User.Id:
             msg += " seem to be the same..."
@@ -127,35 +132,33 @@ class ContentProvider(unohelper.Base,
 
     def _getUser(self, uri, url):
         if uri is None:
-            error = getMessage(self.ctx, 1201, url)
-            print("ContentProvider._getUser() 1 ERROR: %s" % error)
-            return User(self.ctx, self.DataSource, '', error)
+            self._error = getMessage(self.ctx, 1201, url)
+            print("ContentProvider._getUser() 1 ERROR: %s" % self._error)
+            return User(self.ctx)
         if not uri.hasAuthority() or not uri.getPathSegmentCount():
-            error = getMessage(self.ctx, 1202, url)
-            print("ContentProvider._getUser() 2 ERROR: %s" % error)
-            return User(self.ctx, self.DataSource, '', error)
-        username = self._getUserName(uri, url)
-        if not username:
-            error = getMessage(self.ctx, 1203, url)
-            print("ContentProvider._getUser() 3 ERROR: %s" % error)
-            return User(self.ctx, self.DataSource, '', error)
-        user = self.DataSource.getUser(username)
+            self._error = getMessage(self.ctx, 1202, url)
+            print("ContentProvider._getUser() 2 ERROR: %s" % self._error)
+            return User(self.ctx)
+        name = self._getUserName(uri, url)
+        if not name:
+            self._error = getMessage(self.ctx, 1203, url)
+            print("ContentProvider._getUser() 3 ERROR: %s" % self._error)
+            return User(self.ctx)
+        user = self.DataSource.getUser(name)
         if user is None:
-            return User(self.ctx, self.DataSource, '', self.DataSource.Error)
+            self._error = self.DataSource.Error
+            print("ContentProvider._getUser() 4 ERROR: %s" % self._error)
+            return User(self.ctx)
         return user
 
     def _getUserName(self, uri, url):
         if uri.hasAuthority() and uri.getAuthority() != '':
-            username = uri.getAuthority()
-            print("ContentProvider._getUserName(): uri.getAuthority() = %s" % username)
-        elif self._defaultUser is not None:
-            username = self._defaultUser
+            name = uri.getAuthority()
+            print("ContentProvider._getUserName(): uri.getAuthority() = %s" % name)
+        elif self._currentUserName is not None:
+            name = self._currentUserName
         else:
-            message = "Authentication"
-            name = self.DataSource.Provider.Name
-            username = getUserNameFromHandler(self.ctx, url, self, name)
-            print("ContentProvider._getUserName(): getUserNameFromHandler() = %s" % username)
-        print("ContentProvider._getUserName(): %s" % username)
-        return username
-
-
+            name = getUserNameFromHandler(self.ctx, uri.getScheme(), self)
+            print("ContentProvider._getUserName(): getUserNameFromHandler() = %s" % name)
+        print("ContentProvider._getUserName(): %s" % name)
+        return name
