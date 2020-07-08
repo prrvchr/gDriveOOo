@@ -120,14 +120,6 @@ def _setTitle(source, context, title):
         msg += " ERROR: %s" % e
         print(msg)
 
-def insertNewContent(identifier, content):
-    print("ContentCore.insertNewContent() 1")
-    userid = identifier.User.Id
-    itemid = identifier.Id
-    parentid = identifier.ParentId
-    identifier.User.DataBase.insertNewContent(userid, itemid, parentid, content)
-    print("ContentCore.insertNewContent() 2")
-
 def notifyContentListener(ctx, source, action, identifier=None):
     if action == INSERTED:
         identifier = source.getIdentifier().getParent()

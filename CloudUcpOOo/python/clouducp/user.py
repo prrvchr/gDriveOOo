@@ -7,12 +7,10 @@ import unohelper
 from com.sun.star.logging.LogLevel import INFO
 from com.sun.star.logging.LogLevel import SEVERE
 
-from com.sun.star.ucb.ConnectionMode import OFFLINE
-from com.sun.star.ucb.ConnectionMode import ONLINE
-
 from com.sun.star.ucb import XRestUser
 
 from .database import DataBase
+
 from .logger import logMessage
 from .logger import getMessage
 
@@ -26,7 +24,10 @@ class User(unohelper.Base,
         self.ctx = ctx
         self.DataBase = None
         self.Error = error
-        # Incomplete Url generate invalid User
+        # Uri with Scheme but without a Path generate invalid user but we need
+        # to return an Identifier, and raise an 'IllegalIdentifierException'
+        # when ContentProvider try to get the Content...
+        # (ie: ContentProvider.queryContent() -> Identifier.getContent())
         if self.isValid():
             self.Request = datasource.getRequest(name)
             self.MetaData = datasource.DataBase.selectUser(name)
@@ -61,48 +62,26 @@ class User(unohelper.Base,
         return self.Name, password
 
 
-
-
-
-
-    def getItem(self, datasource, identifier):
-        item = self.DataBase.selectItem(self.MetaData, identifier)
-        if item is None and self.Provider.isOnLine():
-            data = self.Provider.getItem(self.Request, identifier)
-            if data.IsPresent:
-                item = self.DataBase.insertAndSelectItem(self.MetaData, data.Value)
-        return item
-
-    def insertNewDocument(self, datasource, itemid, parentid, content):
-        inserted = datasource.insertNewDocument(self.Id, itemid, parentid, content)
-        return self.synchronize(datasource, inserted)
-    def insertNewFolder(self, datasource, itemid, parentid, content):
-        inserted = datasource.insertNewFolder(self.Id, itemid, parentid, content)
-        print("User.insertNewFolder() %s" % inserted)
-        return self.synchronize(datasource, inserted)
-
+# Procedures no more used
     # XRestUser
-    def updateTitle(self, datasource, itemid, parentid, value, default):
+    def updateTitle1(self, datasource, itemid, parentid, value, default):
         result = datasource.updateTitle(self.Id, itemid, parentid, value, default)
         return self.synchronize(datasource, result)
-    def updateSize(self, datasource, itemid, parentid, size):
+    def updateSize1(self, datasource, itemid, parentid, size):
         print("User.updateSize() ***********************")
         result = datasource.updateSize(self.Id, itemid, parentid, size)
         return self.synchronize(datasource, result)
-    def updateTrashed(self, datasource, itemid, parentid, value, default):
+    def updateTrashed1(self, datasource, itemid, parentid, value, default):
         result = datasource.updateTrashed(self.Id, itemid, parentid, value, default)
         return self.synchronize(datasource, result)
 
-    def getInputStream(self, url):
+    def getInputStream1(self, url):
         sf = self.ctx.ServiceManager.createInstance('com.sun.star.ucb.SimpleFileAccess')
         if sf.exists(url):
             return sf.getSize(url), sf.openFileRead(url)
         return 0, None
 
-    def getViewName(self):
-        return self.Name.split('@').pop(0)
-
-    def synchronize(self, datasource, result):
+    def synchronize1(self, datasource, result):
         provider = datasource.Provider
         if provider.isOffLine():
             self._setSessionMode(provider)

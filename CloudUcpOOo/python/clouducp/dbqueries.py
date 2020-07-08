@@ -424,11 +424,11 @@ def getSqlQuery(name, format=None):
         w = '"UserId" = ? AND "ParentId" = ? AND ("IsFolder" = TRUE OR "Loaded" >= ?)'
         p = (','.join(c), w)
         query = 'SELECT %s FROM "Children" WHERE %s;' % p
-
-
     elif name == 'getChildId':
-        w = '"UserId" = ? AND "ParentId" = ? AND "Title" = ?'
-        query = 'SELECT "ItemId" FROM "Child" WHERE %s;' % w
+        w = '"UserId" = ? AND "ParentId" = ? AND "Uri" = ?'
+        query = 'SELECT "ItemId" FROM "Children" WHERE %s;' % w
+
+
     elif name == 'getNewIdentifier':
         query = 'SELECT "Id" FROM "Identifiers" WHERE "UserId" = ? ORDER BY "TimeStamp" LIMIT 1;'
     elif name == 'countNewIdentifier':

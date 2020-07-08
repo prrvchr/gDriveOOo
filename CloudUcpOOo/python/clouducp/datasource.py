@@ -158,13 +158,15 @@ class DataSource(unohelper.Base,
             self.Error = getMessage(self.ctx, 1105, g_oauth2)
         return False
 
-    def _getWarning(self, state, code, format):
+
+# Procedures no more used
+    def _getWarning1(self, state, code, format):
         state = getMessage(self.ctx, state)
         msg = getMessage(self.ctx, code, format)
         warning = getSqlException(state, code, msg, self)
         return warning
 
-    def selectUser(self, name):
+    def selectUser1(self, name):
         user = None
         select = self._getDataSourceCall('getUser')
         select.setString(1, name)
@@ -174,7 +176,7 @@ class DataSource(unohelper.Base,
         select.close()
         return user
 
-    def selectItem(self, user, identifier):
+    def selectItem1(self, user, identifier):
         item = None
         select = self._getDataSourceCall('getItem')
         select.setString(1, user.getValue('UserId'))
@@ -185,7 +187,7 @@ class DataSource(unohelper.Base,
         select.close()
         return item
 
-    def insertItem(self, user, item):
+    def insertItem1(self, user, item):
         timestamp = parseDateTime()
         rootid = user.getValue('RootId')
         c1 = self._getDataSourceCall('deleteParent1')
@@ -199,7 +201,7 @@ class DataSource(unohelper.Base,
         identifier.insertValue('Id', id)
         return self.selectItem(user, identifier)
 
-    def _getContentType(self):
+    def _getContentType1(self):
         call = self._getDataSourceCall('getContentType')
         result = call.executeQuery()
         if result.next():
@@ -207,7 +209,7 @@ class DataSource(unohelper.Base,
         call.close()
         return item.getValue('Folder'), item.getValue('Link')
 
-    def _executeRootCall(self, method, userid, root, timestamp):
+    def _executeRootCall1(self, method, userid, root, timestamp):
         row = 0
         id = self.Provider.getRootId(root)
         call = self._getDataSourceCall('%sItem1' % method)
@@ -232,7 +234,7 @@ class DataSource(unohelper.Base,
             call.close()
         return row
 
-    def _prepareItemCall(self, method, delete, insert, user, item, timestamp):
+    def _prepareItemCall1(self, method, delete, insert, user, item, timestamp):
         row = 0
         userid = user.getValue('UserId')
         rootid = user.getValue('RootId')
@@ -243,7 +245,7 @@ class DataSource(unohelper.Base,
         c2.close()
         return row
 
-    def _executeItemCall(self, c1, c2, c3, c4, userid, rootid, item, timestamp):
+    def _executeItemCall1(self, c1, c2, c3, c4, userid, rootid, item, timestamp):
         row = 0
         id = self.Provider.getItemId(item)
         c1.setString(1, self.Provider.getItemTitle(item))
@@ -272,13 +274,13 @@ class DataSource(unohelper.Base,
                 c4.executeUpdate()
         return row
 
-    def _updateItem(self, c1, c2, c3, c4, userid, rootid, item, id, timestamp):
+    def _updateItem1(self, c1, c2, c3, c4, userid, rootid, item, id, timestamp):
         row = self._updateItemCall(c1, c2, userid, rootid, item, id, timestamp)
         if not row:
             row = self._updateItemCall(c3, c4, userid, rootid, item, id, timestamp)
         return row
 
-    def _updateItemCall(self, c1, c2, userid, rootid, item, id, timestamp):
+    def _updateItemCall1(self, c1, c2, userid, rootid, item, id, timestamp):
         row = 0
         c1.setString(1, self.Provider.getItemTitle(item))
         c1.setTimestamp(2, self.Provider.getItemCreated(item, timestamp))
@@ -298,7 +300,7 @@ class DataSource(unohelper.Base,
             c2.executeUpdate()
         return row
 
-    def _mergeParents(self, c1, c2, userid, items):
+    def _mergeParents1(self, c1, c2, userid, items):
         for id, parents in items:
             c1.setString(1, userid)
             c1.setString(2, id)
@@ -309,7 +311,7 @@ class DataSource(unohelper.Base,
                 c2.setString(3, parent)
                 c2.executeUpdate()
 
-    def _updateFolderContent(self, request, user, content):
+    def _updateFolderContent1(self, request, user, content):
         updated = []
         c1 = self._getDataSourceCall('updateItem1')
         c2 = self._getDataSourceCall('updateCapability1')
@@ -333,13 +335,13 @@ class DataSource(unohelper.Base,
         c6.close()
         return all(updated)
 
-    def _mergeItem(self, c1, c2, c3, c4, c5, c6, userid, rootid, item, timestamp):
+    def _mergeItem1(self, c1, c2, c3, c4, c5, c6, userid, rootid, item, timestamp):
         row = self._executeItemCall(c1, c2, c5, c6, userid, rootid, item, timestamp)
         if not row:
             row = self._executeItemCall(c3, c4, c5, c6, userid, rootid, item, timestamp)
         return row
 
-    def _getChildren(self, user, identifier):
+    def _getChildren1(self, user, identifier):
         select = self._getDataSourceCall('getChildren')
         scroll = 'com.sun.star.sdbc.ResultSetType.SCROLL_INSENSITIVE'
         select.ResultSetType = uno.getConstantByName(scroll)
@@ -356,13 +358,13 @@ class DataSource(unohelper.Base,
         select.setShort(5, self.Provider.SessionMode)
         return select
 
-    def setSyncToken(self, request, user):
+    def setSyncToken1(self, request, user):
         data = self.Provider.getToken(request, user)
         if data.IsPresent:
             token = self.Provider.getUserToken(data.Value)
             self._updateToken(user, token)
 
-    def _updateToken(self, user, token):
+    def _updateToken1(self, user, token):
         update = self._getDataSourceCall('updateToken')
         update.setString(1, token)
         update.setString(2, user.getValue('UserId'))
@@ -371,7 +373,7 @@ class DataSource(unohelper.Base,
         if updated:
             user.setValue('Token', token)
 
-    def checkNewIdentifier(self, request, user):
+    def checkNewIdentifier1(self, request, user):
         if self.Provider.isOffLine() or not self.Provider.GenerateIds:
             return
         result = False
@@ -379,7 +381,7 @@ class DataSource(unohelper.Base,
             result = self._insertIdentifier(request, user)
         return
 
-    def getNewIdentifier(self, user):
+    def getNewIdentifier1(self, user):
         if self.Provider.GenerateIds:
             id = ''
             select = self._getDataSourceCall('getNewIdentifier')
@@ -392,7 +394,7 @@ class DataSource(unohelper.Base,
             id = binascii.hexlify(uno.generateUuid().value).decode('utf-8')
         return id
 
-    def _countIdentifier(self, user):
+    def _countIdentifier1(self, user):
         count = 0
         call = self._getDataSourceCall('countNewIdentifier')
         call.setString(1, user.getValue('UserId'))
@@ -401,7 +403,7 @@ class DataSource(unohelper.Base,
             count = result.getLong(1)
         call.close()
         return count
-    def _insertIdentifier(self, request, user):
+    def _insertIdentifier1(self, request, user):
         result = []
         enumerator = self.Provider.getIdentifier(request, user)
         insert = self._getDataSourceCall('insertIdentifier')
@@ -416,7 +418,7 @@ class DataSource(unohelper.Base,
         insert.setString(2, id)
         return insert.executeUpdate()
 
-    def getItemToSync(self, user):
+    def getItemToSync1(self, user):
         items = []
         select = self._getDataSourceCall('getItemToSync')
         select.setString(1, user.getValue('UserId'))
@@ -428,7 +430,7 @@ class DataSource(unohelper.Base,
         logMessage(self.ctx, INFO, msg, "DataSource", "_getItemToSync()")
         return tuple(items)
 
-    def syncItem(self, request, uploader, item):
+    def syncItem1(self, request, uploader, item):
         try:
             response = False
             mode = item.getValue('Mode')
@@ -453,11 +455,11 @@ class DataSource(unohelper.Base,
             msg = "SyncId: %s - ERROR: %s - %s" % (sync, e, traceback.print_exc())
             logMessage(self.ctx, SEVERE, msg, "DataSource", "_syncItem()")
 
-    def callBack(self, item, response):
+    def callBack1(self, item, response):
         if response.IsPresent:
             self.updateSync(item, response.Value)
 
-    def updateSync(self, item, response):
+    def updateSync1(self, item, response):
         oldid = item.getValue('Id')
         newid = self.Provider.getResponseId(response, oldid)
         oldname = item.getValue('Title')
@@ -478,20 +480,20 @@ class DataSource(unohelper.Base,
             update.close()
         return '' if row != 1 else newid
 
-    def insertNewDocument(self, userid, itemid, parentid, content):
+    def insertNewDocument1(self, userid, itemid, parentid, content):
         modes = self.Provider.FileSyncModes
         inserted = self._insertNewContent(userid, itemid, parentid, content, modes)
         if inserted:
             self.sync.set()
         return inserted
-    def insertNewFolder(self, userid, itemid, parentid, content):
+    def insertNewFolder1(self, userid, itemid, parentid, content):
         modes = self.Provider.FolderSyncModes
         inserted = self._insertNewContent(userid, itemid, parentid, content, modes)
         if inserted:
             self.sync.set()
         return inserted
 
-    def _insertNewContent(self, userid, itemid, parentid, content, modes):
+    def _insertNewContent1(self, userid, itemid, parentid, content, modes):
         c1 = self._getDataSourceCall('insertItem1')
         c1.setString(1, content.getValue("Title"))
         c1.setTimestamp(2, content.getValue('DateCreated'))
@@ -527,7 +529,7 @@ class DataSource(unohelper.Base,
         c4.close()
         return row == 3 + len(modes)
 
-    def updateTitle(self, userid, itemid, parentid, value, default):
+    def updateTitle1(self, userid, itemid, parentid, value, default):
         row = 0
         update = self._getDataSourceCall('updateTitle')
         update.setString(1, value)
@@ -543,7 +545,7 @@ class DataSource(unohelper.Base,
         update.close()
         return default if row != 1 else value
 
-    def updateSize(self, userid, itemid, parentid, size):
+    def updateSize1(self, userid, itemid, parentid, size):
         row = 0
         update = self._getDataSourceCall('updateSize')
         update.setLong(1, size)
@@ -559,7 +561,7 @@ class DataSource(unohelper.Base,
         update.close()
         return None if row != 1 else size
 
-    def updateTrashed(self, userid, itemid, parentid, value, default):
+    def updateTrashed1(self, userid, itemid, parentid, value, default):
         row = 0
         update = self._getDataSourceCall('updateTrashed')
         update.setLong(1, value)
@@ -575,7 +577,7 @@ class DataSource(unohelper.Base,
         update.close()
         return default if row != 1 else value
 
-    def isChildId(self, userid, itemid, title):
+    def isChildId1(self, userid, itemid, title):
         ischild = False
         call = self._getDataSourceCall('isChildId')
         call.setString(1, userid)
@@ -587,7 +589,7 @@ class DataSource(unohelper.Base,
         call.close()
         return ischild
 
-    def countChildTitle(self, userid, parent, title):
+    def countChildTitle1(self, userid, parent, title):
         count = 1
         call = self._getDataSourceCall('countChildTitle')
         call.setString(1, userid)
@@ -600,7 +602,7 @@ class DataSource(unohelper.Base,
         return count
 
     # User.initializeIdentifier() helper
-    def selectChildId(self, userid, parent, basename):
+    def selectChildId1(self, userid, parent, basename):
         id = ''
         call = self._getDataSourceCall('getChildId')
         call.setString(1, userid)
@@ -613,7 +615,7 @@ class DataSource(unohelper.Base,
         return id
 
     # User.initializeIdentifier() helper
-    def isIdentifier(self, userid, id):
+    def isIdentifier1(self, userid, id):
         isit = False
         call = self._getDataSourceCall('isIdentifier')
         call.setString(1, id)
@@ -623,7 +625,7 @@ class DataSource(unohelper.Base,
         call.close()
         return isit
 
-    def _getDataSourceCall(self, name, cache=False):
+    def _getDataSourceCall1(self, name, cache=False):
         if name in self._Calls:
             return self._Calls[name]
         else:
@@ -633,7 +635,7 @@ class DataSource(unohelper.Base,
                 self._Calls[name] = call
         return call
 
-    def synchronize(self):
+    def synchronize1(self):
         try:
             print("DataSource.synchronize() 1")
             results = []

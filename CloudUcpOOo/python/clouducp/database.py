@@ -68,7 +68,6 @@ class DataBase(unohelper.Base,
     def Connection(self):
         return self._statement.getConnection()
 
-
 # Procedures called by the DataSource
     def addCloseListener(self, listener):
         self.Connection.Parent.DatabaseDocument.addCloseListener(listener)
@@ -106,8 +105,7 @@ class DataBase(unohelper.Base,
 
     def createUser(self, user, password):
         name, password = user.getCredential(password)
-        format = {'User': name, 'Password': password, 'RootId': user.RootId,
-                  'Role': g_role, 'View': user.getViewName(), 'Admin': g_admin}
+        format = {'User': name, 'Password': password, 'Role': g_role, 'Admin': g_admin}
         sql = getSqlQuery('createUser', format)
         status = self._statement.executeUpdate(sql)
         sql = getSqlQuery('grantRole', format)
@@ -172,10 +170,10 @@ class DataBase(unohelper.Base,
         call = self._getDataSourceCall('getContentType')
         result = call.executeQuery()
         if result.next():
-            item = getKeyMapFromResult(result)
+            folder = result.getString(1)
+            link = result.getString(2)
         call.close()
-        return item.getValue('Folder'), item.getValue('Link')
-
+        return folder, link
 
 # Procedures called by the User
     def selectItem(self, user, identifier):
@@ -185,21 +183,21 @@ class DataBase(unohelper.Base,
         select.setString(2, identifier.getValue('Id'))
         result = select.executeQuery()
         if result.next():
-            item = getKeyMapFromResult(result, KeyMap())
+            item = getKeyMapFromResult(result)
         select.close()
         return item
 
-    def insertAndSelectItem(self, provider, user, data):
+    def insertAndSelectItem(self, user, data):
         item = None
         separator = ','
         timestamp = parseDateTime()
         call = self._getDataSourceCall('insertAndSelectItem')
-        call.setString(1, user.getValue('UserId'))
+        call.setString(1, user.Id)
         call.setString(2, separator)
         call.setLong(3, 0)
-        id = provider.getItemId(data)
-        parents = provider.getItemParent(data, user.getValue('RootId'))
-        self._setCallItem(call, provider, data, id, parents, separator, timestamp)
+        id = user.Provider.getItemId(data)
+        parents = user.Provider.getItemParent(data, user.RootId)
+        self._setCallItem(call, user.Provider, data, id, parents, separator, timestamp)
         result = call.executeQuery()
         if result.next():
             item = getKeyMapFromResult(result)
@@ -263,11 +261,6 @@ class DataBase(unohelper.Base,
 
     def getIdentifier(self, user, uri, new):
         identifier = KeyMap()
-        if not user.isValid():
-            # Uri with Scheme but without a Path generate invalid user but we need
-            # to return an Identifier, and raise an 'IllegalIdentifierException'
-            # when ContentProvider try to get the Content...(ie: Identifier.getContent())
-            return identifier
         path = uri.getPath().lstrip('/')
         call = self._getDataSourceCall('getIdentifier')
         call.setString(1, user.Id)
@@ -341,21 +334,10 @@ class DataBase(unohelper.Base,
         select.close()
         return item
 
-    def insertNewDocument(self, provider, userid, itemid, parentid, content):
-        inserted = self._insertNewContent(userid, itemid, parentid, content)
-        if inserted:
-            self.event.set()
-        return inserted
-
-    def insertNewFolder(self, provider, userid, itemid, parentid, content):
-        inserted = self._insertNewContent(userid, itemid, parentid, content)
-        if inserted:
-            self.event.set()
-        return inserted
-
     def insertNewContent(self, userid, itemid, parentid, content):
         if self._insertNewContent(userid, itemid, parentid, content):
-            # Start Replicator for uploading changes...
+            # Start Replicator for pushing changes…
+            print("DataBase.insertNewContent() OK")
             self.sync.set()
 
     def _insertNewContent(self, userid, itemid, parentid, content):
@@ -391,47 +373,17 @@ class DataBase(unohelper.Base,
         call.close()
         return count
 
-
-
-
-
-
-    def getItemToSync(self, provider, user):
-        items = []
-        select = self._getDataSourceCall('getItemToSync')
-        select.setString(1, user.getValue('UserId'))
-        result = select.executeQuery()
-        while result.next():
-            items.append(getKeyMapFromResult(result, user, provider))
-        select.close()
-        msg = "Items to Sync: %s" % len(items)
-        logMessage(self.ctx, INFO, msg, "DataSource", "_getItemToSync()")
-        return tuple(items)
-
-    def syncItem(self, provider, request, uploader, item):
-        try:
-            response = False
-            mode = item.getValue('Mode')
-            sync = item.getValue('SyncId')
-            id = item.getValue('Id')
-            msg = "SyncId - ItemId - Mode: %s - %s - %s" % (sync, id, mode)
-            logMessage(self.ctx, INFO, msg, "DataSource", "_syncItem()")
-            if mode == SYNC_FOLDER:
-                response = provider.createFolder(request, item)
-            elif mode == SYNC_FILE:
-                response = provider.createFile(request, uploader, item)
-            elif mode == SYNC_CREATED:
-                response = provider.uploadFile(request, uploader, item, True)
-            elif mode == SYNC_REWRITED:
-                response = provider.uploadFile(request, uploader, item, False)
-            elif mode == SYNC_RENAMED:
-                response = provider.updateTitle(request, item)
-            elif mode == SYNC_TRASHED:
-                response = provider.updateTrashed(request, item)
-            return response
-        except Exception as e:
-            msg = "SyncId: %s - ERROR: %s - %s" % (sync, e, traceback.print_exc())
-            logMessage(self.ctx, SEVERE, msg, "DataSource", "_syncItem()")
+    def getChildId(self, userid, parentid, title):
+        id = None
+        call = self._getDataSourceCall('getChildId')
+        call.setString(1, userid)
+        call.setString(2, parentid)
+        call.setString(3, title)
+        result = call.executeQuery()
+        if result.next():
+            id = result.getString(1)
+        call.close()
+        return id
 
     def callBack(self, provider, item, response):
         if response.IsPresent:
@@ -457,71 +409,6 @@ class DataBase(unohelper.Base,
             logMessage(self.ctx, INFO, msg, "DataSource", "updateSync")
             update.close()
         return '' if row != 1 else newid
-
-
-
-
-    def updateTitle(self, userid, itemid, parentid, value, default):
-        row = 0
-        update = self._getDataSourceCall('updateTitle')
-        update.setString(1, value)
-        update.setString(2, itemid)
-        if update.executeUpdate():
-            insert = self._getDataSourceCall('insertSyncMode')
-            insert.setString(1, userid)
-            insert.setString(2, itemid)
-            insert.setString(3, parentid)
-            insert.setLong(4, SYNC_RENAMED)
-            row = insert.executeUpdate()
-            insert.close()
-        update.close()
-        return default if row != 1 else value
-
-    def updateSize(self, userid, itemid, parentid, size):
-        row = 0
-        update = self._getDataSourceCall('updateSize')
-        update.setLong(1, size)
-        update.setString(2, itemid)
-        if update.executeUpdate():
-            insert = self._getDataSourceCall('insertSyncMode')
-            insert.setString(1, userid)
-            insert.setString(2, itemid)
-            insert.setString(3, parentid)
-            insert.setLong(4, SYNC_REWRITED)
-            row = insert.executeUpdate()
-            insert.close()
-        update.close()
-        return None if row != 1 else size
-
-    def updateTrashed(self, userid, itemid, parentid, value, default):
-        row = 0
-        update = self._getDataSourceCall('updateTrashed')
-        update.setLong(1, value)
-        update.setString(2, itemid)
-        if update.executeUpdate():
-            insert = self._getDataSourceCall('insertSyncMode')
-            insert.setString(1, userid)
-            insert.setString(2, itemid)
-            insert.setString(3, parentid)
-            insert.setLong(4, SYNC_TRASHED)
-            row = insert.executeUpdate()
-            insert.close()
-        update.close()
-        return default if row != 1 else value
-
-    def isChildId(self, userid, itemid, title):
-        ischild = False
-        call = self._getDataSourceCall('isChildId')
-        call.setString(1, userid)
-        call.setString(2, itemid)
-        call.setString(3, title)
-        result = call.executeQuery()
-        if result.next():
-            ischild = result.getBoolean(1)
-        call.close()
-        return ischild
-
-
 
 # Procedures called by the Replicator
     def setSyncToken(self, user):
@@ -742,3 +629,103 @@ class DataBase(unohelper.Base,
             call.close()
         self._CallsPool = OrderedDict()
         self._batchedCall = []
+
+
+
+# Procedures no more used
+    def getItemToSync1(self, provider, user):
+        items = []
+        select = self._getDataSourceCall('getItemToSync')
+        select.setString(1, user.getValue('UserId'))
+        result = select.executeQuery()
+        while result.next():
+            items.append(getKeyMapFromResult(result, user, provider))
+        select.close()
+        msg = "Items to Sync: %s" % len(items)
+        logMessage(self.ctx, INFO, msg, "DataSource", "_getItemToSync()")
+        return tuple(items)
+
+    def syncItem1(self, provider, request, uploader, item):
+        try:
+            response = False
+            mode = item.getValue('Mode')
+            sync = item.getValue('SyncId')
+            id = item.getValue('Id')
+            msg = "SyncId - ItemId - Mode: %s - %s - %s" % (sync, id, mode)
+            logMessage(self.ctx, INFO, msg, "DataSource", "_syncItem()")
+            if mode == SYNC_FOLDER:
+                response = provider.createFolder(request, item)
+            elif mode == SYNC_FILE:
+                response = provider.createFile(request, uploader, item)
+            elif mode == SYNC_CREATED:
+                response = provider.uploadFile(request, uploader, item, True)
+            elif mode == SYNC_REWRITED:
+                response = provider.uploadFile(request, uploader, item, False)
+            elif mode == SYNC_RENAMED:
+                response = provider.updateTitle(request, item)
+            elif mode == SYNC_TRASHED:
+                response = provider.updateTrashed(request, item)
+            return response
+        except Exception as e:
+            msg = "SyncId: %s - ERROR: %s - %s" % (sync, e, traceback.print_exc())
+            logMessage(self.ctx, SEVERE, msg, "DataSource", "_syncItem()")
+
+    def updateTitle1(self, userid, itemid, parentid, value, default):
+        row = 0
+        update = self._getDataSourceCall('updateTitle')
+        update.setString(1, value)
+        update.setString(2, itemid)
+        if update.executeUpdate():
+            insert = self._getDataSourceCall('insertSyncMode')
+            insert.setString(1, userid)
+            insert.setString(2, itemid)
+            insert.setString(3, parentid)
+            insert.setLong(4, SYNC_RENAMED)
+            row = insert.executeUpdate()
+            insert.close()
+        update.close()
+        return default if row != 1 else value
+
+    def updateSize1(self, userid, itemid, parentid, size):
+        row = 0
+        update = self._getDataSourceCall('updateSize')
+        update.setLong(1, size)
+        update.setString(2, itemid)
+        if update.executeUpdate():
+            insert = self._getDataSourceCall('insertSyncMode')
+            insert.setString(1, userid)
+            insert.setString(2, itemid)
+            insert.setString(3, parentid)
+            insert.setLong(4, SYNC_REWRITED)
+            row = insert.executeUpdate()
+            insert.close()
+        update.close()
+        return None if row != 1 else size
+
+    def updateTrashed1(self, userid, itemid, parentid, value, default):
+        row = 0
+        update = self._getDataSourceCall('updateTrashed')
+        update.setLong(1, value)
+        update.setString(2, itemid)
+        if update.executeUpdate():
+            insert = self._getDataSourceCall('insertSyncMode')
+            insert.setString(1, userid)
+            insert.setString(2, itemid)
+            insert.setString(3, parentid)
+            insert.setLong(4, SYNC_TRASHED)
+            row = insert.executeUpdate()
+            insert.close()
+        update.close()
+        return default if row != 1 else value
+
+    def isChildId1(self, userid, itemid, title):
+        ischild = False
+        call = self._getDataSourceCall('isChildId')
+        call.setString(1, userid)
+        call.setString(2, itemid)
+        call.setString(3, title)
+        result = call.executeQuery()
+        if result.next():
+            ischild = result.getBoolean(1)
+        call.close()
+        return ischild

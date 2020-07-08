@@ -41,7 +41,6 @@ from .contentlib import DynamicResultSet
 
 from .contentcore import getPropertiesValues
 from .contentcore import setPropertiesValues
-from .contentcore import insertNewContent
 
 from .contenttools import getCommandInfo
 from .contenttools import getContentInfo
@@ -119,8 +118,10 @@ class Content(unohelper.Base,
         print("Content.queryCreatableContentsInfo()")
         return self.MetaData.getValue('CreatableContentsInfo')
     def createNewContent(self, info):
+        # To avoid cyclic imports, the creation of identifiers is done by Identifier
+        # (ie: Identifier also creates Content)
         identifier = self.Identifier.createNewIdentifier(info.Type)
-        print("Content.createNewContent()")
+        print("Content.createNewContent() New Id: %s" % identifier.Id)
         return identifier.getContent()
 
     # XContent
@@ -154,7 +155,8 @@ class Content(unohelper.Base,
             elif command.Name == 'setPropertyValues':
                 return setPropertiesValues(self.ctx, self, environment, command.Argument)
             elif command.Name == 'delete':
-                self.MetaData.insertValue('Trashed', self.Identifier.updateTrashed(True, False))
+                self.MetaData.insertValue('Trashed', True)
+                self.Identifier.User.DataBase.updateContent(self.Identifier.Id, 'Trashed', True)
             elif command.Name == 'open':
                 if self.IsFolder:
                     # Not Used: command.Argument.Properties - Implement me ;-)
@@ -179,43 +181,31 @@ class Content(unohelper.Base,
                     elif not isreadonly and datastream in interfaces:
                         sink.setStream(sf.openFileReadWrite(url))
             elif command.Name == 'insert':
+                # The Insert command is only used to create a new folder or a new document
+                # (ie: File Save As).
+                # It saves the content created by 'createNewContent' from the parent folder
                 print("Content.execute() insert 1 - %s - %s" % (self.IsFolder, self.Identifier.Id))
                 if self.IsFolder:
                     mediatype = self.Identifier.User.Provider.Folder
                     self.MetaData.insertValue('MediaType', mediatype)
                     print("Content.execute() insert 2")
-                    insertNewContent(self.Identifier, self.MetaData)
+                    self.Identifier.insertNewContent(self.MetaData)
                     print("Content.execute() insert 3")
-                    #identifier = self.getIdentifier()
-                    #ucp = getUcp(self.ctx, identifier.getContentProviderScheme())
-                    #self.addPropertiesChangeListener(('Id', 'Name', 'Size', 'Trashed', 'Loaded'), ucp)
-                    #propertyChange(self, 'Id', identifier.Id, CREATED | FOLDER)
-                    #parent = identifier.getParent()
-                    #event = getContentEvent(self, INSERTED, self, parent)
-                    #ucp.queryContent(parent).notify(event)
                 elif self.IsDocument:
-                    # The Insert command is only used to create a new document (File Save As)
-                    # it saves content from createNewContent from the parent folder
                     stream = command.Argument.Data
                     replace = command.Argument.ReplaceExisting
                     sf = getSimpleFile(self.ctx)
                     url = self.Identifier.User.Provider.SourceURL
                     target = '%s/%s' % (url, self.Identifier.Id)
                     if sf.exists(target) and not replace:
-                        pass
-                    elif stream.queryInterface(uno.getTypeByName('com.sun.star.io.XInputStream')):
+                        return
+                    inputstream = uno.getTypeByName('com.sun.star.io.XInputStream')
+                    if inputstream in getInterfaceTypes(stream):
                         sf.writeFile(target, stream)
                         mediatype = getMimeType(self.ctx, stream)
                         self.MetaData.insertValue('MediaType', mediatype)
                         stream.closeInput()
-                        if self.Identifier.insertNewDocument(self.MetaData):
-                            pass
-                        #ucp = getUcp(self.ctx, identifier.getContentProviderScheme())
-                        #self.addPropertiesChangeListener(('Id', 'Name', 'Size', 'Trashed', 'Loaded'), ucp)
-                        #propertyChange(self, 'Id', identifier.Id, CREATED | FILE)
-                        #parent = identifier.getParent()
-                        #event = getContentEvent(self, INSERTED, self, parent)
-                        #ucp.queryContent(parent).notify(event)
+                        self.Identifier.insertNewContent(self.MetaData)
             elif command.Name == 'createNewContent' and self.IsFolder:
                 return self.createNewContent(command.Argument)
             elif command.Name == 'transfer' and self.IsFolder:
@@ -228,21 +218,20 @@ class Content(unohelper.Base,
                 source = command.Argument.SourceURL
                 move = command.Argument.MoveData
                 clash = command.Argument.NameClash
-                # We check if 'command.Argument.NewTitle' is an Id
-                if self.Identifier.isChildId(title):
-                    id = title
-                else:
-                    # It appears that 'command.Argument.NewTitle' is not an Id but a Title...
-                    # If 'NewTitle' exist and is unique in the folder, we can retrieve its Id
-                    id = self.Identifier.selectChildId(title)
-                    if not id:
-                        # Id could not be found: NewTitle does not exist in the folder...
-                        # For new document (File Save As) we use commands:
-                        # - createNewContent: for creating an empty new Content
-                        # - Insert at new Content for committing change
-                        # To execute these commands, we must throw an exception
-                        msg = "Couln't handle Url: %s" % source
-                        raise InteractiveBadTransferURLException(msg, self)
+                print("Content.execute() transfert 1 %s - %s -%s - %s" % (title, source, move, clash))
+                # We check if 'NewTitle' is a child of this folder by recovering its id
+                user = self.Identifier.User
+                id = self.Identifier.User.DataBase.getChildId(user.Id, self.Identifier.Id, title)
+                if id is None:
+                    print("Content.execute() transfert 2 %s" % id)
+                    # Id could not be found: 'NewTitle' does not exist in the folder...
+                    # For new document (File Save As) we use commands:
+                    # - createNewContent: for creating an empty new Content
+                    # - Insert at new Content for committing change
+                    # To execute these commands, we must throw an exception
+                    msg = "Couln't handle Url: %s" % source
+                    raise InteractiveBadTransferURLException(msg, self)
+                print("Content.execute() transfert 3 %s" % id)
                 sf = getSimpleFile(self.ctx)
                 if not sf.exists(source):
                     raise CommandAbortedException("Error while saving file: %s" % source, self)
@@ -250,14 +239,8 @@ class Content(unohelper.Base,
                 target = '%s/%s' % (self.Identifier.User.Provider.SourceURL, id)
                 sf.writeFile(target, inputstream)
                 inputstream.closeInput()
-                # We need to commit change: Size is the property chainning all DataSource change
-                if not self.Identifier.User.updateSize(id, self.Identifier.Id, sf.getSize(target)):
-                    raise CommandAbortedException("Error while saving file: %s" % source, self)
-                #ucb = getUcb(self.ctx)
-                #identifier = ucb.createContentIdentifier('%s/%s' % (self.Identifier.BaseURL, title))
-                #data = getPropertyValueSet({'Size': sf.getSize(target)})
-                #content = ucb.queryContent(identifier)
-                #executeContentCommand(content, 'setPropertyValues', data, environment)
+                # We need to update the Size
+                user.DataBase.updateContent(self.Identifier.Id, 'Size', sf.getSize(target))
                 if move:
                     pass #must delete object
             elif command.Name == 'flush' and self.IsFolder:

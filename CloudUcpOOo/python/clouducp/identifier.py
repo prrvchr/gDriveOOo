@@ -48,7 +48,14 @@ class Identifier(unohelper.Base,
         self._error = None
         self._uri = uri
         self.User = user
-        self.MetaData = user.DataBase.getIdentifier(user, uri, self.isNew())
+        # Uri with Scheme but without a Path generate invalid user but we need
+        # to return an Identifier, and raise an 'IllegalIdentifierException'
+        # when ContentProvider try to get the Content...
+        # (ie: ContentProvider.queryContent() -> Identifier.getContent())
+        if user.isValid():
+            self.MetaData = user.DataBase.getIdentifier(user, uri, self.isNew())
+        else:
+            self.MetaData = KeyMap()
         msg += " ... Done"
         print("Identifier.__init__() OK")
         logMessage(self.ctx, INFO, msg, "Identifier", "__init__()")
@@ -81,6 +88,10 @@ class Identifier(unohelper.Base,
         else:
             data = self.User.DataBase.getItem(self.User.Id, self.Id)
             print("Identifier.getContent() %s" % data)
+            if data is None and self.User.Provider.isOnLine():
+                data = self.Provider.getItem(self.User.Request, self.MetaData)
+                if data.IsPresent:
+                    data = self.User.DataBase.insertAndSelectItem(self.User, data.Value)
         if data is None:
             msg = "Error: can't retreive Identifier"
             raise IllegalIdentifierException(msg, self)
@@ -151,7 +162,12 @@ class Identifier(unohelper.Base,
         print("Identifier.createNewIdentifier() %s" % (contenttype, ))
         identifier = Identifier(self.ctx, self.User, self._uri, contenttype)
         return identifier
-
+    def getFolderContent(self, content):
+        select, updated = self.User.DataBase.getFolderContent(self, content, False)
+        if updated:
+            loaded = self.User.DataBase.updateLoaded(self.User.Id, self.Id, OFFLINE, ONLINE)
+            content.insertValue('Loaded', loaded)
+        return select
     def getDocumentContent(self, sf, content, size):
         size = 0
         url = '%s/%s' % (self.User.Provider.SourceURL, self.Id)
@@ -172,61 +188,46 @@ class Identifier(unohelper.Base,
             finally:
                 stream.closeInput()
         return url, size
-
-    def getFolderContent(self, content):
-        select, updated = self.User.DataBase.getFolderContent(self, content, False)
-        if updated:
-            loaded = self.User.DataBase.updateLoaded(self.User.Id, self.Id, OFFLINE, ONLINE)
-            content.insertValue('Loaded', loaded)
-        return select
+    def insertNewContent(self, content):
+        print("Identifier.insertNewContent() 1")
+        self.User.DataBase.insertNewContent(self.User.Id, self.Id, self.ParentId, content)
+        print("Identifier.insertNewContent() 2")
 
 
-
-
-
-    def insertNewDocument(self, content):
-        parentid = self.getParent().Id
-        return self.DataSource.insertNewDocument(self.User.Id, self.Id, parentid, content)
-
-    def insertNewFolder(self, content):
-        print("Identifier.insertNewFolder() 1")
-        print("Identifier.insertNewFolder() 2 %s" % self.ParentId)
-        return self.DataBase.insertNewFolder(self.User.Id, self.Id, self.ParentId, content)
-
-    def countChildTitle(self, title):
+# Procedures no more used
+    def countChildTitle1(self, title):
         return self.User.DataBase.countChildTitle(self.User.Id, self.Id, title)
 
-
-    def isChildId(self, title):
+    def isChildId1(self, title):
         return self.DataSource.isChildId(self.User.Id, self.Id, title)
-    def selectChildId(self, title):
+    def selectChildId1(self, title):
         return self._selectChildId(self.Id, title)
 
 
-    def updateSize(self, itemid, parentid, size):
+    def updateSize1(self, itemid, parentid, size):
         print("Identifier.updateSize()*******************")
         return self.User.updateSize(self.DataSource, itemid, parentid, size)
-    def updateTrashed(self, value, default):
+    def updateTrashed1(self, value, default):
         parentid = self.getParent().Id
         return self.User.updateTrashed(self.DataSource, self.Id, parentid, value, default)
-    def updateTitle(self, value, default):
+    def updateTitle1(self, value, default):
         parentid = self.getParent().Id
         return self.User.updateTitle(self.DataSource, self.Id, parentid, value, default)
 
-    def getInputStream(self, path, id):
+    def getInputStream1(self, path, id):
         url = '%s/%s' % (path, id)
         sf = self.ctx.ServiceManager.createInstance('com.sun.star.ucb.SimpleFileAccess')
         if sf.exists(url):
             return sf.getSize(url), sf.openFileRead(url)
         return 0, None
 
-    def _isIdentifier(self, id):
+    def _isIdentifier1(self, id):
         return self.DataSource.isIdentifier(self.User.Id, id)
 
-    def _selectChildId(self, id, title):
+    def _selectChildId1(self, id, title):
         return self.DataSource.selectChildId(self.User.Id, id, title)
 
-    def _searchId(self, paths, basename):
+    def _searchId1(self, paths, basename):
         # Needed for be able to create a folder in a just created folder...
         id = ''
         paths.append(self.User.RootId)
@@ -238,12 +239,3 @@ class Identifier(unohelper.Base,
             id = self._selectChildId(id, paths[j])
         id = self._selectChildId(id, basename)
         return id
-
-    def _getNewMetaData1(self):
-        id = self.User.DataBase.getNewIdentifier(self.User)
-        data = self.User.DataBase.getIdentifier(self.User.MetaData, self._uri)
-        metadata = KeyMap()
-        metadata.setValue('Id', id)
-        metadata.setValue('ParentId', data.getValue('Id'))
-        print("Identifier._getNewMetaData() %s" % (metadata, ))
-        return metadata
