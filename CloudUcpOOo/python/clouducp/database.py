@@ -50,7 +50,6 @@ from .logger import logMessage
 from .logger import getMessage
 
 from collections import OrderedDict
-import binascii
 import traceback
 
 
@@ -59,8 +58,8 @@ class DataBase(unohelper.Base,
     def __init__(self, ctx, datasource, name='', password='', sync=None):
         self.ctx = ctx
         self._statement = datasource.getConnection(name, password).createStatement()
-        self._CallsPool = OrderedDict()
-        self._batchedCall = []
+        self._calls = OrderedDict()
+        self._batchedCalls = OrderedDict()
         if sync is not None:
             self.sync = sync
 
@@ -69,23 +68,8 @@ class DataBase(unohelper.Base,
         return self._statement.getConnection()
 
 # Procedures called by the DataSource
-    def addCloseListener(self, listener):
-        self.Connection.Parent.DatabaseDocument.addCloseListener(listener)
-
-    def shutdownDataBase(self, compact=False):
-        if compact:
-            query = getSqlQuery('shutdownCompact')
-        else:
-            query = getSqlQuery('shutdown')
-        self._statement.execute(query)
-
-    def initDataBase(self, url):
-        error = self._createDataBase()
-        if error is None:
-            self._storeDataBase(url)
-
-    def _createDataBase(self):
-        version, error = checkDataBase(self.ctx, self._statement.getConnection())
+    def createDataBase(self):
+        version, error = checkDataBase(self.ctx, self.Connection)
         print("DataBase.createDataBase() Hsqldb Version: %s" % version)
         if error is None:
             createStaticTable(self._statement, getStaticTables(), True)
@@ -100,8 +84,18 @@ class DataBase(unohelper.Base,
             print("DataBase._executeQueries() %s" % query)
             self._statement.executeQuery(query)
 
-    def _storeDataBase(self, url):
+    def storeDataBase(self, url):
         self._statement.getConnection().getParent().DatabaseDocument.storeAsURL(url, ())
+
+    def addCloseListener(self, listener):
+        self.Connection.Parent.DatabaseDocument.addCloseListener(listener)
+
+    def shutdownDataBase(self, compact=False):
+        if compact:
+            query = getSqlQuery('shutdownCompact')
+        else:
+            query = getSqlQuery('shutdown')
+        self._statement.execute(query)
 
     def createUser(self, user, password):
         name, password = user.getCredential(password)
@@ -114,7 +108,7 @@ class DataBase(unohelper.Base,
 
     def selectUser(self, name):
         user = None
-        select = self._getDataSourceCall('getUser')
+        select = self._getCall('getUser')
         select.setString(1, name)
         result = select.executeQuery()
         if result.next():
@@ -129,7 +123,7 @@ class DataBase(unohelper.Base,
         rootid = provider.getRootId(root)
         rootname = provider.getRootTitle(root)
         timestamp = parseDateTime()
-        insert = self._getDataSourceCall('insertUser')
+        insert = self._getCall('insertUser')
         insert.setString(1, username)
         insert.setString(2, displayname)
         insert.setString(3, rootid)
@@ -147,7 +141,7 @@ class DataBase(unohelper.Base,
         return data
 
     def _mergeRoot(self, provider, userid, rootid, rootname, root, timestamp):
-        call = self._getDataSourceCall('mergeItem')
+        call = self._getCall('mergeItem')
         call.setString(1, userid)
         call.setString(2, ',')
         call.setLong(3, 0)
@@ -167,7 +161,7 @@ class DataBase(unohelper.Base,
         call.close()
 
     def getContentType(self):
-        call = self._getDataSourceCall('getContentType')
+        call = self._getCall('getContentType')
         result = call.executeQuery()
         if result.next():
             folder = result.getString(1)
@@ -178,7 +172,7 @@ class DataBase(unohelper.Base,
 # Procedures called by the User
     def selectItem(self, user, identifier):
         item = None
-        select = self._getDataSourceCall('getItem')
+        select = self._getCall('getItem')
         select.setString(1, user.getValue('UserId'))
         select.setString(2, identifier.getValue('Id'))
         result = select.executeQuery()
@@ -191,7 +185,7 @@ class DataBase(unohelper.Base,
         item = None
         separator = ','
         timestamp = parseDateTime()
-        call = self._getDataSourceCall('insertAndSelectItem')
+        call = self._getCall('insertAndSelectItem')
         call.setString(1, user.Id)
         call.setString(2, separator)
         call.setLong(3, 0)
@@ -201,22 +195,14 @@ class DataBase(unohelper.Base,
         result = call.executeQuery()
         if result.next():
             item = getKeyMapFromResult(result)
+        call.close()
         return item
 
-    def getFolderContent(self, identifier, content, updated):
-        if ONLINE == content.getValue('Loaded') == identifier.User.Provider.SessionMode:
-            print("DataBase.getFolderContent() whith request")
-            updated = self._updateFolderContent(identifier.User, content)
-        else:
-            print("DataBase.getFolderContent() no request")
-        select = self._getChildren(identifier)
-        return select, updated
-
-    def _updateFolderContent(self, user, content):
+    def updateFolderContent(self, user, content):
         rows = []
         separator = ','
         timestamp = parseDateTime()
-        call = self._getDataSourceCall('mergeItem', True)
+        call = self._getCall('mergeItem')
         call.setString(1, user.Id)
         call.setString(2, separator)
         call.setLong(3, 0)
@@ -227,14 +213,15 @@ class DataBase(unohelper.Base,
             parents = user.Provider.getItemParent(item, user.RootId)
             rows.append(self._setCallItem(call, user.Provider, item, id, parents, separator, timestamp))
             call.addBatch()
-        self._closeDataSourceCall()
+        call.executeBatch()
+        call.close()
         print("DataBase._updateFolderContent() %s - %s" % (all(rows), len(rows)))
         return all(rows)
 
-    def _getChildren(self, identifier):
+    def getChildren(self, identifier):
         #TODO: Can't have a ResultSet of type SCROLL_INSENSITIVE with a Procedure,
         #TODO: as a workaround we use a simple quey...
-        select = self._getDataSourceCall('getChildren')
+        select = self._getCall('getChildren')
         scroll = 'com.sun.star.sdbc.ResultSetType.SCROLL_INSENSITIVE'
         select.ResultSetType = uno.getConstantByName(scroll)
         # OpenOffice / LibreOffice Columns:
@@ -252,69 +239,53 @@ class DataBase(unohelper.Base,
         return select
 
     def updateLoaded(self, userid, itemid, value, default):
-        update = self._getDataSourceCall('updateLoaded')
+        update = self._getCall('updateLoaded')
         update.setLong(1, value)
         update.setString(2, itemid)
         row = update.executeUpdate()
         update.close()
         return default if row != 1 else value
 
-    def getIdentifier(self, user, uri, new):
-        identifier = KeyMap()
-        path = uri.getPath().lstrip('/')
-        call = self._getDataSourceCall('getIdentifier')
-        call.setString(1, user.Id)
-        call.setString(2, user.RootId)
-        call.setString(3, path)
-        print("DataBase.getIdentifier() %s - %s - %s" % (user.Id, user.RootId, path))
+    def getIdentifier(self, userid, rootid, uripath):
+        call = self._getCall('getIdentifier')
+        call.setString(1, userid)
+        call.setString(2, rootid)
+        call.setString(3, uripath)
+        print("DataBase.getIdentifier() %s - %s - %s" % (userid, rootid, uripath))
         call.setString(4, '/')
         call.execute()
-        id = call.getString(5)
+        itemid = call.getString(5)
         parentid = call.getString(6)
         path = call.getString(7)
         call.close()
-        if new:
-            # New Identifier are created by the parent folder...
-            identifier.setValue('Id', self._getNewIdentifier(user))
-            identifier.setValue('ParentId', id)
-            baseuri = uri.getUriReference()
-        else:
-            identifier.setValue('Id', id)
-            identifier.setValue('ParentId', parentid)
-            baseuri = '%s://%s/%s' % (uri.getScheme(), uri.getAuthority(), path)
-        identifier.setValue('BaseURI', baseuri)
-        print("DataBase.getIdentifier() %s - %s - %s" % (id, parentid, baseuri))
-        return identifier
+        return itemid, parentid, path
 
-    def _getNewIdentifier(self, user):
-        if user.Provider.GenerateIds:
-            id = ''
-            select = self._getDataSourceCall('getNewIdentifier')
-            select.setString(1, user.Id)
-            result = select.executeQuery()
-            if result.next():
-                id = result.getString(1)
-            select.close()
-        else:
-            id = binascii.hexlify(uno.generateUuid().value).decode('utf-8')
-        return id
+    def getNewIdentifier(self, userid):
+        identifier = ''
+        select = self._getCall('getNewIdentifier')
+        select.setString(1, userid)
+        result = select.executeQuery()
+        if result.next():
+            identifier = result.getString(1)
+        select.close()
+        return identifier
 
     def updateContent(self, itemid, property, value):
         updated = 0
         if property == 'Title':
-            update = self._getDataSourceCall('updateTitle')
+            update = self._getCall('updateTitle')
             update.setString(1, value)
             update.setString(2, itemid)
             updated = update.executeUpdate()
             update.close()
         elif property == 'Size':
-            update = self._getDataSourceCall('updateSize')
+            update = self._getCall('updateSize')
             update.setLong(1, value)
             update.setString(2, itemid)
             updated = update.executeUpdate()
             update.close()
         elif property == 'Trashed':
-            update = self._getDataSourceCall('updateTrashed')
+            update = self._getCall('updateTrashed')
             update.setBoolean(1, value)
             update.setString(2, itemid)
             updated = update.executeUpdate()
@@ -325,7 +296,7 @@ class DataBase(unohelper.Base,
 
     def getItem(self, userid, itemid):
         item = None
-        select = self._getDataSourceCall('getItem')
+        select = self._getCall('getItem')
         select.setString(1, userid)
         select.setString(2, itemid)
         result = select.executeQuery()
@@ -335,13 +306,7 @@ class DataBase(unohelper.Base,
         return item
 
     def insertNewContent(self, userid, itemid, parentid, content):
-        if self._insertNewContent(userid, itemid, parentid, content):
-            # Start Replicator for pushing changes…
-            print("DataBase.insertNewContent() OK")
-            self.sync.set()
-
-    def _insertNewContent(self, userid, itemid, parentid, content):
-        call = self._getDataSourceCall('insertItem')
+        call = self._getCall('insertItem')
         call.setString(1, userid)
         call.setString(2, ',')
         call.setLong(3, 1)
@@ -363,7 +328,7 @@ class DataBase(unohelper.Base,
 
     def countChildTitle(self, userid, parentid, title):
         count = 1
-        call = self._getDataSourceCall('countChildTitle')
+        call = self._getCall('countChildTitle')
         call.setString(1, userid)
         call.setString(2, parentid)
         call.setString(3, title)
@@ -375,7 +340,7 @@ class DataBase(unohelper.Base,
 
     def getChildId(self, userid, parentid, title):
         id = None
-        call = self._getDataSourceCall('getChildId')
+        call = self._getCall('getChildId')
         call.setString(1, userid)
         call.setString(2, parentid)
         call.setString(3, title)
@@ -394,14 +359,14 @@ class DataBase(unohelper.Base,
         newid = provider.getResponseId(response, oldid)
         oldname = item.getValue('Title')
         newname = provider.getResponseTitle(response, oldname)
-        delete = self._getDataSourceCall('deleteSyncMode')
+        delete = self._getCall('deleteSyncMode')
         delete.setLong(1, item.getValue('SyncId'))
         row = delete.executeUpdate()
         msg = "execute deleteSyncMode OldId: %s - NewId: %s - Row: %s" % (oldid, newid, row)
         logMessage(self.ctx, INFO, msg, "DataSource", "updateSync")
         delete.close()
         if row and newid != oldid:
-            update = self._getDataSourceCall('updateItemId')
+            update = self._getCall('updateItemId')
             update.setString(1, newid)
             update.setString(2, oldid)
             row = update.executeUpdate()
@@ -411,14 +376,8 @@ class DataBase(unohelper.Base,
         return '' if row != 1 else newid
 
 # Procedures called by the Replicator
-    def setSyncToken(self, user):
-        data = user.Provider.getToken(user.Request, user.MetaData)
-        if data.IsPresent:
-            token = user.Provider.getUserToken(data.Value)
-            self._updateToken(user.MetaData, token)
-
-    def _updateToken(self, user, token):
-        update = self._getDataSourceCall('updateToken')
+    def updateToken(self, user, token):
+        update = self._getCall('updateToken')
         update.setString(1, token)
         update.setString(2, user.getValue('UserId'))
         updated = update.executeUpdate() == 1
@@ -426,110 +385,54 @@ class DataBase(unohelper.Base,
         if updated:
             user.setValue('Token', token)
 
-    def checkNewIdentifier(self, provider, request, user):
-        if provider.isOffLine() or not provider.GenerateIds:
-            return
-        result = False
-        if self._countIdentifier(user) < min(provider.IdentifierRange):
-            result = self._insertIdentifier(provider, request, user)
-        return
-
-    def _countIdentifier(self, user):
+    def countIdentifier(self, userid):
         count = 0
-        call = self._getDataSourceCall('countNewIdentifier')
-        call.setString(1, user.getValue('UserId'))
+        call = self._getCall('countNewIdentifier')
+        call.setString(1, userid)
         result = call.executeQuery()
         if result.next():
             count = result.getLong(1)
         call.close()
         return count
 
-    def _insertIdentifier(self, provider, request, user):
+    def insertIdentifier(self, enumerator, userid):
         result = []
-        enumerator = provider.getIdentifier(request, user)
-        insert = self._getDataSourceCall('insertIdentifier')
-        insert.setString(1, user.getValue('UserId'))
+        insert = self._getCall('insertIdentifier')
+        insert.setString(1, userid)
         while enumerator.hasMoreElements():
             item = enumerator.nextElement()
-            print("datasource._insertIdentifier() %s" % (item, ))
-            result.append(self._doInsert(insert, item))
+            print("datasource._insertIdentifier() 1 %s" % (item, ))
+            self._doInsert(insert, item)
+        result = insert.executeBatch()
         insert.close()
+        print("datasource._insertIdentifier() 2 %s" % (result, ))
         return all(result)
 
-    def _doInsert(self, insert, id):
-        insert.setString(2, id)
-        return insert.executeUpdate()
+    def _doInsert(self, insert, identifier):
+        insert.setString(2, identifier)
+        insert.addBatch()
 
-    def updateDrive(self, user):
-        sep = ','
-        start = parseDateTime()
-        call = self._getDataSourceCall('mergeItem', True)
-        call.setString(1, user.Id)
-        call.setString(2, sep)
-        call.setLong(3, 1)
-        roots = [user.RootId]
-        rows, items, parents, page, row = self._getDriveContent(call, user, roots, sep, start)
-        rows += self._filterParents(call, user.Provider, items, parents, roots, sep, start)
-        rejected = self._getRejectedItems(user.Provider, parents, items)
-        self._closeDataSourceCall()
-        end = parseDateTime()
-        self._updateUserTimeStamp(user.Id, end)
-        return rejected, rows, page, row, end
+    def getDriveCall(self, userid, separator, loaded):
+        call = self._getCall('mergeItem')
+        call.setString(1, userid)
+        call.setString(2, separator)
+        call.setLong(3, loaded)
+        return call
 
-    def _getDriveContent(self, call, user, roots, sep, start):
-        rows = []
-        items = {}
-        childs = []
-        provider = user.Provider
-        parameter = provider.getRequestParameter('getDriveContent', user.MetaData)
-        enumerator = user.Request.getIterator(parameter, None)
-        while enumerator.hasMoreElements():
-            item = enumerator.nextElement()
-            id = provider.getItemId(item)
-            parents = provider.getItemParent(item, user.RootId)
-            if all(parent in roots for parent in parents):
-                roots.append(id)
-                row = self._setCallItem(call, provider, item, id, parents, sep, start)
-                rows.append(row)
-                call.addBatch()
-            else:
-                items[id] = item
-                childs.append((id, parents))
-        return rows, items, childs, enumerator.PageCount, enumerator.RowCount
+    def setDriveCall(self, call, provider, item, id, parents, separator, timestamp):
+        row = self._setCallItem(call, provider, item, id, parents, separator, timestamp)
+        call.addBatch()
+        return row
 
-    def _filterParents(self, call, provider, items, childs, roots, sep, start):
-        i = -1
-        rows = []
-        while len(childs) and len(childs) != i:
-            i = len(childs)
-            print("datasource._filterParents() %s" % len(childs))
-            for item in childs:
-                id, parents = item
-                if all(parent in roots for parent in parents):
-                    roots.append(id)
-                    row = self._setCallItem(call, provider, items[id], id, parents, sep, start)
-                    rows.append(row)
-                    call.addBatch()
-                    childs.remove(item)
-            childs.reverse()
-        return rows
-
-    def _getRejectedItems(self, provider, items, data):
-        rejected = []
-        for id, parents in items:
-            title = provider.getItemTitle(data[id])
-            rejected.append((title, id, ','.join(parents)))
-        return rejected
-
-    def _updateUserTimeStamp(self, userid, timestamp):
-        call = self._getDataSourceCall('updateUserTimeStamp')
+    def updateUserTimeStamp(self, userid, timestamp):
+        call = self._getCall('updateUserTimeStamp')
         call.setTimestamp(1, timestamp)
         call.setString(2, userid)
         call.executeUpdate()
         call.close()
 
     def getUserTimeStamp(self, userid):
-        select = self._getDataSourceCall('getUserTimeStamp')
+        select = self._getCall('getUserTimeStamp')
         select.setString(1, userid)
         result = select.executeQuery()
         if result.next():
@@ -539,7 +442,7 @@ class DataBase(unohelper.Base,
 
     def getUpdatedItems(self, userid, start, stop):
         items = []
-        select = self._getDataSourceCall('getUpdatedItems')
+        select = self._getCall('getUpdatedItems')
         select.setTimestamp(1, stop)
         select.setTimestamp(2, start)
         select.setTimestamp(3, stop)
@@ -552,7 +455,7 @@ class DataBase(unohelper.Base,
 
     def getInsertedItems(self, userid, start, stop):
         items = []
-        select = self._getDataSourceCall('getInsertedItems')
+        select = self._getCall('getInsertedItems')
         select.setTimestamp(1, stop)
         select.setTimestamp(2, start)
         #select.setString(3, userid)
@@ -565,7 +468,7 @@ class DataBase(unohelper.Base,
 
     def getDeletedItems(self, userid, start, stop):
         items = []
-        select = self._getDataSourceCall('getDeletedItems')
+        select = self._getCall('getDeletedItems')
         select.setTimestamp(1, start)
         select.setTimestamp(2, stop)
         #select.setString(3, userid)
@@ -592,44 +495,15 @@ class DataBase(unohelper.Base,
         call.setString(15, separator.join(parents))
         return 1
 
-    def _getDataSourceCall(self, key, batched=False, name=None, format=None):
-        name = key if name is None else name
-        if key in self._CallsPool:
-            call = self._CallsPool[key]
-        elif batched:
-            call = getDataSourceCall(self.Connection, name, format)
-            self._CallsPool[key] = call
-        else:
-            call = getDataSourceCall(self.Connection, name, format)
-        if batched and key not in self._batchedCall:
-            self._batchedCall.append(key)
-        return call
+    def _getCall(self, name, format=None):
+        return getDataSourceCall(self.Connection, name, format)
 
     def _getPreparedCall(self, name):
-        if name not in self._CallsPool:
-            # TODO: cannot use: call = self.Connection.prepareCommand(name, QUERY)
-            # TODO: it trow a: java.lang.IncompatibleClassChangeError
-            #query = self.Connection.getQueries().getByName(name).Command
-            #self._CallsPool[name] = self.Connection.prepareCall(query)
-            self._CallsPool[name] = self.Connection.prepareCommand(name, QUERY)
-        if name not in self._batchedCall:
-            self._batchedCall.append(name)
-        return self._CallsPool[name]
-
-    def _executeBatchCall(self):
-        for name in self._batchedCall:
-            self._CallsPool[name].executeBatch()
-        self._batchedCall = []
-
-    def _closeDataSourceCall(self):
-        for name in self._CallsPool:
-            call = self._CallsPool[name]
-            if name in self._batchedCall:
-                call.executeBatch()
-            call.close()
-        self._CallsPool = OrderedDict()
-        self._batchedCall = []
-
+        # TODO: cannot use: call = self.Connection.prepareCommand(name, QUERY)
+        # TODO: it trow a: java.lang.IncompatibleClassChangeError
+        #query = self.Connection.getQueries().getByName(name).Command
+        #self._CallsPool[name] = self.Connection.prepareCall(query)
+        return self.Connection.prepareCommand(name, QUERY)
 
 
 # Procedures no more used

@@ -57,26 +57,17 @@ class ContentProvider(unohelper.Base,
         msg = "ContentProvider registerInstance: Scheme/Plugin: %s/%s ... Started" % (scheme, plugin)
         print(msg)
         logMessage(self.ctx, INFO, msg, 'ContentProvider', 'registerInstance()')
-        try:
-            print("ContentProvider.registerInstance() 1")
-            datasource = DataSource(self.ctx, self.event, scheme, plugin)
-            print("ContentProvider.registerInstance() 2")
-        except Exception as e:
-            msg = "ContentProvider registerInstance: Error: %s - %s" % (e, traceback.print_exc())
-            logMessage(self.ctx, SEVERE, msg, 'ContentProvider', 'registerInstance()')
-            print("ContentProvider.registerInstance() 3")
-            return None
-        if not datasource.IsValid:
+        print("ContentProvider.registerInstance() 1")
+        datasource = DataSource(self.ctx, self.event, scheme, plugin)
+        print("ContentProvider.registerInstance() 2")
+        if not datasource.isValid():
             logMessage(self.ctx, SEVERE, datasource.Error, 'ContentProvider', 'registerInstance()')
-            print("ContentProvider.registerInstance() 4")
+            print("ContentProvider.registerInstance() 3")
             return None
         self.Scheme = scheme
         self.Plugin = plugin
-        msg = "ContentProvider registerInstance: addCloseListener ... Done"
-        logMessage(self.ctx, INFO, msg, 'ContentProvider', 'registerInstance()')
-        #datasource.Connection.Parent.DatabaseDocument.addCloseListener(self)
         self.DataSource = datasource
-        print("ContentProvider.registerInstance() 5")
+        print("ContentProvider.registerInstance() 4")
         msg = "ContentProvider registerInstance: Scheme/Plugin: %s/%s ... Done" % (scheme, plugin)
         print(msg)
         logMessage(self.ctx, INFO, msg, 'ContentProvider', 'registerInstance()')
@@ -107,6 +98,7 @@ class ContentProvider(unohelper.Base,
         print("ContentProvider.queryContent() 1 %s" % url)
         if not identifier.isValid():
             print("ContentProvider.queryContent() ERROR %s - %s" % (url, self._error))
+            logMessage(self.ctx, SEVERE, msg, 'ContentProvider', 'queryContent()')
             raise IllegalIdentifierException(self._error, identifier)
         content = identifier.getContent()
         self._currentUserName = identifier.User.Name

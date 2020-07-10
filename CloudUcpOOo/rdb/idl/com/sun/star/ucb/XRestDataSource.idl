@@ -10,12 +10,14 @@ module com { module sun { module star { module ucb {
 interface XRestDataSource: com::sun::star::uno::XInterface
 {
 
+    boolean isValid();
     ::com::sun::star::uno::XInterface getUser([in] string Name,
                                               [in] string Password);
     ::com::sun::star::uno::XInterface getRequest([in] string Name);
 
     [attribute, readonly] ::com::sun::star::ucb::XRestProvider Provider;
     [attribute, readonly] ::com::sun::star::ucb::XRestDataBase DataBase;
+    [attribute, readonly] string Error;
 
 };
 

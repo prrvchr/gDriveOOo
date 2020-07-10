@@ -34,6 +34,7 @@ from .contenttools import getUrl
 from .content import Content
 from .logger import logMessage
 
+import binascii
 import traceback
 
 
@@ -47,14 +48,7 @@ class Identifier(unohelper.Base,
         self.User = user
         self._uri = uri
         self._contenttype = contenttype
-        # Uri with Scheme but without a Path generate invalid user but we need
-        # to return an Identifier, and raise an 'IllegalIdentifierException'
-        # when ContentProvider try to get the Content...
-        # (ie: ContentProvider.queryContent() -> Identifier.getContent())
-        if user.isValid():
-            self.MetaData = user.DataBase.getIdentifier(user, uri, self.isNew())
-        else:
-            self.MetaData = KeyMap()
+        self.MetaData = self._getIdentifier()
         msg += " ... Done"
         print("Identifier.__init__() OK")
         logMessage(self.ctx, INFO, msg, "Identifier", "__init__()")
@@ -97,28 +91,39 @@ class Identifier(unohelper.Base,
         print("Identifier.createNewIdentifier() %s" % (contenttype, ))
         identifier = Identifier(self.ctx, self.User, self._uri, contenttype)
         return identifier
+
     def getContent(self):
         if self.isNew():
             data = self._getNewContent()
         else:
             data = self.User.DataBase.getItem(self.User.Id, self.Id)
             print("Identifier.getContent() %s" % data)
-            if data is None and self.User.Provider.isOnLine():
-                data = self.Provider.getItem(self.User.Request, self.MetaData)
-                if data.IsPresent:
-                    data = self.User.DataBase.insertAndSelectItem(self.User, data.Value)
+            #if data is None and self.User.Provider.isOnLine():
+            #    data = self.User.Provider.getItem(self.User.Request, self.MetaData)
+            #    if data.IsPresent:
+            #        data = self.User.DataBase.insertAndSelectItem(self.User, data.Value)
         if data is None:
             msg = "Error: can't retreive Identifier"
             raise IllegalIdentifierException(msg, self)
         content = Content(self.ctx, self, data)
         print("Identifier.getContent() OK")
         return content
+
     def getFolderContent(self, content):
-        select, updated = self.User.DataBase.getFolderContent(self, content, False)
+        select, updated = self._getFolderContent(content, False)
         if updated:
             loaded = self.User.DataBase.updateLoaded(self.User.Id, self.Id, OFFLINE, ONLINE)
             content.insertValue('Loaded', loaded)
         return select
+    def _getFolderContent(self, content, updated):
+        if ONLINE == content.getValue('Loaded') == self.User.Provider.SessionMode:
+            print("DataBase.getFolderContent() whith request")
+            updated = self.User.DataBase.updateFolderContent(self.User, content)
+        else:
+            print("DataBase.getFolderContent() no request")
+        select = self.User.DataBase.getChildren(self)
+        return select, updated
+
     def getDocumentContent(self, sf, content, size):
         size = 0
         url = '%s/%s' % (self.User.Provider.SourceURL, self.Id)
@@ -139,10 +144,15 @@ class Identifier(unohelper.Base,
             finally:
                 stream.closeInput()
         return url, size
+
     def insertNewContent(self, content):
         print("Identifier.insertNewContent() 1")
-        self.User.DataBase.insertNewContent(self.User.Id, self.Id, self.ParentId, content)
+        if self.User.DataBase.insertNewContent(self.User.Id, self.Id, self.ParentId, content):
+            # Start Replicator for pushing changes…
+            print("DataBase.insertNewContent() OK")
+            self.User.DataBase.sync.set()
         print("Identifier.insertNewContent() 2")
+
     def setTitle(self, title):
         # If Title change we need to change Identifier.getContentIdentifier()
         url = self.BaseURI
@@ -151,6 +161,38 @@ class Identifier(unohelper.Base,
         url += title
         self._uri = getUri(self.ctx, getUrl(self.ctx, url))
         return title
+
+    def _getIdentifier(self):
+        identifier = KeyMap()
+        if not self.User.isValid():
+            # Uri with Scheme but without a Path generate invalid user but we need
+            # to return an Identifier, and raise an 'IllegalIdentifierException'
+            # when ContentProvider try to get the Content...
+            # (ie: ContentProvider.queryContent() -> Identifier.getContent())
+            return identifier
+        userid = self.User.Id
+        rootid = self.User.RootId
+        uripath = self._uri.getPath().lstrip('/')
+        itemid, parentid, path = self.User.DataBase.getIdentifier(userid, rootid, uripath)
+        if self.isNew():
+            # New Identifier are created by the parent folder...
+            identifier.setValue('Id', self._getNewIdentifier())
+            identifier.setValue('ParentId', itemid)
+            baseuri = self._uri.getUriReference()
+        else:
+            identifier.setValue('Id', itemid)
+            identifier.setValue('ParentId', parentid)
+            baseuri = '%s://%s/%s' % (self._uri.getScheme(), self._uri.getAuthority(), path)
+        identifier.setValue('BaseURI', baseuri)
+        print("Identifier._getIdentifier() %s - %s - %s" % (itemid, parentid, baseuri))
+        return identifier
+
+    def _getNewIdentifier(self):
+        if self.User.Provider.GenerateIds:
+            identifier = self.User.DataBase.getNewIdentifier(self.User.Id)
+        else:
+            identifier = binascii.hexlify(uno.generateUuid().value).decode('utf-8')
+        return identifier
 
     def _getNewContent(self):
         try:
@@ -186,38 +228,6 @@ class Identifier(unohelper.Base,
 
 
 # Procedures no more used
-    def countChildTitle1(self, title):
-        return self.User.DataBase.countChildTitle(self.User.Id, self.Id, title)
-
-    def isChildId1(self, title):
-        return self.DataSource.isChildId(self.User.Id, self.Id, title)
-    def selectChildId1(self, title):
-        return self._selectChildId(self.Id, title)
-
-
-    def updateSize1(self, itemid, parentid, size):
-        print("Identifier.updateSize()*******************")
-        return self.User.updateSize(self.DataSource, itemid, parentid, size)
-    def updateTrashed1(self, value, default):
-        parentid = self.getParent().Id
-        return self.User.updateTrashed(self.DataSource, self.Id, parentid, value, default)
-    def updateTitle1(self, value, default):
-        parentid = self.getParent().Id
-        return self.User.updateTitle(self.DataSource, self.Id, parentid, value, default)
-
-    def getInputStream1(self, path, id):
-        url = '%s/%s' % (path, id)
-        sf = self.ctx.ServiceManager.createInstance('com.sun.star.ucb.SimpleFileAccess')
-        if sf.exists(url):
-            return sf.getSize(url), sf.openFileRead(url)
-        return 0, None
-
-    def _isIdentifier1(self, id):
-        return self.DataSource.isIdentifier(self.User.Id, id)
-
-    def _selectChildId1(self, id, title):
-        return self.DataSource.selectChildId(self.User.Id, id, title)
-
     def _searchId1(self, paths, basename):
         # Needed for be able to create a folder in a just created folder...
         id = ''

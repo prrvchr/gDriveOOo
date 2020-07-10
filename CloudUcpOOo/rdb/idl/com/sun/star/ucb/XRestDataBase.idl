@@ -14,8 +14,9 @@ module com { module sun { module star { module ucb {
 interface XRestDataBase: com::sun::star::uno::XInterface
 {
 
+    string createDataBase();
+    void storeDataBase([in] string Url);
     void addCloseListener([in] ::com::sun::star::util::XCloseListener Listener);
-    void initDataBase([in] string Url);
     void shutdownDataBase([in] boolean Compact);
     boolean createUser([in] string Name,
                        [in] string Password);

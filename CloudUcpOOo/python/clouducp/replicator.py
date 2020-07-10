@@ -38,9 +38,9 @@ class Replicator(unohelper.Base,
     def __init__(self, ctx, datasource, provider, users, sync):
         Thread.__init__(self)
         self.ctx = ctx
-        self.database = DataBase(self.ctx, datasource)
-        self.provider = provider
-        self.users = users
+        self.DataBase = DataBase(self.ctx, datasource)
+        self.Provider = provider
+        self.Users = users
         self.canceled = False
         self.sync = sync
         sync.clear()
@@ -55,7 +55,7 @@ class Replicator(unohelper.Base,
 
     def run(self):
         try:
-            msg = "Replicator for Scheme: %s loading ... " % self.provider.Scheme
+            msg = "Replicator for Scheme: %s loading ... " % self.Provider.Scheme
             print("Replicator.run() 1 *************************************************************")
             logMessage(self.ctx, INFO, "stage 1", 'Replicator', 'run()')
             print("Replicator run() 2")
@@ -70,7 +70,7 @@ class Replicator(unohelper.Base,
             print(msg)
 
     def _synchronize(self):
-        if self.provider.isOffLine():
+        if self.Provider.isOffLine():
             msg = getMessage(self.ctx, 111)
             logMessage(self.ctx, INFO, msg, 'Replicator', '_synchronize()')
         elif not self.canceled:
@@ -81,19 +81,20 @@ class Replicator(unohelper.Base,
         try:
             print("Replicator.synchronize() 1")
             results = []
-            for user in self.users.values():
+            for user in self.Users.values():
                 if self.canceled:
                     break
                 msg = getMessage(self.ctx, 110, user.Name)
                 logMessage(self.ctx, INFO, msg, 'Replicator', '_syncData()')
                 if not user.Token:
-                    rowstart = self._initUser(user)
-                    self.database.setSyncToken(user)
+                    start = self._initUser(user)
+                    #start = self.DataBase.getUserTimeStamp(user.Id)
+                    self._setSyncToken(user)
                 else:
-                    rowstart = self.database.getUserTimeStamp(user.Id)
+                    start = self.DataBase.getUserTimeStamp(user.Id)
                 if user.Token:
                     results += self._pullData(user)
-                    results += self._pushData(user, rowstart)
+                    results += self._pushData(user, start)
                 msg = getMessage(self.ctx, 116, user.Name)
                 logMessage(self.ctx, INFO, msg, 'Replicator', '_syncData()')
             result = all(results)
@@ -102,7 +103,7 @@ class Replicator(unohelper.Base,
             print("Replicator.synchronize() ERROR: %s - %s" % (e, traceback.print_exc()))
 
     def _initUser(self, user):
-        rejected, rows, page, row, rowstart = self.database.updateDrive(user)
+        rejected, rows, page, row, start = self._updateDrive(user)
         print("Replicator._initUser() 1 %s - %s - %s - %s" % (len(rows), all(rows), page, row))
         msg = getMessage(self.ctx, 120, (page, row, len(rows)))
         logMessage(self.ctx, INFO, msg, 'Replicator', '_syncData()')
@@ -113,13 +114,13 @@ class Replicator(unohelper.Base,
             msg = getMessage(self.ctx, 122, item)
             logMessage(self.ctx, SEVERE, msg, 'Replicator', '_syncData()')
         print("Replicator._initUser() 2 %s" % (all(rows), ))
-        return rowstart
+        return start
 
     def _pullData(self, user):
         results = []
-        self.database.checkNewIdentifier(self.provider, user.Request, user.MetaData)
+        self._checkNewIdentifier(user)
         print("Replicator._pullData() 1")
-        parameter = self.provider.getRequestParameter('getChanges', user.MetaData)
+        parameter = user.Provider.getRequestParameter('getChanges', user.MetaData)
         enumerator = user.Request.getIterator(parameter, None)
         print("Replicator._pullData() 2 %s - %s" % (enumerator.PageCount, enumerator.SyncToken))
         while enumerator.hasMoreElements():
@@ -132,26 +133,96 @@ class Replicator(unohelper.Base,
         try:
             results = []
             stop = parseDateTime()
-            self.database.getInsertedItems(user.Id, start, stop)
-            self.database.getUpdatedItems(user.Id, start, stop)
-            self.database.getDeletedItems(user.Id, start, stop)
+            self.DataBase.getInsertedItems(user.Id, start, stop)
+            self.DataBase.getUpdatedItems(user.Id, start, stop)
+            self.DataBase.getDeletedItems(user.Id, start, stop)
             return results
         except Exception as e:
             print("Replicator.synchronize() ERROR: %s - %s" % (e, traceback.print_exc()))
 
     def _pushData1(self, user):
         results = []
-        uploader = user.Request.getUploader(self.database)
-        for item in self.database.getItemToSync(user.MetaData):
+        uploader = user.Request.getUploader(self.DataBase)
+        for item in self.DataBase.getItemToSync(user.MetaData):
             if self.canceled:
                 break
-            response = self.database.syncItem(user.Request, uploader, item)
+            response = self.DataBase.syncItem(user.Request, uploader, item)
             if response is None:
                 results.append(True)
             elif response and response.IsPresent:
-                results.append(self.database.updateSync(item, response.Value))
+                results.append(self.DataBase.updateSync(item, response.Value))
             else:
                 msg = "ERROR: ItemId: %s" % item.getDefaultValue('Id')
                 logMessage(self.ctx, SEVERE, msg, "Replicator", "_pushData()")
                 results.append(False)
         return results
+
+    def _setSyncToken(self, user):
+        data = user.Provider.getToken(user.Request, user.MetaData)
+        if data.IsPresent:
+            token = user.Provider.getUserToken(data.Value)
+            self.DataBase.updateToken(user.MetaData, token)
+
+    def _checkNewIdentifier(self, user):
+        if user.Provider.isOffLine() or not user.Provider.GenerateIds:
+            return
+        if self.DataBase.countIdentifier(user.Id) < min(user.Provider.IdentifierRange):
+            enumerator = user.Provider.getIdentifier(user.Request, user.MetaData)
+            result = self.DataBase.insertIdentifier(enumerator, user.Id)
+
+    def _updateDrive(self, user):
+        separator = ','
+        start = parseDateTime()
+        call = self.DataBase.getDriveCall(user.Id, separator, 1)
+        roots = [user.RootId]
+        rows, items, parents, page, row = self._getDriveContent(call, user, roots, separator, start)
+        rows += self._filterParents(call, user.Provider, items, parents, roots, separator, start)
+        rejected = self._getRejectedItems(user.Provider, parents, items)
+        result = call.executeBatch()
+        call.close()
+        end = parseDateTime()
+        self.DataBase.updateUserTimeStamp(user.Id, end)
+        return rejected, rows, page, row, end
+
+    def _getDriveContent(self, call, user, roots, separator, start):
+        rows = []
+        items = {}
+        childs = []
+        provider = user.Provider
+        parameter = provider.getRequestParameter('getDriveContent', user.MetaData)
+        enumerator = user.Request.getIterator(parameter, None)
+        while enumerator.hasMoreElements():
+            item = enumerator.nextElement()
+            itemid = provider.getItemId(item)
+            parents = provider.getItemParent(item, user.RootId)
+            if all(parent in roots for parent in parents):
+                roots.append(itemid)
+                row = self.DataBase.setDriveCall(call, provider, item, itemid, parents, separator, start)
+                rows.append(row)
+            else:
+                items[itemid] = item
+                childs.append((itemid, parents))
+        return rows, items, childs, enumerator.PageCount, enumerator.RowCount
+
+    def _filterParents(self, call, provider, items, childs, roots, separator, start):
+        i = -1
+        rows = []
+        while len(childs) and len(childs) != i:
+            i = len(childs)
+            print("replicator._filterParents() %s" % len(childs))
+            for item in childs:
+                itemid, parents = item
+                if all(parent in roots for parent in parents):
+                    roots.append(itemid)
+                    row = self.DataBase.setDriveCall(call, provider, items[itemid], itemid, parents, separator, start)
+                    rows.append(row)
+                    childs.remove(item)
+            childs.reverse()
+        return rows
+
+    def _getRejectedItems(self, provider, items, data):
+        rejected = []
+        for itemid, parents in items:
+            title = provider.getItemTitle(data[itemid])
+            rejected.append((title, itemid, ','.join(parents)))
+        return rejected

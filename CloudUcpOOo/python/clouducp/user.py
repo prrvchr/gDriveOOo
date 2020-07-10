@@ -64,31 +64,3 @@ class User(unohelper.Base,
         self.DataBase = DataBase(self.ctx, datasource, name, password, sync)
     def getCredential(self, password):
         return self.Name, password
-
-
-# Procedures no more used
-    # XRestUser
-    def updateTitle1(self, datasource, itemid, parentid, value, default):
-        result = datasource.updateTitle(self.Id, itemid, parentid, value, default)
-        return self.synchronize(datasource, result)
-    def updateSize1(self, datasource, itemid, parentid, size):
-        print("User.updateSize() ***********************")
-        result = datasource.updateSize(self.Id, itemid, parentid, size)
-        return self.synchronize(datasource, result)
-    def updateTrashed1(self, datasource, itemid, parentid, value, default):
-        result = datasource.updateTrashed(self.Id, itemid, parentid, value, default)
-        return self.synchronize(datasource, result)
-
-    def getInputStream1(self, url):
-        sf = self.ctx.ServiceManager.createInstance('com.sun.star.ucb.SimpleFileAccess')
-        if sf.exists(url):
-            return sf.getSize(url), sf.openFileRead(url)
-        return 0, None
-
-    def synchronize1(self, datasource, result):
-        provider = datasource.Provider
-        if provider.isOffLine():
-            self._setSessionMode(provider)
-        if provider.isOnLine():
-            datasource.synchronize()
-        return result

@@ -274,6 +274,7 @@ class ContentResultSet(unohelper.Base,
             self.ctx = ctx
             print("contentlib.ContentResultSet() 1")
             result = select.executeQuery()
+            #select.close()
             print("contentlib.ContentResultSet() 2")
             result.last()
             self.RowCount = result.getRow()

@@ -94,8 +94,9 @@ class OptionsDialog(unohelper.Base,
             #desktop = createService(self.ctx, 'com.sun.star.frame.Desktop')
             #desktop.loadComponentFromURL(url, '_default', 0, ())
             configuration = getConfiguration(self.ctx, '/org.openoffice.Office.Common', True)
-            #mri = self.ctx.ServiceManager.createInstance('mytools.Mri')
-            #mri.inspect(configuration)
+            mri = self.ctx.ServiceManager.createInstance('mytools.Mri')
+            if mri is not None:
+                mri.inspect(configuration)
             print("PyOptionsDialog._doConnect() 2")
         except Exception as e:
             print("PyOptionsDialog._doConnect().Error: %s - %s" % (e, traceback.print_exc()))
