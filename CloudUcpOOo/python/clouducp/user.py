@@ -37,6 +37,7 @@ class User(unohelper.Base,
             self.Provider = datasource.Provider
             self.Request = datasource.getRequest(name)
             self.MetaData = datasource.DataBase.selectUser(name)
+            self.CanAddChild = not self.Provider.GenerateIds
         msg += " ... Done"
         logMessage(self.ctx, INFO, msg, "User", "__init__()")
 

@@ -62,7 +62,7 @@ def setPropertiesValues(ctx, source, context, properties):
 
 def _setPropertyValue(source, context, property):
     name, value = property.Name, property.Value
-    print("Content._setPropertyValue() %s - %s" % (name, value))
+    print("Content._setPropertyValue() 1 %s - %s" % (name, value))
     if source._propertySetInfo.get(name).Attributes & READONLY:
         msg = "ERROR: Requested property: %s is READONLY" % name
         level = SEVERE
@@ -77,7 +77,6 @@ def _setProperty(source, context, name, value):
         result, level, msg = _setTitle(source, context, value)
     else:
         source.MetaData.insertValue(name, value)
-        source.Identifier.User.DataBase.updateContent(source.Identifier.Id, name, value)
         msg = "Set property: %s value: %s" % (name, value)
         level = INFO
         result = None
@@ -97,7 +96,7 @@ def _setTitle(source, context, title):
         elif user.DataBase.countChildTitle(user.Id, identifier.ParentId, title) > 0:
             msg = "Can't set property: %s value: %s - Name Clash Error" % ('Title', title)
             level = SEVERE
-            data = getPropertyValueSet({'TargetFolderURL': parent.getContentIdentifier(),
+            data = getPropertyValueSet({'TargetFolderURL': identifier.getContentIdentifier(),
                                         'ClashingName': title,
                                         'ProposedNewName': '%s(1)' % title})
             #data = getPropertyValueSet({'Uri': identifier.getContentIdentifier(),'ResourceName': title})
@@ -108,9 +107,10 @@ def _setTitle(source, context, title):
             # It's done by Identifier.setTitle()
             print("ContentCore._setTitle() 2")
             source.MetaData.setValue('Title', identifier.setTitle(title))
-            print("ContentCore._setTitle() 3")
-            user.DataBase.updateContent(identifier.Id, 'Title', title)
-            print("ContentCore._setTitle() 4")
+            print("ContentCore._setTitle() 3 *********************** %s" % identifier.Id)
+            if not identifier.isNew():
+                user.DataBase.updateContent(user.Id, identifier.Id, 'Title', title)
+                print("ContentCore._setTitle() 4")
             msg = "Set property: %s value: %s" % ('Title', title)
             level = INFO
             result = None

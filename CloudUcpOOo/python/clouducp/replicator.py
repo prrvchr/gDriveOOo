@@ -103,6 +103,7 @@ class Replicator(unohelper.Base,
             print("Replicator.synchronize() ERROR: %s - %s" % (e, traceback.print_exc()))
 
     def _initUser(self, user):
+        # This procedure corresponds to the initial pull
         rejected, rows, page, row, start = self._updateDrive(user)
         print("Replicator._initUser() 1 %s - %s - %s - %s" % (len(rows), all(rows), page, row))
         msg = getMessage(self.ctx, 120, (page, row, len(rows)))
@@ -168,7 +169,7 @@ class Replicator(unohelper.Base,
             return
         if self.DataBase.countIdentifier(user.Id) < min(user.Provider.IdentifierRange):
             enumerator = user.Provider.getIdentifier(user.Request, user.MetaData)
-            result = self.DataBase.insertIdentifier(enumerator, user.Id)
+            user.CanAddChild = self.DataBase.insertIdentifier(enumerator, user.Id)
 
     def _updateDrive(self, user):
         separator = ','

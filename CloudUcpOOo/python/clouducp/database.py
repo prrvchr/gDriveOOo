@@ -58,10 +58,7 @@ class DataBase(unohelper.Base,
     def __init__(self, ctx, datasource, name='', password='', sync=None):
         self.ctx = ctx
         self._statement = datasource.getConnection(name, password).createStatement()
-        self._calls = OrderedDict()
-        self._batchedCalls = OrderedDict()
-        if sync is not None:
-            self.sync = sync
+        self.sync = sync
 
     @property
     def Connection(self):
@@ -172,7 +169,7 @@ class DataBase(unohelper.Base,
 # Procedures called by the User
     def selectItem(self, user, identifier):
         item = None
-        select = self._getCall('getItem')
+        select = self._getCall('getItem1')
         select.setString(1, user.getValue('UserId'))
         select.setString(2, identifier.getValue('Id'))
         result = select.executeQuery()
@@ -218,7 +215,7 @@ class DataBase(unohelper.Base,
         print("DataBase._updateFolderContent() %s - %s" % (all(rows), len(rows)))
         return all(rows)
 
-    def getChildren(self, identifier):
+    def getChildren(self, userid, itemid, url, mode):
         #TODO: Can't have a ResultSet of type SCROLL_INSENSITIVE with a Procedure,
         #TODO: as a workaround we use a simple quey...
         select = self._getCall('getChildren')
@@ -229,13 +226,10 @@ class DataBase(unohelper.Base,
         #    'IsVolume', 'IsRemote', 'IsRemoveable', 'IsFloppy', 'IsCompactDisc']
         # "TargetURL" is done by:
         #    CONCAT(identifier.getContentIdentifier(), Uri) for File and Foder
-        url = identifier.getContentIdentifier()
-        if not url.endswith('/'):
-            url += '/'
         select.setString(1, url)
-        select.setString(2, identifier.User.Id)
-        select.setString(3, identifier.Id)
-        select.setShort(4, identifier.User.Provider.SessionMode)
+        select.setString(2, userid)
+        select.setString(3, itemid)
+        select.setShort(4, mode)
         return select
 
     def updateLoaded(self, userid, itemid, value, default):
@@ -270,31 +264,40 @@ class DataBase(unohelper.Base,
         select.close()
         return identifier
 
-    def updateContent(self, itemid, property, value):
-        updated = 0
-        if property == 'Title':
-            update = self._getCall('updateTitle')
-            update.setString(1, value)
-            update.setString(2, itemid)
-            updated = update.executeUpdate()
-            update.close()
-        elif property == 'Size':
-            update = self._getCall('updateSize')
-            update.setLong(1, value)
-            update.setString(2, itemid)
-            updated = update.executeUpdate()
-            update.close()
-        elif property == 'Trashed':
-            update = self._getCall('updateTrashed')
-            update.setBoolean(1, value)
-            update.setString(2, itemid)
-            updated = update.executeUpdate()
-            update.close()
-        if updated:
-            self.sync.set()
-            print("DataBase.updateContent() OK")
+    def updateContent(self, userid, itemid, property, value):
+        try:
+            updated = 0
+            if property == 'Title':
+                update = self._getCall('updateTitle')
+                update.setString(1, userid)
+                update.setString(2, itemid)
+                update.setString(3, value)
+                updated = update.executeUpdate()
+                update.close()
+            elif property == 'Size':
+                update = self._getCall('updateSize')
+                update.setString(1, userid)
+                update.setString(2, itemid)
+                update.setLong(3, value)
+                updated = update.executeUpdate()
+                update.close()
+            elif property == 'Trashed':
+                update = self._getCall('updateTrashed')
+                update.setString(1, userid)
+                update.setString(2, itemid)
+                update.setBoolean(3, value)
+                updated = update.executeUpdate()
+                update.close()
+            if updated:
+                self.sync.set()
+                print("DataBase.updateContent() OK")
+        except Exception as e:
+            print("DataBase.updateContent().Error: %s - %s" % (e, traceback.print_exc()))
 
     def getItem(self, userid, itemid):
+        #TODO: Can't have a simple SELECT ResultSet with a Procedure,
+        #TODO: the malfunction is rather bizard: it always returns the same result
+        #TODO: as a workaround we use a simple quey...
         item = None
         select = self._getCall('getItem')
         select.setString(1, userid)
@@ -322,9 +325,19 @@ class DataBase(unohelper.Base,
         call.setBoolean(13, content.getValue('IsReadOnly'))
         call.setBoolean(14, content.getValue('IsVersionable'))
         call.setString(15, parentid)
-        result = call.execute()
+        result = call.execute() == 0
         call.close()
-        return result == 0
+        if result:
+            # Start Replicator for pushing changes…
+            self.sync.set()
+        return result
+
+    def deleteNewIdentifier(self, userid, itemid):
+        call = self._getCall('deleteNewIdentifier')
+        call.setString(1, userid)
+        call.setString(2, itemid)
+        call.executeUpdate()
+        call.close()
 
     def countChildTitle(self, userid, parentid, title):
         count = 1
@@ -376,6 +389,8 @@ class DataBase(unohelper.Base,
         return '' if row != 1 else newid
 
 # Procedures called by the Replicator
+
+    # Synchronization pull token update procedure
     def updateToken(self, user, token):
         update = self._getCall('updateToken')
         update.setString(1, token)
@@ -385,6 +400,7 @@ class DataBase(unohelper.Base,
         if updated:
             user.setValue('Token', token)
 
+    # Identifier counting procedure
     def countIdentifier(self, userid):
         count = 0
         call = self._getCall('countNewIdentifier')
@@ -395,6 +411,7 @@ class DataBase(unohelper.Base,
         call.close()
         return count
 
+    # Identifier inserting procedure
     def insertIdentifier(self, enumerator, userid):
         result = []
         insert = self._getCall('insertIdentifier')
@@ -406,12 +423,13 @@ class DataBase(unohelper.Base,
         result = insert.executeBatch()
         insert.close()
         print("datasource._insertIdentifier() 2 %s" % (result, ))
-        return all(result)
+        return True
 
     def _doInsert(self, insert, identifier):
         insert.setString(2, identifier)
         insert.addBatch()
 
+    # First pull procedure: header of merge request
     def getDriveCall(self, userid, separator, loaded):
         call = self._getCall('mergeItem')
         call.setString(1, userid)
@@ -419,6 +437,7 @@ class DataBase(unohelper.Base,
         call.setLong(3, loaded)
         return call
 
+    # First pull procedure: body of merge request
     def setDriveCall(self, call, provider, item, id, parents, separator, timestamp):
         row = self._setCallItem(call, provider, item, id, parents, separator, timestamp)
         call.addBatch()
@@ -440,6 +459,7 @@ class DataBase(unohelper.Base,
         select.close()
         return timestamp
 
+    # Procedure to retrieve all the UPDATE in the 'Capabilities' table
     def getUpdatedItems(self, userid, start, stop):
         items = []
         select = self._getCall('getUpdatedItems')
@@ -453,6 +473,7 @@ class DataBase(unohelper.Base,
         msg = "getUpdatedItems to Sync: %s" % (len(items), )
         print(msg)
 
+    # Procedure to retrieve all the INSERT in the 'Capabilities' table
     def getInsertedItems(self, userid, start, stop):
         items = []
         select = self._getCall('getInsertedItems')
@@ -466,6 +487,7 @@ class DataBase(unohelper.Base,
         msg = "getInsertedItems to Sync: %s" % (len(items), )
         print(msg)
 
+    # Procedure to retrieve all the DELETE in the 'Capabilities' table
     def getDeletedItems(self, userid, start, stop):
         items = []
         select = self._getCall('getDeletedItems')
@@ -504,102 +526,3 @@ class DataBase(unohelper.Base,
         #query = self.Connection.getQueries().getByName(name).Command
         #self._CallsPool[name] = self.Connection.prepareCall(query)
         return self.Connection.prepareCommand(name, QUERY)
-
-
-# Procedures no more used
-    def getItemToSync1(self, provider, user):
-        items = []
-        select = self._getDataSourceCall('getItemToSync')
-        select.setString(1, user.getValue('UserId'))
-        result = select.executeQuery()
-        while result.next():
-            items.append(getKeyMapFromResult(result, user, provider))
-        select.close()
-        msg = "Items to Sync: %s" % len(items)
-        logMessage(self.ctx, INFO, msg, "DataSource", "_getItemToSync()")
-        return tuple(items)
-
-    def syncItem1(self, provider, request, uploader, item):
-        try:
-            response = False
-            mode = item.getValue('Mode')
-            sync = item.getValue('SyncId')
-            id = item.getValue('Id')
-            msg = "SyncId - ItemId - Mode: %s - %s - %s" % (sync, id, mode)
-            logMessage(self.ctx, INFO, msg, "DataSource", "_syncItem()")
-            if mode == SYNC_FOLDER:
-                response = provider.createFolder(request, item)
-            elif mode == SYNC_FILE:
-                response = provider.createFile(request, uploader, item)
-            elif mode == SYNC_CREATED:
-                response = provider.uploadFile(request, uploader, item, True)
-            elif mode == SYNC_REWRITED:
-                response = provider.uploadFile(request, uploader, item, False)
-            elif mode == SYNC_RENAMED:
-                response = provider.updateTitle(request, item)
-            elif mode == SYNC_TRASHED:
-                response = provider.updateTrashed(request, item)
-            return response
-        except Exception as e:
-            msg = "SyncId: %s - ERROR: %s - %s" % (sync, e, traceback.print_exc())
-            logMessage(self.ctx, SEVERE, msg, "DataSource", "_syncItem()")
-
-    def updateTitle1(self, userid, itemid, parentid, value, default):
-        row = 0
-        update = self._getDataSourceCall('updateTitle')
-        update.setString(1, value)
-        update.setString(2, itemid)
-        if update.executeUpdate():
-            insert = self._getDataSourceCall('insertSyncMode')
-            insert.setString(1, userid)
-            insert.setString(2, itemid)
-            insert.setString(3, parentid)
-            insert.setLong(4, SYNC_RENAMED)
-            row = insert.executeUpdate()
-            insert.close()
-        update.close()
-        return default if row != 1 else value
-
-    def updateSize1(self, userid, itemid, parentid, size):
-        row = 0
-        update = self._getDataSourceCall('updateSize')
-        update.setLong(1, size)
-        update.setString(2, itemid)
-        if update.executeUpdate():
-            insert = self._getDataSourceCall('insertSyncMode')
-            insert.setString(1, userid)
-            insert.setString(2, itemid)
-            insert.setString(3, parentid)
-            insert.setLong(4, SYNC_REWRITED)
-            row = insert.executeUpdate()
-            insert.close()
-        update.close()
-        return None if row != 1 else size
-
-    def updateTrashed1(self, userid, itemid, parentid, value, default):
-        row = 0
-        update = self._getDataSourceCall('updateTrashed')
-        update.setLong(1, value)
-        update.setString(2, itemid)
-        if update.executeUpdate():
-            insert = self._getDataSourceCall('insertSyncMode')
-            insert.setString(1, userid)
-            insert.setString(2, itemid)
-            insert.setString(3, parentid)
-            insert.setLong(4, SYNC_TRASHED)
-            row = insert.executeUpdate()
-            insert.close()
-        update.close()
-        return default if row != 1 else value
-
-    def isChildId1(self, userid, itemid, title):
-        ischild = False
-        call = self._getDataSourceCall('isChildId')
-        call.setString(1, userid)
-        call.setString(2, itemid)
-        call.setString(3, title)
-        result = call.executeQuery()
-        if result.next():
-            ischild = result.getBoolean(1)
-        call.close()
-        return ischild

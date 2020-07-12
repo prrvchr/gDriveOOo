@@ -413,7 +413,7 @@ def getSqlQuery(name, format=None):
         c3 = '"DateModified"'
         c4 = '"DateCreated"'
         c5 = '"IsFolder"'
-        c6 = '? || "Uri" "TargetURL"'
+        c6 = '? || %s || "Uri" "TargetURL"' % "'/'"
         c7 = '"IsHidden"'
         c8 = '"IsVolume"'
         c9 = '"IsRemote"'
@@ -451,21 +451,21 @@ def getSqlQuery(name, format=None):
 # System Time Period Select Queries
     elif name == 'getUpdatedItems':
         query = '''\
-SELECT "Current"."ItemId" FROM "Items" FOR SYSTEM_TIME AS OF ? + SESSION_TIMEZONE() AS "Current"
-INNER JOIN "Items" FOR SYSTEM_TIME FROM ? + SESSION_TIMEZONE() TO ? + SESSION_TIMEZONE() AS "Previous"
+SELECT "Current"."ItemId" FROM "Capabilities" FOR SYSTEM_TIME AS OF ? + SESSION_TIMEZONE() AS "Current"
+INNER JOIN "Capabilities" FOR SYSTEM_TIME FROM ? + SESSION_TIMEZONE() TO ? + SESSION_TIMEZONE() AS "Previous"
 ON "Current"."ItemId" = "Previous"."ItemId" AND "Current"."RowStart" = "Previous"."RowEnd";'''
 
     elif name == 'getInsertedItems':
         query = '''\
-SELECT "Current"."ItemId" FROM "Items" FOR SYSTEM_TIME AS OF ? + SESSION_TIMEZONE() "Current"
-LEFT JOIN "Items" FOR SYSTEM_TIME AS OF ? + SESSION_TIMEZONE() "Previous"
+SELECT "Current"."ItemId" FROM "Capabilities" FOR SYSTEM_TIME AS OF ? + SESSION_TIMEZONE() "Current"
+LEFT JOIN "Capabilities" FOR SYSTEM_TIME AS OF ? + SESSION_TIMEZONE() "Previous"
 ON "Current"."ItemId" = "Previous"."ItemId"
 WHERE "Previous"."ItemId" IS NULL;'''
 
     elif name == 'getDeletedItems':
         query = '''\
-SELECT "Previous"."ItemId" FROM "Items" FOR SYSTEM_TIME AS OF ? + SESSION_TIMEZONE() "Previous"
-LEFT JOIN "Items" FOR SYSTEM_TIME AS OF ? + SESSION_TIMEZONE() "Current"
+SELECT "Previous"."ItemId" FROM "Capabilities" FOR SYSTEM_TIME AS OF ? + SESSION_TIMEZONE() "Previous"
+LEFT JOIN "Capabilities" FOR SYSTEM_TIME AS OF ? + SESSION_TIMEZONE() "Current"
 ON "Previous"."ItemId" = "Current"."ItemId"
 WHERE "Current"."ItemId" IS NULL;'''
 
@@ -493,12 +493,18 @@ WHERE "Current"."ItemId" IS NULL;'''
         query = 'UPDATE "Users" SET "Token"=? WHERE "UserId"=?;'
     elif name == 'updateUserTimeStamp':
         query = 'UPDATE "Users" SET "TimeStamp"=? WHERE "UserId"=?;'
-    elif name == 'updateTitle':
+    elif name == 'updateCapabilityTimeStamp':
+        query = 'UPDATE "Capabilities" SET "TimeStamp"=? WHERE "UserId"=? AND "ItemId"=?;'
+    elif name == 'updateTitle1':
         query = 'UPDATE "Items" SET "Title"=? WHERE "ItemId"=?;'
-    elif name == 'updateSize':
+    elif name == 'updateSize1':
         query = 'UPDATE "Items" SET "Size"=? WHERE "ItemId"=?;'
-    elif name == 'updateTrashed':
+    elif name == 'updateTrashed1':
         query = 'UPDATE "Items" SET "Trashed"=? WHERE "ItemId"=?;'
+    elif name == 'updateLoaded':
+        query = 'UPDATE "Items" SET "Loaded"=? WHERE "ItemId"=?;'
+    elif name == 'updateItemId':
+        query = 'UPDATE "Items" SET "ItemId"=? WHERE "ItemId"=?;'
 
 
     elif name == 'updateItem1':
@@ -507,12 +513,10 @@ WHERE "Current"."ItemId" IS NULL;'''
     elif name == 'updateCapability1':
         c = '"CanAddChild"=?,"CanRename"=?,"IsReadOnly"=?,"IsVersionable"=?'
         query = 'UPDATE "Capabilities" SET %s WHERE "UserId"=? AND "ItemId"=?;' % c
-    elif name == 'updateLoaded':
-        query = 'UPDATE "Items" SET "Loaded"=? WHERE "ItemId"=?;'
-    elif name == 'updateItemId':
-        query = 'UPDATE "Items" SET "ItemId"=? WHERE "ItemId"=?;'
 
 # Delete Queries
+    elif name == 'deleteNewIdentifier':
+        query = 'DELETE FROM "Identifiers" WHERE "UserId"=? AND "Id"=?;'
     elif name == 'deleteParent1':
         query = 'DELETE FROM "Parents" WHERE "UserId"=? AND "ChildId"=?;'
     elif name == 'deleteSyncMode':
@@ -580,20 +584,17 @@ CREATE PROCEDURE "GetIdentifier"(IN "UserId" VARCHAR(100),
 CREATE PROCEDURE "GetChildren1"(IN "BaseUrl" VARCHAR(300),
                                IN "UserId" VARCHAR(100),
                                IN "ParentId" VARCHAR(100),
-                               IN "SessionMode" SMALLINT,
-                               OUT "ChildCount" INTEGER)
+                               IN "SessionMode" SMALLINT)
   SPECIFIC "GetChildren1_1"
   READS SQL DATA
   DYNAMIC RESULT SETS 1
   BEGIN ATOMIC
     DECLARE "Result" INSENSITIVE SCROLL CURSOR WITH RETURN FOR
       SELECT "ItemId","Title","Size","DateModified","DateCreated","IsFolder",
-      "BaseUrl" || "Uri" "TargetURL","IsHidden","IsVolume","IsRemote",
+      "BaseUrl" || '/' || "Uri" "TargetURL","IsHidden","IsVolume","IsRemote",
       "IsRemoveable","IsFloppy","IsCompactDisc"
       FROM "Children" WHERE "UserId"="UserId" AND "ParentId"="ParentId" AND
       ("IsFolder"=TRUE OR "Loaded">="SessionMode") FOR READ ONLY;
-    SET "ChildCount" = SELECT COUNT("ItemId") FROM "Children" WHERE "UserId"="UserId"
-      AND "ParentId"="ParentId" AND ("IsFolder"=TRUE OR "Loaded">="SessionMode");
     OPEN "Result";
   END;
   GRANT EXECUTE ON SPECIFIC ROUTINE "GetChildren1_1" TO "%(Role)s";''' % format
@@ -687,7 +688,6 @@ CREATE PROCEDURE "InsertItem"(IN "UserId" VARCHAR(100),
                               IN "ParentIds" VARCHAR(1000))
   SPECIFIC "InsertItem_1"
   MODIFIES SQL DATA
-  DYNAMIC RESULT SETS 1
   BEGIN ATOMIC
     DECLARE "Index" INTEGER DEFAULT 1;
     DECLARE "Pattern" VARCHAR(5) DEFAULT '[^$]+';
@@ -744,19 +744,64 @@ CREATE PROCEDURE "InsertAndSelectItem"(IN "UserId" VARCHAR(100),
   END;
   GRANT EXECUTE ON SPECIFIC ROUTINE "InsertAndSelectItem_1" TO "%(Role)s";''' % format
 
+    elif name == 'createUpdateTitle':
+        query = '''\
+CREATE PROCEDURE "UpdateTitle"(IN "UserId" VARCHAR(100),
+                               IN "ItemId" VARCHAR(100),
+                               IN "Title" VARCHAR(100))
+  SPECIFIC "UpdateTitle_1"
+  MODIFIES SQL DATA
+  BEGIN ATOMIC
+    UPDATE "Items" SET "Title"="Title" WHERE "ItemId"="ItemId";
+    UPDATE "Capabilities" SET "TimeStamp"=CURRENT_TIMESTAMP WHERE "UserId"="UserId" AND "ItemId"="ItemId";
+  END;
+  GRANT EXECUTE ON SPECIFIC ROUTINE "UpdateTitle_1" TO "%(Role)s";''' % format
+
+    elif name == 'createUpdateSize':
+        query = '''\
+CREATE PROCEDURE "UpdateSize"(IN "UserId" VARCHAR(100),
+                              IN "ItemId" VARCHAR(100),
+                              IN "Size" BIGINT)
+  SPECIFIC "UpdateSize_1"
+  MODIFIES SQL DATA
+  BEGIN ATOMIC
+    UPDATE "Items" SET "Size"="Size" WHERE "ItemId"="ItemId";
+    UPDATE "Capabilities" SET "TimeStamp"=CURRENT_TIMESTAMP WHERE "UserId"="UserId" AND "ItemId"="ItemId";
+  END;
+  GRANT EXECUTE ON SPECIFIC ROUTINE "UpdateSize_1" TO "%(Role)s";''' % format
+
+    elif name == 'createUpdateTrashed':
+        query = '''\
+CREATE PROCEDURE "UpdateTrashed"(IN "UserId" VARCHAR(100),
+                                 IN "ItemId" VARCHAR(100),
+                                 IN "Trashed" BOOLEAN)
+  SPECIFIC "UpdateTrashed_1"
+  MODIFIES SQL DATA
+  BEGIN ATOMIC
+    UPDATE "Items" SET "Trashed"="Trashed" WHERE "ItemId"="ItemId";
+    UPDATE "Capabilities" SET "TimeStamp"=CURRENT_TIMESTAMP WHERE "UserId"="UserId" AND "ItemId"="ItemId";
+  END;
+  GRANT EXECUTE ON SPECIFIC ROUTINE "UpdateTrashed_1" TO "%(Role)s";''' % format
+
 # Get Procedure Query
     elif name == 'getIdentifier':
         query = 'CALL "GetIdentifier"(?,?,?,?,?,?,?)'
     elif name == 'getItem1':
         query = 'CALL "GetItem1"(?,?)'
     elif name == 'getChildren1':
-        query = 'CALL "GetChildren1"(?,?,?,?,?)'
+        query = 'CALL "GetChildren1"(?,?,?,?)'
     elif name == 'mergeItem':
         query = 'CALL "MergeItem"(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
     elif name == 'insertItem':
         query = 'CALL "InsertItem"(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
     elif name == 'insertAndSelectItem':
         query = 'CALL "InsertAndSelectItem"(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+    elif name == 'updateTitle':
+        query = 'CALL "UpdateTitle"(?,?,?)'
+    elif name == 'updateSize':
+        query = 'CALL "UpdateSize"(?,?,?)'
+    elif name == 'updateTrashed':
+        query = 'CALL "UpdateTrashed"(?,?,?)'
 
 # Get DataBase Version Query
     elif name == 'getVersion':

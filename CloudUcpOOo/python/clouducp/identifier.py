@@ -115,14 +115,20 @@ class Identifier(unohelper.Base,
             loaded = self.User.DataBase.updateLoaded(self.User.Id, self.Id, OFFLINE, ONLINE)
             content.insertValue('Loaded', loaded)
         return select
+
     def _getFolderContent(self, content, updated):
-        if ONLINE == content.getValue('Loaded') == self.User.Provider.SessionMode:
-            print("DataBase.getFolderContent() whith request")
-            updated = self.User.DataBase.updateFolderContent(self.User, content)
-        else:
-            print("DataBase.getFolderContent() no request")
-        select = self.User.DataBase.getChildren(self)
-        return select, updated
+        try:
+            if ONLINE == content.getValue('Loaded') == self.User.Provider.SessionMode:
+                print("DataBase.getFolderContent() whith request")
+                updated = self.User.DataBase.updateFolderContent(self.User, content)
+            else:
+                print("DataBase.getFolderContent() no request")
+            url = self.getContentIdentifier().lstrip('/')
+            mode = self.User.Provider.SessionMode
+            select = self.User.DataBase.getChildren(self.User.Id, self.Id, url, mode)
+            return select, updated
+        except Exception as e:
+            print("Identifier._getFolderContent().Error: %s - %s" % (e, traceback.print_exc()))
 
     def getDocumentContent(self, sf, content, size):
         size = 0
@@ -147,11 +153,7 @@ class Identifier(unohelper.Base,
 
     def insertNewContent(self, content):
         print("Identifier.insertNewContent() 1")
-        if self.User.DataBase.insertNewContent(self.User.Id, self.Id, self.ParentId, content):
-            # Start Replicator for pushing changes…
-            print("DataBase.insertNewContent() OK")
-            self.User.DataBase.sync.set()
-        print("Identifier.insertNewContent() 2")
+        return self.User.DataBase.insertNewContent(self.User.Id, self.Id, self.ParentId, content)
 
     def setTitle(self, title):
         # If Title change we need to change Identifier.getContentIdentifier()
@@ -159,7 +161,9 @@ class Identifier(unohelper.Base,
         if not url.endswith('/'):
             url += '/'
         url += title
+        print("Identifier.setTitle() %s" % url)
         self._uri = getUri(self.ctx, getUrl(self.ctx, url))
+        print("Identifier.setTitle() %s" % self.getContentIdentifier())
         return title
 
     def _getIdentifier(self):
@@ -172,17 +176,16 @@ class Identifier(unohelper.Base,
             return identifier
         userid = self.User.Id
         rootid = self.User.RootId
-        uripath = self._uri.getPath().lstrip('/')
+        uripath = self._uri.getPath().strip('/.')
         itemid, parentid, path = self.User.DataBase.getIdentifier(userid, rootid, uripath)
         if self.isNew():
             # New Identifier are created by the parent folder...
             identifier.setValue('Id', self._getNewIdentifier())
             identifier.setValue('ParentId', itemid)
-            baseuri = self._uri.getUriReference()
         else:
             identifier.setValue('Id', itemid)
             identifier.setValue('ParentId', parentid)
-            baseuri = '%s://%s/%s' % (self._uri.getScheme(), self._uri.getAuthority(), path)
+        baseuri = '%s://%s/%s' % (self._uri.getScheme(), self._uri.getAuthority(), path)
         identifier.setValue('BaseURI', baseuri)
         print("Identifier._getIdentifier() %s - %s - %s" % (itemid, parentid, baseuri))
         return identifier
@@ -193,6 +196,10 @@ class Identifier(unohelper.Base,
         else:
             identifier = binascii.hexlify(uno.generateUuid().value).decode('utf-8')
         return identifier
+
+    def deleteNewIdentifier(self):
+        if self.User.Provider.GenerateIds:
+            self.User.DataBase.deleteNewIdentifier(self.User.Id, self.Id)
 
     def _getNewContent(self):
         try:

@@ -157,7 +157,8 @@ class Content(unohelper.Base,
                 return setPropertiesValues(self.ctx, self, environment, command.Argument)
             elif command.Name == 'delete':
                 self.MetaData.insertValue('Trashed', True)
-                self.Identifier.User.DataBase.updateContent(self.Identifier.Id, 'Trashed', True)
+                user = self.Identifier.User
+                user.DataBase.updateContent(user.Id, self.Identifier.Id, 'Trashed', True)
             elif command.Name == 'open':
                 if self.IsFolder:
                     # Not Used: command.Argument.Properties - Implement me ;-)
@@ -189,8 +190,10 @@ class Content(unohelper.Base,
                 if self.IsFolder:
                     mediatype = self.Identifier.User.Provider.Folder
                     self.MetaData.insertValue('MediaType', mediatype)
-                    print("Content.execute() insert 2")
-                    self.Identifier.insertNewContent(self.MetaData)
+                    print("Content.execute() insert 2 ************** %s" % mediatype)
+                    if self.Identifier.insertNewContent(self.MetaData):
+                        # Need to consum the new Identifier if needed...
+                        self.Identifier.deleteNewIdentifier()
                     print("Content.execute() insert 3")
                 elif self.IsDocument:
                     stream = command.Argument.Data
@@ -206,7 +209,11 @@ class Content(unohelper.Base,
                         mediatype = getMimeType(self.ctx, stream)
                         self.MetaData.insertValue('MediaType', mediatype)
                         stream.closeInput()
-                        self.Identifier.insertNewContent(self.MetaData)
+                        print("Content.execute() insert 2 ************** %s" % mediatype)
+                        if self.Identifier.insertNewContent(self.MetaData):
+                            # Need to consum the new Identifier if needed...
+                            self.Identifier.deleteNewIdentifier()
+                            print("Content.execute() insert 3")
             elif command.Name == 'createNewContent' and self.IsFolder:
                 return self.createNewContent(command.Argument)
             elif command.Name == 'transfer' and self.IsFolder:
@@ -241,7 +248,7 @@ class Content(unohelper.Base,
                 sf.writeFile(target, inputstream)
                 inputstream.closeInput()
                 # We need to update the Size
-                user.DataBase.updateContent(self.Identifier.Id, 'Size', sf.getSize(target))
+                user.DataBase.updateContent(user.Id, self.Identifier.Id, 'Size', sf.getSize(target))
                 if move:
                     pass #must delete object
             elif command.Name == 'flush' and self.IsFolder:
@@ -261,7 +268,7 @@ class Content(unohelper.Base,
 
     def _getCreatableContentsInfo(self):
         content = []
-        if self.IsFolder and self.CanAddChild:
+        if all((self.IsFolder, self.CanAddChild, self.Identifier.User.CanAddChild)):
             provider = self.Identifier.User.Provider
             properties = (getProperty('Title', 'string', BOUND), )
             content.append(getContentInfo(provider.Folder, KIND_FOLDER, properties))

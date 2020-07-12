@@ -160,7 +160,7 @@ def getStaticTables():
 def getQueries():
     return (('createRole',{'Role': g_role}),
             ('grantPrivilege',{'Privilege':'SELECT','Table': 'Users', 'Role': g_role}),
-            ('grantPrivilege',{'Privilege':'SELECT','Table': 'Identifiers', 'Role': g_role}),
+            ('grantPrivilege',{'Privilege':'SELECT,DELETE','Table': 'Identifiers', 'Role': g_role}),
             ('grantPrivilege',{'Privilege':'SELECT,INSERT,UPDATE,DELETE','Table': 'Items', 'Role': g_role}),
             ('grantPrivilege',{'Privilege':'SELECT,INSERT,UPDATE,DELETE','Table': 'Parents', 'Role': g_role}),
             ('grantPrivilege',{'Privilege':'SELECT,INSERT,UPDATE,DELETE','Table': 'Capabilities', 'Role': g_role}),
@@ -177,6 +177,9 @@ def getQueries():
 
             ('createMergeItem',{'Role': g_role}),
             ('createInsertItem',{'Role': g_role}),
+            ('createUpdateTitle',{'Role': g_role}),
+            ('createUpdateSize',{'Role': g_role}),
+            ('createUpdateTrashed',{'Role': g_role}),
             ('createInsertAndSelectItem',{'Role': g_role}))
 
 #            ('createGetItem1',{'Role': g_role}),
