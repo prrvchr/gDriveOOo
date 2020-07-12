@@ -517,12 +517,12 @@ class StreamListener(unohelper.Base,
 
 class Uploader(unohelper.Base,
                XRestUploader):
-    def __init__(self, ctx, session, datasource, timeout):
+    def __init__(self, ctx, session, chunk, url, callBack, timeout):
         self.ctx = ctx
         self.session = session
-        self.chunk = datasource.Provider.Chunk
-        self.url = datasource.Provider.SourceURL
-        self.callback = datasource.callBack
+        self.chunk = chunk
+        self.url = url
+        self.callback = callBack
         self.timeout = timeout
 
     def start(self, item, parameter):

@@ -153,7 +153,8 @@ class Identifier(unohelper.Base,
 
     def insertNewContent(self, content):
         print("Identifier.insertNewContent() 1")
-        return self.User.DataBase.insertNewContent(self.User.Id, self.Id, self.ParentId, content)
+        timestamp = parseDateTime()
+        return self.User.DataBase.insertNewContent(self.User.Id, self.Id, self.ParentId, content, timestamp)
 
     def setTitle(self, title):
         # If Title change we need to change Identifier.getContentIdentifier()

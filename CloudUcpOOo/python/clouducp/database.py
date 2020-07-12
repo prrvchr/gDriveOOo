@@ -137,26 +137,6 @@ class DataBase(unohelper.Base,
         data.insertValue('Token', '')
         return data
 
-    def _mergeRoot(self, provider, userid, rootid, rootname, root, timestamp):
-        call = self._getCall('mergeItem')
-        call.setString(1, userid)
-        call.setString(2, ',')
-        call.setLong(3, 0)
-        call.setString(4, rootid)
-        call.setString(5, rootname)
-        call.setTimestamp(6, provider.getRootCreated(root, timestamp))
-        call.setTimestamp(7, provider.getRootModified(root, timestamp))
-        call.setString(8, provider.getRootMediaType(root))
-        call.setLong(9, provider.getRootSize(root))
-        call.setBoolean(10, provider.getRootTrashed(root))
-        call.setBoolean(11, provider.getRootCanAddChild(root))
-        call.setBoolean(12, provider.getRootCanRename(root))
-        call.setBoolean(13, provider.getRootIsReadOnly(root))
-        call.setBoolean(14, provider.getRootIsVersionable(root))
-        call.setString(15, '')
-        call.executeUpdate()
-        call.close()
-
     def getContentType(self):
         call = self._getCall('getContentType')
         result = call.executeQuery()
@@ -186,9 +166,10 @@ class DataBase(unohelper.Base,
         call.setString(1, user.Id)
         call.setString(2, separator)
         call.setLong(3, 0)
+        call.setTimestamp(4, timestamp)
         id = user.Provider.getItemId(data)
         parents = user.Provider.getItemParent(data, user.RootId)
-        self._setCallItem(call, user.Provider, data, id, parents, separator, timestamp)
+        self._mergeItem(call, user.Provider, data, id, parents, separator, timestamp)
         result = call.executeQuery()
         if result.next():
             item = getKeyMapFromResult(result)
@@ -203,14 +184,16 @@ class DataBase(unohelper.Base,
         call.setString(1, user.Id)
         call.setString(2, separator)
         call.setLong(3, 0)
+        call.setTimestamp(4, timestamp)
         enumerator = user.Provider.getFolderContent(user.Request, content)
         while enumerator.hasMoreElements():
             item = enumerator.nextElement()
             id = user.Provider.getItemId(item)
             parents = user.Provider.getItemParent(item, user.RootId)
-            rows.append(self._setCallItem(call, user.Provider, item, id, parents, separator, timestamp))
+            rows.append(self._mergeItem(call, user.Provider, item, id, parents, separator, timestamp))
             call.addBatch()
-        call.executeBatch()
+        if enumerator.RowCount > 0:
+            call.executeBatch()
         call.close()
         print("DataBase._updateFolderContent() %s - %s" % (all(rows), len(rows)))
         return all(rows)
@@ -266,29 +249,36 @@ class DataBase(unohelper.Base,
 
     def updateContent(self, userid, itemid, property, value):
         try:
-            updated = 0
+            updated = False
             if property == 'Title':
                 update = self._getCall('updateTitle')
-                update.setString(1, userid)
+                update.setString(1, value)
                 update.setString(2, itemid)
-                update.setString(3, value)
-                updated = update.executeUpdate()
+                updated = update.execute() == 0
                 update.close()
             elif property == 'Size':
                 update = self._getCall('updateSize')
-                update.setString(1, userid)
+                update.setLong(1, value)
                 update.setString(2, itemid)
-                update.setLong(3, value)
-                updated = update.executeUpdate()
+                updated = update.execute() == 0
                 update.close()
             elif property == 'Trashed':
                 update = self._getCall('updateTrashed')
-                update.setString(1, userid)
+                update.setBoolean(1, value)
                 update.setString(2, itemid)
-                update.setBoolean(3, value)
-                updated = update.executeUpdate()
+                updated = update.execute() == 0
                 update.close()
             if updated:
+                # TODO: I cannot use a procedure performing the two UPDATE 
+                # TODO: without the system versioning malfunctioning...
+                # TODO: As a workaround I use two successive UPDATE queries
+                timestamp = parseDateTime()
+                update = self._getCall('updateCapabilities')
+                update.setTimestamp(1, timestamp)
+                update.setString(2, userid)
+                update.setString(3, itemid)
+                update.execute()
+                update.close()
                 self.sync.set()
                 print("DataBase.updateContent() OK")
         except Exception as e:
@@ -308,23 +298,24 @@ class DataBase(unohelper.Base,
         select.close()
         return item
 
-    def insertNewContent(self, userid, itemid, parentid, content):
+    def insertNewContent(self, userid, itemid, parentid, content, timestamp):
         call = self._getCall('insertItem')
         call.setString(1, userid)
         call.setString(2, ',')
         call.setLong(3, 1)
-        call.setString(4, itemid)
-        call.setString(5, content.getValue("Title"))
-        call.setTimestamp(6, content.getValue('DateCreated'))
-        call.setTimestamp(7, content.getValue('DateModified'))
-        call.setString(8, content.getValue('MediaType'))
-        call.setLong(9, content.getValue('Size'))
-        call.setBoolean(10, content.getValue('Trashed'))
-        call.setBoolean(11, content.getValue('CanAddChild'))
-        call.setBoolean(12, content.getValue('CanRename'))
-        call.setBoolean(13, content.getValue('IsReadOnly'))
-        call.setBoolean(14, content.getValue('IsVersionable'))
-        call.setString(15, parentid)
+        call.setTimestamp(4, timestamp)
+        call.setString(5, itemid)
+        call.setString(6, content.getValue("Title"))
+        call.setTimestamp(7, content.getValue('DateCreated'))
+        call.setTimestamp(8, content.getValue('DateModified'))
+        call.setString(9, content.getValue('MediaType'))
+        call.setLong(10, content.getValue('Size'))
+        call.setBoolean(11, content.getValue('Trashed'))
+        call.setBoolean(12, content.getValue('CanAddChild'))
+        call.setBoolean(13, content.getValue('CanRename'))
+        call.setBoolean(14, content.getValue('IsReadOnly'))
+        call.setBoolean(15, content.getValue('IsVersionable'))
+        call.setString(16, parentid)
         result = call.execute() == 0
         call.close()
         if result:
@@ -427,16 +418,17 @@ class DataBase(unohelper.Base,
         insert.addBatch()
 
     # First pull procedure: header of merge request
-    def getDriveCall(self, userid, separator, loaded):
+    def getDriveCall(self, userid, separator, loaded, timestamp):
         call = self._getCall('mergeItem')
         call.setString(1, userid)
         call.setString(2, separator)
-        call.setLong(3, loaded)
+        call.setInt(3, loaded)
+        call.setTimestamp(4, timestamp)
         return call
 
     # First pull procedure: body of merge request
     def setDriveCall(self, call, provider, item, id, parents, separator, timestamp):
-        row = self._setCallItem(call, provider, item, id, parents, separator, timestamp)
+        row = self._mergeItem(call, provider, item, id, parents, separator, timestamp)
         call.addBatch()
         return row
 
@@ -463,6 +455,7 @@ class DataBase(unohelper.Base,
         select.setTimestamp(1, stop)
         select.setTimestamp(2, start)
         select.setTimestamp(3, stop)
+        select.setString(4, userid)
         result = select.executeQuery()
         while result.next():
             items.append(getKeyMapFromResult(result))
@@ -476,7 +469,7 @@ class DataBase(unohelper.Base,
         select = self._getCall('getInsertedItems')
         select.setTimestamp(1, stop)
         select.setTimestamp(2, start)
-        #select.setString(3, userid)
+        select.setString(3, userid)
         result = select.executeQuery()
         while result.next():
             items.append(getKeyMapFromResult(result))
@@ -499,20 +492,41 @@ class DataBase(unohelper.Base,
         print(msg)
 
 # Procedures called internally
-    def _setCallItem(self, call, provider, item, id, parents, separator, timestamp):
-        call.setString(4, id)
-        call.setString(5, provider.getItemTitle(item))
-        call.setTimestamp(6, provider.getItemCreated(item, timestamp))
-        call.setTimestamp(7, provider.getItemModified(item, timestamp))
-        call.setString(8, provider.getItemMediaType(item))
-        call.setLong(9, provider.getItemSize(item))
-        call.setBoolean(10, provider.getItemTrashed(item))
-        call.setBoolean(11, provider.getItemCanAddChild(item))
-        call.setBoolean(12, provider.getItemCanRename(item))
-        call.setBoolean(13, provider.getItemIsReadOnly(item))
-        call.setBoolean(14, provider.getItemIsVersionable(item))
-        call.setString(15, separator.join(parents))
+    def _mergeItem(self, call, provider, item, id, parents, separator, timestamp):
+        call.setString(5, id)
+        call.setString(6, provider.getItemTitle(item))
+        call.setTimestamp(7, provider.getItemCreated(item, timestamp))
+        call.setTimestamp(8, provider.getItemModified(item, timestamp))
+        call.setString(9, provider.getItemMediaType(item))
+        call.setLong(10, provider.getItemSize(item))
+        call.setBoolean(11, provider.getItemTrashed(item))
+        call.setBoolean(12, provider.getItemCanAddChild(item))
+        call.setBoolean(13, provider.getItemCanRename(item))
+        call.setBoolean(14, provider.getItemIsReadOnly(item))
+        call.setBoolean(15, provider.getItemIsVersionable(item))
+        call.setString(16, separator.join(parents))
         return 1
+
+    def _mergeRoot(self, provider, userid, rootid, rootname, root, timestamp):
+        call = self._getCall('mergeItem')
+        call.setString(1, userid)
+        call.setString(2, ',')
+        call.setLong(3, 0)
+        call.setTimestamp(4, timestamp)
+        call.setString(5, rootid)
+        call.setString(6, rootname)
+        call.setTimestamp(7, provider.getRootCreated(root, timestamp))
+        call.setTimestamp(8, provider.getRootModified(root, timestamp))
+        call.setString(9, provider.getRootMediaType(root))
+        call.setLong(10, provider.getRootSize(root))
+        call.setBoolean(11, provider.getRootTrashed(root))
+        call.setBoolean(12, provider.getRootCanAddChild(root))
+        call.setBoolean(13, provider.getRootCanRename(root))
+        call.setBoolean(14, provider.getRootIsReadOnly(root))
+        call.setBoolean(15, provider.getRootIsVersionable(root))
+        call.setString(16, '')
+        call.executeUpdate()
+        call.close()
 
     def _getCall(self, name, format=None):
         return getDataSourceCall(self.Connection, name, format)

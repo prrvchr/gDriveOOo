@@ -134,9 +134,12 @@ class Replicator(unohelper.Base,
         try:
             results = []
             stop = parseDateTime()
+            chunk = user.Provider.Chunk
+            url = user.Provider.SourceURL
+            uploader = user.Request.getUploader(chunk, url, self.DataBase.callBack)
             self.DataBase.getInsertedItems(user.Id, start, stop)
             self.DataBase.getUpdatedItems(user.Id, start, stop)
-            self.DataBase.getDeletedItems(user.Id, start, stop)
+            #self.DataBase.getDeletedItems(user.Id, start, stop)
             return results
         except Exception as e:
             print("Replicator.synchronize() ERROR: %s - %s" % (e, traceback.print_exc()))
@@ -176,12 +179,13 @@ class Replicator(unohelper.Base,
     def _updateDrive(self, user):
         separator = ','
         start = parseDateTime()
-        call = self.DataBase.getDriveCall(user.Id, separator, 1)
+        call = self.DataBase.getDriveCall(user.Id, separator, 1, start)
         roots = [user.RootId]
         rows, items, parents, page, row = self._getDriveContent(call, user, roots, separator, start)
         rows += self._filterParents(call, user.Provider, items, parents, roots, separator, start)
         rejected = self._getRejectedItems(user.Provider, parents, items)
-        result = call.executeBatch()
+        if row > 0:
+            call.executeBatch()
         call.close()
         end = parseDateTime()
         self.DataBase.updateUserTimeStamp(user.Id, end)

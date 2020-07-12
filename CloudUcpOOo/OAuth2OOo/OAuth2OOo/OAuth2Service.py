@@ -241,8 +241,8 @@ class OAuth2Service(unohelper.Base,
     def getInputStream(self, parameter, chunk, buffer):
         return InputStream(self.ctx, self.Session, parameter, chunk, buffer, self.Timeout)
 
-    def getUploader(self, datasource):
-        return Uploader(self.ctx, self.Session, datasource, self.Timeout)
+    def getUploader(self, chunk, url, callBack):
+        return Uploader(self.ctx, self.Session, chunk, url, callBack, self.Timeout)
 
     def _getSession(self):
         if sys.version_info[0] < 3:

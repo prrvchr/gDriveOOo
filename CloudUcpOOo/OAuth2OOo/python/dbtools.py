@@ -300,8 +300,16 @@ def getValueFromResult(result, index, default=None):
         value = result.getTimestamp(index)
     elif dbtype == 'BOOLEAN':
         value = result.getBoolean(index)
-    elif dbtype == 'BIGINT' or dbtype == 'SMALLINT' or dbtype == 'INTEGER':
-        value = result.getLong(index)
+    elif dbtype in ('TINYINT', 'SMALLINT', 'INTEGER', 'BIGINT'):
+        value = result.getInt(index)
+    elif dbtype == 'FLOAT':
+        value = result.getFloat(index)
+    elif dbtype == 'DOUBLE':
+        value = result.getDouble(index)
+    elif dbtype == 'TIME':
+        value = result.getTime(index)
+    elif dbtype == 'DATE':
+        value = result.getDate(index)
     else:
         value = default
     return value
