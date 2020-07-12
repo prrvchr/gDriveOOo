@@ -418,12 +418,9 @@ class DataBase(unohelper.Base,
         insert.setString(1, userid)
         while enumerator.hasMoreElements():
             item = enumerator.nextElement()
-            print("datasource._insertIdentifier() 1 %s" % (item, ))
             self._doInsert(insert, item)
-        result = insert.executeBatch()
+        insert.executeBatch()
         insert.close()
-        print("datasource._insertIdentifier() 2 %s" % (result, ))
-        return True
 
     def _doInsert(self, insert, identifier):
         insert.setString(2, identifier)

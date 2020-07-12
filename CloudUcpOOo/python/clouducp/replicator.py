@@ -169,7 +169,9 @@ class Replicator(unohelper.Base,
             return
         if self.DataBase.countIdentifier(user.Id) < min(user.Provider.IdentifierRange):
             enumerator = user.Provider.getIdentifier(user.Request, user.MetaData)
-            user.CanAddChild = self.DataBase.insertIdentifier(enumerator, user.Id)
+            self.DataBase.insertIdentifier(enumerator, user.Id)
+        # Need to postpone the creation authorization after this verification...
+        user.CanAddChild = True
 
     def _updateDrive(self, user):
         separator = ','
