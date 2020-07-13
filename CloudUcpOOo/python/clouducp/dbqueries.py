@@ -450,7 +450,7 @@ def getSqlQuery(name, format=None):
 
 # System Time Period Select Queries
     elif name == 'getUpdatedItems':
-        c1 = '"Items"."ItemId"'
+        c1 = '"Items"."ItemId" "Id"'
         c2 = '"Items"."Title"'
         c3 = '"Items"."Size"'
         c4 = '"Items"."Trashed"'
@@ -466,7 +466,7 @@ ON "Current"."UserId" = "Previous"."UserId" AND "Current"."ItemId" = "Previous".
 WHERE "Current"."UserId" = ?;''' % columns
 
     elif name == 'getInsertedItems':
-        c1 = '"Items"."ItemId"'
+        c1 = '"Items"."ItemId" "Id"'
         c2 = '"Items"."Title"'
         c3 = '"Items"."DateCreated"'
         c4 = '"Items"."DateModified"'

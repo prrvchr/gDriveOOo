@@ -176,21 +176,21 @@ class Provider(ProviderBase):
                 parameter.Query = '{"alt": "media"}'
         elif method == 'updateTitle':
             parameter.Method = 'PATCH'
-            parameter.Url = '%s/files/%s' % (self.BaseUrl, data.getValue('ItemId'))
+            parameter.Url = '%s/files/%s' % (self.BaseUrl, data.getValue('Id'))
             parameter.Json = '{"name": "%s"}' % data.getValue('Title')
         elif method == 'updateTrashed':
             parameter.Method = 'PATCH'
-            parameter.Url = '%s/files/%s' % (self.BaseUrl, data.getValue('ItemId'))
+            parameter.Url = '%s/files/%s' % (self.BaseUrl, data.getValue('Id'))
             parameter.Json = '{"trashed": true}'
         elif method == 'createNewFolder':
             parameter.Method = 'POST'
             parameter.Url = '%s/files' % self.BaseUrl
             parameter.Json = '{"id": "%s", "parents": "%s", "name": "%s", "mimeType": "%s"}' % \
-                                (data.getValue('ItemId'), data.getValue('ParentId'),
+                                (data.getValue('Id'), data.getValue('ParentId'),
                                  data.getValue('Title'), data.getValue('MediaType'))
         elif method == 'getUploadLocation':
             parameter.Method = 'PATCH'
-            parameter.Url = '%s/%s' % (self.UploadUrl, data.getValue('ItemId'))
+            parameter.Url = '%s/%s' % (self.UploadUrl, data.getValue('Id'))
             parameter.Query = '{"uploadType": "resumable"}'
             parameter.Header = '{"X-Upload-Content-Type": "%s"}' % data.getValue('MediaType')
         elif method == 'getNewUploadLocation':
@@ -199,7 +199,7 @@ class Provider(ProviderBase):
             parameter.Url = self.UploadUrl
             parameter.Query = '{"uploadType": "resumable"}'
             parameter.Json = '{"id": "%s", "parents": "%s", "name": "%s", "mimeType": "%s"}' % \
-                                (data.getValue('ItemId'), data.getValue('ParentId'),
+                                (data.getValue('Id'), data.getValue('ParentId'),
                                  data.getValue('Title'), data.getValue('MediaType'))
             parameter.Header = '{"X-Upload-Content-Type": "%s"}' % data.getValue('MediaType')
         elif method == 'getUploadStream':

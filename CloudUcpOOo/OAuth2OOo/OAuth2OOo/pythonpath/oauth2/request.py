@@ -541,7 +541,7 @@ class Uploader(unohelper.Base,
         return False
 
     def _getInputStream(self, item):
-        url = '%s/%s' % (self.url, item.getValue('ItemId'))
+        url = '%s/%s' % (self.url, item.getValue('Id'))
         sf = self.ctx.ServiceManager.createInstance('com.sun.star.ucb.SimpleFileAccess')
         if sf.exists(url):
             return sf.openFileRead(url), sf.getSize(url)
