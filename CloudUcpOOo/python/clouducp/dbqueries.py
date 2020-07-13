@@ -468,19 +468,28 @@ WHERE "Current"."UserId" = ?;''' % columns
     elif name == 'getInsertedItems':
         c1 = '"Items"."ItemId"'
         c2 = '"Items"."Title"'
-        c3 = '"Items"."Size"'
-        c4 = '"Items"."Trashed"'
-        columns = ','.join((c1,c2,c3,c4))
+        c3 = '"Items"."DateCreated"'
+        c4 = '"Items"."DateModified"'
+        c5 = '"Items"."MediaType"'
+        c6 = '"Items"."Size"'
+        c7 = '"Items"."Trashed"'
+        c8 = 'GROUP_CONCAT("Parents"."ItemId") "ParentId"'
+        columns = ','.join((c1,c2,c3,c4,c5,c6,c7,c8))
+        groups = ','.join((c1,c2,c3,c4,c5,c6,c7))
         query = '''\
 SELECT %s FROM "Items"
 INNER JOIN
 "Capabilities" FOR SYSTEM_TIME AS OF ? + SESSION_TIMEZONE() AS "Current"
 ON "Items"."ItemId" = "Current"."ItemId"
+INNER JOIN
+"Parents"
+ON "Current"."UserId" = "Parents"."UserId" AND "Current"."ItemId" = "Parents"."ChildId"
 LEFT JOIN
 "Capabilities" FOR SYSTEM_TIME AS OF ? + SESSION_TIMEZONE() AS "Previous"
 ON "Current"."UserId" = "Previous"."UserId" AND "Current"."ItemId" = "Previous"."ItemId"
 WHERE "Previous"."UserId" IS NULL AND "Previous"."ItemId" IS NULL
-AND "Current"."UserId" = ?;''' % columns
+AND "Current"."UserId" = ?
+GROUP BY %s;''' % (columns, groups)
 
     elif name == 'getDeletedItems':
         query = '''\

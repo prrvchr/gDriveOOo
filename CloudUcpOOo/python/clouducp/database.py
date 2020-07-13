@@ -359,7 +359,7 @@ class DataBase(unohelper.Base,
             self._updateSync(provider, item, response.Value)
 
     def _updateSync(self, provider, item, response):
-        oldid = item.getValue('Id')
+        oldid = item.getValue('ItemId')
         newid = provider.getResponseId(response, oldid)
         oldname = item.getValue('Title')
         newname = provider.getResponseTitle(response, oldname)
@@ -462,6 +462,7 @@ class DataBase(unohelper.Base,
         select.close()
         msg = "getUpdatedItems to Sync: %s" % (len(items), )
         print(msg)
+        return items
 
     # Procedure to retrieve all the INSERT in the 'Capabilities' table
     def getInsertedItems(self, userid, start, stop):
@@ -476,6 +477,7 @@ class DataBase(unohelper.Base,
         select.close()
         msg = "getInsertedItems to Sync: %s" % (len(items), )
         print(msg)
+        return items
 
     # Procedure to retrieve all the DELETE in the 'Capabilities' table
     def getDeletedItems(self, userid, start, stop):
