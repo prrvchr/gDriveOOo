@@ -141,6 +141,7 @@ class Replicator(unohelper.Base,
                 results.append(self.synchronizeCreatedItems(user, uploader, item))
             if all(results):
                 self.DataBase.updateUserTimeStamp(user.Id, stop)
+                print("Replicator._pushData() Created Items OK")
             self.DataBase.getUpdatedItems(user.Id, start, stop)
             #self.DataBase.getDeletedItems(user.Id, start, stop)
             return results
@@ -240,7 +241,7 @@ class Replicator(unohelper.Base,
     def synchronizeCreatedItems(self, user, uploader, item):
         try:
             response = False
-            id = item.getValue('ItemId')
+            id = item.getValue('Id')
             mediatype = item.getValue('MediaType')
             title = item.getValue('Title')
             msg = "ItemId - Title - MediaType: %s - %s - %s" % (id, title, mediatype)

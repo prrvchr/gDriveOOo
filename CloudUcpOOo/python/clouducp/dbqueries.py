@@ -466,6 +466,7 @@ ON "Current"."UserId" = "Previous"."UserId" AND "Current"."ItemId" = "Previous".
 WHERE "Current"."UserId" = ?;''' % columns
 
     elif name == 'getInsertedItems':
+        c0 = '"Items"."ItemId"'
         c1 = '"Items"."ItemId" "Id"'
         c2 = '"Items"."Title"'
         c3 = '"Items"."DateCreated"'
@@ -475,7 +476,7 @@ WHERE "Current"."UserId" = ?;''' % columns
         c7 = '"Items"."Trashed"'
         c8 = 'GROUP_CONCAT("Parents"."ItemId") "ParentId"'
         columns = ','.join((c1,c2,c3,c4,c5,c6,c7,c8))
-        groups = ','.join((c1,c2,c3,c4,c5,c6,c7))
+        groups = ','.join((c0,c2,c3,c4,c5,c6,c7))
         query = '''\
 SELECT %s FROM "Items"
 INNER JOIN
