@@ -380,7 +380,6 @@ class DataBase(unohelper.Base,
         return '' if row != 1 else newid
 
 # Procedures called by the Replicator
-
     # Synchronization pull token update procedure
     def updateToken(self, user, token):
         update = self._getCall('updateToken')
@@ -449,42 +448,42 @@ class DataBase(unohelper.Base,
         return timestamp
 
     # Procedure to retrieve all the UPDATE in the 'Capabilities' table
-    def getUpdatedItems(self, userid, start, stop):
+    def getUpdatedItems(self, userid, start, end):
         items = []
         select = self._getCall('getUpdatedItems')
-        select.setTimestamp(1, stop)
+        select.setTimestamp(1, end)
         select.setTimestamp(2, start)
-        select.setTimestamp(3, stop)
-        select.setString(4, userid)
+        select.setTimestamp(3, end)
+        select.setTimestamp(4, start)
+        select.setTimestamp(5, end)
+        select.setTimestamp(6, start)
+        select.setTimestamp(7, end)
+        select.setString(8, userid)
         result = select.executeQuery()
         while result.next():
             items.append(getKeyMapFromResult(result))
         select.close()
-        msg = "getUpdatedItems to Sync: %s" % (len(items), )
-        print(msg)
         return items
 
     # Procedure to retrieve all the INSERT in the 'Capabilities' table
-    def getInsertedItems(self, userid, start, stop):
+    def getInsertedItems(self, userid, start, end):
         items = []
         select = self._getCall('getInsertedItems')
-        select.setTimestamp(1, stop)
+        select.setTimestamp(1, end)
         select.setTimestamp(2, start)
         select.setString(3, userid)
         result = select.executeQuery()
         while result.next():
             items.append(getKeyMapFromResult(result))
         select.close()
-        msg = "getInsertedItems to Sync: %s" % (len(items), )
-        print(msg)
         return items
 
     # Procedure to retrieve all the DELETE in the 'Capabilities' table
-    def getDeletedItems(self, userid, start, stop):
+    def getDeletedItems(self, userid, start, end):
         items = []
         select = self._getCall('getDeletedItems')
         select.setTimestamp(1, start)
-        select.setTimestamp(2, stop)
+        select.setTimestamp(2, end)
         #select.setString(3, userid)
         result = select.executeQuery()
         while result.next():

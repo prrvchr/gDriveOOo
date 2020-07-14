@@ -450,20 +450,40 @@ def getSqlQuery(name, format=None):
 
 # System Time Period Select Queries
     elif name == 'getUpdatedItems':
+        c0 = '"Items"."ItemId"'
         c1 = '"Items"."ItemId" "Id"'
         c2 = '"Items"."Title"'
-        c3 = '"Items"."Size"'
-        c4 = '"Items"."Trashed"'
-        columns = ','.join((c1,c2,c3,c4))
+        c3 = '"Items"."DateCreated"'
+        c4 = '"Items"."DateModified"'
+        c5 = '"Items"."MediaType"'
+        c6 = '"Items"."Size"'
+        c7 = '"Items"."Trashed"'
+        c8 = 'ANY("Items"."Title" <> "Before"."Title") "TitleUpdated"'
+        c9 = 'ANY("Items"."Size" <>  "Before"."Size") "SizeUpdated"'
+        c10 = 'ANY("Items"."Trashed" <>  "Before"."Trashed") "TrashedUpdated"'
+        c11 = 'GROUP_CONCAT("Parents"."ItemId") "ParentId"'
+        columns = ','.join((c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11))
+        groups = ','.join((c0,c2,c3,c4,c5,c6,c7))
         query = '''\
 SELECT %s FROM "Items"
 INNER JOIN
 "Capabilities" FOR SYSTEM_TIME AS OF ? + SESSION_TIMEZONE() AS "Current"
 ON "Items"."ItemId" = "Current"."ItemId"
 INNER JOIN
+"Parents"
+ON "Current"."UserId" = "Parents"."UserId" AND "Current"."ItemId" = "Parents"."ChildId"
+INNER JOIN
 "Capabilities" FOR SYSTEM_TIME FROM ? + SESSION_TIMEZONE() TO ? + SESSION_TIMEZONE() AS "Previous"
-ON "Current"."UserId" = "Previous"."UserId" AND "Current"."ItemId" = "Previous"."ItemId" AND "Current"."RowStart" = "Previous"."RowEnd"
-WHERE "Current"."UserId" = ?;''' % columns
+ON "Current"."UserId" = "Previous"."UserId" AND "Current"."ItemId" = "Previous"."ItemId"
+AND "Current"."RowStart" = "Previous"."RowEnd"
+LEFT JOIN
+"Items" FOR SYSTEM_TIME FROM ? + SESSION_TIMEZONE() TO ? + SESSION_TIMEZONE() AS "Afler"
+ON "Previous"."ItemId" = "Afler"."ItemId"
+LEFT JOIN
+"Items" FOR SYSTEM_TIME FROM ? + SESSION_TIMEZONE() TO ? + SESSION_TIMEZONE() AS "Before"
+ON "Afler"."ItemId" = "Before"."ItemId" AND "Afler"."RowStart" = "Before"."RowEnd"
+WHERE "Current"."UserId" = ?
+GROUP BY %s;''' % (columns, groups)
 
     elif name == 'getInsertedItems':
         c0 = '"Items"."ItemId"'

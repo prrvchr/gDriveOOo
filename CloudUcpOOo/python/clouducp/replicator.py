@@ -133,37 +133,21 @@ class Replicator(unohelper.Base,
     def _pushData(self, user, start):
         try:
             results = []
-            stop = parseDateTime()
+            end = parseDateTime()
             chunk = user.Provider.Chunk
             url = user.Provider.SourceURL
             uploader = user.Request.getUploader(chunk, url, self.DataBase.callBack)
-            for item in self.DataBase.getInsertedItems(user.Id, start, stop):
-                results.append(self.synchronizeCreatedItems(user, uploader, item))
+            for item in self.DataBase.getInsertedItems(user.Id, start, end):
+                results.append(self._synchronizeCreatedItems(user, uploader, item))
+            for item in self.DataBase.getUpdatedItems(user.Id, start, end):
+                results.append(self._synchronizeUpdatedItems(user, uploader, item))
             if all(results):
-                self.DataBase.updateUserTimeStamp(user.Id, stop)
-                print("Replicator._pushData() Created Items OK")
-            self.DataBase.getUpdatedItems(user.Id, start, stop)
-            #self.DataBase.getDeletedItems(user.Id, start, stop)
+                pass
+                self.DataBase.updateUserTimeStamp(user.Id, end)
+                print("Replicator._pushData() Created / Updated Items OK")
             return results
         except Exception as e:
             print("Replicator.synchronize() ERROR: %s - %s" % (e, traceback.print_exc()))
-
-    def _pushData1(self, user):
-        results = []
-        uploader = user.Request.getUploader(self.DataBase)
-        for item in self.DataBase.getItemToSync(user.MetaData):
-            if self.canceled:
-                break
-            response = self.DataBase.syncItem(user.Request, uploader, item)
-            if response is None:
-                results.append(True)
-            elif response and response.IsPresent:
-                results.append(self.DataBase.updateSync(item, response.Value))
-            else:
-                msg = "ERROR: ItemId: %s" % item.getDefaultValue('Id')
-                logMessage(self.ctx, SEVERE, msg, "Replicator", "_pushData()")
-                results.append(False)
-        return results
 
     def _setSyncToken(self, user):
         data = user.Provider.getToken(user.Request, user.MetaData)
@@ -238,15 +222,10 @@ class Replicator(unohelper.Base,
             rejected.append((title, itemid, ','.join(parents)))
         return rejected
 
-    def synchronizeCreatedItems(self, user, uploader, item):
+    def _synchronizeCreatedItems(self, user, uploader, item):
         try:
             response = False
-            id = item.getValue('Id')
             mediatype = item.getValue('MediaType')
-            title = item.getValue('Title')
-            msg = "ItemId - Title - MediaType: %s - %s - %s" % (id, title, mediatype)
-            print(msg)
-            logMessage(self.ctx, INFO, msg, "Replicator", "_syncItem()")
             if user.Provider.isFolder(mediatype):
                 response = user.Provider.createFolder(user.Request, item)
             elif user.Provider.isLink(mediatype):
@@ -254,28 +233,29 @@ class Replicator(unohelper.Base,
             elif user.Provider.isDocument(mediatype):
                 if user.Provider.createFile(user.Request, uploader, item):
                     response = user.Provider.uploadFile(user.Request, uploader, item, True)
+            msg = "ItemId - Title - MediaType: %s - %s - %s" % (item.getValue('Id'),
+                                                                item.getValue('Title'),
+                                                                mediatype)
+            print(msg)
+            #logMessage(self.ctx, INFO, msg, "Replicator", "_syncItem()")
             return response
         except Exception as e:
             msg = "ERROR: %s - %s" % (e, traceback.print_exc())
             logMessage(self.ctx, SEVERE, msg, "Replicator", "_syncItem()")
 
-
-
-
-    def synchronizeUpdatedItems(self, user, uploader, item):
+    def _synchronizeUpdatedItems(self, user, uploader, item):
         try:
-            if True:
-                pass
-            elif mode == SYNC_CREATED:
-                response = self.Provider.uploadFile(request, uploader, item, True)
-            elif mode == SYNC_REWRITED:
-                response = self.Provider.uploadFile(request, uploader, item, False)
-            elif mode == SYNC_RENAMED:
-                response = self.Provider.updateTitle(request, item)
-            elif mode == SYNC_TRASHED:
-                response = self.Provider.updateTrashed(request, item)
+            response = False
+            if item.getValue('SizeUpdated'):
+                response = user.Provider.uploadFile(user.Request, uploader, item, False)
+            if item.getValue('TitleUpdated'):
+                response = user.Provider.updateTitle(user.Request, item)
+            if item.getValue('TrashedUpdated'):
+                response = user.Provider.updateTrashed(user.Request, item)
+            print("Replicator._synchronizeUpdatedItems() %s - %s - %s" % (item.getValue('TitleUpdated'),
+                                                                          item.getValue('SizeUpdated'),
+                                                                          item.getValue('TrashedUpdated')))
             return response
         except Exception as e:
-            msg = "SyncId: %s - ERROR: %s - %s" % (sync, e, traceback.print_exc())
-            logMessage(self.ctx, SEVERE, msg, "DataSource", "_syncItem()")
-
+            msg = "ERROR: %s - %s" % (e, traceback.print_exc())
+            logMessage(self.ctx, SEVERE, msg, "Replicator", "_synchronizeUpdatedItems()")

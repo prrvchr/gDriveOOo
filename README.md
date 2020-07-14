@@ -1,6 +1,6 @@
 **The use of this software subjects you to our** [Terms Of Use](https://prrvchr.github.io/gDriveOOo/gDriveOOo/registration/TermsOfUse_en) **and** [Data Protection Policy](https://prrvchr.github.io/gDriveOOo/gDriveOOo/registration/PrivacyPolicy_en)
 
-## gDriveOOo v.0.0.4
+## gDriveOOo v.0.0.5
 
 
 ### Google Drive implementation for LibreOffice / OpenOffice.
@@ -10,13 +10,13 @@
 
 ### Use:
 
-#### Install [OAuth2OOo](https://github.com/prrvchr/OAuth2OOo/releases/download/v0.0.4/OAuth2OOo.oxt) extention v 0.0.4.
+#### Install [OAuth2OOo](https://github.com/prrvchr/OAuth2OOo/raw/master/OAuth2OOo.oxt) extention v 0.0.4.
 
 You must install this extention first!!!
 
 Restart LibreOffice / OpenOffice after installation.
 
-#### Install [gDriveOOo](https://github.com/prrvchr/gDriveOOo/releases/download/v0.0.4/gDriveOOo.oxt) extention v 0.0.4.
+#### Install [gDriveOOo](https://github.com/prrvchr/gDriveOOo/raw/master/gDriveOOo.oxt) extention v 0.0.4.
 
 Restart LibreOffice / OpenOffice after installation.
 

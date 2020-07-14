@@ -233,18 +233,3 @@ class Identifier(unohelper.Base,
             return data
         except Exception as e:
             print("Identifier._getNewContent() ERROR: %s - %s" % (e, traceback.print_exc()))
-
-
-# Procedures no more used
-    def _searchId1(self, paths, basename):
-        # Needed for be able to create a folder in a just created folder...
-        id = ''
-        paths.append(self.User.RootId)
-        for i, path in enumerate(paths):
-            if self._isIdentifier(path):
-                id = path
-                break
-        for j in range(i -1, -1, -1):
-            id = self._selectChildId(id, paths[j])
-        id = self._selectChildId(id, basename)
-        return id
