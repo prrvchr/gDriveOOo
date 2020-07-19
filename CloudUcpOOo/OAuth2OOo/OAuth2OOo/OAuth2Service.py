@@ -170,7 +170,7 @@ class OAuth2Service(unohelper.Base,
     def getAuthorization(self, url, username, close=True):
         authorized = False
         msg = "Wizard Loading ..."
-        wizard = Wizard(self.ctx, g_wizard_page)
+        wizard = Wizard(self.ctx, g_wizard_page, True)
         controller = WizardController(self.ctx, wizard, self.Session, url, username, close)
         arguments = (g_wizard_paths, controller)
         wizard.initialize(arguments)
