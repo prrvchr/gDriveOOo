@@ -11,14 +11,6 @@ from com.sun.star.auth.RestRequestTokenType import TOKEN_QUERY
 from com.sun.star.auth.RestRequestTokenType import TOKEN_JSON
 from com.sun.star.auth.RestRequestTokenType import TOKEN_SYNC
 
-from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_RETRIEVED
-from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_CREATED
-from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_FOLDER
-from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_FILE
-from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_RENAMED
-from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_REWRITED
-from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_TRASHED
-
 from gdrive import ProviderBase
 from gdrive import g_identifier
 from gdrive import g_provider
@@ -195,6 +187,12 @@ class Provider(ProviderBase):
             parameter.Method = 'PUT'
             parameter.Url = data.getValue('Location')
         return parameter
+
+    def initUser(self, request, database, user):
+        data = self.getToken(request, user)
+        if data.IsPresent:
+            token = self.getUserToken(data.Value)
+            database.updateToken(user, token)
 
     def createFile(self, request, uploader, item):
         return True
