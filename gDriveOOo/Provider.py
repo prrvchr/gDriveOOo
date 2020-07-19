@@ -4,9 +4,6 @@
 import uno
 import unohelper
 
-from com.sun.star.ucb.ConnectionMode import OFFLINE
-from com.sun.star.ucb.ConnectionMode import ONLINE
-
 from com.sun.star.auth.RestRequestTokenType import TOKEN_NONE
 from com.sun.star.auth.RestRequestTokenType import TOKEN_URL
 from com.sun.star.auth.RestRequestTokenType import TOKEN_REDIRECT
@@ -21,8 +18,6 @@ from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_FILE
 from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_RENAMED
 from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_REWRITED
 from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_TRASHED
-
-from unolib import getConnectionMode
 
 from gdrive import ProviderBase
 from gdrive import g_identifier
@@ -87,11 +82,6 @@ class Provider(ProviderBase):
     @property
     def IdentifierRange(self):
         return g_IdentifierRange
-
-    def isOnLine(self):
-        return getConnectionMode(self.ctx, self.Host) != OFFLINE
-    def isOffLine(self):
-        return getConnectionMode(self.ctx, self.Host) != ONLINE
 
     def getRequestParameter(self, method, data=None):
         parameter = uno.createUnoStruct('com.sun.star.auth.RestRequestParameter')
