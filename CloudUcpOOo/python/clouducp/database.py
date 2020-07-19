@@ -4,35 +4,23 @@
 import uno
 import unohelper
 
-from com.sun.star.lang import XEventListener
 from com.sun.star.logging.LogLevel import INFO
 from com.sun.star.logging.LogLevel import SEVERE
 from com.sun.star.sdb.CommandType import QUERY
+
 from com.sun.star.ucb import XRestDataBase
-from com.sun.star.ucb.ConnectionMode import ONLINE
-from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_RETRIEVED
-from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_CREATED
-from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_FOLDER
-from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_FILE
-from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_RENAMED
-from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_REWRITED
-from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_TRASHED
 
 from unolib import KeyMap
-from unolib import g_oauth2
-from unolib import createService
-from unolib import getDateTime
 from unolib import parseDateTime
-from unolib import getResourceLocation
 
 from .configuration import g_admin
 
 from .dbqueries import getSqlQuery
 from .dbconfig import g_role
+from .dbconfig import g_dba
 
 from .dbtools import checkDataBase
 from .dbtools import createStaticTable
-from .dbtools import executeQueries
 from .dbtools import executeSqlQueries
 from .dbtools import getDataSourceCall
 
@@ -40,16 +28,11 @@ from .dbinit import getStaticTables
 from .dbinit import getQueries
 from .dbinit import getTablesAndStatements
 
-from .dbtools import getDataBaseConnection
-from .dbtools import getDataSourceConnection
 from .dbtools import getKeyMapFromResult
-from .dbtools import getSequenceFromResult
-from .dbtools import getSqlException
 
 from .logger import logMessage
 from .logger import getMessage
 
-from collections import OrderedDict
 import traceback
 
 
@@ -228,11 +211,17 @@ class DataBase(unohelper.Base,
         call.setString(1, userid)
         call.setString(2, rootid)
         call.setString(3, uripath)
-        print("DataBase.getIdentifier() %s - %s - %s" % (userid, rootid, uripath))
+        print("DataBase.getIdentifier() 1 %s - %s - %s" % (userid, rootid, uripath))
         call.setString(4, '/')
         call.execute()
         itemid = call.getString(5)
+        if call.wasNull():
+            itemid = None
+            print("DataBase.getIdentifier() 2 %s" % itemid)
         parentid = call.getString(6)
+        if call.wasNull():
+            parentid = None
+            print("DataBase.getIdentifier() 3 %s" % parentid)
         path = call.getString(7)
         call.close()
         return itemid, parentid, path
@@ -247,32 +236,48 @@ class DataBase(unohelper.Base,
         select.close()
         return identifier
 
+    def deleteNewIdentifier(self, userid, itemid):
+        call = self._getCall('deleteNewIdentifier')
+        call.setString(1, userid)
+        call.setString(2, itemid)
+        call.executeUpdate()
+        call.close()
+
     def updateContent(self, userid, itemid, property, value):
         try:
             updated = False
+            timestamp = parseDateTime()
             if property == 'Title':
                 update = self._getCall('updateTitle')
-                update.setString(1, value)
-                update.setString(2, itemid)
+                update.setTimestamp(1, timestamp)
+                update.setString(2, value)
+                update.setString(3, itemid)
                 updated = update.execute() == 0
                 update.close()
             elif property == 'Size':
                 update = self._getCall('updateSize')
-                update.setLong(1, value)
-                update.setString(2, itemid)
+                # The Size of the file is not sufficient to detect a 'Save' of the file,
+                # It can be modified and have the same Size...
+                # For this we temporarily update the Size to 0
+                update.setTimestamp(1, timestamp)
+                #update.setLong(2, 0)
+                #update.setString(3, itemid)
+                #update.execute()
+                update.setLong(2, value)
+                update.setString(3, itemid)
                 updated = update.execute() == 0
                 update.close()
             elif property == 'Trashed':
                 update = self._getCall('updateTrashed')
-                update.setBoolean(1, value)
-                update.setString(2, itemid)
+                update.setTimestamp(1, timestamp)
+                update.setBoolean(2, value)
+                update.setString(3, itemid)
                 updated = update.execute() == 0
                 update.close()
             if updated:
                 # TODO: I cannot use a procedure performing the two UPDATE 
                 # TODO: without the system versioning malfunctioning...
                 # TODO: As a workaround I use two successive UPDATE queries
-                timestamp = parseDateTime()
                 update = self._getCall('updateCapabilities')
                 update.setTimestamp(1, timestamp)
                 update.setString(2, userid)
@@ -322,13 +327,6 @@ class DataBase(unohelper.Base,
             # Start Replicator for pushing changes…
             self.sync.set()
         return result
-
-    def deleteNewIdentifier(self, userid, itemid):
-        call = self._getCall('deleteNewIdentifier')
-        call.setString(1, userid)
-        call.setString(2, itemid)
-        call.executeUpdate()
-        call.close()
 
     def countChildTitle(self, userid, parentid, title):
         count = 1
@@ -404,16 +402,18 @@ class DataBase(unohelper.Base,
     # Identifier inserting procedure
     def insertIdentifier(self, enumerator, userid):
         result = []
-        insert = self._getCall('insertIdentifier')
+        insert = self._getCall('insertNewIdentifier')
         insert.setString(1, userid)
         while enumerator.hasMoreElements():
             item = enumerator.nextElement()
             self._doInsert(insert, item)
-        insert.executeBatch()
+        if enumerator.RowCount > 0:
+            insert.executeBatch()
         insert.close()
 
     def _doInsert(self, insert, identifier):
         insert.setString(2, identifier)
+        print("DataBase._doInsert() %s" % identifier)
         insert.addBatch()
 
     # First pull procedure: header of merge request
@@ -431,10 +431,9 @@ class DataBase(unohelper.Base,
         call.addBatch()
         return row
 
-    def updateUserTimeStamp(self, userid, timestamp):
+    def updateUserTimeStamp(self, timestamp):
         call = self._getCall('updateUserTimeStamp')
         call.setTimestamp(1, timestamp)
-        call.setString(2, userid)
         call.executeUpdate()
         call.close()
 
@@ -447,10 +446,15 @@ class DataBase(unohelper.Base,
         select.close()
         return timestamp
 
-    # Procedure to retrieve all the UPDATE in the 'Capabilities' table
-    def getUpdatedItems(self, userid, start, end):
+    def setSession(self, user=g_dba):
+        query = getSqlQuery('setSession', user)
+        print("DataBase.setSession() %s" % query)
+        self._statement.execute(query)
+
+    # Procedure to retrieve all the UPDATE AND INSERT in the 'Capabilities' table
+    def getSynchronizeItems(self, start, end):
         items = []
-        select = self._getCall('getUpdatedItems')
+        select = self._getCall('getSyncItems')
         select.setTimestamp(1, end)
         select.setTimestamp(2, start)
         select.setTimestamp(3, end)
@@ -458,39 +462,13 @@ class DataBase(unohelper.Base,
         select.setTimestamp(5, end)
         select.setTimestamp(6, start)
         select.setTimestamp(7, end)
-        select.setString(8, userid)
+        select.setTimestamp(8, end)
+        select.setTimestamp(9, start)
         result = select.executeQuery()
         while result.next():
             items.append(getKeyMapFromResult(result))
         select.close()
         return items
-
-    # Procedure to retrieve all the INSERT in the 'Capabilities' table
-    def getInsertedItems(self, userid, start, end):
-        items = []
-        select = self._getCall('getInsertedItems')
-        select.setTimestamp(1, end)
-        select.setTimestamp(2, start)
-        select.setString(3, userid)
-        result = select.executeQuery()
-        while result.next():
-            items.append(getKeyMapFromResult(result))
-        select.close()
-        return items
-
-    # Procedure to retrieve all the DELETE in the 'Capabilities' table
-    def getDeletedItems(self, userid, start, end):
-        items = []
-        select = self._getCall('getDeletedItems')
-        select.setTimestamp(1, start)
-        select.setTimestamp(2, end)
-        #select.setString(3, userid)
-        result = select.executeQuery()
-        while result.next():
-            items.append(getKeyMapFromResult(result))
-        select.close()
-        msg = "getDeletedItems to Sync: %s" % (len(items), )
-        print(msg)
 
 # Procedures called internally
     def _mergeItem(self, call, provider, item, id, parents, separator, timestamp):

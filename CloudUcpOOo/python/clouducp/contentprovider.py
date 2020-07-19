@@ -24,6 +24,7 @@ try:
     from .datasource import DataSource
     from .user import User
     from .identifier import Identifier
+
     from .logger import logMessage
     from .logger import getMessage
 
@@ -97,14 +98,15 @@ class ContentProvider(unohelper.Base,
         url = identifier.getContentIdentifier()
         print("ContentProvider.queryContent() 1 %s" % url)
         if not identifier.isValid():
-            print("ContentProvider.queryContent() ERROR %s - %s" % (url, self._error))
+            print("ContentProvider.queryContent() 2 ERROR %s - %s" % (url, self._error))
             logMessage(self.ctx, SEVERE, msg, 'ContentProvider', 'queryContent()')
             raise IllegalIdentifierException(self._error, identifier)
+        print("ContentProvider.queryContent() 3")
         content = identifier.getContent()
         self._currentUserName = identifier.User.Name
         msg = "Identitifer: %s ... Done" % url
         logMessage(self.ctx, INFO, msg, 'ContentProvider', 'queryContent()')
-        print("ContentProvider.queryContent() 2")
+        print("ContentProvider.queryContent() 4")
         return content
 
     def compareContentIds(self, id1, id2):

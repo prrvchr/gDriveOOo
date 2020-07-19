@@ -200,7 +200,7 @@ class ProviderBase(ProviderObject,
 
     def getIdentifier(self, request, user):
         parameter = self.getRequestParameter('getNewIdentifier', user)
-        return request.getEnumerator(parameter)
+        return request.getIterator(parameter, None)
     def getUser(self, request, name):
         data = KeyMap()
         data.insertValue('Id', name)
@@ -236,13 +236,19 @@ class ProviderBase(ProviderObject,
         response = request.execute(parameter)
         if response.IsPresent:
             parameter = self.getRequestParameter('getUploadStream', response.Value)
-            return None if uploader.start(item, parameter) else False
+            return True if uploader.start(item, parameter) else False
         return False
 
     def updateTitle(self, request, item):
         parameter = self.getRequestParameter('updateTitle', item)
-        return request.execute(parameter)
+        response = request.execute(parameter)
+        if response.IsPresent:
+            return True
+        return False
 
     def updateTrashed(self, request, item):
         parameter = self.getRequestParameter('updateTrashed', item)
-        return request.execute(parameter)
+        response = request.execute(parameter)
+        if response.IsPresent:
+            return True
+        return False

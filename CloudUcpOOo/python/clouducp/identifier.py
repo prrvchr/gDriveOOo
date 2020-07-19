@@ -14,24 +14,15 @@ from com.sun.star.ucb import IllegalIdentifierException
 from com.sun.star.logging.LogLevel import INFO
 from com.sun.star.logging.LogLevel import SEVERE
 
-from com.sun.star.beans.PropertyAttribute import BOUND
-from com.sun.star.beans.PropertyAttribute import CONSTRAINED
-from com.sun.star.beans.PropertyAttribute import READONLY
-from com.sun.star.beans.PropertyAttribute import TRANSIENT
-
 from com.sun.star.ucb.ConnectionMode import OFFLINE
 from com.sun.star.ucb.ConnectionMode import ONLINE
 
 from unolib import KeyMap
-from unolib import createService
-from unolib import getUserNameFromHandler
-from unolib import getProperty
-from unolib import getResourceLocation
 from unolib import parseDateTime
 
+from .content import Content
 from .contenttools import getUri
 from .contenttools import getUrl
-from .content import Content
 from .logger import logMessage
 
 import binascii
@@ -68,7 +59,7 @@ class Identifier(unohelper.Base,
     def isRoot(self):
         return self.Id == self.User.RootId
     def isValid(self):
-        return self.Id is not None
+        return self.User.isValid() and self.Id is not None
 
     # XContentIdentifier
     def getContentIdentifier(self):
@@ -93,11 +84,12 @@ class Identifier(unohelper.Base,
         return identifier
 
     def getContent(self):
+        print("Identifier.getContent() 1")
         if self.isNew():
             data = self._getNewContent()
         else:
             data = self.User.DataBase.getItem(self.User.Id, self.Id)
-            print("Identifier.getContent() %s" % data)
+            print("Identifier.getContent()  2 %s" % data)
             #if data is None and self.User.Provider.isOnLine():
             #    data = self.User.Provider.getItem(self.User.Request, self.MetaData)
             #    if data.IsPresent:
@@ -106,7 +98,7 @@ class Identifier(unohelper.Base,
             msg = "Error: can't retreive Identifier"
             raise IllegalIdentifierException(msg, self)
         content = Content(self.ctx, self, data)
-        print("Identifier.getContent() OK")
+        print("Identifier.getContent() 3 OK")
         return content
 
     def getFolderContent(self, content):
@@ -152,7 +144,7 @@ class Identifier(unohelper.Base,
         return url, size
 
     def insertNewContent(self, content):
-        print("Identifier.insertNewContent() 1")
+        print("Identifier.insertNewContent() %s - %s" % (content.getValue('Title'), self.ParentId))
         timestamp = parseDateTime()
         return self.User.DataBase.insertNewContent(self.User.Id, self.Id, self.ParentId, content, timestamp)
 
@@ -183,12 +175,15 @@ class Identifier(unohelper.Base,
             # New Identifier are created by the parent folder...
             identifier.setValue('Id', self._getNewIdentifier())
             identifier.setValue('ParentId', itemid)
+            baseuri = self._uri.getUriReference()
         else:
             identifier.setValue('Id', itemid)
             identifier.setValue('ParentId', parentid)
-        baseuri = '%s://%s/%s' % (self._uri.getScheme(), self._uri.getAuthority(), path)
+            baseuri = '%s://%s/%s' % (self._uri.getScheme(), self._uri.getAuthority(), path)
         identifier.setValue('BaseURI', baseuri)
-        print("Identifier._getIdentifier() %s - %s - %s" % (itemid, parentid, baseuri))
+        print("Identifier._getIdentifier() %s - %s - %s" % (identifier.getValue('Id'),
+                                                            identifier.getValue('ParentId'),
+                                                            identifier.getValue('BaseURI')))
         return identifier
 
     def _getNewIdentifier(self):

@@ -185,7 +185,7 @@ class Provider(ProviderBase):
         elif method == 'createNewFolder':
             parameter.Method = 'POST'
             parameter.Url = '%s/files' % self.BaseUrl
-            parameter.Json = '{"id": "%s", "parents": "%s", "name": "%s", "mimeType": "%s"}' % \
+            parameter.Json = '{"id": "%s", "parents": ["%s"], "name": "%s", "mimeType": "%s"}' % \
                                 (data.getValue('Id'), data.getValue('ParentId'),
                                  data.getValue('Title'), data.getValue('MediaType'))
         elif method == 'getUploadLocation':
@@ -194,11 +194,10 @@ class Provider(ProviderBase):
             parameter.Query = '{"uploadType": "resumable"}'
             parameter.Header = '{"X-Upload-Content-Type": "%s"}' % data.getValue('MediaType')
         elif method == 'getNewUploadLocation':
-            mimetype = None if data.getValue('Size') else data.getValue('MediaType')
             parameter.Method = 'POST'
             parameter.Url = self.UploadUrl
             parameter.Query = '{"uploadType": "resumable"}'
-            parameter.Json = '{"id": "%s", "parents": "%s", "name": "%s", "mimeType": "%s"}' % \
+            parameter.Json = '{"id": "%s", "parents": ["%s"], "name": "%s", "mimeType": "%s"}' % \
                                 (data.getValue('Id'), data.getValue('ParentId'),
                                  data.getValue('Title'), data.getValue('MediaType'))
             parameter.Header = '{"X-Upload-Content-Type": "%s"}' % data.getValue('MediaType')

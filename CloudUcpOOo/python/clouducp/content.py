@@ -4,10 +4,7 @@
 import uno
 import unohelper
 
-from com.sun.star.uno import XInterface
-from com.sun.star.uno import RuntimeException as UnoRuntimeException
 from com.sun.star.container import XChild
-from com.sun.star.lang import XComponent
 from com.sun.star.lang import NoSupportException
 from com.sun.star.ucb import XContent
 from com.sun.star.ucb import XCommandProcessor2
@@ -15,15 +12,19 @@ from com.sun.star.ucb import XContentCreator
 from com.sun.star.ucb import InteractiveBadTransferURLException
 from com.sun.star.ucb import CommandAbortedException
 from com.sun.star.beans import XPropertiesChangeNotifier
+
 from com.sun.star.beans.PropertyAttribute import BOUND
 from com.sun.star.beans.PropertyAttribute import CONSTRAINED
 from com.sun.star.beans.PropertyAttribute import READONLY
 from com.sun.star.beans.PropertyAttribute import TRANSIENT
+
 from com.sun.star.ucb.ContentInfoAttribute import KIND_DOCUMENT
 from com.sun.star.ucb.ContentInfoAttribute import KIND_FOLDER
 from com.sun.star.ucb.ContentInfoAttribute import KIND_LINK
+
 from com.sun.star.ucb.ContentAction import INSERTED
 from com.sun.star.ucb.ContentAction import EXCHANGED
+
 from com.sun.star.logging.LogLevel import INFO
 from com.sun.star.logging.LogLevel import SEVERE
 
@@ -31,7 +32,6 @@ from com.sun.star.ucb import XRestContent
 
 from unolib import getSimpleFile
 from unolib import getProperty
-from unolib import getPropertyValueSet
 from unolib import PropertySetInfo
 from unolib import getInterfaceTypes
 
@@ -44,10 +44,8 @@ from .contentcore import setPropertiesValues
 
 from .contenttools import getCommandInfo
 from .contenttools import getContentInfo
-from .contenttools import getUcb
-from .contenttools import getUcp
-from .contenttools import getUri
 from .contenttools import getMimeType
+
 from .logger import logMessage
 
 import traceback
@@ -94,12 +92,6 @@ class Content(unohelper.Base,
     def setParent(self, parent):
         raise NoSupportException('Parent can not be set', self)
 
-
-
-
-
-
-
     # XPropertiesChangeNotifier
     def addPropertiesChangeListener(self, names, listener):
         for name in names:
@@ -122,7 +114,7 @@ class Content(unohelper.Base,
         # Identifier.createNewIdentifier() since the identifier also creates Content
         # with Identifier.getContent()
         identifier = self.Identifier.createNewIdentifier(info.Type)
-        print("Content.createNewContent() New Id: %s" % identifier.Id)
+        print("Content.createNewContent() Folder: %s create New Id: %s" % (self.MetaData.getValue('Title'), identifier.Id))
         return identifier.getContent()
 
     # XContent
@@ -186,7 +178,9 @@ class Content(unohelper.Base,
                 # The Insert command is only used to create a new folder or a new document
                 # (ie: File Save As).
                 # It saves the content created by 'createNewContent' from the parent folder
-                print("Content.execute() insert 1 - %s - %s" % (self.IsFolder, self.Identifier.Id))
+                print("Content.execute() insert 1 - %s - %s - %s" % (self.IsFolder,
+                                                                     self.Identifier.Id,
+                                                                     self.MetaData.getValue('Title')))
                 if self.IsFolder:
                     mediatype = self.Identifier.User.Provider.Folder
                     self.MetaData.insertValue('MediaType', mediatype)
@@ -227,28 +221,28 @@ class Content(unohelper.Base,
                 move = command.Argument.MoveData
                 clash = command.Argument.NameClash
                 print("Content.execute() transfert 1 %s - %s -%s - %s" % (title, source, move, clash))
-                # We check if 'NewTitle' is a child of this folder by recovering its id
+                # We check if 'NewTitle' is a child of this folder by recovering its ItemId
                 user = self.Identifier.User
-                id = self.Identifier.User.DataBase.getChildId(user.Id, self.Identifier.Id, title)
-                if id is None:
-                    print("Content.execute() transfert 2 %s" % id)
-                    # Id could not be found: 'NewTitle' does not exist in the folder...
+                itemid = user.DataBase.getChildId(user.Id, self.Identifier.Id, title)
+                if itemid is None:
+                    print("Content.execute() transfert 2 %s" % itemid)
+                    # ItemId could not be found: 'NewTitle' does not exist in the folder...
                     # For new document (File Save As) we use commands:
                     # - createNewContent: for creating an empty new Content
                     # - Insert at new Content for committing change
                     # To execute these commands, we must throw an exception
                     msg = "Couln't handle Url: %s" % source
                     raise InteractiveBadTransferURLException(msg, self)
-                print("Content.execute() transfert 3 %s" % id)
+                print("Content.execute() transfert 3 %s - %s" % (itemid, source))
                 sf = getSimpleFile(self.ctx)
                 if not sf.exists(source):
                     raise CommandAbortedException("Error while saving file: %s" % source, self)
                 inputstream = sf.openFileRead(source)
-                target = '%s/%s' % (self.Identifier.User.Provider.SourceURL, id)
+                target = '%s/%s' % (user.Provider.SourceURL, itemid)
                 sf.writeFile(target, inputstream)
                 inputstream.closeInput()
                 # We need to update the Size
-                user.DataBase.updateContent(user.Id, self.Identifier.Id, 'Size', sf.getSize(target))
+                user.DataBase.updateContent(user.Id, itemid, 'Size', sf.getSize(target))
                 if move:
                     pass #must delete object
             elif command.Name == 'flush' and self.IsFolder:

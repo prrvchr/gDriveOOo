@@ -159,22 +159,20 @@ def getStaticTables():
 
 def getQueries():
     return (('createRole',{'Role': g_role}),
-            ('grantPrivilege',{'Privilege':'SELECT','Table': 'Users', 'Role': g_role}),
-            ('grantPrivilege',{'Privilege':'SELECT,DELETE','Table': 'Identifiers', 'Role': g_role}),
+            ('grantPrivilege',{'Privilege':'SELECT,UPDATE','Table': 'Users', 'Role': g_role}),
+            ('grantPrivilege',{'Privilege':'SELECT,INSERT,DELETE','Table': 'Identifiers', 'Role': g_role}),
             ('grantPrivilege',{'Privilege':'SELECT,INSERT,UPDATE,DELETE','Table': 'Items', 'Role': g_role}),
             ('grantPrivilege',{'Privilege':'SELECT,INSERT,UPDATE,DELETE','Table': 'Parents', 'Role': g_role}),
             ('grantPrivilege',{'Privilege':'SELECT,INSERT,UPDATE,DELETE','Table': 'Capabilities', 'Role': g_role}),
 
             ('createItemView',{'Role': g_role}),
             ('createChildView',{'Role': g_role}),
-            ('createSyncView',{}),
             ('createTwinView',{'Role': g_role}),
             ('createUriView',{'Role': g_role}),
             ('createTileView',{'Role': g_role}),
             ('createChildrenView',{'Role': g_role}),
 
             ('createGetIdentifier',{'Role': g_role}),
-
             ('createMergeItem',{'Role': g_role}),
             ('createInsertItem',{'Role': g_role}),
             ('createInsertAndSelectItem',{'Role': g_role}))

@@ -17,8 +17,4 @@ Column|Name
 15|CanRename
 16|IsReadOnly
 17|IsVersionable
-18|Id
-19|SyncId
-20|ParentId
-21|SyncMode
-22|TimeStamp
+18|TimeStamp

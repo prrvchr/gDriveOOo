@@ -4,25 +4,18 @@
 import uno
 import unohelper
 
-from com.sun.star.uno import XInterface
 from com.sun.star.lang import XServiceInfo
-from com.sun.star.lang import XInitialization
 from com.sun.star.ucb import XContentIdentifierFactory
 from com.sun.star.ucb import XContentProvider
 from com.sun.star.ucb import XContentProviderFactory
 from com.sun.star.ucb import XContentProviderSupplier
 from com.sun.star.ucb import XParameterizedContentProvider
-from com.sun.star.beans.PropertyAttribute import BOUND
-from com.sun.star.beans.PropertyAttribute import READONLY
+
 from com.sun.star.logging.LogLevel import INFO
 from com.sun.star.logging.LogLevel import SEVERE
 
-from unolib import PropertySet
-from unolib import getProperty
-
 from gdrive import logMessage
 from gdrive import ContentProvider
-from gdrive import getUcp
 from gdrive import g_scheme
 from gdrive import g_identifier
 

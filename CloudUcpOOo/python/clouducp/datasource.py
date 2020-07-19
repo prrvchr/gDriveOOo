@@ -4,52 +4,27 @@
 import uno
 import unohelper
 
-from com.sun.star.lang import XEventListener
 from com.sun.star.util import XCloseListener
 
 from com.sun.star.logging.LogLevel import INFO
 from com.sun.star.logging.LogLevel import SEVERE
-from com.sun.star.sdb.CommandType import QUERY
-from com.sun.star.ucb import XRestDataSource
-from com.sun.star.ucb.ConnectionMode import ONLINE
-from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_RETRIEVED
-from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_CREATED
-from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_FOLDER
-from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_FILE
-from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_RENAMED
-from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_REWRITED
-from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_TRASHED
 
-from unolib import KeyMap
+from com.sun.star.ucb import XRestDataSource
+
 from unolib import g_oauth2
 from unolib import createService
-from unolib import parseDateTime
-from unolib import getResourceLocation
-from unolib import getSimpleFile
 
-from .configuration import g_admin
+from .dbtools import getDataSource
+
 from .user import User
 from .replicator import Replicator
 from .database import DataBase
 
-from .dbqueries import getSqlQuery
-
-from .dbconfig import g_path
-
-from .dbtools import getDataSource
-from .dbtools import getDataBaseConnection
-from .dbtools import getDataSourceConnection
-from .dbtools import getKeyMapFromResult
-from .dbtools import getSequenceFromResult
-from .dbtools import getSqlException
-
 from .logger import logMessage
 from .logger import getMessage
 
-import binascii
 import traceback
 
-from threading import Event
 
 class DataSource(unohelper.Base,
                  XRestDataSource,
@@ -90,12 +65,13 @@ class DataSource(unohelper.Base,
     # XCloseListener
     def queryClosing(self, source, ownership):
         print("DataSource.queryClosing() 1")
+        compact= self.replicator.fullPull
         if self.replicator.is_alive():
             self.replicator.cancel()
             print("DataSource.queryClosing() 2")
             self.replicator.join()
         #self.deregisterInstance(self.Scheme, self.Plugin)
-        self.DataBase.shutdownDataBase()
+        self.DataBase.shutdownDataBase(compact)
         msg = "DataSource queryClosing: Scheme: %s ... Done" % self.scheme
         logMessage(self.ctx, INFO, msg, 'DataSource', 'queryClosing()')
         print("DataSource.queryClosing() 3 OK")

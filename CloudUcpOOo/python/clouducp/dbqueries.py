@@ -192,42 +192,6 @@ def getSqlQuery(name, format=None):
         p = (','.join(c), ','.join(s), ' '.join(f))
         query = 'CREATE VIEW "Child" (%s) AS SELECT %s FROM %s;' % p
         query += 'GRANT SELECT ON "Child" TO "%(Role)s";' % format
-    elif name == 'createSyncView':
-        c1 = '"SyncId"'
-        c2 = '"UserId"'
-        c3 = '"Id"'
-        c4 = '"ParentId"'
-        c5 = '"Title"'
-        c6 = '"DateCreated"'
-        c7 = '"DateModified"'
-        c8 = '"MediaType"'
-        c9 = '"IsFolder"'
-        c10 = '"Size"'
-        c11 = '"Trashed"'
-        c12 = '"Mode"'
-        c13 = '"IsRoot"'
-        c14 = '"AtRoot"'
-        c = (c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13,c14)
-        s1 = '"S"."SyncId"'
-        s2 = '"S"."UserId"'
-        s3 = '"S"."ItemId"'
-        s4 = '"S"."ParentId"'
-        s5 = '"I"."Title"'
-        s6 = '"I"."DateCreated"'
-        s7 = '"I"."DateModified"'
-        s8 = '"I"."MediaType"'
-        s9 = '"I"."IsFolder"'
-        s10 = '"I"."Size"'
-        s11 = '"I"."Trashed"'
-        s12 = '"S"."SyncMode"'
-        s13 = '"I"."IsRoot"'
-        s14 = '"S"."ParentId"="I"."RootId"'
-        s = (s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12,s13,s14)
-        f1 = '"Synchronizes" AS "S"'
-        f2 = 'JOIN "Item" AS "I" ON "S"."ItemId"="I"."ItemId" AND "S"."UserId"="I"."UserId"'
-        f = (f1,f2)
-        p = (','.join(c), ','.join(s), ' '.join(f))
-        query = 'CREATE VIEW "Sync" (%s) AS SELECT %s FROM %s;' % p
     elif name == 'createTwinView':
         c1 = '"Idx"'
         c2 = '"ParentId"'
@@ -335,6 +299,9 @@ def getSqlQuery(name, format=None):
     elif name == 'grantPrivilege':
         query = 'GRANT %(Privilege)s ON TABLE "%(Table)s" TO "%(Role)s";' % format
 
+    elif name == 'setSession':
+        query = "SET SESSION AUTHORIZATION '%s'" % format
+
 # Select Queries
     elif name == 'getTableName':
         query = 'SELECT "Name" FROM "Tables" ORDER BY "Table";'
@@ -427,116 +394,114 @@ def getSqlQuery(name, format=None):
     elif name == 'getChildId':
         w = '"UserId" = ? AND "ParentId" = ? AND "Uri" = ?'
         query = 'SELECT "ItemId" FROM "Children" WHERE %s;' % w
-
-
     elif name == 'getNewIdentifier':
-        query = 'SELECT "Id" FROM "Identifiers" WHERE "UserId" = ? ORDER BY "TimeStamp" LIMIT 1;'
+        query = 'SELECT "ItemId" FROM "Identifiers" WHERE "UserId" = ? ORDER BY "TimeStamp","ItemId" LIMIT 1;'
     elif name == 'countNewIdentifier':
-        query = 'SELECT COUNT( "Id" ) "Id" FROM "Identifiers" WHERE "UserId" = ?;'
+        query = 'SELECT COUNT("ItemId") "Ids" FROM "Identifiers" WHERE "UserId" = ?;'
     elif name == 'countChildTitle':
         w = '"UserId" = ? AND "ParentId" = ? AND "Title" = ?'
-        query = 'SELECT COUNT( "Title" ) FROM "Child" WHERE %s;' % w
-    elif name == 'isChildId':
-        c = 'CAST(COUNT(1) AS "BOOLEAN") "IsChild"'
-        w = '"UserId" = ? AND "ChildId" = ? AND "ItemId" = ?'
-        query = 'SELECT %s FROM "Parents" WHERE %s;' % (c, w)
-    elif name == 'isIdentifier':
-        c = 'CAST(COUNT(1) AS "BOOLEAN") "IsIdentifier"'
-        query = 'SELECT %s FROM "Items" WHERE "ItemId" = ?;' % c
-    elif name == 'getItemToSync':
-        query = 'SELECT * FROM "Sync" WHERE "UserId" = ? ORDER BY "SyncId";'
+        query = 'SELECT COUNT("Title") FROM "Child" WHERE %s;' % w
     elif name == 'getToken':
         query = 'SELECT "Token" FROM "Users" WHERE "UserId" = ?;'
 
 # System Time Period Select Queries
-    elif name == 'getUpdatedItems':
-        c0 = '"Items"."ItemId"'
-        c1 = '"Items"."ItemId" "Id"'
-        c2 = '"Items"."Title"'
-        c3 = '"Items"."DateCreated"'
-        c4 = '"Items"."DateModified"'
-        c5 = '"Items"."MediaType"'
-        c6 = '"Items"."Size"'
-        c7 = '"Items"."Trashed"'
-        c8 = 'ANY("Items"."Title" <> "Before"."Title") "TitleUpdated"'
-        c9 = 'ANY("Items"."Size" <>  "Before"."Size") "SizeUpdated"'
-        c10 = 'ANY("Items"."Trashed" <>  "Before"."Trashed") "TrashedUpdated"'
-        c11 = 'GROUP_CONCAT("Parents"."ItemId") "ParentId"'
-        columns = ','.join((c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11))
-        groups = ','.join((c0,c2,c3,c4,c5,c6,c7))
+    elif name == 'getSyncItems':
+        c0 = '"ParentId"'
+        c1 = '"UserName"'
+        c2 = '"Id"'
+        c3 = '"Title"'
+        c4 = '"DateCreated"'
+        c5 = '"DateModified"'
+        c6 = '"MediaType"'
+        c7 = '"Size"'
+        c8 = '"Trashed"'
+        c9 = 'GROUP_CONCAT(%s SEPARATOR \'","\') %s' % (c0, c0)
+        c10 = '"TimeStamp"'
+        c11 = '"Inserted"'
+        c12 = '"TitleUpdated"'
+        c13 = '"SizeUpdated"'
+        c14 = '"TrashedUpdated"'
+        c101 = '"Users".%s %s' % (c1, c1)
+        c102 = '"Items"."ItemId" %s' % c2
+        c103 = '"Items".%s' % c3
+        c104 = '"Items".%s' % c4
+        c105 = '"Items".%s' % c5
+        c106 = '"Items".%s' % c6
+        c107 = '"Items".%s' % c7
+        c108 = '"Items".%s' % c8
+        c109 = '"Parents"."ItemId" %s' % c0
+        c110 = '"Before".%s %s' % (c10, c10)
+        c111 = 'FALSE %s' % c11
+        c112 = '"Items".%s <> "Before".%s %s' % (c3, c3, c12)
+        c113 = '"Items".%s <>  "Before".%s %s' % (c7,c7, c13)
+        c114 = '"Items".%s <>  "Before".%s %s' % (c8, c8, c14)
+        c210 = '"Previous".%s %s' % (c10, c10)
+        c211 = 'TRUE %s' % c11
+        c212 = 'TRUE %s' % c12
+        c213 = 'TRUE %s' % c13
+        c214 = 'TRUE %s' % c14
+        columns0 = ','.join((c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13,c14))
+        columns1 = ','.join((c101,c102,c103,c104,c105,c106,c107,c108,c109,c110,c111,c112,c113,c114))
+        columns2 = ','.join((c101,c102,c103,c104,c105,c106,c107,c108,c109,c210,c211,c212,c213,c214))
+        groups = ','.join((c1,c2,c3,c4,c5,c6,c7,c8,c10,c11,c12,c13,c14))
         query = '''\
-SELECT %s FROM "Items"
+SELECT %s FROM
+((SELECT %s FROM "Items"
 INNER JOIN
 "Capabilities" FOR SYSTEM_TIME AS OF ? + SESSION_TIMEZONE() AS "Current"
 ON "Items"."ItemId" = "Current"."ItemId"
 INNER JOIN
 "Parents"
 ON "Current"."UserId" = "Parents"."UserId" AND "Current"."ItemId" = "Parents"."ChildId"
+INNER JOIN 
+"Users" 
+ON "Parents"."UserId" = "Users"."UserId" 
 INNER JOIN
 "Capabilities" FOR SYSTEM_TIME FROM ? + SESSION_TIMEZONE() TO ? + SESSION_TIMEZONE() AS "Previous"
 ON "Current"."UserId" = "Previous"."UserId" AND "Current"."ItemId" = "Previous"."ItemId"
 AND "Current"."RowStart" = "Previous"."RowEnd"
 LEFT JOIN
-"Items" FOR SYSTEM_TIME FROM ? + SESSION_TIMEZONE() TO ? + SESSION_TIMEZONE() AS "Afler"
-ON "Previous"."ItemId" = "Afler"."ItemId"
+"Items" FOR SYSTEM_TIME FROM ? + SESSION_TIMEZONE() TO ? + SESSION_TIMEZONE() AS "After"
+ON "Previous"."ItemId" = "After"."ItemId"
 LEFT JOIN
 "Items" FOR SYSTEM_TIME FROM ? + SESSION_TIMEZONE() TO ? + SESSION_TIMEZONE() AS "Before"
-ON "Afler"."ItemId" = "Before"."ItemId" AND "Afler"."RowStart" = "Before"."RowEnd"
-WHERE "Current"."UserId" = ?
-GROUP BY %s;''' % (columns, groups)
-
-    elif name == 'getInsertedItems':
-        c0 = '"Items"."ItemId"'
-        c1 = '"Items"."ItemId" "Id"'
-        c2 = '"Items"."Title"'
-        c3 = '"Items"."DateCreated"'
-        c4 = '"Items"."DateModified"'
-        c5 = '"Items"."MediaType"'
-        c6 = '"Items"."Size"'
-        c7 = '"Items"."Trashed"'
-        c8 = 'GROUP_CONCAT("Parents"."ItemId") "ParentId"'
-        columns = ','.join((c1,c2,c3,c4,c5,c6,c7,c8))
-        groups = ','.join((c0,c2,c3,c4,c5,c6,c7))
-        query = '''\
-SELECT %s FROM "Items"
+ON "After"."ItemId" = "Before"."ItemId" AND "After"."RowStart" = "Before"."RowEnd")
+UNION 
+(SELECT %s FROM "Items"
 INNER JOIN
 "Capabilities" FOR SYSTEM_TIME AS OF ? + SESSION_TIMEZONE() AS "Current"
 ON "Items"."ItemId" = "Current"."ItemId"
 INNER JOIN
 "Parents"
 ON "Current"."UserId" = "Parents"."UserId" AND "Current"."ItemId" = "Parents"."ChildId"
+INNER JOIN 
+"Users" 
+ON "Parents"."UserId" = "Users"."UserId" 
 LEFT JOIN
 "Capabilities" FOR SYSTEM_TIME AS OF ? + SESSION_TIMEZONE() AS "Previous"
 ON "Current"."UserId" = "Previous"."UserId" AND "Current"."ItemId" = "Previous"."ItemId"
-WHERE "Previous"."UserId" IS NULL AND "Previous"."ItemId" IS NULL
-AND "Current"."UserId" = ?
-GROUP BY %s;''' % (columns, groups)
-
-    elif name == 'getDeletedItems':
-        query = '''\
-SELECT "Previous"."ItemId" FROM "Capabilities" FOR SYSTEM_TIME AS OF ? + SESSION_TIMEZONE() "Previous"
-LEFT JOIN "Capabilities" FOR SYSTEM_TIME AS OF ? + SESSION_TIMEZONE() "Current"
-ON "Previous"."ItemId" = "Current"."ItemId"
-WHERE "Current"."ItemId" IS NULL;'''
+WHERE "Previous"."UserId" IS NULL AND "Previous"."ItemId" IS NULL))
+GROUP BY %s
+ORDER BY "TimeStamp";''' % (columns0, columns1, columns2, groups)
 
 # Insert Queries
     elif name == 'insertUser':
         c = '"UserName","DisplayName","RootId","TimeStamp","UserId"'
         query = 'INSERT INTO "Users" (%s) VALUES (?,?,?,?,?);' % c
-    elif name == 'insertIdentifier':
-        query = 'INSERT INTO "Identifiers"("UserId","Id")VALUES(?,?);'
+    elif name == 'insertNewIdentifier':
+        query = 'INSERT INTO "Identifiers"("UserId","ItemId")VALUES(?,?);'
 
 # Update Queries
     elif name == 'updateToken':
         query = 'UPDATE "Users" SET "Token"=? WHERE "UserId"=?;'
     elif name == 'updateUserTimeStamp':
-        query = 'UPDATE "Users" SET "TimeStamp"=? WHERE "UserId"=?;'
+        query = 'UPDATE "Users" SET "TimeStamp"=?;'
     elif name == 'updateTitle':
-        query = 'UPDATE "Items" SET "Title"=? WHERE "ItemId"=?;'
+        query = 'UPDATE "Items" SET "TimeStamp"=?, "Title"=? WHERE "ItemId"=?;'
     elif name == 'updateSize':
-        query = 'UPDATE "Items" SET "Size"=? WHERE "ItemId"=?;'
+        query = 'UPDATE "Items" SET "TimeStamp"=?, "Size"=? WHERE "ItemId"=?;'
     elif name == 'updateTrashed':
-        query = 'UPDATE "Items" SET "Trashed"=? WHERE "ItemId"=?;'
+        query = 'UPDATE "Items" SET "TimeStamp"=?, "Trashed"=? WHERE "ItemId"=?;'
     elif name == 'updateCapabilities':
         query = 'UPDATE "Capabilities" SET "TimeStamp"=? WHERE "UserId"=? AND "ItemId"=?;'
     elif name == 'updateLoaded':
@@ -546,7 +511,7 @@ WHERE "Current"."ItemId" IS NULL;'''
 
 # Delete Queries
     elif name == 'deleteNewIdentifier':
-        query = 'DELETE FROM "Identifiers" WHERE "UserId"=? AND "Id"=?;'
+        query = 'DELETE FROM "Identifiers" WHERE "UserId"=? AND "ItemId"=?;'
 
 # Create Procedure Query
     elif name == 'createGetIdentifier':
@@ -577,28 +542,25 @@ CREATE PROCEDURE "GetIdentifier"(IN "UserId" VARCHAR(100),
     ELSE
       SET "Parent" = "RootId";
       SET "ParentId" = "RootId";
-      WHILE "Index" <= "Length" DO
+      loop_label: WHILE "Index" <= "Length" DO
+        SET "Item" = NULL;
         SET "Item" = SELECT "ItemId" FROM "Children"
         WHERE "ParentId" = "Parent" AND "Uri" = "Paths"["Index"];
-        IF "Item" IS NULL THEN 
-          SET "Length" = 0;
+        IF "Item" IS NULL THEN
+          LEAVE loop_label;
         ELSE
+          IF "Index" = 1 AND "Length" > 1 THEN
+            SET "Uri" = "Paths"["Index"];
+          ELSEIF "Index" < "Length" THEN
+            SET "Uri" = "Uri" || "Separator" || "Paths"["Index"];
+          END IF;
           IF "Index" = "Length" - 1 THEN
             SET "ParentId" = "Item";
           END IF;
           SET "Parent" = "Item";
           SET "Index" = "Index" + 1;
         END IF;
-      END WHILE;
-      SET "Index" = 1;
-      WHILE "Index" < "Length" DO
-        IF "Index" = 1 THEN
-          SET "Uri" = "Paths"["Index"];
-        ELSE
-          SET "Uri" = "Uri" || "Separator" || "Paths"["Index"];
-        END IF;
-        SET "Index" = "Index" + 1;
-      END WHILE;
+      END WHILE loop_label;
     END IF;
     SET "ItemId" = "Item";
     SET "BaseUri" = "Uri";
