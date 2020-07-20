@@ -193,7 +193,8 @@ class Provider(ProviderBase):
         data = self.getToken(request, user)
         if data.IsPresent:
             token = self.getUserToken(data.Value)
-            database.updateToken(user, token)
+            if database.updateToken(user.getValue('UserId'), token):
+                user.setValue('Token', token)
 
     def createFile(self, request, uploader, item):
         return True
