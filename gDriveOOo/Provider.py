@@ -43,6 +43,7 @@ class Provider(ProviderBase):
         self.Folder = ''
         self.SourceURL = ''
         self._Error = ''
+        self._folders = []
 
     @property
     def Name(self):
