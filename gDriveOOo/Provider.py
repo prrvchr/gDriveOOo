@@ -210,8 +210,8 @@ class Provider(ProviderBase):
         return user.getValue('user').getValue('emailAddress')
     def getUserDisplayName(self, user):
         return user.getValue('user').getValue('displayName')
-    def getUserToken(self, keymap):
-        return keymap.getValue('startPageToken')
+    def getUserToken(self, data):
+        return data.getValue('startPageToken')
 
     def getItemParent(self, item, rootid):
         return item.getDefaultValue('parents', (rootid, ))
