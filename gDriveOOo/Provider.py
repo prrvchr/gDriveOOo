@@ -93,31 +93,15 @@ class Provider(ProviderBase):
             parameter.Method = 'GET'
             parameter.Url = '%s/about' % self.BaseUrl
             parameter.Query = '{"fields": "%s"}' % g_userfields
-        elif method == 'getRoot' :
-            parameter.Method = 'GET'
-            parameter.Url = '%s/files/root' % self.BaseUrl
-            parameter.Query = '{"fields": "%s"}' % g_itemfields
-        elif method == 'getToken':
-            parameter.Method = 'GET'
-            parameter.Url = '%s/changes/startPageToken' % self.BaseUrl
-        elif method == 'getChanges':
-            parameter.Method = 'GET'
-            parameter.Url = '%s/changes' % self.BaseUrl
-            parameter.Query = '{"pageToken": %s}' % data.getValue('Token')
-            token = uno.createUnoStruct('com.sun.star.auth.RestRequestToken')
-            token.Type = TOKEN_QUERY | TOKEN_SYNC
-            token.Field = 'nextPageToken'
-            token.Value = 'pageToken'
-            token.SyncField = 'newStartPageToken'
-            enumerator = uno.createUnoStruct('com.sun.star.auth.RestRequestEnumerator')
-            enumerator.Field = 'changes'
-            enumerator.Token = token
-            parameter.Enumerator = enumerator
         elif method == 'getItem':
             parameter.Method = 'GET'
             parameter.Url = '%s/files/%s' % (self.BaseUrl, data.getValue('Id'))
             parameter.Query = '{"fields": "%s"}' % g_itemfields
-        elif method == 'getDriveContent':
+        elif method == 'getRoot' :
+            parameter.Method = 'GET'
+            parameter.Url = '%s/files/root' % self.BaseUrl
+            parameter.Query = '{"fields": "%s"}' % g_itemfields
+        elif method == 'getFirstPull':
             parameter.Method = 'GET'
             parameter.Url = '%s/files' % self.BaseUrl
             query = ['"orderBy": "folder,createdTime"']
@@ -130,6 +114,22 @@ class Provider(ProviderBase):
             token.Value = 'pageToken'
             enumerator = uno.createUnoStruct('com.sun.star.auth.RestRequestEnumerator')
             enumerator.Field = 'files'
+            enumerator.Token = token
+            parameter.Enumerator = enumerator
+        elif method == 'getToken':
+            parameter.Method = 'GET'
+            parameter.Url = '%s/changes/startPageToken' % self.BaseUrl
+        elif method == 'getPull':
+            parameter.Method = 'GET'
+            parameter.Url = '%s/changes' % self.BaseUrl
+            parameter.Query = '{"pageToken": %s}' % data.getValue('Token')
+            token = uno.createUnoStruct('com.sun.star.auth.RestRequestToken')
+            token.Type = TOKEN_QUERY | TOKEN_SYNC
+            token.Field = 'nextPageToken'
+            token.Value = 'pageToken'
+            token.SyncField = 'newStartPageToken'
+            enumerator = uno.createUnoStruct('com.sun.star.auth.RestRequestEnumerator')
+            enumerator.Field = 'changes'
             enumerator.Token = token
             parameter.Enumerator = enumerator
         elif method == 'getFolderContent':
