@@ -2,6 +2,33 @@
 
 ## gDriveOOo v.0.0.5
 
+### What has been done for version 0.0.5
+
+- Integration and use of the new Hsqldb v2.5.1 system versioning.
+
+- Writing of a new [Replicator interface](https://github.com/prrvchr/gDriveOOo/blob/master/CloudUcpOOo/python/clouducp/replicator.py), launched in the background (python Thread) responsible for:
+
+    - Perform the necessary procedures when creating a new user (initial Pull).
+
+    - Carry out pulls regularly (every ten minutes) in order to synchronize any external changes (Pull all changes).
+
+    - Replicating all the changes made to the hsqldb 2.5.1 database using system versioning (Push all changes).
+
+- Writing of a new [DataBase interface](https://github.com/prrvchr/gDriveOOo/blob/master/CloudUcpOOo/python/clouducp/database.py), responsible for making all calls to the database.
+
+- Setting up a cache on the Identifiers allowing access to a Content (file or folder) without access to the database for subsequent calls.
+
+- Many other fix...
+
+
+### What remains to be done for version 0.0.5
+
+- Write the implementation Pull Change in the new [Replicator interface](https://github.com/prrvchr/gDriveOOo/blob/master/CloudUcpOOo/python/clouducp/replicator.py)
+
+- Add new language for internationalization...
+
+- Anything welcome...
+
 
 ### Google Drive implementation for LibreOffice / OpenOffice.
 
