@@ -37,20 +37,20 @@
 
 ### Use:
 
-#### Install [OAuth2OOo](https://github.com/prrvchr/OAuth2OOo/raw/master/OAuth2OOo.oxt) extention v 0.0.4.
+#### Install [OAuth2OOo](https://github.com/prrvchr/OAuth2OOo/raw/master/OAuth2OOo.oxt) extention v 0.0.5.
 
 You must install this extention first!!!
 
 Restart LibreOffice / OpenOffice after installation.
 
-#### Install [gDriveOOo](https://github.com/prrvchr/gDriveOOo/raw/master/gDriveOOo.oxt) extention v 0.0.4.
+#### Install [gDriveOOo](https://github.com/prrvchr/gDriveOOo/raw/master/gDriveOOo.oxt) extention v 0.0.5.
 
 Restart LibreOffice / OpenOffice after installation.
 
 
 ### Requirement:
 
-gDriveOOo uses a local Hsqldb database of version 2.5.x.  
+gDriveOOo uses a local Hsqldb database of version 2.5.1.  
 The use of Hsqldb requires the installation and configuration within LibreOffice / OpenOffice  
 of a **JRE version 1.8 minimum** (ie: Java version 8)
 
