@@ -20,7 +20,6 @@
 
 - Many other fix...
 
-
 ### What remains to be done for version 0.0.5
 
 - Write the implementation Pull Change in the new [Replicator interface](https://github.com/prrvchr/gDriveOOo/blob/master/CloudUcpOOo/python/clouducp/replicator.py)
@@ -29,11 +28,9 @@
 
 - Anything welcome...
 
-
 ### Google Drive implementation for LibreOffice / OpenOffice.
 
 ![gDriveOOo screenshot](gDrive.png)
-
 
 ### Use:
 
@@ -47,17 +44,15 @@ Restart LibreOffice / OpenOffice after installation.
 
 Restart LibreOffice / OpenOffice after installation.
 
-
 ### Requirement:
 
 gDriveOOo uses a local Hsqldb database of version 2.5.1.  
-The use of Hsqldb requires the installation and configuration within LibreOffice / OpenOffice  
-of a **JRE version 1.8 minimum** (ie: Java version 8)
+The use of Hsqldb requires the installation and configuration within  
+LibreOffice / OpenOffice of a **JRE version 1.8 minimum** (ie: Java version 8)
 
 Sometimes it may be necessary for LibreOffice users must have no Hsqldb driver installed with LibreOffice  
 (check your Installed Application under Windows or your Packet Manager under Linux)  
 OpenOffice doesn't seem to need this workaround.
-
 
 ### Configure LibreOffice Open / Save dialogs:
 
@@ -73,7 +68,6 @@ Search for: UseSystemFileDialog (Found under: org.openoffice.Office.Common > Mis
 
 Edit or change "true" to "false" (set it to "false")
 
-
 ### Open your Google Drive:
 
 In File - Open - File name enter: vnd.google-apps://your_account/ or vnd.google-apps:///
@@ -82,12 +76,15 @@ If you don't give your_account, you will be asked for...
 
 After authorizing the OAuthOOo application to access your Drive, your Google Drive should open!!! normally  ;-)
 
-
 ### Has been tested with:
 
-* LibreOffice 6.0.4.2 - Ubuntu 17.10 -  LxQt 0.11.1
+* LibreOffice 6.4.4.2 - Ubuntu 20.04 -  LxQt 0.14.1
 
-* OpenOffice 4.1.5 x86_64 - Ubuntu 17.10 - LxQt 0.11.1
+* LibreOffice 7.0.0.0.alpha1 - Ubuntu 20.04 -  LxQt 0.14.1
+
+* OpenOffice 4.1.5 x86_64 - Ubuntu 20.04 - LxQt 0.14.1
+
+* OpenOffice 4.2.0.Build:9820 x86_64 - Ubuntu 20.04 - LxQt 0.14.1
 
 I encourage you in case of problem :-(  
 to create an [issue](https://github.com/prrvchr/gDriveOOo/issues/new)  
