@@ -34,6 +34,7 @@ class ContentProviderProxy(unohelper.Base,
                            XContentProviderSupplier):
 
     _Provider = None
+    _IsRegistred = False
 
     @property
     def IsLoaded(self):

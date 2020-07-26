@@ -196,9 +196,6 @@ class Provider(ProviderBase):
             if database.updateToken(user.getValue('UserId'), token):
                 user.setValue('Token', token)
 
-    def createFile(self, request, uploader, item):
-        return True
-
     def transform(self, name, value):
         if name == 'ParentId':
             value = [value]
