@@ -12,7 +12,7 @@
 
     - Carry out pulls regularly (every ten minutes) in order to synchronize any external changes (Pull all changes).
 
-    - Replicating all the changes made to the hsqldb 2.5.1 database using system versioning (Push all changes).
+    - Replicate on demand all changes to the hsqldb 2.5.1 database using system versioning (Push all changes).
 
 - Writing of a new [DataBase interface](https://github.com/prrvchr/gDriveOOo/blob/master/CloudUcpOOo/python/clouducp/database.py), responsible for making all calls to the database.
 
