@@ -18,7 +18,8 @@
 
 - Setting up a cache on the Identifiers, see method: [getIdentifier()](https://github.com/prrvchr/gDriveOOo/blob/master/CloudUcpOOo/python/clouducp/datasource.py), allowing access to a Content (file or folder) without access to the database for subsequent calls.
 
-- Management of duplicate file/folder names by [SQL Views](https://github.com/prrvchr/gDriveOOo/blob/master/CloudUcpOOo/python/clouducp/dbqueries.py): Child, Twin, Uri, and Title generating unique names if duplicates names exist.
+- Management of duplicate file/folder names by [SQL Views](https://github.com/prrvchr/gDriveOOo/blob/master/CloudUcpOOo/python/clouducp/dbqueries.py): Child, Twin, Uri, and Title generating unique names if duplicates names exist.  
+Although this functionality is only needed for gDriveOOo, it is implemented globally...
 
 - Many other fix...
 
