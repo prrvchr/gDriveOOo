@@ -4,12 +4,16 @@
 import uno
 import unohelper
 
+from com.sun.star.ucb.ConnectionMode import OFFLINE
+
 from com.sun.star.auth.RestRequestTokenType import TOKEN_NONE
 from com.sun.star.auth.RestRequestTokenType import TOKEN_URL
 from com.sun.star.auth.RestRequestTokenType import TOKEN_REDIRECT
 from com.sun.star.auth.RestRequestTokenType import TOKEN_QUERY
 from com.sun.star.auth.RestRequestTokenType import TOKEN_JSON
 from com.sun.star.auth.RestRequestTokenType import TOKEN_SYNC
+
+from unolib import KeyMap
 
 from gdrive import ProviderBase
 from gdrive import g_identifier
@@ -42,6 +46,7 @@ class Provider(ProviderBase):
         self.Link = ''
         self.Folder = ''
         self.SourceURL = ''
+        self.SessionMode = OFFLINE
         self._Error = ''
         self._folders = []
 
