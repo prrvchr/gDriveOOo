@@ -87,20 +87,6 @@ class OptionsDialog(unohelper.Base,
         return ('external_event', 'ToggleLogger', 'EnableViewer', 'DisableViewer',
                 'ViewLog', 'ClearLog', 'ViewDataSource')
 
-    def _doViewDataSource(self, dialog):
-        try:
-            #path = getResourceLocation(ctx, g_identifier, 'hsqldb')
-            #url = '%s/%s.odb' % (path, g_scheme)
-            #desktop = createService(self.ctx, 'com.sun.star.frame.Desktop')
-            #desktop.loadComponentFromURL(url, '_default', 0, ())
-            configuration = getConfiguration(self.ctx, '/org.openoffice.Office.Common', True)
-            mri = self.ctx.ServiceManager.createInstance('mytools.Mri')
-            if mri is not None:
-                mri.inspect(configuration)
-            print("PyOptionsDialog._doConnect() 2")
-        except Exception as e:
-            print("PyOptionsDialog._doConnect().Error: %s - %s" % (e, traceback.print_exc()))
-
     def _loadSetting(self, dialog):
         self._loadLoggerSetting(dialog)
 
@@ -166,6 +152,20 @@ class OptionsDialog(unohelper.Base,
         index = self._getLoggerLevel(dialog.getControl('ComboBox1'))
         handler = dialog.getControl('OptionButton1').State
         setLoggerSetting(self.ctx, enabled, index, handler)
+
+    def _doViewDataSource(self, dialog):
+        try:
+            #path = getResourceLocation(self.ctx, g_identifier, 'hsqldb')
+            #url = '%s/%s.odb' % (path, g_scheme)
+            #desktop = createService(self.ctx, 'com.sun.star.frame.Desktop')
+            #desktop.loadComponentFromURL(url, '_default', 0, ())
+            configuration = getConfiguration(self.ctx, '/org.openoffice.Office.Common', True)
+            mri = self.ctx.ServiceManager.createInstance('mytools.Mri')
+            if mri is not None:
+                mri.inspect(configuration)
+            print("PyOptionsDialog._doConnect() 2")
+        except Exception as e:
+            print("PyOptionsDialog._doConnect().Error: %s - %s" % (e, traceback.print_exc()))
 
     # XServiceInfo
     def supportsService(self, service):
