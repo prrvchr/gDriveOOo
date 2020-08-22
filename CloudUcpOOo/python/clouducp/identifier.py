@@ -48,14 +48,18 @@ class Identifier(unohelper.Base,
                  XRestIdentifier,
                  XChild):
     def __init__(self, ctx, user, uri, contenttype=''):
-        self.ctx = ctx
-        self.User = user
-        self._uri = uri
-        self.IsNew = contenttype != ''
-        self._propertySetInfo = {}
-        self.MetaData = self._getIdentifier(contenttype)
-        msg = getMessage(self.ctx, 501)
-        logMessage(self.ctx, INFO, msg, "Identifier", "__init__()")
+        try:
+            self.ctx = ctx
+            self.User = user
+            self._uri = uri
+            self.IsNew = contenttype != ''
+            self._propertySetInfo = {}
+            self.MetaData = self._getIdentifier(contenttype)
+            msg = getMessage(self.ctx, 501)
+            logMessage(self.ctx, INFO, msg, "Identifier", "__init__()")
+        except Exception as e:
+            msg = "Error: %s - %s" % (e, traceback.print_exc())
+            print(msg)
 
     @property
     def Id(self):
