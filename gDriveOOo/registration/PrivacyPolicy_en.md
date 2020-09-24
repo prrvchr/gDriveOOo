@@ -7,11 +7,11 @@ the privacy of our gDriveOOo software users is very important to us, and we are 
 This policy explains what we do with your personal information.
 
 For simplicity, in the rest of this document, will be named:
-- `gDriveOOo`:  the gDriveOOo software in its integrity.
+- `gDriveOOo`:  the gDriveOOo software in its entirety.
 - `User`: the user of the gDriveOOo software.
 - `Supplier`: the internet service provider delivering internet services to `gDriveOOo`.
 
-Use of this software subjects you to our **Terms Of Use** as described in [this document:](https://prrvchr.github.io/gDriveOOo/gDriveOOo/registration/TermsOfUse_en)
+Use of this software also subjects you to our [**Terms Of Use**](https://prrvchr.github.io/gDriveOOo/gDriveOOo/registration/TermsOfUse_en)
 
 ### Contact:
 
