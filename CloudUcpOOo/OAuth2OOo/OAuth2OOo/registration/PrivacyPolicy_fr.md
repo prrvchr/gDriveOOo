@@ -8,13 +8,13 @@ Cette politique explique ce que nous faisons avec vos informations personnelles.
 
 Pour plus de simplicité, dans la suite de ce document, on nommera:
 - `Utilisateur`: l'utilisateur du logiciel OAuth2OOo.
-- `OAuth2OOo`: le logiciel OAuth2OOo dans son intégrité.
+- `OAuth2OOo`: le logiciel OAuth2OOo dans son intégralité.
 - `Extension`:  toutes les extensions installées sous Libre/OpenOffice et utilisant les services logiciels OAuth2OOo.
 - `Fournisseur`: fournisseur de services Internet fournissant des jetons OAuth2 à `OAuth2OOo` et/ou des services Internet à `Extension`.
 
 Cette politique, en plus de `OAuth2OOo`, s’applique également à toutes les `Extension` utilisant des services logiciels de `OAuth2OOo`.
 
-L'utilisation de ce logiciel vous soumet à nos **Conditions d'utilisation** comme décrites dans [ce document:](https://prrvchr.github.io/OAuth2OOo/OAuth2OOo/registration/TermsOfUse_fr)
+L'utilisation de ce logiciel vous soumet également à nos [**Conditions d'utilisation**](https://prrvchr.github.io/OAuth2OOo/OAuth2OOo/registration/TermsOfUse_fr)
 
 ### Contact:
 
