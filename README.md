@@ -1,4 +1,4 @@
-# version [v.0.0.5](https://prrvchr.github.io/gDriveOOo#historical)
+# version [0.0.5](https://prrvchr.github.io/gDriveOOo#historical)
 
 [**Ce document en français**](https://prrvchr.github.io/gDriveOOo/README_fr)
 
