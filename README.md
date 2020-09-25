@@ -61,8 +61,11 @@ Edit or change "true" to "false" (set it to "false")
 **Open your Google Drive:**
 
 In File - Open - File name enter:
+
 - **vnd.google-apps://your_account/**
+
 or
+
 - **vnd.google-apps:///**
 
 If you don't give your_account, you will be asked for...

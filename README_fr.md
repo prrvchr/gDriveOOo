@@ -61,8 +61,11 @@ Editer ou changer "true" par "false" (réglez-le sur "false")
 **Ouvrir votre Drive Google:**
 
 Dans: Fichier - Ouvrir - Nom de fichier saisir:
+
 - **vnd.google-apps://votre_compte/** 
+
 ou
+
 - **vnd.google-apps:///**
 
 Si vous ne donnez pas votre_compte, il vous sera demandé...
