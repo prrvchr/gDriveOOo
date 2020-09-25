@@ -1,22 +1,22 @@
+# version [v.0.0.5](https://prrvchr.github.io/gDriveOOo#historical)
+
 [**Ce document en français**](https://prrvchr.github.io/gDriveOOo/README_fr)
 
-**The use of this software subjects you to our** [Terms Of Use](https://prrvchr.github.io/gDriveOOo/gDriveOOo/registration/TermsOfUse_en) **and** [Data Protection Policy](https://prrvchr.github.io/gDriveOOo/gDriveOOo/registration/PrivacyPolicy_en)
+**The use of this software subjects you to our** [**Terms Of Use**](https://prrvchr.github.io/gDriveOOo/gDriveOOo/registration/TermsOfUse_en) **and** [**Data Protection Policy**](https://prrvchr.github.io/gDriveOOo/gDriveOOo/registration/PrivacyPolicy_en)
 
-## [gDriveOOo](https://github.com/prrvchr/gDriveOOo) [v.0.0.5](https://prrvchr.github.io/gDriveOOo#historical)
+## Introduction:
 
-### Introduction:
-
-**gDriveOOo** is a LibreOffice and/or OpenOffice extension allowing to offer you innovative services in these office suites published in free software.  
-Namely, this extension allows you to work in LibreOffice / OpenOffice on your files on your phone (files that you have downloaded to your Android phone).
+**gDriveOOo** is a [LibreOffice](https://fr.libreoffice.org/download/telecharger-libreoffice/) and/or [OpenOffice](https://www.openoffice.org/fr/Telecharger/) extension allowing to offer you innovative services in these office suites.  
+This extension allows you to work in LibreOffice / OpenOffice on your files on your phone (files that you have downloaded to your Android phone).
 
 Being free software I encourage you:
-- To duplicate the source code.
+- To duplicate its [source code](https://github.com/prrvchr/gDriveOOo).
 - To make changes, corrections, improvements.
 
 In short, to participate in the development of this extension.
 Because it is together that we can make Free Software smarter.
 
-### Requirement:
+## Requirement:
 
 gDriveOOo uses a local Hsqldb database of version 2.5.1.  
 The use of Hsqldb requires the installation and configuration within  
@@ -27,25 +27,28 @@ Sometimes it may be necessary for LibreOffice users must have no Hsqldb driver i
 It seems that version 7.x of LibreOffice has fixed this problem and is able to work with different driver version of Hsqldb simultaneously.  
 OpenOffice doesn't seem to need this workaround.
 
-### Installation:
+## Installation:
 
-#### Install [OAuth2OOo](https://github.com/prrvchr/OAuth2OOo/raw/master/OAuth2OOo.oxt) extension v 0.0.5.
+It seems important that the file was not renamed when it was downloaded.
+If necessary, rename it before installing it.
+
+- Install [OAuth2OOo.oxt](https://github.com/prrvchr/OAuth2OOo/raw/master/OAuth2OOo.oxt) extension version 0.0.5.
 
 You must first install this extension, if it is not already installed.
 
-#### Install [gDriveOOo](https://github.com/prrvchr/gDriveOOo/raw/master/gDriveOOo.oxt) extension v 0.0.5.
+- Install [gDriveOOo.oxt](https://github.com/prrvchr/gDriveOOo/raw/master/gDriveOOo.oxt) extension version 0.0.5.
 
 Restart LibreOffice / OpenOffice after installation.
 
-### Configuration:
+## Configuration:
 
-#### Configure LibreOffice Open / Save dialogs (not necessary with OpenOffice):
+### Configure LibreOffice Open / Save dialogs (not necessary with OpenOffice):
 
-##### For LibreOffice V5.x and before:
+#### For LibreOffice V5.x and before:
 
 In menu Tools - Options - LibreOffice - General: check use LibreOffice dialogs.
 
-##### For LibreOffice V6.x and above:
+#### For LibreOffice V6.x and above:
 
 In menu Tools - Options - LibreOffice - Advanced - Open Expert Configuration
 
@@ -53,15 +56,20 @@ Search for: UseSystemFileDialog (Found under: org.openoffice.Office.Common > Mis
 
 Edit or change "true" to "false" (set it to "false")
 
-### Open your Google Drive:
+## Use:
 
-In File - Open - File name enter: vnd.google-apps://your_account/ or vnd.google-apps:///
+**Open your Google Drive:**
+
+In File - Open - File name enter:
+- **vnd.google-apps://your_account/**
+or
+- **vnd.google-apps:///**
 
 If you don't give your_account, you will be asked for...
 
 After authorizing the OAuthOOo application to access your Drive, your Google Drive should open!!! normally  ;-)
 
-### Has been tested with:
+## Has been tested with:
 
 * LibreOffice 6.4.4.2 - Ubuntu 20.04 -  LxQt 0.14.1
 
@@ -79,9 +87,9 @@ I encourage you in case of problem :-(
 to create an [issue](https://github.com/prrvchr/gDriveOOo/issues/new)  
 I will try to solve it ;-)
 
-### Historical:
+## Historical:
 
-#### What has been done for version 0.0.5:
+### What has been done for version 0.0.5:
 
 - Integration and use of the new Hsqldb v2.5.1 system versioning.
 
@@ -102,7 +110,7 @@ Although this functionality is only needed for gDriveOOo, it is implemented glob
 
 - Many other fix...
 
-#### What remains to be done for version 0.0.5:
+### What remains to be done for version 0.0.5:
 
 - Write the implementation Pull Change in the new [Replicator](https://github.com/prrvchr/gDriveOOo/blob/master/CloudUcpOOo/python/clouducp/replicator.py) interface.
 

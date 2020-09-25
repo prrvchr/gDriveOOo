@@ -1,21 +1,22 @@
+# version [v.0.0.5](https://prrvchr.github.io/gDriveOOo/README_fr#historique)
+
 [**This document in English**](https://prrvchr.github.io/gDriveOOo)
 
 **L'utilisation de ce logiciel vous soumet à nos** [**Conditions d'utilisation**](https://prrvchr.github.io/gDriveOOo/gDriveOOo/registration/TermsOfUse_fr) **et à notre** [**Politique de protection des données**](https://prrvchr.github.io/gDriveOOo/gDriveOOo/registration/PrivacyPolicy_fr)
 
-## [gDriveOOo](https://github.com/prrvchr/gDriveOOo) [v.0.0.5](https://prrvchr.github.io/gDriveOOo/README_fr#historique)
+## Introduction:
 
-### Introduction:
-
-**gDriveOOo** est une extension LibreOffice et/ou OpenOffice permettant de vous offrir des services inovants dans ces suites bureautique publiées en logiciel libre.  
-A savoir, cette extension permet de travailler sous LibreOffice / OpenOffice sur vos fichiers présents sur votre téléphone (fichiers que vous avez téléchargés sur votre téléphone Android).
+**gDriveOOo** est une extension [LibreOffice](https://fr.libreoffice.org/download/telecharger-libreoffice/) et/ou OpenOffice permettant de vous offrir des services inovants dans ces suites bureautique.  
+Cette extension vous permet de travailler sous LibreOffice / OpenOffice sur vos fichiers présents sur votre téléphone (fichiers que vous avez téléchargés sur votre téléphone Android).
 
 Etant un logiciel libre je vous encourage:
-- A dupliquer le code source.
+- A dupliquer son [code source](https://github.com/prrvchr/gDriveOOo).
 - A apporter des modifications, des corrections, des ameliorations.
 
-Bref, à participer au developpement de cette extension, car c'est ensemble que nous pouvons rendre le Logiciel Libre plus intelligent.
+Bref, à participer au developpement de cette extension.
+Car c'est ensemble que nous pouvons rendre le Logiciel Libre plus intelligent.
 
-### Prérequis:
+## Prérequis:
 
 gDriveOOo utilise une base de données locale Hsqldb version 2.5.1.  
 L'utilisation de Hsqldb nécessite l'installation et la configuration dans
@@ -26,25 +27,28 @@ Parfois, il peut être nécessaire pour les utilisateurs de LibreOffice de ne pa
 Il semble que les versions 6.4.x et 7.x de LibreOffice aient résolu ce problème et sont capables de fonctionner simultanément avec différentes versions de pilote de Hsqldb.  
 OpenOffice ne semble pas avoir besoin de cette solution de contournement.
 
-### Installation:
+## Installation:
 
-#### Installer l'extension [OAuth2OOo](https://github.com/prrvchr/OAuth2OOo/raw/master/OAuth2OOo.oxt) v 0.0.5.
+Il semble important que le fichier n'ait pas été renommé lors de son téléchargement.  
+Si nécessaire, renommez-le avant de l'installer.
+
+- Installer l'extension [OAuth2OOo.oxt](https://github.com/prrvchr/OAuth2OOo/raw/master/OAuth2OOo.oxt) version 0.0.5.
 
 Vous devez d'abord installer cette extension, si elle n'est pas déjà installée.
 
-#### Installer l'extension [gDriveOOo](https://github.com/prrvchr/gDriveOOo/raw/master/gDriveOOo.oxt) v 0.0.5.
+- Installer l'extension [gDriveOOo.oxt](https://github.com/prrvchr/gDriveOOo/raw/master/gDriveOOo.oxt) version 0.0.5.
 
 Redémarrez LibreOffice / OpenOffice après l'installation.
 
-### Configuration:
+## Configuration:
 
-#### Configurer les boîtes de dialogue Ouvrir / Enregistrer de LibreOffice (non nécessaire avec OpenOffice):
+### Configurer les boîtes de dialogue Ouvrir / Enregistrer de LibreOffice (non nécessaire sous OpenOffice):
 
-##### Pour LibreOffice V5.x et avant:
+#### Pour LibreOffice V5.x et avant:
 
 Dans le menu: Outils - Options - LibreOffice - General: cocher utiliser les boîtes de dialogue LibreOffice.
 
-##### Pour LibreOffice V6.x et aprés:
+#### Pour LibreOffice V6.x et aprés:
 
 Dans le menu: Outils - Options - LibreOffice - Advancé - Ouvrir la configuration avancée
 
@@ -52,15 +56,20 @@ Rechercher: UseSystemFileDialog (Trouvé sous: org.openoffice.Office.Common > Mi
 
 Editer ou changer "true" par "false" (réglez-le sur "false")
 
-### Ouvrir votre Google Drive:
+## Utilisation:
 
-Dans: Fichier - Ouvrir - Nom de fichier entrer: vnd.google-apps://votre_compte/ or vnd.google-apps:///
+**Ouvrir votre Drive Google:**
+
+Dans: Fichier - Ouvrir - Nom de fichier saisir:
+- **vnd.google-apps://votre_compte/** 
+ou
+- **vnd.google-apps:///**
 
 Si vous ne donnez pas votre_compte, il vous sera demandé...
 
 Après avoir autorisé l'application OAuthOOo à accéder à votre Drive, votre Drive Google devrait s'ouvrir!!! normalement  ;-)
 
-### A été testé avec:
+## A été testé avec:
 
 * LibreOffice 6.4.4.2 - Ubuntu 20.04 -  LxQt 0.14.1
 
@@ -78,9 +87,9 @@ Je vous encourage en cas de problème :-(
 de créer une [issue](https://github.com/prrvchr/gDriveOOo/issues/new)  
 J'essaierai de la résoudre ;-)
 
-### Historique:
+## Historique:
 
-#### Ce qui a été fait pour la version 0.0.5:
+### Ce qui a été fait pour la version 0.0.5:
 
 - Intégration et utilisation de la nouvelle version de Hsqldb 2.5.1.
 
@@ -96,12 +105,12 @@ J'essaierai de la résoudre ;-)
 
 - Mise en place d'un cache sur les identifiants, voir la méthode: [getIdentifier()](https://github.com/prrvchr/gDriveOOo/blob/master/CloudUcpOOo/python/clouducp/datasource.py), autorisant l'accès à un Contenu (fichier ou dossier) sans accès à la base de données pour les appels ultérieurs.
 
-- Gestion des doublons des noms de fichiers / dossiers par [SQL Views](https://github.com/prrvchr/gDriveOOo/blob/master/CloudUcpOOo/python/clouducp/dbqueries.py): Child, Twin, Uri, et Title générant des noms uniques s'il existe des doublons de noms.  
+- Gestion des doublons des noms des fichiers / dossiers par [Vues SQL](https://github.com/prrvchr/gDriveOOo/blob/master/CloudUcpOOo/python/clouducp/dbqueries.py): Child, Twin, Uri, et Title générant des noms uniques s'il existe des doublons.  
 Bien que cette fonctionnalité ne soit nécessaire que pour gDriveOOo, elle est implémentée globalement...
 
 - Beaucoup d'autres correctifs...
 
-#### Que reste-t-il à faire pour la version 0.0.5:
+### Que reste-t-il à faire pour la version 0.0.5:
 
 - Écrire l'implémentation Pull Change dans la nouvelle interface [Replicator](https://github.com/prrvchr/gDriveOOo/blob/master/CloudUcpOOo/python/clouducp/replicator.py).
 
