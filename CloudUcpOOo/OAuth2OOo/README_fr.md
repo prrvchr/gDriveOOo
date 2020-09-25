@@ -1,21 +1,22 @@
+# version [0.0.5](https://prrvchr.github.io/OAuth2OOo/README_fr#historique)
+
 [**This document in English**](https://prrvchr.github.io/OAuth2OOo)
 
-**L'utilisation de ce logiciel vous soumet à nos** [**Conditions d'utilisation**](https://prrvchr.github.io/OAuth2OOo/OAuth2OOo/registration/TermsOfUse_fr) **et à notre** [**Politique de protection des données**](https://prrvchr.github.io/OAuth2OOo/OAuth2OOo/registration/PrivacyPolicy_fr)
+**L'utilisation de ce logiciel vous soumet à nos** [**Conditions d'utilisation**](https://prrvchr.github.io/OAuth2OOo/OAuth2OOo/registration/TermsOfUse_fr) **et à notre** [**Politique de protection des données**](https://prrvchr.github.io/OAuth2OOo/OAuth2OOo/registration/PrivacyPolicy_fr).
 
-## [OAuth2OOo](https://github.com/prrvchr/OAuth2OOo) [v.0.0.5](https://prrvchr.github.io/OAuth2OOo/README_fr#historique)
+## Introduction:
 
-### Introduction:
-
-**OAuth2OOo** est une extension LibreOffice et/ou OpenOffice permettant de vous offrir des services inovants dans ces suites bureautique publiées en logiciel libre.  
-A savoir, l'implémentation du protocole OAuth 2.0. Protocole permettant d'obtenir votre consentement pour qu'une application puisse accéder à vos données présentes chez les GAFA.
+**OAuth2OOo** est une extension [LibreOffice](https://fr.libreoffice.org/download/telecharger-libreoffice/) et/ou [OpenOffice](https://www.openoffice.org/fr/Telecharger/) permettant de vous offrir des services inovants dans ces suites bureautique.  
+Cette extension est l'implémentation du protocole OAuth 2.0. Protocole permettant d'obtenir votre consentement pour qu'une application puisse accéder à vos données présentes chez les GAFA.
 
 Etant un logiciel libre je vous encourage:
-- A dupliquer le code source.
+- A dupliquer son [code source](https://github.com/prrvchr/OAuth2OOo).
 - A apporter des modifications, des corrections, des ameliorations.
 
-Bref, à participer au developpement de cette extension, car c'est ensemble que nous pouvons rendre le Logiciel Libre plus intelligent.
+Bref, à participer au developpement de cette extension.
+Car c'est ensemble que nous pouvons rendre le Logiciel Libre plus intelligent.
 
-### Uno OAuth2.0 API pour LibreOffice / OpenOffice.
+## Uno OAuth2.0 API pour LibreOffice / OpenOffice.
 
 ![OAuth2OOo Wizard Page1 screenshot](OAuth2Wizard1.png)
 
@@ -31,25 +32,28 @@ La révocation a lieu dans la gestion des applications associées à votre compt
 
 Plus aucun mot de passe n'est stocké dans LibreOffice / OpenOffice.
 
-### Installation:
+## Installation:
 
-- Installer l'extension [OAuth2OOo](https://github.com/prrvchr/OAuth2OOo/raw/master/OAuth2OOo.oxt)
+Il semble important que le fichier n'ait pas été renommé lors de son téléchargement.  
+Si nécessaire, renommez-le avant de l'installer.
+
+- Installer l'extension [OAuth2OOo.oxt](https://github.com/prrvchr/OAuth2OOo/raw/master/OAuth2OOo.oxt) version 0.0.5.
 
 - Redémarrez LibreOffice / OpenOffice après l'installation.
 
-### Utilisation:
+## Utilisation:
 
 Cette extension n'est pas faite pour être utilisée seule, mais fournit le service OAuth2 à d'autres extensions LibreOffice / OpenOffice.  
 Voici comment nous utilisons son API:
 
-#### Créer le service OAuth2:
+### Créer le service OAuth2:
 
 > identifier = "com.gmail.prrvchr.extensions.OAuth2OOo.OAuth2Service"  
 > service = ctx.ServiceManager.createInstanceWithContext(identifier, ctx)
 
-#### Initialiser la session ou au moins l'Url:
+### Initialiser la Session ou au moins l'Url:
 
-- Initialiser la session: 
+- Initialiser la Session: 
 
 > initialized = service.initializeSession(registered_url, user_account)
 
@@ -59,13 +63,12 @@ Voici comment nous utilisons son API:
 
 La valeur renvoyée:: `initialized` est True si `registered_url` et/ou `user_account` a été récupérée de la configuration du service OAuth2.
 
-#### Obtenir le jeton d'accès:
+### Obtenir le jeton d'accès:
 
 > format = 'Bearer %s'  
 > token = service.getToken(format)
 
-
-### A été testé avec:
+## A été testé avec:
 
 * LibreOffice 6.4.4.2 - Ubuntu 20.04 -  LxQt 0.14.1
 
@@ -83,9 +86,9 @@ Je vous encourage en cas de problème :-(
 de créer une [issue](https://github.com/prrvchr/OAuth2OOo/issues/new)  
 J'essaierai de la résoudre ;-)
 
-### Historique:
+## Historique:
 
-#### Ce qui a été fait pour la version 0.0.5:
+### Ce qui a été fait pour la version 0.0.5:
 
 - Ecriture d'une nouvelle interface [XWizard](https://github.com/prrvchr/OAuth2OOo/blob/master/python/wizard.py) afin de remplacer le service Wizard devenu défectueux avec les versions 6.4.x et 7.x de LibreOffice (voir [bug 132110](https://bugs.documentfoundation.org/show_bug.cgi?id=132110)).
 
@@ -100,7 +103,7 @@ J'essaierai de la résoudre ;-)
 
 - Beaucoup d'autres correctifs...
 
-#### Que reste-t-il à faire pour la version 0.0.5:
+### Que reste-t-il à faire pour la version 0.0.5:
 
 - Ecriture de l'implémentation du bouton Aide (CommandButton5) dans la nouvelle interface [XWizard](https://github.com/prrvchr/OAuth2OOo/blob/master/python/wizard.py).
 
