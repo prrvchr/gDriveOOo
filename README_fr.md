@@ -42,13 +42,13 @@ Redémarrez LibreOffice / OpenOffice après l'installation.
 
 ## Configuration:
 
-### Configurer les boîtes de dialogue Ouvrir / Enregistrer de LibreOffice (non nécessaire sous OpenOffice):
+**Configurer les boîtes de dialogue Ouvrir / Enregistrer de LibreOffice (non nécessaire sous OpenOffice):**
 
-#### Pour LibreOffice V5.x et avant:
+- **Pour LibreOffice V5.x et avant:**
 
 Dans le menu: Outils - Options - LibreOffice - General: cocher utiliser les boîtes de dialogue LibreOffice.
 
-#### Pour LibreOffice V6.x et aprés:
+- **Pour LibreOffice V6.x et aprés:**
 
 Dans le menu: Outils - Options - LibreOffice - Advancé - Ouvrir la configuration avancée
 

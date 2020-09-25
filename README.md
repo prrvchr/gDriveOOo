@@ -42,13 +42,13 @@ Restart LibreOffice / OpenOffice after installation.
 
 ## Configuration:
 
-### Configure LibreOffice Open / Save dialogs (not necessary with OpenOffice):
+**Configure LibreOffice Open / Save dialogs (not necessary with OpenOffice):**
 
-#### For LibreOffice V5.x and before:
+- **For LibreOffice V5.x and before:**
 
 In menu Tools - Options - LibreOffice - General: check use LibreOffice dialogs.
 
-#### For LibreOffice V6.x and above:
+- **For LibreOffice V6.x and above:**
 
 In menu Tools - Options - LibreOffice - Advanced - Open Expert Configuration
 
