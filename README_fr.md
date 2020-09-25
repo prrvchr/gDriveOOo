@@ -6,7 +6,7 @@
 
 ## Introduction:
 
-**gDriveOOo** est une extension [LibreOffice](https://fr.libreoffice.org/download/telecharger-libreoffice/) et/ou OpenOffice permettant de vous offrir des services inovants dans ces suites bureautique.  
+**gDriveOOo** est une extension [LibreOffice](https://fr.libreoffice.org/download/telecharger-libreoffice/) et/ou [OpenOffice](https://www.openoffice.org/fr/Telecharger/) permettant de vous offrir des services inovants dans ces suites bureautique.  
 Cette extension vous permet de travailler sous LibreOffice / OpenOffice sur vos fichiers présents sur votre téléphone (fichiers que vous avez téléchargés sur votre téléphone Android).
 
 Etant un logiciel libre je vous encourage:
