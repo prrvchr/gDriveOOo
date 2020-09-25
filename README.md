@@ -42,7 +42,7 @@ Restart LibreOffice / OpenOffice after installation.
 
 ## Configuration:
 
-**Configure LibreOffice Open / Save dialogs (not necessary with OpenOffice):**
+Configure LibreOffice Open / Save dialogs (not necessary with OpenOffice):
 
 - **For LibreOffice V5.x and before:**
 
