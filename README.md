@@ -1,6 +1,6 @@
 **Ce [document](https://prrvchr.github.io/gDriveOOo/README_fr) en français.**
 
-**The use of this software subjects you to our** [**Terms Of Use**](https://prrvchr.github.io/gDriveOOo/gDriveOOo/registration/TermsOfUse_en) **and** [**Data Protection Policy**](https://prrvchr.github.io/gDriveOOo/gDriveOOo/registration/PrivacyPolicy_en)
+**The use of this software subjects you to our [Terms Of Use](https://prrvchr.github.io/gDriveOOo/gDriveOOo/registration/TermsOfUse_en) and [Data Protection Policy](https://prrvchr.github.io/gDriveOOo/gDriveOOo/registration/PrivacyPolicy_en).**
 
 # version [0.0.5](https://prrvchr.github.io/gDriveOOo#historical)
 
