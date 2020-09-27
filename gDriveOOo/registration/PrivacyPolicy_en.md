@@ -1,7 +1,7 @@
-# Data Protection Policy
-
 **Use of this software also subjects you to our** [**Terms Of Use**](https://prrvchr.github.io/gDriveOOo/gDriveOOo/registration/TermsOfUse_en).  
 Regarding installation, configuration and use, please consult the [documentation](https://prrvchr.github.io/gDriveOOo).
+
+# Data Protection Policy
 
 ## Introduction:
 

@@ -1,6 +1,7 @@
-# Conditions d'utilisation
 **L'utilisation de ce logiciel vous soumet également à nos** [**Règles de Confidentialité**](https://prrvchr.github.io/gDriveOOo/gDriveOOo/registration/PrivacyPolicy_fr).  
 Concernant l'installation, la configuration et l'utilisation, veuillez consulter la [documentation](https://prrvchr.github.io/gDriveOOo/README_fr).
+
+# Conditions d'utilisation
 
 ## Introduction:
 
