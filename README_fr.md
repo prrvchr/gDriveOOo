@@ -1,8 +1,8 @@
-# version [0.0.5](https://prrvchr.github.io/gDriveOOo/README_fr#historique)
-
 [**This document in English**](https://prrvchr.github.io/gDriveOOo)
 
 **L'utilisation de ce logiciel vous soumet à nos** [**Conditions d'utilisation**](https://prrvchr.github.io/gDriveOOo/gDriveOOo/registration/TermsOfUse_fr) **et à notre** [**Politique de protection des données**](https://prrvchr.github.io/gDriveOOo/gDriveOOo/registration/PrivacyPolicy_fr)
+
+# version [0.0.5](https://prrvchr.github.io/gDriveOOo/README_fr#historique)
 
 ## Introduction:
 
