@@ -1,20 +1,17 @@
-## Terms Of Use for [gDriveOOo](https://github.com/prrvchr/gDriveOOo)
+## Terms Of Use
 
-
-### Introduction:
+## Introduction:
 
 The gDriveOOo library is a part of a personnal project.
 Full documentation is available [on this page](https://prrvchr.github.io/gDriveOOo).
 
 Use of this software also subjects you to our [**Data Protection Policy**](https://prrvchr.github.io/gDriveOOo/gDriveOOo/registration/PrivacyPolicy_en).
 
-
-### Responsibilities:
+## Responsibilities:
 
 gDriveOOo is distributed in the hope that it will be useful, but **WITHOUT ANY WARRANTY**; without even the implied warranty of **MERCHANTABILITY** or **FITNESS FOR A PARTICULAR PURPOSE**.
 
-
-### License:
+## License:
 
 gDriveOOo is free software; you can redistribute it and/or modify it under the terms of either (at your option):
 

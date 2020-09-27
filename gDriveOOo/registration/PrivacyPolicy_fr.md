@@ -1,6 +1,6 @@
-## Politique de protection des données pour [gDriveOOo](https://github.com/prrvchr/gDriveOOo)
+# Politique de protection des données
 
-### Introduction:
+## Introduction:
 
 La confidentialité des utilisateurs du logiciel gDriveOOo est très importante pour nous et nous nous engageons à la protéger.
 
@@ -13,14 +13,13 @@ Pour plus de simplicité, dans la suite de ce document, on nommera:
 
 L'utilisation de ce logiciel vous soumet également à nos [**Conditions d'utilisation**](https://prrvchr.github.io/gDriveOOo/gDriveOOo/registration/TermsOfUse_fr)
 
-### Contact:
+## Contact:
 
 Dans tous les cas, il est possible de contacter le responsable du traitement des données à l'adresse suivante:
 
 prrvchr@gmail.com
 
-
-### Utilisation de vos données personnelles:
+## Utilisation de vos données personnelles:
 
 Pour fonctionner, `gDriveOOo` doit conserver des données localement.
 
@@ -34,8 +33,7 @@ L'utilisation des services du `Fournisseur` au travers de `gDriveOOo` peut vous 
 
 Le `Fournisseur` est seul responsable de l'utilisation des données qu'il collecte, comme décrit dans sa politique de protection des données.
 
-
-### Sécurité de vos informations personnelles:
+## Sécurité de vos informations personnelles:
 
 Étant donné que les données collectées par `gDriveOOo` sont situées sur l'ordinateur de l'utilisateur, seul l'`Utilisateur` est responsable de la sécurité des données collectées.
 
@@ -43,8 +41,7 @@ L'utilisation des services du `Fournisseur` via `gDriveOOo` peut vous soumettre 
 
 Le `Fournisseur` est seul responsable de la sécurité des données qu'il collecte, comme décrit dans sa politique de protection des données.
 
-
-### Expiration des données collectées:
+## Expiration des données collectées:
 
 La mise à jour des données collectées localement est effectuée chaque fois que `gDriveOOo` est utilisé.
 
