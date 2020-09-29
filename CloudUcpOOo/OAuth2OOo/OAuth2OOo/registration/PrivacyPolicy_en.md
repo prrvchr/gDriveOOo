@@ -1,6 +1,10 @@
-## Data Protection Policy for [OAuth2OOo](https://github.com/prrvchr/OAuth2OOo)
+**Use of this software also subjects you to our [Terms Of Use](https://prrvchr.github.io/OAuth2OOo/OAuth2OOo/registration/TermsOfUse_en).**
 
-### Introduction:
+Regarding installation, configuration and use, please consult the [documentation](https://prrvchr.github.io/OAuth2OOo).
+
+# Data Protection Policy
+
+## Introduction:
 
 the privacy of our OAuth2OOo software users is very important to us, and we are commited to safeguarding it.
 
@@ -14,16 +18,13 @@ For simplicity, in the rest of this document, will be named:
 
 This policy, in addition to `OAuth2OOo`, also applies to all `Extension` that use `OAuth2OOo` software services.
 
-Use of this software also subjects you to our [**Terms Of Use**](https://prrvchr.github.io/OAuth2OOo/OAuth2OOo/registration/TermsOfUse_en)
-
-### Contact:
+## Contact:
 
 In any case, it is possible to contact the person responsible for data processing at:
 
 prrvchr@gmail.com
 
-
-### Use of your personal data:
+## Use of your personal data:
 
 To work `OAuth2OOo` and/or `Extension` need to keep data locally.
 
@@ -37,8 +38,7 @@ Use of the `Supplier` services through `OAuth2OOo` and/or `Extension`, may submi
 
 `Supplier` is solely responsible for the use of the data it collects as described in its Policy.
 
-
-### Security of your personal information:
+## Security of your personal information:
 
 Since the data collected by `OAuth2OOo` and/or `Extension` is located on the user's computer, only the `User` is responsible for the security of the data collected.
 
@@ -46,8 +46,7 @@ Use of the `Supplier` services via `OAuth2OOo` and/or `Extension` may subject yo
 
 `Supplier` is solely responsible for the security of the data it collects as described in its Policy.
 
-
-### Expiration of collected data:
+## Expiration of collected data:
 
 Updating the data collected locally is done each time `OAuth2OOo` and/or `Extension` is used.
 
