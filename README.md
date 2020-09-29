@@ -6,12 +6,13 @@
 
 ## Introduction:
 
-**gDriveOOo** is a [LibreOffice](https://www.libreoffice.org/download/download/) and/or [OpenOffice](https://www.openoffice.org/download/index.html) extension allowing to offer you innovative services in these office suites.  
+**gDriveOOo** is part of a [Suite](https://prrvchr.github.io/) of [LibreOffice](https://www.libreoffice.org/download/download/) and/or [OpenOffice](https://www.openoffice.org/download/index.html) extensions allowing to offer you innovative services in these office suites.  
 This extension allows you to work in LibreOffice / OpenOffice on your files on your phone (files that you have downloaded to your Android phone), even while offline.
 
 Being free software I encourage you:
 - To duplicate its [source code](https://github.com/prrvchr/gDriveOOo).
 - To make changes, corrections, improvements.
+- To open [issue](https://github.com/prrvchr/gDriveOOo/issues/new) if needed.
 
 In short, to participate in the development of this extension.
 Because it is together that we can make Free Software smarter.
@@ -70,7 +71,7 @@ or
 
 If you don't give your_account, you will be asked for...
 
-After authorizing the OAuthOOo application to access your Drive files, your Google Drive should open!!! normally  ;-)
+After authorizing the [OAuthOOo](https://prrvchr.github.io/OAuthOOo) application to access your Drive files, your Google Drive should open!!! normally  ;-)
 
 ## Has been tested with:
 
