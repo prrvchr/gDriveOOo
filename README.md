@@ -71,7 +71,7 @@ or
 
 If you don't give your_account, you will be asked for...
 
-After authorizing the [OAuthOOo](https://prrvchr.github.io/OAuthOOo) application to access your Drive files, your Google Drive should open!!! normally  ;-)
+After authorizing the [OAuth2OOo](https://prrvchr.github.io/OAuth2OOo) application to access your Drive files, your Google Drive should open!!! normally  ;-)
 
 ## Has been tested with:
 
