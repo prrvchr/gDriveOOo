@@ -30,8 +30,8 @@
         <name lang="en-US">gDriveOOo</name>
     </display-name>
     <icon>
-        <default xlink:href="gDriveOOo/gDrive.png"/>
-        <high-contrast xlink:href="gDriveOOo/gDrive.png"/>
+        <default xlink:href="gDriveOOo/gDriveOOo.png"/>
+        <high-contrast xlink:href="gDriveOOo/gDriveOOo.png"/>
     </icon>
     <extension-description>
         <src xlink:href="description/desc_en.txt" lang="en-US"/>

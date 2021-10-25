@@ -1,3 +1,5 @@
+# ![gDriveOOo logo](img/gDriveOOo.png) gDriveOOo
+
 **This [document](https://prrvchr.github.io/gDriveOOo) in English.**
 
 **L'utilisation de ce logiciel vous soumet à nos [Conditions d'utilisation](https://prrvchr.github.io/gDriveOOo/gDriveOOo/registration/TermsOfUse_fr) et à notre [Politique de protection des données](https://prrvchr.github.io/gDriveOOo/gDriveOOo/registration/PrivacyPolicy_fr).**
@@ -20,7 +22,7 @@ Car c'est ensemble que nous pouvons rendre le Logiciel Libre plus intelligent.
 ## Prérequis:
 
 gDriveOOo utilise une base de données locale HsqlDB version 2.5.1.  
-L'utilisation de HsqlDB nécessite l'installation et la configuration dans LibreOffice / OpenOffice d'un **JRE version 1.8 minimum** (c'est-à-dire: Java version 8)  
+L'utilisation de HsqlDB nécessite l'installation et la configuration dans LibreOffice / OpenOffice d'un **JRE 11 ou version ultérieure**.  
 Je vous recommande [AdoptOpenJDK](https://adoptopenjdk.net/) comme source d'installation de Java.
 
 Si vous utilisez **LibreOffice sous Linux**, alors vous êtes sujet au [dysfonctionnement 139538](https://bugs.documentfoundation.org/show_bug.cgi?id=139538).  
@@ -36,11 +38,11 @@ OpenOffice et LibreOffice sous Windows ne sont pas soumis à ce dysfonctionnemen
 Il semble important que le fichier n'ait pas été renommé lors de son téléchargement.  
 Si nécessaire, renommez-le avant de l'installer.
 
-- Installer l'extension [OAuth2OOo.oxt](https://github.com/prrvchr/OAuth2OOo/raw/master/OAuth2OOo.oxt) version 0.0.5.
+- Installer l'extension ![OAuth2OOo logo](https://prrvchr.github.io/OAuth2OOo/img/OAuth2OOo.png) **[OAuth2OOo.oxt](https://github.com/prrvchr/OAuth2OOo/raw/master/OAuth2OOo.oxt)** version 0.0.5.
 
 Vous devez d'abord installer cette extension, si elle n'est pas déjà installée.
 
-- Installer l'extension [gDriveOOo.oxt](https://github.com/prrvchr/gDriveOOo/raw/master/gDriveOOo.oxt) version 0.0.5.
+- Installer l'extension ![gDriveOOo logo](img/gDriveOOo.png) **[gDriveOOo.oxt](https://github.com/prrvchr/gDriveOOo/raw/master/gDriveOOo.oxt)** version 0.0.5.
 
 Redémarrez LibreOffice / OpenOffice après l'installation.
 
