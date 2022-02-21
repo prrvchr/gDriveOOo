@@ -15,6 +15,8 @@ Pour plus de simplicité, dans la suite de ce document, on nommera:
 - `Utilisateur`: l'utilisateur du logiciel gDriveOOo.
 - `Fournisseur`: fournisseur de services Internet fournissant des services Internet à `gDriveOOo`.
 
+Bien que **gDriveOOo ne partage ni ne transfert aucun données avec toutes autre application**, `gDriveOOo` respecte [la politique de données utilisateur des services API Google](https://developers.google.com/terms/api-services-user-data-policy), y compris les exigences d'utilisation limitée.
+
 ## Contact:
 
 Dans tous les cas, il est possible de contacter le responsable du traitement des données à l'adresse suivante:
