@@ -42,6 +42,10 @@ If necessary, rename it before installing it.
 
 You must first install this extension, if it is not already installed.
 
+- Install ![HsqlDBDriverOOo logo](https://prrvchr.github.io/HsqlDBDriverOOo/img/HsqlDBDriverOOo.png) **[HsqlDBDriverOOo.oxt](https://github.com/prrvchr/HsqlDBDriverOOo/raw/master/HsqlDBDriverOOo.oxt)** extension version 0.0.4.
+
+You must install this extension, if it is not already installed.
+
 - Install ![gDriveOOo logo](img/gDriveOOo.png) **[gDriveOOo.oxt](https://github.com/prrvchr/gDriveOOo/raw/master/gDriveOOo.oxt)** extension version 0.0.5.
 
 Restart LibreOffice / OpenOffice after installation.
