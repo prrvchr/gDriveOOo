@@ -106,7 +106,9 @@ class Replicator(unohelper.Base,
         try:
             print("Replicator.synchronize() 1")
             results = []
+            start = timestamp
             for user in self.Users.values():
+                print("Replicator.synchronize() 2")
                 if self.canceled:
                     break
                 msg = getMessage(self.ctx, g_message, 111, (user.Name, unparseDateTime(timestamp)))
@@ -115,10 +117,12 @@ class Replicator(unohelper.Base,
                 # it is necessary to run the verification of the identifiers first.
                 self._checkNewIdentifier(user)
                 if not user.Token:
+                    print("Replicator.synchronize() 3")
                     start = self._initUser(user)
                     #start = self.DataBase.getUserTimeStamp(user.Id)
                     user.Provider.initUser(user.Request, self.DataBase, user.MetaData)
                 else:
+                    print("Replicator.synchronize() 4")
                     start = self.DataBase.getUserTimeStamp(user.Id)
                 if user.Token:
                     results += self._pullData(user)
@@ -127,7 +131,7 @@ class Replicator(unohelper.Base,
             if all(results):
                 results += self._pushData(start)
             result = all(results)
-            print("Replicator.synchronize() 2 %s" % result)
+            print("Replicator.synchronize() 5 %s" % result)
         except Exception as e:
             print("Replicator.synchronize() ERROR: %s - %s" % (e, traceback.print_exc()))
 

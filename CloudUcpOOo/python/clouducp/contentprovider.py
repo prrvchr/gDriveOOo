@@ -92,26 +92,34 @@ class ContentProvider(unohelper.Base,
 
     # XContentIdentifierFactory
     def createContentIdentifier(self, url):
-        url = getUrl(self.ctx, url)
-        uri = getUri(self.ctx, url)
-        user = self._getUser(uri, url)
-        identifier = self.DataSource.getIdentifier(user, uri)
-        msg = getMessage(self.ctx, g_message, 131, url)
-        logMessage(self.ctx, INFO, msg, 'ContentProvider', 'createContentIdentifier()')
-        return identifier
+        try:
+            url = getUrl(self.ctx, url)
+            uri = getUri(self.ctx, url)
+            user = self._getUser(uri, url)
+            identifier = self.DataSource.getIdentifier(user, uri)
+            msg = getMessage(self.ctx, g_message, 131, url)
+            logMessage(self.ctx, INFO, msg, 'ContentProvider', 'createContentIdentifier()')
+            return identifier
+        except Exception as e:
+            msg = "Error: %s" % traceback.print_exc()
+            print(msg)
 
     # XContentProvider
     def queryContent(self, identifier):
-        url = identifier.getContentIdentifier()
-        if not identifier.isValid():
-            msg = getMessage(self.ctx, g_message, 141, (url, self._error))
-            logMessage(self.ctx, SEVERE, msg, 'ContentProvider', 'queryContent()')
-            raise IllegalIdentifierException(msg, identifier)
-        content = identifier.getContent()
-        self._currentUserName = identifier.User.Name
-        msg = getMessage(self.ctx, g_message, 142, url)
-        logMessage(self.ctx, INFO, msg, 'ContentProvider', 'queryContent()')
-        return content
+        try:
+            url = identifier.getContentIdentifier()
+            if not identifier.isValid():
+                msg = getMessage(self.ctx, g_message, 141, (url, self._error))
+                logMessage(self.ctx, SEVERE, msg, 'ContentProvider', 'queryContent()')
+                raise IllegalIdentifierException(msg, identifier)
+            content = identifier.getContent()
+            self._currentUserName = identifier.User.Name
+            msg = getMessage(self.ctx, g_message, 142, url)
+            logMessage(self.ctx, INFO, msg, 'ContentProvider', 'queryContent()')
+            return content
+        except Exception as e:
+            msg = "Error: %s" % traceback.print_exc()
+            print(msg)
 
     def compareContentIds(self, id1, id2):
         ids = (id1.getContentIdentifier(), id2.getContentIdentifier())

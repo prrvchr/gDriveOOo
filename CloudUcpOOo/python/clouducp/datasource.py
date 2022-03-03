@@ -57,6 +57,7 @@ class DataSource(unohelper.Base,
                  XCloseListener):
     def __init__(self, ctx, event, scheme, plugin):
         msg = "DataSource for Scheme: %s loading ... " % scheme
+        print("DataSource.__init__() 1")
         self.ctx = ctx
         self._Users = {}
         self._Uris = {}
@@ -67,15 +68,18 @@ class DataSource(unohelper.Base,
         datasource, url, created = getDataSource(self.ctx, scheme, plugin, True)
         self.DataBase = DataBase(self.ctx, datasource)
         if created:
+            print("DataSource.__init__() 2")
             self.Error = self.DataBase.createDataBase()
             if self.Error is None:
                 self.DataBase.storeDataBase(url)
+                print("DataSource.__init__() 3")
         self.DataBase.addCloseListener(self)
         folder, link = self.DataBase.getContentType()
         self.Provider.initialize(scheme, plugin, folder, link)
         self.Replicator = Replicator(ctx, datasource, self.Provider, self._Users, self.sync)
         msg += "Done"
         logMessage(self.ctx, INFO, msg, 'DataSource', '__init__()')
+        print("DataSource.__init__() 4")
 
     # XCloseListener
     def queryClosing(self, source, ownership):
@@ -154,8 +158,10 @@ class DataSource(unohelper.Base,
 
     def _initializeUser(self, user, name, password):
         if user.Request is not None:
+            print('DataSource._initializeUser() 1')
             if user.MetaData is not None:
                 user.setDataBase(self.DataBase.getDataSource(), password, self.sync)
+                print('DataSource._initializeUser() 2')
                 return True
             if self.Provider.isOnLine():
                 data = self.Provider.getUser(user.Request, name)
@@ -165,6 +171,7 @@ class DataSource(unohelper.Base,
                         user.MetaData = self.DataBase.insertUser(user.Provider, data.Value, root.Value)
                         if self.DataBase.createUser(user, password):
                             user.setDataBase(self.DataBase.getDataSource(), password, self.sync)
+                            print('DataSource._initializeUser() 3')
                             return True
                         else:
                             self.Error = getMessage(self.ctx, g_message, 102, name)
