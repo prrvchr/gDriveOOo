@@ -29,6 +29,7 @@
 
 # DataSource configuration
 g_protocol = 'sdbc:hsqldb:'
+g_folder = 'hsqldb'
 g_path = 'hsqldb'
 g_jar = 'hsqldb.jar'
 g_class = 'org.hsqldb.jdbcDriver'

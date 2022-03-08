@@ -158,9 +158,8 @@ def createDataSource1(dbcontext, location, dbname, shutdown):
     datasource.URL = getDataSourceLocation(location, dbname, shutdown)
     return datasource
 
-def getDataSourceLocation1(location, dbname, shutdown):
+def getDataSourceLocation(location, dbname, shutdown=False):
     url = '%s%s/%s%s' % (g_protocol, location, dbname, g_options)
-    print("dbtool.getDataSourceLocation() %s" % url)
     if shutdown:
         url += g_shutdown
     return url
@@ -492,6 +491,7 @@ def createStaticTable(ctx, statement, tables, readonly=False):
 
 def executeSqlQueries(statement, queries):
     for query in queries:
+        print("dbtool.executeSqlQueries(): %s" % query)
         statement.executeQuery(query)
 
 def getWarning(state, code, message, context=None, exception=None):

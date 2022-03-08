@@ -1,29 +1,31 @@
 #!
 # -*- coding: utf_8 -*-
 
-'''
-    Copyright (c) 2020 https://prrvchr.github.io
-
-    Permission is hereby granted, free of charge, to any person obtaining
-    a copy of this software and associated documentation files (the "Software"),
-    to deal in the Software without restriction, including without limitation
-    the rights to use, copy, modify, merge, publish, distribute, sublicense,
-    and/or sell copies of the Software, and to permit persons to whom the Software
-    is furnished to do so, subject to the following conditions:
-
-    The above copyright notice and this permission notice shall be included in
-    all copies or substantial portions of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
-    OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-    CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-    TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
-    OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-'''
-
-#from __futur__ import absolute_import
+"""
+╔════════════════════════════════════════════════════════════════════════════════════╗
+║                                                                                    ║
+║   Copyright (c) 2020 https://prrvchr.github.io                                     ║
+║                                                                                    ║
+║   Permission is hereby granted, free of charge, to any person obtaining            ║
+║   a copy of this software and associated documentation files (the "Software"),     ║
+║   to deal in the Software without restriction, including without limitation        ║
+║   the rights to use, copy, modify, merge, publish, distribute, sublicense,         ║
+║   and/or sell copies of the Software, and to permit persons to whom the Software   ║
+║   is furnished to do so, subject to the following conditions:                      ║
+║                                                                                    ║
+║   The above copyright notice and this permission notice shall be included in       ║
+║   all copies or substantial portions of the Software.                              ║
+║                                                                                    ║
+║   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,                  ║
+║   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES                  ║
+║   OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.        ║
+║   IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY             ║
+║   CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,             ║
+║   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE       ║
+║   OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                    ║
+║                                                                                    ║
+╚════════════════════════════════════════════════════════════════════════════════════╝
+"""
 
 import uno
 import unohelper
@@ -33,8 +35,8 @@ from com.sun.star.logging.LogLevel import SEVERE
 
 from com.sun.star.ucb import XRestReplicator
 
-from unolib import parseDateTime
-from unolib import unparseDateTime
+from .unotool import parseDateTime
+from .unotool import unparseDateTime
 
 from .database import DataBase
 from .user import User
@@ -212,12 +214,11 @@ class Replicator(unohelper.Base,
         user.CanAddChild = True
 
     def _firstPull(self, user):
-        separator = ','
         start = parseDateTime()
         rootid = user.RootId
-        call = self.DataBase.getFirstPullCall(user.Id, separator, 1, start)
-        orphans, pages, rows, count, token = self._getFirstPull(call, user.Provider, user.Request, rootid, separator, start)
-        #rows += self._filterParents(call, user.Provider, items, parents, roots, separator, start)
+        call = self.DataBase.getFirstPullCall(user.Id, 1, start)
+        orphans, pages, rows, count, token = self._getFirstPull(call, user.Provider, user.Request, rootid, start)
+        #rows += self._filterParents(call, user.Provider, items, parents, roots, start)
         rejected = self._getRejectedItems(user.Provider, orphans, rootid)
         if count > 0:
             call.executeBatch()
@@ -227,7 +228,7 @@ class Replicator(unohelper.Base,
         self.DataBase.updateUserTimeStamp(end, user.Id)
         return rejected, pages, rows, count, end
 
-    def _getFirstPull(self, call, provider, request, rootid, separator, start):
+    def _getFirstPull(self, call, provider, request, rootid, start):
         orphans = OrderedDict()
         roots = [rootid]
         pages = rows = count = 0
@@ -238,7 +239,7 @@ class Replicator(unohelper.Base,
             enumerator = request.getIterator(parameter, None)
             while enumerator.hasMoreElements():
                 item = enumerator.nextElement()
-                if self._setFirstPullCall(call, provider, roots, orphans, rootid, item, separator, start):
+                if self._setFirstPullCall(call, provider, roots, orphans, rootid, item, start):
                     provider.setFirstPull(item)
                     count += 1
             pages += enumerator.PageCount
@@ -246,17 +247,17 @@ class Replicator(unohelper.Base,
             token = enumerator.SyncToken
         return orphans, pages, rows, count, token
 
-    def _setFirstPullCall(self, call, provider, roots, orphans, rootid, item, separator, timestamp):
+    def _setFirstPullCall(self, call, provider, roots, orphans, rootid, item, timestamp):
         itemid = provider.getItemId(item)
         parents = provider.getItemParent(item, rootid)
         if not all(parent in roots for parent in parents):
             orphans[itemid] = item
             return False
         roots.append(itemid)
-        self.DataBase.setFirstPullCall(call, provider, item, itemid, parents, separator, timestamp)
+        self.DataBase.setFirstPullCall(call, provider, item, itemid, parents, timestamp)
         return True
 
-    def _filterParents(self, call, provider, items, childs, roots, separator, start):
+    def _filterParents(self, call, provider, items, childs, roots, start):
         i = -1
         rows = []
         while len(childs) and len(childs) != i:
@@ -266,7 +267,7 @@ class Replicator(unohelper.Base,
                 itemid, parents = item
                 if all(parent in roots for parent in parents):
                     roots.append(itemid)
-                    row = self.DataBase.setDriveCall(call, provider, items[itemid], itemid, parents, separator, start)
+                    row = self.DataBase.setDriveCall(call, provider, items[itemid], itemid, parents, start)
                     rows.append(row)
                     childs.remove(item)
             childs.reverse()

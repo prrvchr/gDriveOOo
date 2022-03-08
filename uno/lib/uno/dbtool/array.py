@@ -36,7 +36,7 @@ import traceback
 
 class Array(unohelper.Base,
             XArray):
-    def __init__(self, sqltype, data):
+    def __init__(self, sqltype, data=()):
         self._type = sqltype
         self._data = data
 

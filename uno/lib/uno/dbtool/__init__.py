@@ -41,6 +41,9 @@ from .dbtool import getDataSource
 from .dbtool import getDataSourceCall
 from .dbtool import getDataSourceClassPath
 from .dbtool import getDataSourceConnection
+from .dbtool import getDataSourceLocation
+from .dbtool import getDataSourceInfo
+from .dbtool import getDataSourceJavaInfo
 from .dbtool import getDictFromResult
 from .dbtool import getDriverPropertyInfo
 from .dbtool import getDriverPropertyInfos
