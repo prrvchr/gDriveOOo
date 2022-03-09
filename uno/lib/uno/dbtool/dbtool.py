@@ -407,14 +407,12 @@ def getKeyMapKeyMapFromResult(result):
 
 def getSequenceFromResult(result, index=1, default=None, transformer=None):
     sequence = []
-    name = result.MetaData.getColumnName(index)
     while result.next():
         value = getValueFromResult(result, index)
-#        if value is None:
-#            continue
         if result.wasNull():
             value = default
         if transformer is not None:
+            name = result.MetaData.getColumnName(index)
             value = transformer.transform(name, value)
         sequence.append(value)
     return tuple(sequence)
