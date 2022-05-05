@@ -30,24 +30,28 @@
 import uno
 import unohelper
 
-from com.sun.star.beans import XPropertyContainer
+from com.sun.star.auth import XRestDataParser
 
-from ..unotools import getProperty
+from .unolib import KeyMap
+from .unotool import getNamedValue
 
 
-class PropertyContainer(unohelper.Base,
-                        XPropertyContainer):
-    def __init__(self):
-        self._propertySetInfo = {}
+class DataParser(unohelper.Base,
+                 XRestDataParser):
+    def __init__(self, database, provider, method):
+        self.provider = provider
+        self.map = database.getFieldsMap(method, True)
+        self.keys = self.map.getKeys()
+        self.DataType = 'Json'
 
-    # XPropertyContainer
-    def addProperty(self, name, attributes, default):
-        print("PropertyContainer.addProperty() *********************************************")
-        property = getProperty(name, default.type, attributes)
-        self._propertySetInfo.update({name: property})
-        setattr(self, name, default.value)
-    def removeProperty(self, name):
-        print("PropertyContainer.removeProperty() ******************************************")
-        self._propertySetInfo.pop(name, None)
-        if hasattr(self, name):
-            delattr(self, name)
+    def parseResponse(self, pairs):
+        data = KeyMap()
+        for key, value in pairs:
+            if value is None:
+                continue
+            if key in self.keys:
+                map = self.map.getValue(key)
+                k = map.getValue('Map')
+                v = self.provider.transform(k, value)
+                data.setValue(k, v)
+        return data if data.Count else None

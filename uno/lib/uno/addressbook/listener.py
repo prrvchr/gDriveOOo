@@ -27,27 +27,46 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-import uno
 import unohelper
 
-from com.sun.star.beans import XPropertyContainer
+from com.sun.star.frame import XTerminateListener
 
-from ..unotools import getProperty
+from com.sun.star.lang import XEventListener
 
 
-class PropertyContainer(unohelper.Base,
-                        XPropertyContainer):
-    def __init__(self):
-        self._propertySetInfo = {}
+import traceback
 
-    # XPropertyContainer
-    def addProperty(self, name, attributes, default):
-        print("PropertyContainer.addProperty() *********************************************")
-        property = getProperty(name, default.type, attributes)
-        self._propertySetInfo.update({name: property})
-        setattr(self, name, default.value)
-    def removeProperty(self, name):
-        print("PropertyContainer.removeProperty() ******************************************")
-        self._propertySetInfo.pop(name, None)
-        if hasattr(self, name):
-            delattr(self, name)
+
+class TerminateListener(unohelper.Base,
+                        XTerminateListener):
+    def __init__(self, replicator):
+        self._replicator = replicator
+
+# XTerminateListener
+    def queryTermination(self, event):
+        try:
+            self._replicator.dispose()
+        except Exception as e:
+            msg = "TerminateListener Error: %s" % traceback.print_exc()
+            print(msg)
+
+    def notifyTermination(self, event):
+        pass
+
+    def disposing(self, source):
+        pass
+
+
+class EventListener(unohelper.Base,
+                    XEventListener):
+    def __init__(self, datasource):
+        self._datasource = datasource
+
+# XEventListener
+    def disposing(self, source):
+        try:
+            print("EventListener.disposing() ******************")
+            self._datasource.stopReplicator()
+        except Exception as e:
+            msg = "EventListener Error: %s" % traceback.print_exc()
+            print(msg)
