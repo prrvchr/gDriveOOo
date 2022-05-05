@@ -1,6 +1,6 @@
 # ![gDriveOOo logo](https://prrvchr.github.io/gDriveOOo/img/gDriveOOo.png) gDriveOOo - Politique de protection des données
 
-**L'utilisation de ce logiciel vous soumet également à nos [Conditions d'utilisation](https://prrvchr.github.io/gDriveOOo/gDriveOOo/registration/TermsOfUse_fr).**
+**L'utilisation de ce logiciel vous soumet également à nos [Conditions d'utilisation](https://prrvchr.github.io/gDriveOOo/source/gDriveOOo/registration/TermsOfUse_fr).**
 
 Concernant l'installation, la configuration et l'utilisation, veuillez consulter la [documentation](https://prrvchr.github.io/gDriveOOo/README_fr).
 
