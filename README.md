@@ -103,7 +103,7 @@ or
 
 - **vnd-google:///**
 
-If you don't give **your_account@gamil.com**, you will be asked for...
+If you don't give **your_account@gmail.com**, you will be asked for...
 
 After authorizing the [OAuth2OOo][21] application to access your Drive files, your Google Drive should open!!! normally  ;-)
 
