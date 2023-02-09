@@ -27,42 +27,46 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-# Provider configuration
-g_scheme = 'vnd.google-apps'
-g_extension = 'gDriveOOo'
-g_identifier = 'com.gmail.prrvchr.extensions.%s' % g_extension
-g_logger = '%s.Logger' % g_identifier
+from .contentprovider import ContentProvider
 
-g_provider = 'Google'
-g_host = 'www.googleapis.com'
-g_version = 'v3'
-g_url = 'https://%s/drive/%s' % (g_host, g_version)
-g_upload = 'https://%s/upload/drive/%s/files' % (g_host, g_version)
+from .providerbase import ProviderBase
 
-g_userkeys = ('permissionId','emailAddress','displayName')
-g_userfields = 'user(%s)' % ','.join(g_userkeys)
-g_capabilitykeys = ('canAddChildren','canRename','canEdit','canReadRevisions')
-g_itemkeys = ('id','name','createdTime','modifiedTime','mimeType','size','trashed','parents','capabilities')
-g_itemfields = '%s(%s)' % (','.join(g_itemkeys), ','.join(g_capabilitykeys))
-g_childfields = 'kind,nextPageToken,files(%s)' % g_itemfields
+from .unotool import createService
+from .unotool import getFileSequence
+from .unotool import getStringResource
+from .unotool import getResourceLocation
+from .unotool import getConfiguration
+from .unotool import getDialog
 
-# Minimun chunk: 262144 (256Ko) no more uploads if less... (must be a multiple of 64Ko (and 32Ko))
-g_chunk = 262144
-g_buffer = 32768  # InputStream (Downloader) maximum 'Buffers' size
-g_pages = 200
-g_IdentifierRange = (10, 50)
+from .logger import getLoggerSetting
+from .logger import getLoggerUrl
+from .logger import setLoggerSetting
+from .logger import clearLogger
+from .logger import logMessage
+from .logger import getMessage
 
-g_office = 'application/vnd.oasis.opendocument'
-g_folder = 'application/vnd.google-apps.folder'
-g_link = 'application/vnd.google-apps.drive-sdk'
-g_doc_map = {'application/vnd.google-apps.document':     'application/vnd.oasis.opendocument.text',
-             'application/vnd.google-apps.spreadsheet':  'application/x-vnd.oasis.opendocument.spreadsheet',
-             'application/vnd.google-apps.presentation': 'application/vnd.oasis.opendocument.presentation',
-             'application/vnd.google-apps.drawing':      'application/pdf'}
+from .configuration import g_provider
+from .configuration import g_scheme
+from .configuration import g_extension
+from .configuration import g_identifier
+from .configuration import g_host
+from .configuration import g_url
+from .configuration import g_upload
 
-g_cache = 20
-g_sync = 600
-g_admin = False
+from .configuration import g_userkeys
+from .configuration import g_userfields
+from .configuration import g_capabilitykeys
+from .configuration import g_itemkeys
+from .configuration import g_itemfields
+from .configuration import g_childfields
 
-# Resource strings files folder
-g_resource = 'resource'
+from .configuration import g_chunk
+from .configuration import g_buffer
+from .configuration import g_pages
+from .configuration import g_IdentifierRange
+
+from .configuration import g_office
+from .configuration import g_folder
+from .configuration import g_link
+from .configuration import g_doc_map
+

@@ -58,14 +58,6 @@ class ContentProviderProxy(unohelper.Base,
                            XContentProvider,
                            XContentProviderFactory,
                            XContentProviderSupplier):
-
-    _Provider = None
-    _IsRegistred = False
-
-    @property
-    def IsLoaded(self):
-        return ContentProviderProxy._Provider is not None
-
     def __init__(self, ctx):
         msg = "ContentProviderProxy for plugin: %s loading ..." % g_identifier
         self.ctx = ctx
@@ -74,6 +66,13 @@ class ContentProviderProxy(unohelper.Base,
         self.replace = True
         msg += " Done"
         logMessage(self.ctx, INFO, msg, 'ContentProviderProxy', '__init__()')
+
+    _Provider = None
+    _IsRegistred = False
+
+    @property
+    def IsLoaded(self):
+        return ContentProviderProxy._Provider is not None
 
     # XContentProviderFactory
     def createContentProvider(self, service):

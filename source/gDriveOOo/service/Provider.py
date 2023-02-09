@@ -39,7 +39,6 @@ from com.sun.star.auth.RestRequestTokenType import TOKEN_QUERY
 from com.sun.star.auth.RestRequestTokenType import TOKEN_JSON
 from com.sun.star.auth.RestRequestTokenType import TOKEN_SYNC
 
-from gdrive import KeyMap
 from gdrive import ProviderBase
 
 from gdrive import g_identifier
