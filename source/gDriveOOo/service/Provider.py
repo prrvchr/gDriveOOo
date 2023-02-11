@@ -67,7 +67,7 @@ g_ImplementationName = '%s.Provider' % g_identifier
 
 class Provider(ProviderBase):
     def __init__(self, ctx):
-        self.ctx = ctx
+        self._ctx = ctx
         self.Scheme = ''
         self.Plugin = ''
         self.Link = ''
