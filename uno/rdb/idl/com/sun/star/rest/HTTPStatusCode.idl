@@ -1,0 +1,63 @@
+/*
+╔════════════════════════════════════════════════════════════════════════════════════╗
+║                                                                                    ║
+║   Copyright (c) 2020 https://prrvchr.github.io                                     ║
+║                                                                                    ║
+║   Permission is hereby granted, free of charge, to any person obtaining            ║
+║   a copy of this software and associated documentation files (the "Software"),     ║
+║   to deal in the Software without restriction, including without limitation        ║
+║   the rights to use, copy, modify, merge, publish, distribute, sublicense,         ║
+║   and/or sell copies of the Software, and to permit persons to whom the Software   ║
+║   is furnished to do so, subject to the following conditions:                      ║
+║                                                                                    ║
+║   The above copyright notice and this permission notice shall be included in       ║
+║   all copies or substantial portions of the Software.                              ║
+║                                                                                    ║
+║   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,                  ║
+║   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES                  ║
+║   OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.        ║
+║   IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY             ║
+║   CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,             ║
+║   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE       ║
+║   OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                    ║
+║                                                                                    ║
+╚════════════════════════════════════════════════════════════════════════════════════╝
+ */
+
+#ifndef __com_sun_star_rest_HTTPStatusCode_idl__
+#define __com_sun_star_rest_HTTPStatusCode_idl__
+
+
+module com {  module sun {  module star {  module rest {
+
+constants HTTPStatusCode
+{
+
+    /** The server cannot or will not process the request due to something that is perceived to be a client error
+        (e.g., malformed request syntax, invalid request message framing, or deceptive request routing).
+    */
+    const long BAD_REQUEST = 400;
+
+
+    /** Although the HTTP standard specifies "unauthorized", semantically this response means "unauthenticated".
+        That is, the client must authenticate itself to get the requested response.
+    */
+    const long UNAUTHORIZED = 401;
+
+
+    /** This response code is reserved for future use. The initial aim for creating this code was using it for digital 
+        payment systems, however this status code is used very rarely and no standard convention exists. 
+    */
+    const long PAYMENT_REQUIRED = 402;
+
+
+    /** The client does not have access rights to the content; that is, it is unauthorized, so the server is refusing
+        to give the requested resource. Unlike 401 Unauthorized, the client's identity is known to the server.
+    */
+    const long FORBIDDEN = 403;
+
+};
+
+}; }; }; };
+
+#endif
