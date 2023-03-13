@@ -27,7 +27,7 @@
               <value>%origin%/gDriveOOo/OptionsDialog.xdl</value>
             </prop>
             <prop oor:name="EventHandlerService">
-              <value>io.github.prrvchr.gDriveOOo.OptionsDialog</value>
+              <value>io.github.prrvchr.gDriveOOo.OptionsHandler</value>
             </prop>
           </node>
         </node>

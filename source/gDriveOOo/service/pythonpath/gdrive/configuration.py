@@ -31,7 +31,6 @@
 g_scheme = 'vnd-google'
 g_extension = 'gDriveOOo'
 g_identifier = 'io.github.prrvchr.%s' % g_extension
-g_logger = '%s.Logger' % g_identifier
 
 g_provider = 'Google'
 g_host = 'www.googleapis.com'
@@ -61,8 +60,13 @@ g_doc_map = {'application/vnd.google-apps.document':     'application/vnd.oasis.
              'application/vnd.google-apps.drawing':      'application/pdf'}
 
 g_cache = 20
-g_sync = 600
 g_admin = False
 
 # Resource strings files folder
 g_resource = 'resource'
+g_basename = 'contentprovider'
+g_driverlog = 'DriverLogger'
+g_synclog = 'SyncLogger'
+g_errorlog = 'gDriveError'
+
+

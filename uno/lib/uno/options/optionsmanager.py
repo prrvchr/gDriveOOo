@@ -27,46 +27,43 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-from .contentprovider import ContentProvider
+import unohelper
 
-from .providerbase import ProviderBase
+from .optionsmodel import OptionsModel
+from .optionsview import OptionsView
 
-from .unotool import createService
-from .unotool import getConfiguration
-from .unotool import getDialog
-from .unotool import getFileSequence
-from .unotool import getResourceLocation
-from .unotool import getStringResource
+from ..unotool import getDesktop
 
-from .options import OptionsManager
+from ..logger import LogManager
 
-from .logger import getLogger
+from ..configuration import g_identifier
+from ..configuration import g_driverlog
 
-from .configuration import g_provider
-from .configuration import g_scheme
-from .configuration import g_extension
-from .configuration import g_identifier
-from .configuration import g_host
-from .configuration import g_url
-from .configuration import g_upload
+import os
+import sys
+import traceback
 
-from .configuration import g_userkeys
-from .configuration import g_userfields
-from .configuration import g_capabilitykeys
-from .configuration import g_itemkeys
-from .configuration import g_itemfields
-from .configuration import g_childfields
 
-from .configuration import g_chunk
-from .configuration import g_buffer
-from .configuration import g_pages
-from .configuration import g_IdentifierRange
+class OptionsManager(unohelper.Base):
+    def __init__(self, ctx, window):
+        self._ctx = ctx
+        self._model = OptionsModel(ctx)
+        timeout = self._model.getTimeout()
+        enabled = self._model.hasDatasource()
+        self._view = OptionsView(window, timeout, enabled)
+        version  = ' '.join(sys.version.split())
+        path = os.pathsep.join(sys.path)
+        infos = {111: version, 112: path}
+        self._logger = LogManager(self._ctx, window.Peer, infos, g_identifier, g_driverlog)
 
-from .configuration import g_office
-from .configuration import g_folder
-from .configuration import g_link
-from .configuration import g_doc_map
+    def saveSetting(self):
+        self._model.setTimeout(self._view.getTimeout())
+        self._logger.saveSetting()
 
-from .configuration import g_basename
-from .configuration import g_driverlog
+    def loadSetting(self):
+        self._view.setTimeout(self._model.getTimeout())
+        self._logger.loadSetting()
 
+    def viewData(self):
+        url = self._model.getDatasourceUrl()
+        getDesktop(self._ctx).loadComponentFromURL(url, '_default', 0, ())

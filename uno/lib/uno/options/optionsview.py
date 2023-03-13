@@ -27,46 +27,28 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-from .contentprovider import ContentProvider
+import unohelper
 
-from .providerbase import ProviderBase
+import traceback
 
-from .unotool import createService
-from .unotool import getConfiguration
-from .unotool import getDialog
-from .unotool import getFileSequence
-from .unotool import getResourceLocation
-from .unotool import getStringResource
 
-from .options import OptionsManager
+class OptionsView(unohelper.Base):
+    def __init__(self, window, timeout, enabled):
+        self._window = window
+        self._getTimeout().Value = timeout
+        self._getDatasource().Model.Enabled = enabled
 
-from .logger import getLogger
+# OptionsView getter methods
+    def getTimeout(self):
+        return int(self._getTimeout().Value)
 
-from .configuration import g_provider
-from .configuration import g_scheme
-from .configuration import g_extension
-from .configuration import g_identifier
-from .configuration import g_host
-from .configuration import g_url
-from .configuration import g_upload
+# OptionsView setter methods
+    def setTimeout(self, timeout):
+        self._getTimeout().Value = timeout
 
-from .configuration import g_userkeys
-from .configuration import g_userfields
-from .configuration import g_capabilitykeys
-from .configuration import g_itemkeys
-from .configuration import g_itemfields
-from .configuration import g_childfields
+# OptionsView private control methods
+    def _getTimeout(self):
+        return self._window.getControl('NumericField1')
 
-from .configuration import g_chunk
-from .configuration import g_buffer
-from .configuration import g_pages
-from .configuration import g_IdentifierRange
-
-from .configuration import g_office
-from .configuration import g_folder
-from .configuration import g_link
-from .configuration import g_doc_map
-
-from .configuration import g_basename
-from .configuration import g_driverlog
-
+    def _getDatasource(self):
+        return self._window.getControl('CommandButton1')

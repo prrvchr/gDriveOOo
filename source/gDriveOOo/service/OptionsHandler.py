@@ -27,46 +27,65 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-from .contentprovider import ContentProvider
+import uno
+import unohelper
 
-from .providerbase import ProviderBase
+from com.sun.star.lang import XServiceInfo
+from com.sun.star.awt import XContainerWindowEventHandler
 
-from .unotool import createService
-from .unotool import getConfiguration
-from .unotool import getDialog
-from .unotool import getFileSequence
-from .unotool import getResourceLocation
-from .unotool import getStringResource
+from gdrive import OptionsManager
 
-from .options import OptionsManager
+from gdrive import g_identifier
 
-from .logger import getLogger
+import traceback
 
-from .configuration import g_provider
-from .configuration import g_scheme
-from .configuration import g_extension
-from .configuration import g_identifier
-from .configuration import g_host
-from .configuration import g_url
-from .configuration import g_upload
+# pythonloader looks for a static g_ImplementationHelper variable
+g_ImplementationHelper = unohelper.ImplementationHelper()
+g_ImplementationName = '%s.OptionsHandler' % g_identifier
 
-from .configuration import g_userkeys
-from .configuration import g_userfields
-from .configuration import g_capabilitykeys
-from .configuration import g_itemkeys
-from .configuration import g_itemfields
-from .configuration import g_childfields
 
-from .configuration import g_chunk
-from .configuration import g_buffer
-from .configuration import g_pages
-from .configuration import g_IdentifierRange
+class OptionsHandler(unohelper.Base,
+                     XServiceInfo,
+                     XContainerWindowEventHandler):
+    def __init__(self, ctx):
+        self._ctx = ctx
+        self._manager = None
 
-from .configuration import g_office
-from .configuration import g_folder
-from .configuration import g_link
-from .configuration import g_doc_map
+    # XContainerWindowEventHandler
+    def callHandlerMethod(self, window, event, method):
+        try:
+            handled = False
+            if method == 'external_event':
+                if event == 'initialize':
+                    self._manager = OptionsManager(self._ctx, window)
+                    handled = True
+                elif event == 'ok':
+                    self._manager.saveSetting()
+                    handled = True
+                elif event == 'back':
+                    self._manager.loadSetting()
+                    handled = True
+            elif method == 'ViewData':
+                self._manager.viewData()
+                handled = True
+            return handled
+        except Exception as e:
+            msg = "OptionsHandler.callHandlerMethod() Error: %s" % traceback.print_exc()
+            print(msg)
 
-from .configuration import g_basename
-from .configuration import g_driverlog
+    def getSupportedMethodNames(self):
+        return ('external_event',
+                'ViewData')
 
+    # XServiceInfo
+    def supportsService(self, service):
+        return g_ImplementationHelper.supportsService(g_ImplementationName, service)
+    def getImplementationName(self):
+        return g_ImplementationName
+    def getSupportedServiceNames(self):
+        return g_ImplementationHelper.getSupportedServiceNames(g_ImplementationName)
+
+
+g_ImplementationHelper.addImplementation(OptionsHandler,                            # UNO object class
+                                         g_ImplementationName,                      # Implementation name
+                                        (g_ImplementationName,))                    # List of implemented services

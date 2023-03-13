@@ -27,46 +27,43 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-from .contentprovider import ContentProvider
+import unohelper
 
-from .providerbase import ProviderBase
+from ..unotool import getConfiguration
+from ..unotool import getResourceLocation
+from ..unotool import getSimpleFile
 
-from .unotool import createService
-from .unotool import getConfiguration
-from .unotool import getDialog
-from .unotool import getFileSequence
-from .unotool import getResourceLocation
-from .unotool import getStringResource
+from ..dbconfig  import g_folder
 
-from .options import OptionsManager
+from ..configuration import g_identifier
+from ..configuration import g_scheme
 
-from .logger import getLogger
+import traceback
 
-from .configuration import g_provider
-from .configuration import g_scheme
-from .configuration import g_extension
-from .configuration import g_identifier
-from .configuration import g_host
-from .configuration import g_url
-from .configuration import g_upload
 
-from .configuration import g_userkeys
-from .configuration import g_userfields
-from .configuration import g_capabilitykeys
-from .configuration import g_itemkeys
-from .configuration import g_itemfields
-from .configuration import g_childfields
+class OptionsModel(unohelper.Base):
+    def __init__(self, ctx):
+        self._ctx = ctx
+        self._configuration = getConfiguration(ctx, g_identifier, True)
+        folder = g_folder + '/' + g_scheme
+        location = getResourceLocation(ctx, g_identifier, folder)
+        self._url = location + '.odb'
+        self._factor = 60
 
-from .configuration import g_chunk
-from .configuration import g_buffer
-from .configuration import g_pages
-from .configuration import g_IdentifierRange
+# OptionsModel getter methods
+    def getTimeout(self):
+        timeout = self._configuration.getByName('ReplicateTimeout')
+        return timeout / self._factor
 
-from .configuration import g_office
-from .configuration import g_folder
-from .configuration import g_link
-from .configuration import g_doc_map
+    def hasDatasource(self):
+        return getSimpleFile(self._ctx).exists(self._url)
 
-from .configuration import g_basename
-from .configuration import g_driverlog
+    def getDatasourceUrl(self):
+        return self._url
 
+# OptionsModel setter methods
+    def setTimeout(self, timeout):
+        timeout = timeout * self._factor
+        self._configuration.replaceByName('ReplicateTimeout', timeout)
+        if self._configuration.hasPendingChanges():
+            self._configuration.commitChanges()

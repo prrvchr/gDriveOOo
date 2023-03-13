@@ -40,10 +40,14 @@ from com.sun.star.ucb import XParameterizedContentProvider
 from com.sun.star.logging.LogLevel import INFO
 from com.sun.star.logging.LogLevel import SEVERE
 
-from gdrive import logMessage
 from gdrive import ContentProvider
+
+from gdrive import getLogger
+
 from gdrive import g_scheme
 from gdrive import g_identifier
+from gdrive import g_basename
+from gdrive import g_driverlog
 
 g_proxy = 'com.sun.star.ucb.ContentProviderProxy'
 
@@ -65,7 +69,8 @@ class ContentProviderProxy(unohelper.Base,
         self.plugin = ''
         self.replace = True
         msg += " Done"
-        logMessage(self.ctx, INFO, msg, 'ContentProviderProxy', '__init__()')
+        self._logger = getLogger(ctx, g_driverlog, g_basename)
+        self._logger.logp(INFO, 'ContentProviderProxy', '__init__()', msg)
 
     _Provider = None
     _IsRegistred = False
@@ -87,7 +92,7 @@ class ContentProviderProxy(unohelper.Base,
         else:
             msg += " Done"
             provider = ucp.registerInstance(g_scheme, g_identifier, True)
-        logMessage(self.ctx, level, msg, 'ContentProviderProxy', 'createContentProvider()')
+        self._logger.logp(level, 'ContentProviderProxy', 'createContentProvider()', msg)
         return provider
 
     # XContentProviderSupplier
@@ -105,7 +110,7 @@ class ContentProviderProxy(unohelper.Base,
                msg += " Done"
         else:
             msg += " Done"
-        logMessage(self.ctx, level, msg, 'ContentProviderProxy', 'getContentProvider()')
+        self._logger.logp(level, 'ContentProviderProxy', 'getContentProvider()', msg)
         return ContentProviderProxy._Provider
 
     # XParameterizedContentProvider
@@ -120,14 +125,14 @@ class ContentProviderProxy(unohelper.Base,
         self.plugin = plugin
         self.replace = replace
         msg += " Done"
-        logMessage(self.ctx, INFO, msg, 'ContentProviderProxy', 'registerInstance()')
+        self._logger.logp(INFO, 'ContentProviderProxy', 'registerInstance()', msg)
         #print('ContentProviderProxy.registerInstance() OK')
         return self
     def deregisterInstance1(self, scheme, plugin):
         print('ContentProviderProxy.deregisterInstance()')
         provider = self.getContentProvider().deregisterInstance(scheme, plugin)
         msg = "ContentProviderProxy.deregisterInstance(): %s - %s ... Done" % (scheme, plugin)
-        logMessage(self.ctx, INFO, msg, 'ContentProviderProxy', 'deregisterInstance()')
+        self._logger.logp(INFO, 'ContentProviderProxy', 'deregisterInstance()', msg)
         return provider
 
     # XContentIdentifierFactory
