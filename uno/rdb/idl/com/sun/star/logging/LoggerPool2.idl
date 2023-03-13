@@ -1,7 +1,4 @@
-#!
-# -*- coding: utf-8 -*-
-
-"""
+/*
 ╔════════════════════════════════════════════════════════════════════════════════════╗
 ║                                                                                    ║
 ║   Copyright (c) 2020 https://prrvchr.github.io                                     ║
@@ -25,22 +22,21 @@
 ║   OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                    ║
 ║                                                                                    ║
 ╚════════════════════════════════════════════════════════════════════════════════════╝
-"""
+ */
 
-from .logger import Logger
-from .logmanager import LogManager
-from .logmodel import LogModel
-from .handler import LogHandler
-from .loghandler import LoggerListener
-from .loghelper import getLogger
-from .loghelper import LogController
+#ifndef __com_sun_star_logging_LoggerPool2_idl__
+#define __com_sun_star_logging_LoggerPool2_idl__
 
-from .log import clearLogger
-from .log import disposeLogger
-from .log import getLoggerUrl
-from .log import getLoggerSetting
-from .log import getMessage
-from .log import isDebugMode
-from .log import logMessage
-from .log import setDebugMode
-from .log import setLoggerSetting
+#include <com/sun/star/logging/XLoggerPool2.idl>
+
+module com { module sun { module star { module logging {
+
+
+service LoggerPool2 : com::sun::star::logging::XLoggerPool2;
+
+
+}; }; }; };
+
+
+#endif
+
