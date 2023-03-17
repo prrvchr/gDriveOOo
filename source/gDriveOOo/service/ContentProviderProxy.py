@@ -47,7 +47,7 @@ from gdrive import getLogger
 from gdrive import g_scheme
 from gdrive import g_identifier
 from gdrive import g_basename
-from gdrive import g_driverlog
+from gdrive import g_defaultlog
 
 g_proxy = 'com.sun.star.ucb.ContentProviderProxy'
 
@@ -69,7 +69,7 @@ class ContentProviderProxy(unohelper.Base,
         self.plugin = ''
         self.replace = True
         msg += " Done"
-        self._logger = getLogger(ctx, g_driverlog, g_basename)
+        self._logger = getLogger(ctx, g_defaultlog, g_basename)
         self._logger.logp(INFO, 'ContentProviderProxy', '__init__()', msg)
 
     _Provider = None

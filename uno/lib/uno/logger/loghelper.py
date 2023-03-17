@@ -49,12 +49,13 @@ from .handler import getRollerHandlerUrl
 
 from ..configuration import g_identifier
 from ..configuration import g_resource
+from ..configuration import g_defaultlog
 from ..configuration import g_basename
 
 import traceback
 
 
-def getLogger(ctx, logger, basename=g_basename):
+def getLogger(ctx, logger=g_defaultlog, basename=g_basename):
     return LogWrapper(ctx, logger, basename)
 
 def getLoggerName(name):
