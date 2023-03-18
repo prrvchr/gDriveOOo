@@ -92,7 +92,7 @@ class Replicator(unohelper.Base,
         try:
             msg = "Replicator for Scheme: %s loading ... " % self.Provider.Scheme
             print("Replicator.run() 1 *************************************************************")
-            self._logger.log(INFO, 'Replicator', 'run()', 'stage 1')
+            self._logger.logp(INFO, 'Replicator', 'run()', 'stage 1')
             print("Replicator run() 2")
             while not self._canceled:
                 self._sync.wait(self._getReplicateTimeout())
