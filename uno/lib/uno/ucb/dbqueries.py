@@ -381,8 +381,8 @@ def getSqlQuery(ctx, name, format=None):
 
 # Insert Queries
     elif name == 'insertUser':
-        c = '"UserName","DisplayName","RootId","UserId"'
-        query = 'INSERT INTO "Users" (%s) VALUES (?,?,?,?);' % c
+        c = '"UserName", "DisplayName", "RootId", "TimeStamp", "UserId"'
+        query = 'INSERT INTO "Users" (%s) VALUES (?,?,?,?,?);' % c
     elif name == 'insertNewIdentifier':
         query = 'INSERT INTO "Identifiers"("UserId","ItemId")VALUES(?,?);'
 

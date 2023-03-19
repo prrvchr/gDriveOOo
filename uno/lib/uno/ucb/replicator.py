@@ -230,12 +230,9 @@ class Replicator(unohelper.Base,
         user.CanAddChild = True
 
     def _firstPull(self, user):
-        print("Replicator._firstPull() 1")
         start = currentDateTimeInTZ()
-        print("Replicator._firstPull() 2")
         rootid = user.RootId
         call = self.DataBase.getFirstPullCall(user.Id, 1, start)
-        print("Replicator._firstPull() 3")
         orphans, pages, rows, count, token = self._getFirstPull(call, user.Provider, user.Request, rootid, start)
         #rows += self._filterParents(call, user.Provider, items, parents, roots, start)
         rejected = self._getRejectedItems(user.Provider, orphans, rootid)
