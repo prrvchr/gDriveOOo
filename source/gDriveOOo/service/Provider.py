@@ -40,6 +40,7 @@ from com.sun.star.auth.RestRequestTokenType import TOKEN_JSON
 from com.sun.star.auth.RestRequestTokenType import TOKEN_SYNC
 
 from gdrive import ProviderBase
+from gdrive import toUnoDateTime
 
 from gdrive import g_identifier
 from gdrive import g_provider
@@ -253,12 +254,12 @@ class Provider(ProviderBase):
         created = item.getDefaultValue('createdTime', None)
         if created:
             return self.parseDateTime(created)
-        return timestamp
+        return toUnoDateTime(timestamp)
     def getItemModified(self, item, timestamp=None):
         modified = item.getDefaultValue('modifiedTime', None)
         if modified:
             return self.parseDateTime(modified)
-        return timestamp
+        return toUnoDateTime(timestamp)
     def getItemMediaType(self, item):
         return item.getValue('mimeType')
     def getItemSize(self, item):

@@ -38,6 +38,8 @@ from .unotool import getFileSequence
 from .unotool import getResourceLocation
 from .unotool import getStringResource
 
+from .dbtool import toUnoDateTime
+
 from .options import OptionsManager
 
 from .logger import getLogger
