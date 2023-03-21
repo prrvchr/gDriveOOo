@@ -125,6 +125,7 @@ class DataBase(unohelper.Base,
         result = select.executeQuery()
         if result.next():
             user = getKeyMapFromResult(result)
+        result.close()
         select.close()
         return user
 
@@ -158,24 +159,24 @@ class DataBase(unohelper.Base,
         if result.next():
             folder = result.getString(1)
             link = result.getString(2)
+        result.close()
         call.close()
         return folder, link
 
 # Procedures called by the Identifier
-    def getItem(self, userid, itemid, parentid):
+    def getItem(self, userid, itemid, scheme, isroot):
         #TODO: Can't have a simple SELECT ResultSet with a Procedure,
         #TODO: the malfunction is rather bizard: it always returns the same result
-        #TODO: as a workaround we use a simple quey...
+        #TODO: as a workaround we use a simple query...
         item = None
-        call = 'getRoot' if parentid is None else 'getItem'
+        call = 'getRoot' if isroot else 'getItem'
         select = self._getCall(call)
-        select.setString(1, userid)
-        select.setString(2, itemid)
-        if parentid is not None:
-            select.setString(3, parentid)
+        select.setString(1, scheme)
+        select.setString(2, userid if isroot else itemid)
         result = select.executeQuery()
         if result.next():
             item = getKeyMapFromResult(result)
+        result.close()
         select.close()
         return item
 
@@ -198,7 +199,7 @@ class DataBase(unohelper.Base,
         call.close()
         return all(rows)
 
-    def getChildren(self, userid, itemid, url, mode):
+    def getChildren(self, itemid, scheme, mode):
         #TODO: Can't have a ResultSet of type SCROLL_INSENSITIVE with a Procedure,
         #TODO: as a workaround we use a simple quey...
         select = self._getCall('getChildren')
@@ -209,10 +210,9 @@ class DataBase(unohelper.Base,
         #    'IsVolume', 'IsRemote', 'IsRemoveable', 'IsFloppy', 'IsCompactDisc']
         # "TargetURL" is done by:
         #    CONCAT(identifier.getContentIdentifier(), Uri) for File and Foder
-        select.setString(1, url)
-        select.setString(2, userid)
-        select.setString(3, itemid)
-        select.setShort(4, mode)
+        select.setString(1, scheme)
+        select.setString(2, itemid)
+        select.setShort(3, mode)
         return select
 
     def updateLoaded(self, userid, itemid, value, default):
@@ -223,22 +223,19 @@ class DataBase(unohelper.Base,
         update.close()
         return value
 
-    def getIdentifier(self, userid, rootid, uripath):
+    def getIdentifier(self, userid, rootid, scheme, uri):
         call = self._getCall('getIdentifier')
         call.setString(1, userid)
         call.setString(2, rootid)
-        call.setString(3, uripath)
-        call.setString(4, '/')
+        call.setString(3, scheme)
+        call.setString(4, uri)
         call.execute()
         itemid = call.getString(5)
         if call.wasNull():
             itemid = None
-        parentid = call.getString(6)
-        if call.wasNull():
-            parentid = None
-        path = call.getString(7)
+        isroot = call.getBoolean(6)
         call.close()
-        return itemid, parentid, path
+        return itemid, isroot
 
     def getNewIdentifier(self, userid):
         identifier = ''
@@ -247,6 +244,7 @@ class DataBase(unohelper.Base,
         result = select.executeQuery()
         if result.next():
             identifier = result.getString(1)
+        result.close()
         select.close()
         return identifier
 
@@ -335,6 +333,7 @@ class DataBase(unohelper.Base,
         result = call.executeQuery()
         if result.next():
             count = result.getLong(1)
+        result.close()
         call.close()
         return count
 
@@ -347,6 +346,7 @@ class DataBase(unohelper.Base,
         result = call.executeQuery()
         if result.next():
             id = result.getString(1)
+        result.close()
         call.close()
         return id
 
@@ -368,6 +368,7 @@ class DataBase(unohelper.Base,
         result = call.executeQuery()
         if result.next():
             count = result.getLong(1)
+        result.close()
         call.close()
         return count
 
@@ -416,6 +417,7 @@ class DataBase(unohelper.Base,
         result = select.executeQuery()
         if result.next():
             timestamp = result.getObject(1, None)
+        result.close()
         select.close()
         return timestamp
 
@@ -432,6 +434,7 @@ class DataBase(unohelper.Base,
         result = select.executeQuery()
         while result.next():
             items.append(getKeyMapFromResult(result))
+        result.close()
         select.close()
         return items
 

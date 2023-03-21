@@ -34,7 +34,6 @@
 #include <com/sun/star/ucb/XSimpleFileAccess.idl>
 #include <com/sun/star/sdbc/XPreparedStatement.idl>
 #include <com/sun/star/ucb/ContentInfo.idl>
-#include <com/sun/star/uri/XUriReference.idl>
 
 module com { module sun { module star { module ucb {
 
@@ -46,7 +45,6 @@ interface XRestIdentifier: com::sun::star::uno::XInterface
     boolean isRoot();
     boolean isFolder();
     boolean isValid();
-    ::com::sun::star::uri::XUriReference getUri();
     ::com::sun::star::ucb::XRestIdentifier createNewIdentifier([in] string ContentType);
     ::com::sun::star::uno::XInterface getContent([in] ::com::sun::star::uno::XInterface DataSource);
     ::com::sun::star::sdbc::XPreparedStatement getFolderContent([in] ::com::sun::star::auth::XRestKeyMap Content);

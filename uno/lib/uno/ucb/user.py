@@ -45,6 +45,8 @@ from .oauth2lib import getOAuth2UserName
 from .oauth2lib import getRequest
 from .oauth2lib import g_oauth2
 
+from .unotool import createService
+
 from .database import DataBase
 
 from .logger import getLogger
@@ -135,13 +137,16 @@ class User(unohelper.Base,
         self._lock.set()
         print("User.initialize() 6")
 
-    def getIdentifier(self, factory, uri, url):
-        key = None if uri is None else uri.getPath()
-        if key in self._identifiers:
-            identifier = self._identifiers[key]
+    def getIdentifier(self, url):
+        if url in self._identifiers:
+            identifier = self._identifiers[url]
         else:
-            identifier = Identifier(self._ctx, factory, self, uri, url)
+            identifier = Identifier(self._ctx, self, url)
         return identifier
+
+    def addIdentifier(self, identifier):
+        key = identifier.getContentIdentifier()
+        self._identifiers[key] = identifier
 
 # Internal use of method
     def _setUserName(self, datasource, url):

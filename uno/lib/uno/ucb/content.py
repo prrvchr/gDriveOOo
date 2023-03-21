@@ -113,9 +113,13 @@ class Content(unohelper.Base,
     # XChild
     def getParent(self):
         content = None
+        print("Content.getParent() 1")
         if not self.Identifier.isRoot():
+            print("Content.getParent() 1")
             content = self.Identifier.getParent().getContent()
+        print("Content.getParent() 1")
         return content
+
     def setParent(self, parent):
         raise NoSupportException('Parent can not be set', self)
 
@@ -183,7 +187,7 @@ class Content(unohelper.Base,
                 msg += " IsFolder: %s" % self.IsFolder
                 self._logger.logp(INFO, 'Content', 'execute()', msg)
                 print("Content.execute() open 3")
-                return DynamicResultSet(self.Identifier, select)
+                return DynamicResultSet(self.Identifier.User, select)
             elif self.IsDocument:
                 print("Content.execute() open 4")
                 sf = getSimpleFile(self._ctx)

@@ -116,132 +116,110 @@ def getSqlQuery(ctx, name, format=None):
         query = ' WITH SYSTEM VERSIONING'
 
 
-    elif name == 'createPathView':
+    elif name == 'createPathView1':
         query = '''\
 WITH RECURSIVE tree (name, child) AS (
-   VALUES('Test', '5222933712')
+   VALUES('', '0AAtPs2F6BEgRUk9PVA')
    UNION ALL
    SELECT name + '/' + "Items"."Title", "Parents"."ChildId" FROM PUBLIC."Parents", PUBLIC."Items", tree WHERE "Parents"."ChildId" =  "Items"."ItemId" AND "Parents"."ItemId" = child
    ) SELECT name FROM tree;
+   
+   
+   WITH RECURSIVE tree (name, par, child) AS (
+   VALUES('test', CAST(null as varchar(100)), '0AAtPs2F6BEgRUk9PVA')
+   UNION
+   SELECT name + "Parents"."ChildId", "Parents"."ItemId", "Parents"."ChildId" FROM "Parents", tree WHERE "Parents"."ItemdId" = child
+   ) SELECT name FROM tree;
+   
+WITH RECURSIVE tree (name, par) AS (
+   VALUES('test', '0B4XrgMVJhGMaMFlDRUdGdXFTQ2c')
+   UNION ALL
+   SELECT name + '/' + "Uri", "ParentId" FROM "Children", tree WHERE "ItemId" = par
+   ) SELECT name FROM tree;
+   
+   
+WITH RECURSIVE TREE (name, id, parent) as (
+   SELECT "Uri", "ItemId", "ParentId"
+   FROM "Children"
+   WHERE "ParentId" IS NULL
+   UNION ALL 
+   SELECT  name + '/' + C."Uri", C."ItemId", C."ParentId"
+   FROM "Children" C
+     JOIN TREE T on T.id = C."ParentId"
+)
+SELECT name
+FROM TREE;
+
+
 '''
 
 # Create Cached View Queries
     elif name == 'createChildView':
-        c1 = '"UserId"'
-        c2 = '"ItemId"'
-        c3 = '"ParentId"'
-        c4 = '"Title"'
-        c = (c1,c2,c3,c4)
-        s1 = '"P"."UserId"'
-        s2 = '"I"."ItemId"'
-        s3 = '"P"."ItemId"'
-        s4 = '"I"."Title"'
-        s = (s1,s2,s3,s4)
-        f1 = '"Items" AS "I"'
-        f2 = 'JOIN "Parents" AS "P" ON "I"."ItemId"="P"."ChildId"'
-        f = (f1,f2)
-        p = (','.join(c), ','.join(s), ' '.join(f))
-        query = 'CREATE VIEW "Child" (%s) AS SELECT %s FROM %s;' % p
+        query = '''\
+CREATE VIEW "Child" ("UserId", "ItemId", "ParentId", "Title") AS SELECT 
+P."UserId", I."ItemId", P."ItemId", I."Title" 
+FROM "Items" AS I JOIN "Parents" AS P ON I."ItemId"=P."ChildId";'''
         query += 'GRANT SELECT ON "Child" TO "%(Role)s";' % format
+
     elif name == 'createTwinView':
-        c1 = '"Idx"'
-        c2 = '"ParentId"'
-        c3 = '"Title"'
-        c = (c1,c2,c3)
-        s1 = 'ARRAY_AGG("ItemId" ORDER BY "ItemId")'
-        s2 = '"ParentId"'
-        s3 = '"Title"'
-        s = (s1,s2,s3)
-        f =  '"Child"'
-        g1 = '"Title"'
-        g2 = '"ParentId"'
-        g = (g1,g2)
-        h = 'COUNT(*) > 1'
-        p = (','.join(c), ','.join(s), f, ','.join(g), h)
-        query = 'CREATE VIEW "Twin" (%s) AS SELECT %s FROM %s GROUP BY %s HAVING %s;' % p
+        query = '''\
+CREATE VIEW "Twin" ("Idx", "ParentId", "Title") AS SELECT 
+ARRAY_AGG(I."ItemId" ORDER BY I."DateCreated"), P."ItemId", I."Title" 
+FROM "Items" AS I JOIN "Parents" AS "P" ON "I"."ItemId"="P"."ChildId" 
+GROUP BY P."ItemId", I."Title" HAVING COUNT(*) > 1;'''
         query += 'GRANT SELECT ON "Twin" TO "%(Role)s";' % format
+
     elif name == 'createUriView':
-        c1 = '"ItemId"'
-        c2 = '"ParentId"'
-        c3 = '"Title"'
-        c4 = '"Length"'
-        c5 = '"Position"'
-        c = (c1,c2,c3,c4,c5)
-        s1 = '"C"."ItemId"'
-        s2 = '"T"."ParentId"'
-        s3 = '"T"."Title"'
-        s4 = 'CARDINALITY("T"."Idx")'
-        s5 = 'POSITION_ARRAY("C"."ItemId" IN "T"."Idx")'
-        s = (s1,s2,s3,s4,s5)
-        f1 =  '"Twin" AS "T" JOIN "Child" AS "C"'
-        f2 = 'ON "T"."Title"="C"."Title" AND "T"."ParentId"="C"."ParentId"'
-        f = (f1,f2)
-        p = (','.join(c), ','.join(s), ' '.join(f))
-        query = 'CREATE VIEW "Uri" (%s) AS SELECT %s FROM %s;' % p
+        query = '''\
+CREATE VIEW "Uri" ("ItemId", "ParentId", "Title", "Length", "Position") AS SELECT 
+C."ItemId", T."ParentId", T."Title", CARDINALITY(T."Idx"), POSITION_ARRAY(C."ItemId" IN T."Idx") 
+FROM "Twin" AS T JOIN "Child" AS C ON T."Title"=C."Title" AND T."ParentId"=C."ParentId";'''
         query += 'GRANT SELECT ON "Uri" TO "%(Role)s";' % format
+
     elif name == 'createTileView':
-        c1 = '"ItemId"'
-        c2 = '"ParentId"'
-        c3 = '"Title"'
-        c = (c1,c2,c3)
-        s1 = '"U"."ItemId"'
-        s2 = '"U"."ParentId"'
-        s3 = 'INSERT("U"."Title", LENGTH("U"."Title") - POSITION(%s IN REVERSE("U"."Title")) + 1,0,CONCAT(%s,"U"."Position"))'
-        s = (s1,s2,s3 % ("'.'", "'~'"))
-        f =  '"Uri" AS "U"'
-        p = (','.join(c), ','.join(s), f)
-        query = 'CREATE VIEW "Title" (%s) AS SELECT %s FROM %s;' % p
+        query = '''\
+CREATE VIEW "Title" ("ItemId", "Title", "Position") AS SELECT U."ItemId", 
+INSERT(U."Title", LENGTH(U."Title") - POSITION('.' IN REVERSE(U."Title")) + 1,0,CONCAT('~', U."Position")), 
+U."Position" FROM "Uri" AS U;'''
         query += 'GRANT SELECT ON "Title" TO "%(Role)s";' % format
+
     elif name == 'createItemView':
-        c1 = '"ItemId"'
-        c2 = '"ContentType"'
-        c3 = '"IsFolder"'
-        c4 = '"IsLink"'
-        c5 = '"IsDocument"'
-        c = (c1,c2,c3,c4,c5)
-        s0 = '"I"."MediaType"'
-        s1 = '"I"."ItemId"'
-        s2 = 'CASE WHEN %s IN ("S"."Value2","S"."Value3") THEN %s ELSE "S"."Value1" END' % (s0, s0)
-        s3 = '%s="S"."Value2"' % s0
-        s4 = '%s="S"."Value3"' % s0
-        s5 = '%s!="S"."Value2" AND %s!="S"."Value3"' % (s0, s0)
-        s = (s1,s2,s3,s4,s5)
-        f = '"Settings" AS "S","Items" AS "I"'
-        w = '"S"."Name"=%s' % "'ContentType'"
-        p = (','.join(c), ','.join(s), f, w)
-        query = 'CREATE VIEW "Item" (%s) AS SELECT %s FROM %s WHERE %s;' % p
+        query = '''\
+CREATE VIEW "Item" ("ItemId", "ContentType", "IsFolder", "IsLink", "IsDocument") AS SELECT 
+I."ItemId", 
+CASE WHEN I."MediaType" IN (S."Value2",S."Value3") THEN I."MediaType" ELSE S."Value1" END, 
+I."MediaType"="S"."Value2", 
+I."MediaType"="S"."Value3", 
+I."MediaType"!="S"."Value2" AND I."MediaType"!="S"."Value3" 
+FROM "Settings" AS S,"Items" AS I 
+WHERE S."Name"='ContentType';'''
         query += 'GRANT SELECT ON "Item" TO "%(Role)s";' % format
+
     elif name == 'createChildrenView':
-        c1 = '"UserId"'
-        c2 = '"ItemId"'
-        c3 = '"ParentId"'
-        c4 = '"Title"'
-        c5 = '"Uri"'
-        c6 = '"DateCreated"'
-        c7 = '"DateModified"'
-        c8= '"IsFolder"'
-        c9 = '"Size"'
-        c10 = '"Loaded"'
-        c = (c1,c2,c3,c4,c5,c6,c7,c8,c9,c10)
-        s1 = '"C"."UserId"'
-        s2 = '"C"."ItemId"'
-        s3 = '"C"."ParentId"'
-        s4 = '"I"."Title"'
-        s5 = 'COALESCE("T"."Title","I"."Title")'
-        s6 = '"I"."DateCreated"'
-        s7 = '"I"."DateModified"'
-        s8 = '"I1"."IsFolder"'
-        s9 = '"I"."Size"'
-        s10 = '"I"."Loaded"'
-        s = (s1,s2,s3,s4,s5,s6,s7,s8,s9,s10)
-        f1 = '"Items" AS "I" '
-        f2 = 'INNER JOIN "Item" AS "I1" ON "I"."ItemId"="I1"."ItemId"'
-        f3 = 'INNER JOIN "Child" AS "C" ON "I1"."ItemId"="C"."ItemId"'
-        f4 = 'LEFT JOIN "Title" AS "T" ON "C"."ItemId"="T"."ItemId" AND "C"."ParentId"="T"."ParentId"'
-        f = (f1,f2,f3,f4)
-        p = (','.join(c), ','.join(s), ' '.join(f))
-        query = 'CREATE VIEW "Children" (%s) AS SELECT %s FROM %s;' % p
+        query = '''\
+CREATE VIEW "Children" ("UserId", "ItemId", "ParentId", "Title", "Uri", "DateCreated", "DateModified", "IsFolder", "Size", "Loaded") AS SELECT
+C."UserId", C."ItemId", C."ParentId", I."Title", COALESCE(T."Title",I."Title"), I."DateCreated", I."DateModified",
+I2."IsFolder", I."Size", I."Loaded" FROM
+"Items" AS I
+INNER JOIN "Item" AS I2 ON I."ItemId"=I2."ItemId"
+INNER JOIN "Child" AS C ON I2."ItemId"=C."ItemId"
+LEFT JOIN "Title" AS T ON C."ItemId"=T."ItemId";'''
         query += 'GRANT SELECT ON "Children" TO "%(Role)s";' % format
+
+    elif name == 'createPathView':
+        query = '''\
+CREATE VIEW "Path" AS WITH RECURSIVE TREE ("UserId", "ItemId", "Path", "ParentId") AS (
+SELECT "UserId", "ItemId", '', "ParentId"
+  FROM "Children"
+  WHERE "ParentId" IS NULL
+  UNION ALL 
+  SELECT C."UserId", C."ItemId", "Path" + '/' + C."Uri", C."ParentId"
+  FROM "Children" C
+   JOIN TREE T on T."ItemId" = C."ParentId"
+  )
+SELECT "UserId", "ItemId", "Path"
+FROM TREE;'''
+        query += 'GRANT SELECT ON "Path" TO "%(Role)s";' % format
 
 # Create User
     elif name == 'createUser':
@@ -296,86 +274,51 @@ WITH RECURSIVE tree (name, child) AS (
         query = 'SELECT "Value2" "Folder","Value3" "Link" FROM "Settings" WHERE "Name"=\'ContentType\';'
     elif name == 'getUserTimeStamp':
         query = 'SELECT "TimeStamp" FROM "Users" WHERE "UserId"=?;'
+
     elif name == 'getUser':
-        c1 = '"U"."UserId"'
-        c2 = '"U"."RootId"'
-        c3 = '"U"."Token"'
-        c4 = '"I"."Title" "RootName"'
-        c = (c1, c2, c3, c4)
-        f = '"Users" "U" JOIN "Items" "I" ON "U"."RootId" = "I"."ItemId"'
-        p = (','.join(c), f)
-        query = 'SELECT %s FROM %s WHERE "U"."UserName" = ?;' % p
+        query = '''\
+SELECT U."UserId", U."RootId", U."Token", I."Title" "RootName" 
+FROM "Users" AS U 
+INNER JOIN "Items" AS I ON U."RootId" = I."ItemId" 
+WHERE U."UserName" = ?;'''
+
     elif name == 'getRoot':
-        c1 = '"I"."ItemId" "ObjectId"'
-        c2 = '"I"."Title"'
-        c3 = '"I"."Title" "TitleOnServer"'
-        c4 = '"I"."DateCreated"'
-        c5 = '"I"."DateModified"'
-        c6 = '"I1"."ContentType"'
-        c7 = '"I"."MediaType"'
-        c8 = '"I"."Size"'
-        c9 = '"I"."Trashed"'
-        c10 = 'TRUE "IsRoot"'
-        c11 = '"I1"."IsFolder"'
-        c12 = '"I1"."IsDocument"'
-        c13 = '"C"."CanAddChild"'
-        c14 = '"C"."CanRename"'
-        c15 = '"C"."IsReadOnly"'
-        c16 = '"C"."IsVersionable"'
-        c17 = '"I"."Loaded"'
-        c18 = '%s "CasePreservingURL"' % "''"
-        c = (c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13,c14,c15,c16,c17)
-        f1 = '"Items" AS "I"'
-        f2 = 'INNER JOIN "Item" AS "I1" ON "I"."ItemId"="I1"."ItemId"'
-        f3 = 'INNER JOIN "Capabilities" AS "C" ON "I1"."ItemId"="C"."ItemId"'
-        f = (f1,f2,f3)
-        p = (','.join(c), ' '.join(f))
-        query = 'SELECT %s FROM %s WHERE "C"."UserId" = ? AND "C"."ItemId" = ?;' % p
+        query = '''\
+SELECT I."ItemId" "Id", I."ItemId" "ParentId", ? "ParentURI", I."ItemId" "ObjectId", I."Title", 
+I."Title" "TitleOnServer", I."DateCreated", I."DateModified", I2."ContentType", 
+I."MediaType", I."Size", I."Trashed", TRUE "IsRoot", I2."IsFolder", I2."IsDocument", 
+C."CanAddChild", C."CanRename", C."IsReadOnly", C."IsVersionable", I."Loaded", '' "CasePreservingURL" 
+FROM "Users" AS U 
+INNER JOIN "Items" AS I ON U."RootId"=I."ItemId" 
+INNER JOIN "Item" AS I2 ON I."ItemId"=I2."ItemId" 
+INNER JOIN "Capabilities" AS C ON I."ItemId"=C."ItemId" 
+WHERE U."UserId" = ?;'''
+
     elif name == 'getItem':
-        c1 = '"I"."ItemId" "ObjectId"'
-        c2 = 'COALESCE("T"."Title","I"."Title") "Title"'
-        c3 = '"I"."Title" "TitleOnServer"'
-        c4 = '"I"."DateCreated"'
-        c5 = '"I"."DateModified"'
-        c6 = '"I1"."ContentType"'
-        c7 = '"I"."MediaType"'
-        c8 = '"I"."Size"'
-        c9 = '"I"."Trashed"'
-        c10 = 'FALSE "IsRoot"'
-        c11 = '"I1"."IsFolder"'
-        c12 = '"I1"."IsDocument"'
-        c13 = '"C"."CanAddChild"'
-        c14 = '"C"."CanRename"'
-        c15 = '"C"."IsReadOnly"'
-        c16 = '"C"."IsVersionable"'
-        c17 = '"I"."Loaded"'
-        c18 = '%s "CasePreservingURL"' % "''"
-        c = (c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13,c14,c15,c16,c17)
-        f1 = '"Items" AS "I"'
-        f2 = 'INNER JOIN "Item" AS "I1" ON "I"."ItemId"="I1"."ItemId"'
-        f3 = 'INNER JOIN "Capabilities" AS "C" ON "I1"."ItemId"="C"."ItemId"'
-        f4 = 'INNER JOIN "Child" AS "C1" ON "C"."UserId"="C1"."UserId" AND "C"."ItemId"="C1"."ItemId"'
-        f5 = 'LEFT JOIN "Title" AS "T" ON "C1"."ItemId"="T"."ItemId" AND "C1"."ParentId"="T"."ParentId"'
-        f = (f1,f2,f3,f4,f5)
-        p = (','.join(c), ' '.join(f))
-        query = 'SELECT %s FROM %s WHERE "C1"."UserId" = ? AND "C1"."ItemId" = ? AND "C1"."ParentId" = ?;' % p
+        query = '''\
+SELECT I."ItemId" "Id", P."ItemId" "ParentId", CONCAT(?, P2."Path") "ParentURI", I."ItemId" "ObjectId", 
+COALESCE(T."Title",I."Title") "Title", I."Title" "TitleOnServer",
+I."DateCreated", I."DateModified", I2."ContentType", I."MediaType", I."Size", I."Trashed", 
+FALSE "IsRoot", I2."IsFolder", I2."IsDocument", C."CanAddChild", C."CanRename", C."IsReadOnly", 
+C."IsVersionable", I."Loaded", '' "CasePreservingURL" 
+FROM "Items" AS I 
+INNER JOIN "Item" AS I2 ON I."ItemId"=I2."ItemId" 
+INNER JOIN "Capabilities" AS C ON I."ItemId"=C."ItemId" 
+INNER JOIN "Child" AS C2 ON I."ItemId"=C2."ItemId" 
+INNER JOIN "Parents" AS P ON I."ItemId"=P."ChildId" 
+INNER JOIN "Path" AS P2 ON P."ItemId"=P2."ItemId" 
+LEFT JOIN "Title" AS T ON I."ItemId"=T."ItemId" 
+WHERE I."ItemId" = ?;'''
+
     elif name == 'getChildren':
-        c1 = '"Title"'
-        c2 = '"Size"'
-        c3 = '"DateModified"'
-        c4 = '"DateCreated"'
-        c5 = '"IsFolder"'
-        c6 = '? || "Uri" "TargetURL"'
-        c7 = 'FALSE "IsHidden"'
-        c8 = 'FALSE "IsVolume"'
-        c9 = 'FALSE "IsRemote"'
-        c10 = 'FALSE "IsRemoveable"'
-        c11 = 'FALSE "IsFloppy"'
-        c12 = 'FALSE "IsCompactDisc"'
-        c = (c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12)
-        w = '"UserId" = ? AND "ParentId" = ? AND ("IsFolder" = TRUE OR "Loaded" >= ?)'
-        p = (','.join(c), w)
-        query = 'SELECT %s FROM "Children" WHERE %s;' % p
+        query = '''\
+SELECT C."Uri" AS Title, C."Size", C."DateModified", C."DateCreated", C."IsFolder", 
+? || P."Path" AS "TargetURL", FALSE "IsHidden", FALSE "IsVolume", 
+FALSE "IsRemote", FALSE "IsRemoveable", FALSE "IsFloppy", FALSE "IsCompactDisc" 
+FROM "Children" AS C
+INNER JOIN "Path" AS P ON C."ItemId"=P."ItemId" 
+WHERE C."ParentId" = ? AND (C."IsFolder" = TRUE OR C."Loaded" >= ?);'''
+
     elif name == 'getChildId':
         w = '"UserId" = ? AND "ParentId" = ? AND "Uri" = ?'
         query = 'SELECT "ItemId" FROM "Children" WHERE %s;' % w
@@ -423,54 +366,19 @@ WITH RECURSIVE tree (name, child) AS (
 # Create Procedure Query
     elif name == 'createGetIdentifier':
         query = '''\
-CREATE PROCEDURE "GetIdentifier"(IN "UserId" VARCHAR(100),
-                                 IN "RootId" VARCHAR(100),
-                                 IN "UriPath" VARCHAR(500),
-                                 IN "Separator" VARCHAR(1),
-                                 OUT "ItemId" VARCHAR(100),
-                                 OUT "ParentId" VARCHAR(100),
-                                 OUT "BaseUri" VARCHAR(500))
+CREATE PROCEDURE "GetIdentifier"(IN USERID VARCHAR(100),
+                                 IN ROOTID VARCHAR(100),
+                                 IN SCHEME VARCHAR(100),
+                                 IN URI VARCHAR(500),
+                                 OUT ITEMID VARCHAR(100),
+                                 OUT ISROOT BOOLEAN)
   SPECIFIC "GetIdentifier_1"
   READS SQL DATA
   BEGIN ATOMIC
-    DECLARE "Index" INTEGER DEFAULT 1;
-    DECLARE "Pattern" VARCHAR(5) DEFAULT '[^$]+';
-    DECLARE "Paths" VARCHAR(100) ARRAY[50];
-    DECLARE "Length" INTEGER DEFAULT 0;
-    DECLARE "Item" VARCHAR(100);
-    DECLARE "Parent" VARCHAR(100);
-    DECLARE "Uri" VARCHAR(500) DEFAULT '';
-    SET "Pattern" = REPLACE("Pattern", '$', "Separator");
-    SET "Paths" = REGEXP_SUBSTRING_ARRAY("UriPath", "Pattern");
-    SET "Length" = CARDINALITY("Paths");
-    IF "Length" = 0 THEN
-      SET "Item" = "RootId";
-      SET "ParentId" = NULL;
-    ELSE
-      SET "Parent" = "RootId";
-      SET "ParentId" = "RootId";
-      loop_label: WHILE "Index" <= "Length" DO
-        SET "Item" = NULL;
-        SET "Item" = SELECT "ItemId" FROM "Children"
-        WHERE "ParentId" = "Parent" AND "Uri" = "Paths"["Index"];
-        IF "Item" IS NULL THEN
-          LEAVE loop_label;
-        ELSE
-          IF "Index" = 1 AND "Length" > 1 THEN
-            SET "Uri" = "Paths"["Index"];
-          ELSEIF "Index" < "Length" THEN
-            SET "Uri" = "Uri" || "Separator" || "Paths"["Index"];
-          END IF;
-          IF "Index" = "Length" - 1 THEN
-            SET "ParentId" = "Item";
-          END IF;
-          SET "Parent" = "Item";
-          SET "Index" = "Index" + 1;
-        END IF;
-      END WHILE loop_label;
-    END IF;
-    SET "ItemId" = "Item";
-    SET "BaseUri" = "Uri";
+    DECLARE ITEM VARCHAR(100);
+    SET ITEM = SELECT "ItemId" FROM "Path" WHERE "UserId" = USERID AND SCHEME || "Path" = URI;
+    SET ITEMID = ITEM;
+    SET ISROOT = ITEM = ROOTID;
   END;
 GRANT EXECUTE ON SPECIFIC ROUTINE "GetIdentifier_1" TO "%(Role)s";''' % format
 
@@ -541,6 +449,7 @@ CREATE PROCEDURE "MergeItem"(IN "UserId" VARCHAR(100),
   MODIFIES SQL DATA
   BEGIN ATOMIC
     DECLARE "Index" INTEGER DEFAULT 1;
+    DECLARE "Level" INTEGER DEFAULT 0;
     MERGE INTO "Items" USING (VALUES("ItemId","Title","DateCreated","DateModified",
       "MediaType","Size","Trashed","Loaded","TimeStamp"))
       AS vals(r,s,t,u,v,w,x,y,z) ON "Items"."ItemId"=vals.r
@@ -559,11 +468,17 @@ CREATE PROCEDURE "MergeItem"(IN "UserId" VARCHAR(100),
         "IsVersionable","TimeStamp")
           VALUES vals.t, vals.u, vals.v, vals.w, vals.x, vals.y, vals.z;
     DELETE FROM "Parents" WHERE "UserId"="UserId" AND "ChildId"="ItemId";
-    WHILE "Index" <= CARDINALITY("Parents") DO
-      INSERT INTO "Parents" ("UserId","ChildId","ItemId","TimeStamp") VALUES ("UserId","ItemId",
-      "Parents"["Index"],"TimeStamp");
-      SET "Index" = "Index" + 1;
-    END WHILE;
+    SET "Level" = CARDINALITY("Parents");
+    IF "Level" = 0 THEN
+        INSERT INTO "Parents" ("UserId","ChildId","ItemId","TimeStamp") VALUES
+                              ("UserId","ItemId",NULL,"TimeStamp");
+    ELSE
+        WHILE "Index" <= "Level" DO
+          INSERT INTO "Parents" ("UserId","ChildId","ItemId","TimeStamp") VALUES
+                                ("UserId","ItemId","Parents"["Index"],"TimeStamp");
+          SET "Index" = "Index" + 1;
+        END WHILE;
+    END IF;
   END;
 GRANT EXECUTE ON SPECIFIC ROUTINE "MergeItem_1" TO "%(Role)s";''' % format
 
@@ -600,7 +515,7 @@ GRANT EXECUTE ON SPECIFIC ROUTINE "InsertItem_1" TO "%(Role)s";''' % format
 
 # Get Procedure Query
     elif name == 'getIdentifier':
-        query = 'CALL "GetIdentifier"(?,?,?,?,?,?,?)'
+        query = 'CALL "GetIdentifier"(?,?,?,?,?,?)'
     elif name == 'getSyncItems':
         query = 'CALL "GetSyncItems"(?,?)'
     elif name == 'mergeItem':

@@ -15,7 +15,7 @@ Table|Column|Type|Default|Options|Primary|Unique|ForeignTable|ForeignColumn
 1|12|SMALLINT|0|NOT NULL|false|false||
 1|18|TIMESTAMP(9) WITH TIME ZONE|CURRENT_TIMESTAMP(9)|NOT NULL|false|false||
 2|0|VARCHAR(100)||NOT NULL|true|false|0|0
-2|5|VARCHAR(100)||NOT NULL|true|false|1|5
+2|5|VARCHAR(100)|||false|false||
 2|13|VARCHAR(100)||NOT NULL|true|false|1|5
 2|18|TIMESTAMP(9) WITH TIME ZONE|CURRENT_TIMESTAMP(9)|NOT NULL|false|false||
 3|0|VARCHAR(100)||NOT NULL|true|false|0|0

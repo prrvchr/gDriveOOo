@@ -65,7 +65,6 @@ class ContentProvider(unohelper.Base,
         self.DataSource = None
         self.event = Event()
         self._error = ''
-        self._factory = createService(ctx, 'com.sun.star.uri.UriReferenceFactory')
         self._transformer = createService(ctx, 'com.sun.star.util.URLTransformer')
         self._logger = getLogger(ctx)
         self._logger.logprb(INFO, 'ContentProvider', '__init__()', 101, self.Plugin)
@@ -93,7 +92,7 @@ class ContentProvider(unohelper.Base,
         print("ContentProvider.createContentIdentifier() 1")
         # FIXME: We are forced to perform lazy loading on Identifier (and User) in order to be able
         # FIXME: to trigger an exception when delivering the content ie: XContentProvider.queryContent().
-        identifier = self.DataSource.getIdentifier(self._factory, self._getContentIdentifier(url))
+        identifier = self.DataSource.getIdentifier(self._getContentIdentifier(url))
         self._logger.logprb(INFO, 'ContentProvider', 'createContentIdentifier()', 131, url)
         print("ContentProvider.createContentIdentifier() 2")
         return identifier

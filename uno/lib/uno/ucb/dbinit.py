@@ -170,6 +170,7 @@ def getQueries():
             ('createTileView',{'Role': g_role}),
             ('createItemView',{'Role': g_role}),
             ('createChildrenView',{'Role': g_role}),
+            ('createPathView',{'Role': g_role}),
 
             ('createGetIdentifier',{'Role': g_role}),
             ('createGetSyncItems',{'Role': g_role}),
