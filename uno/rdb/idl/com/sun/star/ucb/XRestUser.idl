@@ -46,6 +46,9 @@ interface XRestUser: com::sun::star::uno::XInterface
 
     boolean isValid();
 
+    void addIdentifier([in] ::com::sun::star::uno::XInterface Identifier);
+    void removeIdentifiers([in] string Url);
+
     ::com::sun::star::uno::XInterface getIdentifier([in] string Url);
 
     void setDataBase([in] ::com::sun::star::sdbc::XDataSource DataSource,

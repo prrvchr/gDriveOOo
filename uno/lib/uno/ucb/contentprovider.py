@@ -103,10 +103,7 @@ class ContentProvider(unohelper.Base,
             print("ContentProvider.queryContent() 1")
             # FIXME: We are forced to perform lazy loading on Identifier (and User) in order to be able
             # FIXME: to trigger an exception when delivering the content ie: XContentProvider.queryContent().
-            #if not identifier.isInitialized():
-            #    identifier.initialize(self.DataSource.DataBase)
-            #self._user = identifier.User.Name
-            content = identifier.getContent(self.DataSource)
+            content = identifier.queryContent(self.DataSource)
             self._logger.logprb(INFO, 'ContentProvider', 'queryContent()', 141, identifier.getContentIdentifier())
             print("ContentProvider.queryContent() 2")
             return content

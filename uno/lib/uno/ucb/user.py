@@ -146,7 +146,17 @@ class User(unohelper.Base,
 
     def addIdentifier(self, identifier):
         key = identifier.getContentIdentifier()
-        self._identifiers[key] = identifier
+        print("User.addIdentifier() Uri: %s - Id: %s" % (key, identifier.Id))
+        if key not in self._identifiers:
+            self._identifiers[key] = identifier
+
+    def removeIdentifiers(self, parent):
+        # FIXME: We need to remove all the child of a resource (if it's a folder)
+        for url in self._identifiers:
+            if url.startswith(parent):
+                identifier = self._identifiers[url]
+                identifier.getContent().dispose()
+                del self._identifiers[url]
 
 # Internal use of method
     def _setUserName(self, datasource, url):

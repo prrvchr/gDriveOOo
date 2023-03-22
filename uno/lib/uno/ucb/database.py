@@ -164,15 +164,14 @@ class DataBase(unohelper.Base,
         return folder, link
 
 # Procedures called by the Identifier
-    def getItem(self, userid, itemid, scheme, isroot):
+    def getItem(self, userid, itemid, isroot):
         #TODO: Can't have a simple SELECT ResultSet with a Procedure,
         #TODO: the malfunction is rather bizard: it always returns the same result
         #TODO: as a workaround we use a simple query...
         item = None
         call = 'getRoot' if isroot else 'getItem'
         select = self._getCall(call)
-        select.setString(1, scheme)
-        select.setString(2, userid if isroot else itemid)
+        select.setString(1, userid if isroot else itemid)
         result = select.executeQuery()
         if result.next():
             item = getKeyMapFromResult(result)
@@ -199,7 +198,7 @@ class DataBase(unohelper.Base,
         call.close()
         return all(rows)
 
-    def getChildren(self, itemid, scheme, mode):
+    def getChildren(self, itemid, mode):
         #TODO: Can't have a ResultSet of type SCROLL_INSENSITIVE with a Procedure,
         #TODO: as a workaround we use a simple quey...
         select = self._getCall('getChildren')
@@ -210,9 +209,8 @@ class DataBase(unohelper.Base,
         #    'IsVolume', 'IsRemote', 'IsRemoveable', 'IsFloppy', 'IsCompactDisc']
         # "TargetURL" is done by:
         #    CONCAT(identifier.getContentIdentifier(), Uri) for File and Foder
-        select.setString(1, scheme)
-        select.setString(2, itemid)
-        select.setShort(3, mode)
+        select.setString(1, itemid)
+        select.setShort(2, mode)
         return select
 
     def updateLoaded(self, userid, itemid, value, default):
@@ -223,17 +221,15 @@ class DataBase(unohelper.Base,
         update.close()
         return value
 
-    def getIdentifier(self, userid, rootid, scheme, uri):
+    def getIdentifier(self, uri, rootid):
         call = self._getCall('getIdentifier')
-        call.setString(1, userid)
+        call.setString(1, uri)
         call.setString(2, rootid)
-        call.setString(3, scheme)
-        call.setString(4, uri)
         call.execute()
-        itemid = call.getString(5)
+        itemid = call.getString(3)
         if call.wasNull():
             itemid = None
-        isroot = call.getBoolean(6)
+        isroot = call.getBoolean(4)
         call.close()
         return itemid, isroot
 
@@ -300,6 +296,16 @@ class DataBase(unohelper.Base,
             # Start Replicator for pushing changes…
             self._sync.set()
 
+    def getNewTitle(self, title, parentid, isfolder):
+        call = self._getCall('getNewTitle')
+        call.setString(1, title)
+        call.setString(2, parentid)
+        call.setBoolean(3, isfolder)
+        call.execute()
+        newtitle = call.getString(4)
+        call.close()
+        return newtitle
+
     def insertNewContent(self, userid, itemid, parentid, content, timestamp):
         call = self._getCall('insertItem')
         call.setString(1, userid)
@@ -317,25 +323,27 @@ class DataBase(unohelper.Base,
         call.setBoolean(13, content.getValue('IsReadOnly'))
         call.setBoolean(14, content.getValue('IsVersionable'))
         call.setString(15, parentid)
-        result = call.execute() == 0
+        status = call.execute() == 0
+        path = call.getString(16)
+        basename = call.getString(17)
         call.close()
-        if result:
+        if status:
             # Start Replicator for pushing changes…
             self._sync.set()
-        return result
+        return path, basename
 
-    def countChildTitle(self, userid, parentid, title):
-        count = 1
-        call = self._getCall('countChildTitle')
+    def hasTitle(self, userid, parentid, title):
+        has = True
+        call = self._getCall('hasTitle')
         call.setString(1, userid)
         call.setString(2, parentid)
         call.setString(3, title)
         result = call.executeQuery()
         if result.next():
-            count = result.getLong(1)
+            has = result.getBoolean(1)
         result.close()
         call.close()
-        return count
+        return has
 
     def getChildId(self, userid, parentid, title):
         id = None
@@ -468,11 +476,6 @@ class DataBase(unohelper.Base,
         return 1
 
     def _mergeRoot(self, provider, userid, rootid, rootname, root, timestamp):
-        print("DataBase._mergeRoot() 1: %s " % ((userid, rootid, rootname, root), ))
-        created = provider.getRootCreated(root, timestamp)
-        modified = provider.getRootModified(root, timestamp)
-        print("DataBase._mergeRoot() 2")
-        print("DataBase._mergeRoot() 3: %s " % ((userid, rootid, rootname, root), ))
         call = self._getCall('mergeItem')
         call.setString(1, userid)
         call.setLong(2, 0)

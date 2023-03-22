@@ -108,6 +108,9 @@ class Provider(ProviderBase):
     @property
     def IdentifierRange(self):
         return g_IdentifierRange
+    @property
+    def SupportDuplicate(self):
+        return True
 
     def getRequestParameter(self, method, data=None):
         parameter = uno.createUnoStruct('com.sun.star.auth.RestRequestParameter')
