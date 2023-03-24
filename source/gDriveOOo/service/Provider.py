@@ -201,6 +201,15 @@ class Provider(ProviderBase):
             parameter.Method = 'PATCH'
             parameter.Url = '%s/files/%s' % (self.BaseUrl, data.getValue('Id'))
             parameter.Json = '{"trashed": true}'
+        elif method == 'updateParents':
+            parameter.Method = 'PATCH'
+            parameter.Url = '%s/files/%s' % (self.BaseUrl, data.getValue('Id'))
+            toadd = data.getValue('ParentToAdd')
+            toremove = data.getValue('ParentToRemove')
+            if len(toadd) > 0:
+                parameter.Json = '{"addParents": %s}' % ','.join(toadd)
+            if len(toremove) > 0:
+                parameter.Json = '{"removeParents": %s}' % ','.join(toremove)
         elif method == 'createNewFolder':
             parameter.Method = 'POST'
             parameter.Url = '%s/files' % self.BaseUrl
