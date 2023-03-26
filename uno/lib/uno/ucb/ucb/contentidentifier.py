@@ -27,48 +27,23 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-from .ucb import ContentProvider
+import unohelper
 
-from .providerbase import ProviderBase
+from com.sun.star.ucb import XContentIdentifier
 
-from .unotool import createService
-from .unotool import getConfiguration
-from .unotool import getDialog
-from .unotool import getFileSequence
-from .unotool import getResourceLocation
-from .unotool import getStringResource
+from ..configuration import g_scheme
 
-from .dbtool import toUnoDateTime
+import traceback
 
-from .options import OptionsManager
 
-from .logger import getLogger
+class ContentIdentifier(unohelper.Base,
+                        XContentIdentifier):
+    def __init__(self, url):
+        self._url = url
 
-from .configuration import g_provider
-from .configuration import g_scheme
-from .configuration import g_extension
-from .configuration import g_identifier
-from .configuration import g_host
-from .configuration import g_url
-from .configuration import g_upload
-
-from .configuration import g_userkeys
-from .configuration import g_userfields
-from .configuration import g_capabilitykeys
-from .configuration import g_itemkeys
-from .configuration import g_itemfields
-from .configuration import g_childfields
-
-from .configuration import g_chunk
-from .configuration import g_buffer
-from .configuration import g_pages
-from .configuration import g_IdentifierRange
-
-from .configuration import g_office
-from .configuration import g_folder
-from .configuration import g_link
-from .configuration import g_doc_map
-
-from .configuration import g_basename
-from .configuration import g_defaultlog
+    # XContentIdentifier
+    def getContentIdentifier(self):
+        return self._url
+    def getContentProviderScheme(self):
+        return g_scheme
 
