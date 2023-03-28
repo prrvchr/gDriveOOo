@@ -63,12 +63,12 @@ from ..database import DataBase
 
 from ..logger import getLogger
 
-from ..configuration import g_defaultlog
-from ..configuration import g_scheme
-
 from .content import Content
 from .contentidentifier import ContentIdentifier
 from .contenttools import getContentInfo
+
+from ..configuration import g_defaultlog
+from ..configuration import g_scheme
 
 g_basename = 'user'
 
@@ -133,23 +133,24 @@ class ContentUser():
     def Token(self):
         return self.MetaData.getDefaultValue('Token', '')
 
-    def getContent(self, identifier, uri, authority=None):
+    # method called from DataSource.queryContent() and Content.getParent()
+    def getContent(self, identifier, path, authority):
+        path = path if path else '/'
         #if authority is not None:
         #    self._authority = authority
-        url = self._getContentKey(uri)
-        if self._expired is not None and url.startswith(self._expired):
+        if self._expired is not None and path.startswith(self._expired):
             self._removeContents()
         else:
-            content = self._contents.get(url)
+            content = self._contents.get(path)
         if content is None:
-            content = Content(self._ctx, self, identifier, uri)
-            self._contents[url] = content
+            content = Content(self._ctx, self, authority, identifier, path)
+            self._contents[path] = content
         else:
-            content.setIdentifier(identifier)
+            content.setProperties(identifier, authority)
         return content
 
-    def getContentUrl(self, path):
-        name = self.Name if self._authority else ''
+    def getContentUrl(self, authority, path):
+        name = self.Name if authority else ''
         return '%s://%s%s' % (g_scheme, name, path)
 
     def addContent(self, identifier):
@@ -159,16 +160,16 @@ class ContentUser():
             with self._lock:
                 self._identifiers[key] = identifier
 
-    def expireContent(self, uri):
+    def expireContent(self, path):
         # FIXME: We need to remove all the child of a resource (if it's a folder)
-         self._expired = self._getContentKey(uri)
+         self._expired = path
 
-    def createNewContent(self, id, uri, contentype):
+    def createNewContent(self, id, path, authority, contentype):
         print("ContentUser.createNewContent() 1")
-        data = self._getNewContent(id, uri, contentype)
+        data = self._getNewContent(id, path, contentype)
         print("ContentUser.createNewContent() 2")
-        identifier = ContentIdentitifier(self.getContentUrl(uri))
-        content = Content(self._ctx, self, identifier, uri, data)
+        identifier = ContentIdentitifier(self.getContentUrl(authority, path))
+        content = Content(self._ctx, self, identifier, path, data)
         print("ContentUser.createNewContent() 3")
         return content
 
@@ -203,9 +204,9 @@ class ContentUser():
                 stream.closeInput()
         return url, size
 
-    def getFolderContent(self, content, properties):
+    def getFolderContent(self, content, properties, authority):
         try:
-            select, updated = self._getFolderContent(content, properties, False)
+            select, updated = self._getFolderContent(content, properties, authority, False)
             if updated:
                 itemid = content.getValue('Id')
                 loaded = self.DataBase.updateLoaded(self.Id, itemid, OFFLINE, ONLINE)
@@ -269,13 +270,14 @@ class ContentUser():
             identifier = binascii.hexlify(uno.generateUuid().value).decode('utf-8')
         return identifier
 
-    def _getFolderContent(self, content, properties, updated):
+    def _getFolderContent(self, content, properties, authority, updated):
         itemid = content.getValue('Id')
         if ONLINE == content.getValue('Loaded') == self.Provider.SessionMode:
             self._logger.logprb(INFO, 'ContentUser', '_getFolderContent()', 141, content.getValue('Uri'))
             updated = self.DataBase.updateFolderContent(self, content)
         mode = self.Provider.SessionMode
-        select = self.DataBase.getChildren(self.Name, itemid, properties, mode, self._authority)
+        scheme = '%s://%s' % (g_scheme, self.Name) if authority else '%s://' % g_scheme
+        select = self.DataBase.getChildren(self.Name, itemid, properties, mode, scheme)
         print("ContentUser._getFolderContent()")
         return select, updated
 
@@ -286,9 +288,6 @@ class ContentUser():
                     if url in self._contents:
                         del self._contents[url]
         self._expired = None
-
-    def _getContentKey(self, uri):
-        return self.Name + uri
 
 
 

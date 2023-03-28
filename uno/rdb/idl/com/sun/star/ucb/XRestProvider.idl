@@ -45,9 +45,7 @@ module com { module sun { module star { module ucb {
 interface XRestProvider: com::sun::star::uno::XInterface
 {
 
-    void initialize([in] string Scheme,
-                    [in] string Plugin,
-                    [in] string Link,
+    void initialize([in] string Link,
                     [in] string Folder);
     void initUser([in] ::com::sun::star::uno::XInterface Request,
                   [in] ::com::sun::star::uno::XInterface DataBase,
@@ -138,7 +136,6 @@ interface XRestProvider: com::sun::star::uno::XInterface
 
     [attribute, readonly] string Name;
     [attribute, readonly] string Scheme;
-    [attribute, readonly] string Plugin;
     [attribute, readonly] short SessionMode;
     [attribute, readonly] boolean GenerateIds;
     [attribute, readonly] sequence < short > IdentifierRange;

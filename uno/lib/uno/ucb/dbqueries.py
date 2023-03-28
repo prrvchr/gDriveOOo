@@ -290,7 +290,7 @@ INNER JOIN "Items" AS I ON U."RootId" = I."ItemId"
 WHERE U."UserName" = ?;'''
 
     elif name == 'getChildren':
-        target = '? || %s || ? || P."Path" AS "TargetURL"' % "'://'"
+        target = '? || P."Path" AS "TargetURL"'
         properties = {'Title': 'C."Uri" AS "Title"',
                       'Size': 'C."Size"',
                       'DateModified': 'C."DateModified"',
@@ -375,7 +375,8 @@ CREATE PROCEDURE "GetIdentifier"(IN USERID VARCHAR(100),
   READS SQL DATA
   BEGIN ATOMIC
     DECLARE ITEM VARCHAR(100);
-    SELECT "ItemId" INTO ITEM FROM "Path" WHERE "UserId" = USERID AND "Path" = URI;
+    SELECT "ItemId" INTO ITEM FROM "Path" WHERE "UserId" = USERID AND 
+    (URI = "Path" OR URI = ("Path" || '%(Separator)s'));
     SET ITEMID = ITEM;
   END;
 GRANT EXECUTE ON SPECIFIC ROUTINE "GetIdentifier_1" TO "%(Role)s";''' % format

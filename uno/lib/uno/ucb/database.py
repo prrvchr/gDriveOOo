@@ -164,7 +164,7 @@ class DataBase(unohelper.Base,
         call.close()
         return folder, link
 
-# Procedures called by the Identifier
+# Procedures called by the Replicator
     def getMetaData(self, user, item):
         rootid = user.RootId
         itemid = item.getValue('ItemId')
@@ -172,12 +172,14 @@ class DataBase(unohelper.Base,
         atroot = metadata.getValue('ParentId') == rootid
         metadata.insertValue('AtRoot', atroot)
         return metadata
-    
+
+# Procedures called by the Content
         #TODO: Can't have a simple SELECT ResultSet with a Procedure,
     def getItem(self, userid, itemid, isroot, rewite=True):
         #TODO: Can't have a simple SELECT ResultSet with a Procedure,
         #TODO: the malfunction is rather bizard: it always returns the same result
         #TODO: as a workaround we use a simple query...
+        print("Content.getItem() 1 isroot: '%s'" % isroot)
         item = None
         call = 'getRoot' if isroot else 'getItem'
         select = self._getCall(call)
@@ -186,6 +188,7 @@ class DataBase(unohelper.Base,
              select.setBoolean(2, rewite)
         result = select.executeQuery()
         if result.next():
+            print("Content.getItem() 2 isroot: '%s'" % isroot)
             item = getKeyMapFromResult(result)
         result.close()
         select.close()
@@ -210,7 +213,7 @@ class DataBase(unohelper.Base,
         call.close()
         return all(rows)
 
-    def getChildren(self, username, itemid, properties, mode, authority):
+    def getChildren(self, username, itemid, properties, mode, scheme):
         #TODO: Can't have a ResultSet of type SCROLL_INSENSITIVE with a Procedure,
         #TODO: as a workaround we use a simple quey...
         select = self._getCall('getChildren', properties)
@@ -221,10 +224,9 @@ class DataBase(unohelper.Base,
         #    'IsVolume', 'IsRemote', 'IsRemoveable', 'IsFloppy', 'IsCompactDisc']
         # "TargetURL" is done by:
         #    CONCAT(identifier.getContentIdentifier(), Uri) for File and Foder
-        select.setString(1, g_scheme)
-        select.setString(2, username if authority else '')
-        select.setShort(3, mode)
-        select.setString(4, itemid)
+        select.setString(1, scheme)
+        select.setShort(2, mode)
+        select.setString(3, itemid)
         return select
 
     def updateLoaded(self, userid, itemid, value, default):
@@ -236,6 +238,7 @@ class DataBase(unohelper.Base,
         return value
 
     def getIdentifier(self, user, uri):
+        print("DataBase.getIdentifier() Uri: '%s'" % uri)
         call = self._getCall('getIdentifier')
         call.setString(1, user.Id)
         call.setString(2, uri)
@@ -244,7 +247,7 @@ class DataBase(unohelper.Base,
         if call.wasNull():
             itemid = None
         call.close()
-        isroot = itemid == user.Id
+        isroot = itemid == user.RootId
         return itemid, isroot
 
     def getNewIdentifier(self, userid):

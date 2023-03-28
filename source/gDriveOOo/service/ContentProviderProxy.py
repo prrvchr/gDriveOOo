@@ -61,7 +61,8 @@ class ContentProviderProxy(unohelper.Base,
                            XContentIdentifierFactory,
                            XContentProvider,
                            XContentProviderFactory,
-                           XContentProviderSupplier):
+                           XContentProviderSupplier,
+                           XParameterizedContentProvider):
     def __init__(self, ctx):
         msg = "ContentProviderProxy for plugin: %s loading ..." % g_identifier
         self.ctx = ctx
@@ -114,24 +115,24 @@ class ContentProviderProxy(unohelper.Base,
         return ContentProviderProxy._Provider
 
     # XParameterizedContentProvider
-    def registerInstance1(self, scheme, plugin, replace):
+    def registerInstance(self, scheme, authority, replace):
         #print('ContentProviderProxy.registerInstance()')
-        msg = "Register Scheme/Plugin/Replace: %s/%s/%s ..." % (scheme, plugin, replace)
+        msg = "Register Scheme/Plugin/Replace: %s/%s/%s ..." % (scheme, authority, replace)
         if ContentProviderProxy._IsRegistred and not replace:
             #print('ContentProviderProxy.registerInstance() ***** None')
             return None
         ContentProviderProxy._IsRegistred = True
         self.scheme = scheme
-        self.plugin = plugin
+        self.authority = authority
         self.replace = replace
         msg += " Done"
         self._logger.logp(INFO, 'ContentProviderProxy', 'registerInstance()', msg)
         #print('ContentProviderProxy.registerInstance() OK')
         return self
-    def deregisterInstance1(self, scheme, plugin):
+    def deregisterInstance(self, scheme, authority):
         print('ContentProviderProxy.deregisterInstance()')
-        provider = self.getContentProvider().deregisterInstance(scheme, plugin)
-        msg = "ContentProviderProxy.deregisterInstance(): %s - %s ... Done" % (scheme, plugin)
+        provider = self.getContentProvider().deregisterInstance(scheme, authority)
+        msg = "ContentProviderProxy.deregisterInstance(): %s - %s ... Done" % (scheme, authority)
         self._logger.logp(INFO, 'ContentProviderProxy', 'deregisterInstance()', msg)
         return provider
 

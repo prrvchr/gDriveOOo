@@ -88,6 +88,7 @@ from ..configuration import g_defaultlog
 from ..configuration import g_scheme
 
 import traceback
+from oauthlib.uri_validate import authority
 
 
 class Content(unohelper.Base,
@@ -97,10 +98,11 @@ class Content(unohelper.Base,
               XContentCreator,
               XChild,
               XPropertiesChangeNotifier):
-    def __init__(self, ctx, user, identifier, uri, data=None):
+    def __init__(self, ctx, user, authority, identifier, uri, data=None):
         self._ctx = ctx
         msg = "Content loading ... "
         self._user = user
+        self._authority = authority
         self._identifier = identifier
         self._new = data is not None
         self._contentListeners = []
@@ -139,8 +141,9 @@ class Content(unohelper.Base,
     def isRoot(self):
         return self.Id == self._user.RootId
 
-    def setIdentifier(self, identifier):
+    def setProperties(self, identifier, authority):
         self._identifier = identifier
+        self._authority = authority
 
     # XComponent
     def dispose(self):
@@ -161,14 +164,13 @@ class Content(unohelper.Base,
     def getParent(self):
         try:
             content = None
-            print("Content.getParent() 1 Name: %s" % self.MetaData.getValue('Title'))
+            print("Content.getParent() 1 ParentUri: %s" % self.ParentUri)
             if not self.isRoot():
-                print("Content.getParent() 2 ParentUri: %s" % self.ParentUri)
-                url = self._user.getContentUrl(self.ParentUri)
+                url = self._user.getContentUrl(self._authority, self.ParentUri)
                 identifier = ContentIdentifier(url)
-                print("Content.getParent() 3")
-                content = self._user.getContent(identifier, self.ParentUri)
-            print("Content.getParent() 4")
+                print("Content.getParent() 2")
+                content = self._user.getContent(identifier, self.ParentUri, self._authority)
+            print("Content.getParent() 3")
             return content
         except Exception as e:
             msg = "Error: %s" % traceback.print_exc()
@@ -198,7 +200,7 @@ class Content(unohelper.Base,
         # ContentUser.createNewContent() since the ContentUser also creates Content
         # with ContentUser.createContent()
         print("Content.createNewContent() 1")
-        return self._user.createNewContent(self.Id, self.Uri, info.Type)
+        return self._user.createNewContent(self.Id, self.Uri, self._authority, info.Type)
 
     # XContent
     def getIdentifier(self):
@@ -237,7 +239,7 @@ class Content(unohelper.Base,
             print("Content.execute() open  Mode: %s" % command.Argument.Mode)
             if self.IsFolder:
                 print("Content.execute() open 1")
-                select = self._user.getFolderContent(self.MetaData, command.Argument.Properties)
+                select = self._user.getFolderContent(self.MetaData, command.Argument.Properties, self._authority)
                 print("Content.execute() open 2")
                 msg += " IsFolder: %s" % self.IsFolder
                 self._logger.logp(INFO, 'Content', 'execute()', msg)
@@ -350,12 +352,14 @@ class Content(unohelper.Base,
             itemid, isroot = self._user.DataBase.getIdentifier(self._user, uri)
         else:
             itemid, isroot = self._user.RootId, True
+        print("Content._getMetaData() ItemId: '%s'" % itemid)
         if itemid is None:
             msg = self._logger.resolveString(201, uri)
             raise IllegalIdentifierException(msg, self)
         data = self._user.DataBase.getItem(self._user.Id, itemid, isroot)
         if data is None:
-            msg = self._logger.resolveString(201, uri)
+            msg = self._logger.resolveString(202, itemid, uri)
+            print("Content._getMetaData() ERREUR ID: %s - Uri: '%s'" % (itemid, uri))
             raise IllegalIdentifierException(msg, self)
         data.insertValue('Uri', uri)
         return data

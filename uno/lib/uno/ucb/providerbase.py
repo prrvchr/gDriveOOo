@@ -54,6 +54,9 @@ from .unotool import getConnectionMode
 
 from .dbtool import getDateTimeFromString
 
+from .configuration import g_identifier
+from .configuration import g_scheme
+
 import datetime
 import traceback
 
@@ -164,12 +167,10 @@ class ProviderBase(ProviderObject,
         self.SessionMode = getConnectionMode(self._ctx, self.Host)
         return  self.SessionMode != ONLINE
 
-    def initialize(self, scheme, plugin, folder, link):
-        self.Scheme = scheme
-        self.Plugin = plugin
+    def initialize(self, folder, link):
         self.Folder = folder
         self.Link = link
-        self.SourceURL = getResourceLocation(self._ctx, plugin, scheme)
+        self.SourceURL = getResourceLocation(self._ctx, g_identifier, g_scheme)
         self.SessionMode = getConnectionMode(self._ctx, self.Host)
 
     def initializeUser(self, user, name):

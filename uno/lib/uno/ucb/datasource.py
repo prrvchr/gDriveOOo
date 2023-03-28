@@ -62,6 +62,9 @@ from .database import DataBase
 
 from .logger import getLogger
 
+from .configuration import g_identifier
+from .configuration import g_scheme
+
 g_message = 'datasource'
 
 import traceback
@@ -69,8 +72,8 @@ import traceback
 
 class DataSource(unohelper.Base,
                  XCloseListener):
-    def __init__(self, ctx, sync, lock, scheme, plugin):
-        msg = "DataSource for Scheme: %s loading ... " % scheme
+    def __init__(self, ctx, sync, lock):
+        msg = "DataSource for Scheme: %s loading ... " % g_scheme
         print("DataSource.__init__() 1")
         self._ctx = ctx
         self._default = ''
@@ -79,8 +82,8 @@ class DataSource(unohelper.Base,
         self._sync = sync
         self._lock = lock
         self._factory = createService(ctx, 'com.sun.star.uri.UriReferenceFactory')
-        self._provider = createService(self._ctx, '%s.Provider' % plugin)
-        datasource, url, created = self._getDataSource(scheme, plugin, True)
+        self._provider = createService(self._ctx, '%s.Provider' % g_identifier)
+        datasource, url, created = self._getDataSource(True)
         self.DataBase = DataBase(self._ctx, datasource)
         if created:
             print("DataSource.__init__() 2")
@@ -90,7 +93,7 @@ class DataSource(unohelper.Base,
                 print("DataSource.__init__() 3")
         self.DataBase.addCloseListener(self)
         folder, link = self.DataBase.getContentType()
-        self._provider.initialize(scheme, plugin, folder, link)
+        self._provider.initialize(folder, link)
         self.Replicator = Replicator(ctx, datasource, self._provider, self._users, self._sync, self._lock)
         msg += "Done"
         self._logger = getLogger(ctx)
@@ -102,7 +105,6 @@ class DataSource(unohelper.Base,
         if self.Replicator.is_alive():
             self.Replicator.cancel()
             self.Replicator.join()
-        #self.deregisterInstance(self.Scheme, self.Plugin)
         self.DataBase.shutdownDataBase(self.Replicator.fullPull())
         msg = "DataSource queryClosing: Scheme: %s ... Done" % self._provider.Scheme
         self._logger.logp(INFO, 'DataSource', 'queryClosing()', msg)
@@ -115,43 +117,45 @@ class DataSource(unohelper.Base,
         return self._default
 
     # FIXME: Get called from ContentProvider.queryContent()
-    def queryContent(self, provider, identifier):
+    def queryContent(self, source, authority, identifier):
         try:
             print("DataSource.queryContent() 1")
-            user, uri, authority = self._getUser(provider, identifier.getContentIdentifier())
+            user, path = self._getUser(source, identifier.getContentIdentifier(), authority)
             print("DataSource.queryContent() 2")
-            return user.getContent(identifier, uri, authority)
+            return user.getContent(identifier, path, authority)
         except Exception as e:
             msg = "DataSource.queryContent() Error: %s" % traceback.print_exc()
             print(msg)
             raise e
 
-    def _getUser(self, source, url):
+    def _getUser(self, source, url, authority):
         try:
             print("DataSource._getUser() 1 Url: %s" % url)
-            authority = False
             uri = self._factory.parse(url)
-            print("DataSource._getUser() 2 Path: '%s'" % uri.getPath())
             if uri is None:
                 msg = self._logger.resolveString(121, url)
                 raise IllegalIdentifierException(msg, source)
-            elif uri.hasAuthority() and uri.getAuthority() != '':
+            if uri.hasAuthority() and uri.getAuthority() != '':
                 name = uri.getAuthority()
-                authority = True
             elif self._default:
                 name = self._default
                 #url = self._rewriteContentIdentifierUrl(uri, name)
             else:
                 name = self._getUserName(source, url)
                 #url = self._rewriteContentIdentifierUrl(uri, name)
+            if name is None:
+                msg = self._logger.resolveString(121, url)
+                raise IllegalIdentifierException(msg, source)
             # User never change... we can cache it...
             if name in self._users:
                 user = self._users[name]
             else:
                 user = ContentUser(self._ctx, source, self.DataBase, self._provider, name, self._sync, self._lock)
                 self._users[name] = user
-            self._default = name
-            return user, uri.getPath(), authority
+            if not authority:
+                self._default = name
+            #path = '/' if uri.getPath() == '' else uri.getPath()
+            return user, uri.getPath()
         except Exception as e:
             msg = "DataSource._getUser() Error: %s" % traceback.print_exc()
             print(msg)
@@ -233,21 +237,21 @@ class DataSource(unohelper.Base,
         self._default = user.Name
 
     # Private methods
-    def _getDataSource(self, dbname, plugin, register):
-        location = getResourceLocation(self._ctx, plugin, g_folder)
+    def _getDataSource(self, register):
+        location = getResourceLocation(self._ctx, g_identifier, g_folder)
         location = getUrlPresentation(self._ctx, location)
-        url = '%s/%s.odb' % (location, dbname)
+        url = '%s/%s.odb' % (location, g_scheme)
         dbcontext = createService(self._ctx, 'com.sun.star.sdb.DatabaseContext')
         if getSimpleFile(self._ctx).exists(url):
-            odb = dbname if dbcontext.hasByName(dbname) else url
+            odb = g_scheme if dbcontext.hasByName(g_scheme) else url
             datasource = dbcontext.getByName(odb)
             created = False
         else:
             datasource = dbcontext.createInstance()
-            datasource.URL = getDataSourceLocation(location, dbname, False)
+            datasource.URL = getDataSourceLocation(location, g_scheme, False)
             datasource.Info = getDataSourceInfo() + getDataSourceJavaInfo(location)
             created = True
         if register:
-            registerDataSource(dbcontext, dbname, url)
+            registerDataSource(dbcontext, g_scheme, url)
         return datasource, url, created
 

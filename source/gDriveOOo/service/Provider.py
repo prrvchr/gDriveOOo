@@ -43,6 +43,7 @@ from gdrive import ProviderBase
 from gdrive import toUnoDateTime
 
 from gdrive import g_identifier
+from gdrive import g_scheme
 from gdrive import g_provider
 from gdrive import g_host
 from gdrive import g_url
@@ -69,8 +70,7 @@ g_ImplementationName = '%s.Provider' % g_identifier
 class Provider(ProviderBase):
     def __init__(self, ctx):
         self._ctx = ctx
-        self.Scheme = ''
-        self.Plugin = ''
+        self.Scheme = g_scheme
         self.Link = ''
         self.Folder = ''
         self.SourceURL = ''

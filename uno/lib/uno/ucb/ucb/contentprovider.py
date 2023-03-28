@@ -50,6 +50,7 @@ from ..datasource import DataSource
 from ..logger import getLogger
 
 from ..configuration import g_defaultlog
+from ..configuration import g_scheme
 
 import traceback
 from threading import Event
@@ -60,28 +61,37 @@ class ContentProvider(unohelper.Base,
                       XContentIdentifierFactory,
                       XContentProvider,
                       XParameterizedContentProvider):
-    def __init__(self, ctx, plugin):
+    def __init__(self, ctx, authority):
         self._ctx = ctx
         self.Scheme = ''
-        self.Plugin = plugin
-        self._datasource = None
+        self._authority = authority
         self._sync = Event()
         self._lock = Lock()
         self._transformer = createService(ctx, 'com.sun.star.util.URLTransformer')
+        if self._datasource is None:
+            ContentProvider.__datasource = DataSource(ctx, self._sync, self._lock)
         self._logger = getLogger(ctx)
-        self._logger.logprb(INFO, 'ContentProvider', '__init__()', 101, self.Plugin)
+        self._logger.logprb(INFO, 'ContentProvider', '__init__()', 101, self._authority)
+        print("ContentProvider.__init__() 1")
+
+    __datasource = None
+
+    @property
+    def _datasource(self):
+        return ContentProvider.__datasource
 
     # XParameterizedContentProvider
-    def registerInstance(self, scheme, plugin, replace):
-        self._logger.logprb(INFO, 'ContentProvider', 'registerInstance()', 111, scheme, plugin)
-        datasource = DataSource(self._ctx, self._sync, self._lock, scheme, plugin)
+    def registerInstance(self, scheme, authority, replace):
+        print("ContentProvider.registerInstance() Scheme: %s - Authority: %s" % (scheme, authority))
+        self._logger.logprb(INFO, 'ContentProvider', 'registerInstance()', 111, scheme, authority)
+        datasource = DataSource(self._ctx, self._sync, self._lock, scheme, authority)
         if not datasource.isValid():
             self._logger.logp(SEVERE, 'ContentProvider', 'registerInstance()', datasource.Error)
             return None
         self.Scheme = scheme
-        self.Plugin = plugin
+        self._authority = authority
         self._datasource = datasource
-        self._logger.logprb(INFO, 'ContentProvider', 'registerInstance()', 112, scheme, plugin)
+        self._logger.logprb(INFO, 'ContentProvider', 'registerInstance()', 112, scheme, authority)
         return self
     def deregisterInstance(self, scheme, argument):
         self._logger.logprb(INFO, 'ContentProvider', 'deregisterInstance()', 161, scheme)
@@ -100,13 +110,16 @@ class ContentProvider(unohelper.Base,
             print("ContentProvider.queryContent() 1 Url: %s" % identifier.getContentIdentifier())
             # FIXME: We are forced to perform lazy loading on Identifier (and User) in order to be able
             # FIXME: to trigger an exception when delivering the content ie: XContentProvider.queryContent().
-            content = self._datasource.queryContent(self, identifier)
+            content = self._datasource.queryContent(self, self._authority, identifier)
             self._logger.logprb(INFO, 'ContentProvider', 'queryContent()', 141, identifier.getContentIdentifier())
             print("ContentProvider.queryContent() 2")
             return content
-        except IllegalIdentifierException as e:
-            self._logger.logprb(SEVERE, 'ContentProvider', 'queryContent()', 142, e.Message)
-            raise e
+        #except IllegalIdentifierException as e:
+        #    self._logger.logprb(SEVERE, 'ContentProvider', 'queryContent()', 142, e.Message)
+        #    raise e
+        except Exception as e:
+            msg = "ContentProvider.queryContent() Error: %s" % traceback.print_exc()
+            print(msg)
 
     def compareContentIds(self, id1, id2):
         ids = (id1.getContentIdentifier(), id2.getContentIdentifier())

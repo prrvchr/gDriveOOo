@@ -13,13 +13,24 @@
                     <node oor:name="ProviderData">
                         <node oor:name="Provider66" oor:op="fuse">
                             <prop oor:name="ServiceName">
-                                <value>io.github.prrvchr.gDriveOOo.ContentProviderProxy</value>
+                                <value>io.github.prrvchr.gDriveOOo.ContentProvider</value>
                             </prop>
                             <prop oor:name="URLTemplate">
-                                <value>vnd-google</value>
+                                <value>"vnd-google://"[^/?#]+"@gmail.com"([/?#].*)?</value>
                             </prop>
                             <prop oor:name="Arguments">
-                                <value>io.github.prrvchr.gDriveOOo</value>
+                                <value>WithAuthority</value>
+                            </prop>
+                        </node>
+                        <node oor:name="Provider99" oor:op="fuse">
+                            <prop oor:name="ServiceName">
+                                <value>io.github.prrvchr.gDriveOOo.ContentProvider</value>
+                            </prop>
+                            <prop oor:name="URLTemplate">
+                                <value>"vnd-google://"([/?#].*)?</value>
+                            </prop>
+                            <prop oor:name="Arguments">
+                                <value>WithOutAuthority</value>
                             </prop>
                         </node>
                     </node>

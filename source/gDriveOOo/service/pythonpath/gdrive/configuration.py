@@ -62,6 +62,9 @@ g_doc_map = {'application/vnd.google-apps.document':     'application/vnd.oasis.
 g_cache = 20
 g_admin = False
 
+# The URL separator
+g_separator = '/'
+
 # Resource strings files folder
 g_resource = 'resource'
 # Logging required global variable
