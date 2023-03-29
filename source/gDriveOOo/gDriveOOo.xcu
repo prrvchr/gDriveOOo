@@ -11,7 +11,7 @@
             <node oor:name="SecondaryKeys">
                 <node oor:name="Office">
                     <node oor:name="ProviderData">
-                        <node oor:name="Provider66" oor:op="fuse">
+                        <node oor:name="ProviderGoogle1" oor:op="fuse">
                             <prop oor:name="ServiceName">
                                 <value>io.github.prrvchr.gDriveOOo.ContentProvider</value>
                             </prop>
@@ -22,7 +22,7 @@
                                 <value>WithAuthority</value>
                             </prop>
                         </node>
-                        <node oor:name="Provider99" oor:op="fuse">
+                        <node oor:name="ProviderGoogle10" oor:op="fuse">
                             <prop oor:name="ServiceName">
                                 <value>io.github.prrvchr.gDriveOOo.ContentProvider</value>
                             </prop>
