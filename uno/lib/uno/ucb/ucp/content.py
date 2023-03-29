@@ -59,8 +59,6 @@ from com.sun.star.ucb.ContentInfoAttribute import KIND_LINK
 from com.sun.star.logging.LogLevel import INFO
 from com.sun.star.logging.LogLevel import SEVERE
 
-from com.sun.star.ucb import XRestContent
-
 from ..unolib import PropertySetInfo
 
 from ..unotool import createService
@@ -100,7 +98,6 @@ class Content(unohelper.Base,
               XPropertiesChangeNotifier):
     def __init__(self, ctx, user, authority, identifier, uri, data=None):
         self._ctx = ctx
-        msg = "Content loading ... "
         self._user = user
         self._authority = authority
         self._identifier = identifier
@@ -108,12 +105,11 @@ class Content(unohelper.Base,
         self._contentListeners = []
         self._propertiesListener = {}
         self._listeners = []
-        self._logger = getLogger(ctx, g_defaultlog)
+        self._logger = user._logger
         self.MetaData = data if self._new else self._getMetaData(uri)
         self._commandInfo = self._getCommandInfo()
         self._propertySetInfo = self._getPropertySetInfo()
-        msg += "Done."
-        self._logger.logp(INFO, 'Content', '__init__()', msg)
+        self._logger.logprb(INFO, 'Content', '__init__()', 501)
 
     @property
     def IsFolder(self):
@@ -354,11 +350,11 @@ class Content(unohelper.Base,
             itemid, isroot = self._user.RootId, True
         print("Content._getMetaData() ItemId: '%s'" % itemid)
         if itemid is None:
-            msg = self._logger.resolveString(201, uri)
+            msg = self._logger.resolveString(511, uri)
             raise IllegalIdentifierException(msg, self)
         data = self._user.DataBase.getItem(self._user.Id, itemid, isroot)
         if data is None:
-            msg = self._logger.resolveString(202, itemid, uri)
+            msg = self._logger.resolveString(512, itemid, uri)
             print("Content._getMetaData() ERREUR ID: %s - Uri: '%s'" % (itemid, uri))
             raise IllegalIdentifierException(msg, self)
         data.insertValue('Uri', uri)

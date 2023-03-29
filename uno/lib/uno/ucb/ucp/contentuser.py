@@ -55,6 +55,7 @@ from ..oauth2lib import getRequest
 from ..oauth2lib import g_oauth2
 
 from ..dbtool import currentUnoDateTime
+from ..dbtool import getDateTimeInTZToString
 
 from ..unotool import createService
 from ..unotool import getProperty
@@ -67,17 +68,15 @@ from .content import Content
 from .contentidentifier import ContentIdentifier
 from .contenttools import getContentInfo
 
-from ..configuration import g_defaultlog
 from ..configuration import g_scheme
 
-g_basename = 'user'
 
 import binascii
 import traceback
 
 
 class ContentUser():
-    def __init__(self, ctx, source, database, provider, name, sync, lock, password=''):
+    def __init__(self, ctx, logger, source, database, provider, name, sync, lock, password=''):
         print("ContentUser.__init__() 1")
         self._ctx = ctx
         self._name = name
@@ -89,30 +88,33 @@ class ContentUser():
         #self.CanAddChild = not self.Provider.GenerateIds
         self.CanAddChild = True
         self.Request = getRequest(ctx, self.Provider.Scheme, name)
-        self._logger = getLogger(ctx, g_defaultlog, g_basename)
+        self._logger = logger
         data = database.selectUser(name)
         new = data is None
         print("ContentUser.__init__() 2")
         if new:
-            if not self.Provider.isOnLine():
-                msg = self._logger.resolveString(112, name)
+            if self.Request is None:
+                msg = self._logger.resolveString(401, g_oauth2)
+                raise IllegalIdentifierException(msg, source)
+            elif not self.Provider.isOnLine():
+                msg = self._logger.resolveString(402, name)
                 raise IllegalIdentifierException(msg, source)
             user = self.Provider.getUser(self.Request, name)
             if not user.IsPresent:
-                msg = self._logger.resolveString(113, name)
+                msg = self._logger.resolveString(403, name)
                 raise IllegalIdentifierException(msg, source)
             root = self.Provider.getRoot(self.Request, user.Value)
             if not root.IsPresent:
-                msg = self._logger.resolveString(113, name)
+                msg = self._logger.resolveString(403, name)
                 raise IllegalIdentifierException(msg, source)
             data = database.insertUser(self.Provider, user.Value, root.Value)
             if not database.createUser(name, password):
-                msg = self._logger.resolveString(114, name)
+                msg = self._logger.resolveString(404, name)
                 raise IllegalIdentifierException(msg, source)
         self.MetaData = data
         self.DataBase = DataBase(ctx, database.getDataSource(), name, password, sync)
         self._contents = {}
-        self._logger.logprb(INFO, 'User', '__init__()', 101)
+        self._logger.logprb(INFO, 'ContentUser', '__init__()', 405)
         if new:
             self._sync.set()
         print("ContentUser.__init__() 3")
@@ -122,16 +124,26 @@ class ContentUser():
         return self._name
     @property
     def Id(self):
-        return self.MetaData.getDefaultValue('UserId', None)
+        return self.MetaData.getValue('UserId')
     @property
     def RootId(self):
-        return self.MetaData.getDefaultValue('RootId', None)
+        return self.MetaData.getValue('RootId')
     @property
     def RootName(self):
-        return self.MetaData.getDefaultValue('RootName', None)
+        return self.MetaData.getValue('RootName')
     @property
     def Token(self):
-        return self.MetaData.getDefaultValue('Token', '')
+        return self.MetaData.getValue('Token')
+    @property
+    def TimeStamp(self):
+        timestamp = self.MetaData.getValue('TimeStamp')
+        print("ContentUser.getTimeStamp() TimeStamp: %s" % getDateTimeInTZToString(timestamp))
+        return self.MetaData.getValue('TimeStamp')
+    @TimeStamp.setter
+    def TimeStamp(self, timestamp):
+        print("ContentUser.TimeStamp() TimeStamp: %s" % getDateTimeInTZToString(timestamp))
+        self.DataBase.updateUserTimeStamp(timestamp, self.Id)
+        self.MetaData.setValue('TimeStamp', timestamp)
 
     # method called from DataSource.queryContent() and Content.getParent()
     def getContent(self, identifier, path, authority):
@@ -195,7 +207,7 @@ class ContentUser():
             try:
                 sf.writeFile(url, stream)
             except Exception as e:
-                self._logger.logprb(SEVERE, 'ContentUser', 'getDocumentContent()', 131, e, traceback.print_exc())
+                self._logger.logprb(SEVERE, 'ContentUser', 'getDocumentContent()', 421, e, traceback.format_exc())
             else:
                 size = sf.getSize(url)
                 loaded = self.DataBase.updateLoaded(self.Id, itemid, OFFLINE, ONLINE)
@@ -273,7 +285,7 @@ class ContentUser():
     def _getFolderContent(self, content, properties, authority, updated):
         itemid = content.getValue('Id')
         if ONLINE == content.getValue('Loaded') == self.Provider.SessionMode:
-            self._logger.logprb(INFO, 'ContentUser', '_getFolderContent()', 141, content.getValue('Uri'))
+            self._logger.logprb(INFO, 'ContentUser', '_getFolderContent()', 411, content.getValue('Uri'))
             updated = self.DataBase.updateFolderContent(self, content)
         mode = self.Provider.SessionMode
         scheme = '%s://%s' % (g_scheme, self.Name) if authority else '%s://' % g_scheme
@@ -288,102 +300,4 @@ class ContentUser():
                     if url in self._contents:
                         del self._contents[url]
         self._expired = None
-
-
-
-
-
-
-
-
-
-
-
-
-
-    # XRestUser
-    def isValid(self):
-        return self.Id is not None
-    def setDataBase(self, datasource, sync, password=''):
-        self.DataBase = DataBase(self._ctx, datasource, self.Name, password, sync)
-    def getCredential(self, password):
-        return self.Name, password
-
-    def isInitialized(self):
-        return self._initialized
-
-    def initialize(self, datasource, url, password=''):
-        print("User.initialize() 1")
-        if self.Name is None:
-            self._setUserName(datasource, url)
-        if self.Request is None:
-            msg = self._logger.resolveString(111, g_oauth2)
-            raise IllegalIdentifierException(msg, self)
-        print("User.initialize() 2")
-        self.MetaData = datasource.DataBase.selectUser(self._name)
-        print("User.initialize() 3")
-        if self.MetaData is None:
-            if not self.Provider.isOnLine():
-                msg = self._logger.resolveString(112, self._name)
-                raise IllegalIdentifierException(msg, self)
-            data = self.Provider.getUser(self.Request, self._name)
-            if not data.IsPresent:
-                msg = self._logger.resolveString(113, self._name)
-                raise IllegalIdentifierException(msg, self)
-            root = self.Provider.getRoot(self.Request, data.Value)
-            if not root.IsPresent:
-                msg = self._logger.resolveString(113, self._name)
-                raise IllegalIdentifierException(msg, self)
-            self.MetaData = datasource.DataBase.insertUser(self.Provider, data.Value, root.Value)
-            if not datasource.DataBase.createUser(self._name, password):
-                msg = self._logger.resolveString(114, self._name)
-                raise IllegalIdentifierException(msg, self)
-        self.DataBase = DataBase(self._ctx, datasource.DataBase.getDataSource(), self._name, password, self._sync)
-        print("User.initialize() 4")
-        datasource.addUser(self)
-        print("User.initialize() 5")
-        self._initialized = True
-        self._sync.set()
-        print("User.initialize() 6")
-
-    def getIdentifier(self, url):
-        identifier = None
-        if self._expired is not None and url.startswith(self._expired):
-            self._removeIdentifiers()
-        else:
-            identifier = self._identifiers.get(url)
-        if identifier is None:
-            identifier = Identifier(self._ctx, self, url)
-        return identifier
-
-    def updateIdentifier(self, event):
-        pass
-
-    def addIdentifier(self, identifier):
-        key = identifier.getContentIdentifier()
-        print("User.addIdentifier() Uri: %s - Id: %s" % (key, identifier.Id))
-        if key not in self._identifiers:
-            with self._lock:
-                self._identifiers[key] = identifier
-
-    def expireIdentifier(self, url):
-        # FIXME: We need to remove all the child of a resource (if it's a folder)
-        self._expired = url
-
-    def _removeIdentifiers(self):
-        for url in tuple(self._identifiers.keys()):
-            if url.startswith(self._expired):
-                with self._lock:
-                    if url in self._identifiers:
-                        del self._identifiers[url]
-        self._expired = None
-
-# Internal use of method
-    def _setUserName(self, datasource, url):
-        name = getOAuth2UserName(self._ctx, self, self.Provider.Scheme)
-        if not name:
-            msg = self._logger.resolveString(121, url)
-            raise IllegalIdentifierException(msg, self)
-        self.Request = getRequest(self._ctx, self.Provider.Scheme, name)
-        self._name = name
 

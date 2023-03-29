@@ -33,5 +33,6 @@
   oor:name="gDriveOOo">
     <component>
         <prop oor:name="ReplicateTimeout" oor:type="xs:short"/>
+        <prop oor:name="SynchronizePolicy" oor:type="xs:string"/>
     </component>
 </oor:component-schema>

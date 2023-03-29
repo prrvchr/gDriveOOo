@@ -38,7 +38,6 @@ from com.sun.star.logging.LogLevel import SEVERE
 from com.sun.star.ucb.ConnectionMode import OFFLINE
 from com.sun.star.ucb.ConnectionMode import ONLINE
 
-from com.sun.star.ucb import XRestProvider
 from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_RETRIEVED
 from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_CREATED
 from com.sun.star.ucb.RestDataSourceSyncMode import SYNC_FOLDER
@@ -61,14 +60,7 @@ import datetime
 import traceback
 
 
-class ProviderObject(object):
-    pass
-
-
-class ProviderBase(ProviderObject,
-                   unohelper.Base,
-                   XServiceInfo,
-                   XRestProvider):
+class ProviderBase(object):
 
     # Base properties
     @property
@@ -291,3 +283,4 @@ class ProviderBase(ProviderObject,
         parameter = self.getRequestParameter('updateParents', item)
         response = request.execute(parameter)
         return response.IsPresent
+

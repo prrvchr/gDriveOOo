@@ -34,7 +34,7 @@ from com.sun.star.logging.LogLevel import INFO
 from com.sun.star.logging.LogLevel import SEVERE
 from com.sun.star.sdb.CommandType import QUERY
 
-from com.sun.star.ucb import XRestDataBase
+from io.github.prrvchr.css.util import DateTimeWithTimezone
 
 from .unolib import KeyMap
 
@@ -51,6 +51,7 @@ from .dbtool import createStaticTable
 from .dbtool import currentDateTimeInTZ
 from .dbtool import executeSqlQueries
 from .dbtool import getDataSourceCall
+from .dbtool import getDateTimeInTZToString
 from .dbtool import getKeyMapFromResult
 from .dbtool import executeQueries
 
@@ -66,8 +67,7 @@ from .configuration import g_scheme
 import traceback
 
 
-class DataBase(unohelper.Base,
-               XRestDataBase):
+class DataBase():
     def __init__(self, ctx, datasource, name='', password='', sync=None):
         self._ctx = ctx
         self._statement = datasource.getIsolatedConnection(name, password).createStatement()
@@ -130,6 +130,13 @@ class DataBase(unohelper.Base,
         select.close()
         return user
 
+    def getDefaultUserTimeStamp(self):
+        dtz = DateTimeWithTimezone()
+        dtz.DateTimeInTZ.Year = 1970
+        dtz.DateTimeInTZ.Month = 1
+        dtz.DateTimeInTZ.Day = 1
+        return dtz
+
     def insertUser(self, provider, user, root):
         userid = provider.getUserId(user)
         username = provider.getUserName(user)
@@ -141,8 +148,7 @@ class DataBase(unohelper.Base,
         insert.setString(1, username)
         insert.setString(2, displayname)
         insert.setString(3, rootid)
-        insert.setObject(4, timestamp)
-        insert.setString(5, userid)
+        insert.setString(4, userid)
         insert.execute()
         insert.close()
         self._mergeRoot(provider, userid, rootid, rootname, root, timestamp)
@@ -152,6 +158,9 @@ class DataBase(unohelper.Base,
         data.insertValue('RootId', rootid)
         data.insertValue('RootName', rootname)
         data.insertValue('Token', '')
+        timestamp = self.getDefaultUserTimeStamp()
+        print("DataBase.insertUser() TimeStamp: %s" % getDateTimeInTZToString(timestamp))
+        data.insertValue('TimeStamp', timestamp)
         return data
 
     def getContentType(self):
@@ -375,14 +384,6 @@ class DataBase(unohelper.Base,
         return id
 
 # Procedures called by the Replicator
-    # Get the datetime of the oldest replication
-    def getUserTimeStamp(self, userid):
-        call = self._getCall('getUserTimeStamp')
-        call.execute()
-        timestamp = call.getObject(1, None)
-        call.close()
-        return timestamp
-
     # Synchronization pull token update procedure
     def updateToken(self, userid, token):
         update = self._getCall('updateToken')

@@ -38,8 +38,6 @@ from com.sun.star.ucb import XContentProvider
 from com.sun.star.ucb import XParameterizedContentProvider
 from com.sun.star.ucb import IllegalIdentifierException
 
-from com.sun.star.ucb import XRestContentProvider
-
 from .contentidentifier import ContentIdentifier
 
 from ..unotool import createService
@@ -57,89 +55,62 @@ from threading import Event
 from threading import Lock
 
 
-class ContentProvider(unohelper.Base,
-                      XContentIdentifierFactory,
-                      XContentProvider,
-                      XParameterizedContentProvider):
-    def __init__(self, ctx, authority):
+class ParameterizedProvider(unohelper.Base,
+                            XContentIdentifierFactory,
+                            XContentProvider):
+    def __init__(self, ctx, logger, arguments):
         self._ctx = ctx
-        self.Scheme = ''
-        self._authority = authority
+        self._authority = True if arguments == 'WithAuthority' else False
+        self._clazz = 'ParameterizedProvider%s' % arguments
         self._sync = Event()
         self._lock = Lock()
         self._transformer = createService(ctx, 'com.sun.star.util.URLTransformer')
         if self._datasource is None:
-            ContentProvider.__datasource = DataSource(ctx, self._sync, self._lock)
-        self._logger = getLogger(ctx)
-        self._logger.logprb(INFO, 'ContentProvider', '__init__()', 101, self._authority)
-        print("ContentProvider.__init__() 1")
+            ParameterizedProvider.__datasource = DataSource(ctx, logger, self._sync, self._lock)
+        self._logger = logger
+        self._logger.logprb(INFO, self._clazz, '__init__()', 201, arguments)
 
     __datasource = None
 
     @property
     def _datasource(self):
-        return ContentProvider.__datasource
-
-    # XParameterizedContentProvider
-    def registerInstance(self, scheme, authority, replace):
-        print("ContentProvider.registerInstance() Scheme: %s - Authority: %s" % (scheme, authority))
-        self._logger.logprb(INFO, 'ContentProvider', 'registerInstance()', 111, scheme, authority)
-        datasource = DataSource(self._ctx, self._sync, self._lock, scheme, authority)
-        if not datasource.isValid():
-            self._logger.logp(SEVERE, 'ContentProvider', 'registerInstance()', datasource.Error)
-            return None
-        self.Scheme = scheme
-        self._authority = authority
-        self._datasource = datasource
-        self._logger.logprb(INFO, 'ContentProvider', 'registerInstance()', 112, scheme, authority)
-        return self
-    def deregisterInstance(self, scheme, argument):
-        self._logger.logprb(INFO, 'ContentProvider', 'deregisterInstance()', 161, scheme)
+        return ParameterizedProvider.__datasource
 
     # XContentIdentifierFactory
     def createContentIdentifier(self, url):
-        print("ContentProvider.createContentIdentifier() 1")
         identifier = ContentIdentifier(self._getContentIdentifierUrl(url))
-        self._logger.logprb(INFO, 'ContentProvider', 'createContentIdentifier()', 131, url)
-        print("ContentProvider.createContentIdentifier() 2")
+        self._logger.logprb(INFO, self._clazz, 'createContentIdentifier()', 211, url, identifier.getContentIdentifier())
         return identifier
 
     # XContentProvider
     def queryContent(self, identifier):
         try:
-            print("ContentProvider.queryContent() 1 Url: %s" % identifier.getContentIdentifier())
-            # FIXME: We are forced to perform lazy loading on Identifier (and User) in order to be able
-            # FIXME: to trigger an exception when delivering the content ie: XContentProvider.queryContent().
             content = self._datasource.queryContent(self, self._authority, identifier)
-            self._logger.logprb(INFO, 'ContentProvider', 'queryContent()', 141, identifier.getContentIdentifier())
-            print("ContentProvider.queryContent() 2")
+            self._logger.logprb(INFO, self._clazz, 'queryContent()', 221, identifier.getContentIdentifier())
             return content
-        #except IllegalIdentifierException as e:
-        #    self._logger.logprb(SEVERE, 'ContentProvider', 'queryContent()', 142, e.Message)
-        #    raise e
+        except IllegalIdentifierException as e:
+            self._logger.logprb(INFO, self._clazz, 'queryContent()', 222, e.Message)
+            raise e
         except Exception as e:
-            msg = "ContentProvider.queryContent() Error: %s" % traceback.print_exc()
+            msg = self._logger.resolveString(223, traceback.format_exc())
+            self._logger.logp(SEVERE, self._clazz, 'queryContent()', msg)
             print(msg)
 
     def compareContentIds(self, id1, id2):
-        ids = (id1.getContentIdentifier(), id2.getContentIdentifier())
-        if id1.Id == id2.Id and id1.User.Id == id2.User.Id:
-            msg = self._logger.resolveString(151, ids)
+        url1, url2 = id1.getContentIdentifier(), id2.getContentIdentifier()
+        if url1 == url2:
+            self._logger.logprb(INFO, self._clazz, 'compareContentIds()', 231, url1, url2)
             compare = 0
         else:
-            msg = self._logger.resolveString(152, ids)
+            self._logger.logprb(INFO, self._clazz, 'compareContentIds()', 232, url1, url2)
             compare = -1
-        self._logger.logp(INFO, 'ContentProvider', 'compareContentIds()', msg)
         return compare
 
     # Private methods
     def _getContentIdentifierUrl(self, url):
-        print("ContentProvider._getContentIdentifierUrl() Url: %s" % url)
-        if not url.endswith('//'):
-            url = url.rstrip('/.')
-        print("ContentProvider._getContentIdentifierUrl() Url: %s" % url)
+        # FIXME: Sometimes the url can end with a dot, it must be deleted
+        url = url.rstrip('.')
         uri = parseUrl(self._transformer, url)
         if uri is not None:
             uri = self._transformer.getPresentation(uri, True)
-        print("ContentProvider._getContentIdentifierUrl() Url: %s" % uri)
         return uri if uri else url

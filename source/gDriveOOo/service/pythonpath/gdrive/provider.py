@@ -39,32 +39,29 @@ from com.sun.star.auth.RestRequestTokenType import TOKEN_QUERY
 from com.sun.star.auth.RestRequestTokenType import TOKEN_JSON
 from com.sun.star.auth.RestRequestTokenType import TOKEN_SYNC
 
-from gdrive import ProviderBase
-from gdrive import toUnoDateTime
+from .providerbase import ProviderBase
 
-from gdrive import g_identifier
-from gdrive import g_scheme
-from gdrive import g_provider
-from gdrive import g_host
-from gdrive import g_url
-from gdrive import g_upload
-from gdrive import g_userfields
-from gdrive import g_itemfields
-from gdrive import g_childfields
-from gdrive import g_chunk
-from gdrive import g_buffer
-from gdrive import g_pages
-from gdrive import g_IdentifierRange
-from gdrive import g_folder
-from gdrive import g_office
-from gdrive import g_link
-from gdrive import g_doc_map
+from .dbtool import toUnoDateTime
+
+from .configuration import g_identifier
+from .configuration import g_scheme
+from .configuration import g_provider
+from .configuration import g_host
+from .configuration import g_url
+from .configuration import g_upload
+from .configuration import g_userfields
+from .configuration import g_itemfields
+from .configuration import g_childfields
+from .configuration import g_chunk
+from .configuration import g_buffer
+from .configuration import g_pages
+from .configuration import g_IdentifierRange
+from .configuration import g_folder
+from .configuration import g_office
+from .configuration import g_link
+from .configuration import g_doc_map
 
 import traceback
-
-# pythonloader looks for a static g_ImplementationHelper variable
-g_ImplementationHelper = unohelper.ImplementationHelper()
-g_ImplementationName = '%s.Provider' % g_identifier
 
 
 class Provider(ProviderBase):
@@ -287,15 +284,3 @@ class Provider(ProviderBase):
     def getItemIsVersionable(self, item):
         return item.getValue('capabilities').getValue('canReadRevisions')
 
-    # XServiceInfo
-    def supportsService(self, service):
-        return g_ImplementationHelper.supportsService(g_ImplementationName, service)
-    def getImplementationName(self):
-        return g_ImplementationName
-    def getSupportedServiceNames(self):
-        return g_ImplementationHelper.getSupportedServiceNames(g_ImplementationName)
-
-
-g_ImplementationHelper.addImplementation(Provider,
-                                         g_ImplementationName,
-                                        (g_ImplementationName, ))

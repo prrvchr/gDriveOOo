@@ -182,7 +182,6 @@ def getQueries():
             ('createGetRoot',{'Role': g_role}),
             ('createGetItem',{'Role': g_role}),
             ('createGetNewTitle',{'Role': g_role}),
-            ('createGetUserTimeStamp',{'Role': g_role}),
             ('createGetPushItems',{'Role': g_role}),
             ('createGetPushProperties',{'Role': g_role}),
             ('createGetItemParentIds',{'Role': g_role}),

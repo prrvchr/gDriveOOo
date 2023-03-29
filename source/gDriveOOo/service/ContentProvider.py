@@ -37,10 +37,10 @@ from com.sun.star.ucb import XContentIdentifierFactory
 from com.sun.star.ucb import XParameterizedContentProvider
 
 from com.sun.star.logging.LogLevel import INFO
-from com.sun.star.logging.LogLevel import SEVERE
+
+from gdrive import ParameterizedProvider
 
 from gdrive import getLogger
-from gdrive import ContentProvider as ParameterizedContentProvider
 
 from gdrive import g_identifier
 from gdrive import g_basename
@@ -59,18 +59,15 @@ class ContentProvider(unohelper.Base,
                       XContentIdentifierFactory,
                       XParameterizedContentProvider):
     def __init__(self, ctx):
-        msg = "ContentProvider for plugin: %s loading ..." % g_identifier
         self._ctx = ctx
-        msg += " Done"
         self._logger = getLogger(ctx, g_defaultlog, g_basename)
-        self._logger.logp(INFO, 'ContentProvider', '__init__()', msg)
+        self._logger.logprb(INFO, 'ContentProvider', '__init__()', 101, g_ImplementationName)
 
     # XParameterizedContentProvider
     def registerInstance(self, template, arguments, replace):
         try:
-            print('ContentProvider.registerInstance() Scheme/Plugin/Replace: %s/%s/%s' % (template, arguments, replace))
-            authority = True if arguments == 'WithAuthority' else False
-            provider = ParameterizedContentProvider(self._ctx, authority)
+            provider = ParameterizedProvider(self._ctx, self._logger, arguments)
+            self._logger.logprb(INFO, 'ContentProvider', 'registerInstance()', 111, arguments)
             return provider
         except Exception as e:
             msg = "ContentProvider.registerInstance() Error: %s" % traceback.print_exc()
@@ -105,3 +102,4 @@ g_ImplementationHelper.addImplementation(ContentProvider,
                                          g_ImplementationName,
                                          (g_ImplementationName,
                                          'com.sun.star.ucb.ContentProvider'))
+
