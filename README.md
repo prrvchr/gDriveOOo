@@ -177,7 +177,7 @@ Although this functionality is only needed for gDriveOOo, it is implemented glob
   - Access to the two log files concerning the activities of the UCP and the data replicator.
   - Choice of synchronization order.
   - The modification of the interval between two synchronizations.
-  - Access to the underlying HsqlDB 2.7.1 database managing your Google gDrive metadata.
+  - Access to the underlying HsqlDB 2.7.1 database managing your Google Drive metadata.
 
 - The presence or absence of a trailing slash in the Url is now supported.
 

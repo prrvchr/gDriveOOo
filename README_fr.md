@@ -177,7 +177,7 @@ Bien que cette fonctionnalité ne soit nécessaire que pour gDriveOOo, elle est 
   - L'accès aux deux fichiers journaux concernant les activités de l'UCP et du réplicateur de données.
   - Le choix de l'ordre de synchronisation.
   - La modification de l'intervalle entre deux synchronisations.
-  - L'accès à la base de données HsqlDB 2.7.1 sous-jacente gérant vos métadonnées gDrive.
+  - L'accès à la base de données HsqlDB 2.7.1 sous-jacente gérant vos métadonnées Google Drive.
 
 - La présence ou l'absence d'une barre oblique finale dans l'Url est maintenant prise en charge.
 
