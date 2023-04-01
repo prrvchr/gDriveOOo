@@ -170,7 +170,7 @@ Bien que cette fonctionnalité ne soit nécessaire que pour gDriveOOo, elle est 
 
 - Modification de l'interface [Replicator][23], afin de permettre:
   - De choisir l'ordre de synchronisation des données (locales d'abord puis distantes ensuite ou inversement).
-  - La synchronisation des modifications locales par des opérations atomiques effectuées dans l'ordre chronologique pour supporter pleinement le travail hors ligne.
+  - La synchronisation des modifications locales par des opérations atomiques effectuées dans l'ordre chronologique pour supporter pleinement le travail hors ligne.  
   Pour ce faire, trois procédures SQL [GetPushItems][37], [GetPushProperties][38] et [UpdatePushItems][39] sont utilisées pour chaque utilisateur ayant accédé à ses fichiers / dossiers.
 
 - Réécriture de la [fenêtre des options][40] accessible par : **Outils -> Options -> Internet -> gDriveOOo** afin de permettre :
