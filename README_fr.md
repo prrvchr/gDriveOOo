@@ -209,7 +209,7 @@ Bien que cette fonctionnalité ne soit nécessaire que pour gDriveOOo, elle est 
 [18]: <https://prrvchr.github.io/jdbcDriverOOo/img/jdbcDriverOOo.png>
 [19]: <https://github.com/prrvchr/jdbcDriverOOo/raw/master/source/jdbcDriverOOo/dist/jdbcDriverOOo.oxt>
 [20]: <https://github.com/prrvchr/gDriveOOo/raw/master/source/gDriveOOo/dist/gDriveOOo.oxt>
-[21]: <https://github.com/prrvchr/gDriveOOo/README_fr#configuration>
+[21]: <https://prrvchr.github.io/gDriveOOo/README_fr#configuration>
 [22]: <https://prrvchr.github.io/OAuth2OOo/README_fr>
 [23]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/replicator.py>
 [24]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/database.py>
