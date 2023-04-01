@@ -127,7 +127,7 @@ Après avoir autorisé l'application [OAuth2OOo][22] à accéder à vos fichiers
 
 Je vous encourage en cas de problème :-(  
 de créer un [dysfonctionnement][10]  
-J'essaierai de la résoudre ;-)
+J'essaierai de le résoudre ;-)
 
 ## Historique:
 
