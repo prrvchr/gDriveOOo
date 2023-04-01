@@ -170,7 +170,7 @@ Although this functionality is only needed for gDriveOOo, it is implemented glob
 
 - Modification of the [Replicator][23] interface, in order to allow:
   - To choose the data synchronization order (local first then remote or vice versa).
-  - Synchronization of local changes by atomic operations performed in chronological order to fully support offline work.  
+  - Synchronization of local changes by atomic operations performed in chronological order to fully support offline work.
   To do this, three SQL procedures [GetPushItems][37], [GetPushProperties][38] and [UpdatePushItems][39] are used for each user who has accessed his files / folders.
 
 - Rewrite of the [options window][40] accessible by: **Tools -> Options -> Internet -> gDriveOOo** in order to allow:
