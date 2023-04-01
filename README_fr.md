@@ -185,8 +185,6 @@ Bien que cette fonctionnalité ne soit nécessaire que pour gDriveOOo, elle est 
 
 ### Que reste-t-il à faire pour la version 0.0.6:
 
-- Écrire l'implémentation Pull Change dans la nouvelle interface [Replicator][23].
-
 - Ajouter de nouvelles langue pour l'internationalisation...
 
 - Tout ce qui est bienvenu...
