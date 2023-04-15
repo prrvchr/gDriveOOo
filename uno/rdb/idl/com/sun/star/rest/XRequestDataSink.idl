@@ -1,7 +1,4 @@
-#!
-# -*- coding: utf-8 -*-
-
-"""
+/*
 ╔════════════════════════════════════════════════════════════════════════════════════╗
 ║                                                                                    ║
 ║   Copyright (c) 2020 https://prrvchr.github.io                                     ║
@@ -25,16 +22,25 @@
 ║   OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                    ║
 ║                                                                                    ║
 ╚════════════════════════════════════════════════════════════════════════════════════╝
-"""
+ */
 
-from .oauth2config import g_oauth2
+#ifndef __com_sun_star_rest_XRequestDataSink_idl__
+#define __com_sun_star_rest_XRequestDataSink_idl__
 
-from .oauth2lib import InteractionRequest
-from .oauth2lib import NoOAuth2
-from .oauth2lib import OAuth2OOo
+#include <com/sun/star/io/XActiveDataSink.idl>
 
-from .oauth2tools import getRequest
-from .oauth2tools import getOAuth2
+module com { module sun { module star { module rest {
 
-from .oauth2core import getOAuth2UserName
-from .oauth2core import getOAuth2Token
+interface XRequestDataSink: com::sun::star::io::XActiveDataSink
+{
+
+    sequence<byte> read([in] long Length);
+    void close();
+    void seek([in] hyper Location);
+    hyper tell();
+
+};
+
+}; }; }; };
+
+#endif
