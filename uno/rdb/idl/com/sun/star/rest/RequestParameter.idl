@@ -27,7 +27,7 @@
 #ifndef __com_sun_star_rest_RequestParameter_idl__
 #define __com_sun_star_rest_RequestParameter_idl__
 
-#include <com/sun/star/rest/XRequestDataSink.idl>
+#include <com/sun/star/io/XInputStream.idl>
 
 module com { module sun { module star { module rest {
 
@@ -41,7 +41,7 @@ struct RequestParameter
     string Query;
     string Data;
     string Json;
-    com::sun::star::rest::XRequestDataSink DataSink;
+    com::sun::star::io::XInputStream DataSink;
     boolean NoAuth;
     sequence<string> Auth;
     boolean NoRedirect;
