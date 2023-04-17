@@ -1,7 +1,4 @@
-#!
-# -*- coding: utf-8 -*-
-
-"""
+/*
 ╔════════════════════════════════════════════════════════════════════════════════════╗
 ║                                                                                    ║
 ║   Copyright (c) 2020 https://prrvchr.github.io                                     ║
@@ -25,37 +22,24 @@
 ║   OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                    ║
 ║                                                                                    ║
 ╚════════════════════════════════════════════════════════════════════════════════════╝
-"""
+ */
 
-import uno
-import unohelper
+#ifndef __com_sun_star_rest_ParameterType_idl__
+#define __com_sun_star_rest_ParameterType_idl__
 
+module com { module sun { module star { module rest {
 
-from com.sun.star.rest import XRequestDataSink
+constants ParameterType
+{
 
-import traceback
+    const short NONE = 0;
+    const short URL = 1;
+    const short QUERY = 2;
+    const short HEADER = 3;
+    const short JSON = 4;
 
+};
 
-class RequestDataSink(unohelper.Base,
-                      XRequestDataSink):
-    def __init__(self, ctx):
-        self._ctx = ctx
-        self._input = None
+}; }; }; };
 
-    #XActiveDataSink
-    def setInputStream(self, input):
-        self._input = input
-    def getInputStream(self):
-        return self._input
-
-    #Python File Like Object
-    def read(self, length):
-        length, sequence = self._input.readBytes(None, length)
-        return sequence.value
-    def close(self):
-        self._input.closeInput()
-    def seek(self, location):
-        self._input.seek(location)
-    def tell(self):
-        return self._input.getPosition()
-
+#endif

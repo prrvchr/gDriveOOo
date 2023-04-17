@@ -33,8 +33,6 @@ from .oauth2lib import InteractionRequest
 from .oauth2lib import NoOAuth2
 from .oauth2lib import OAuth2OOo
 
-from .requestdatasink import RequestDataSink
-
 from .oauth2tools import getRequest
 from .oauth2tools import getOAuth2
 
