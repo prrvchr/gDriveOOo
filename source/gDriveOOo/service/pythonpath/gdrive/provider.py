@@ -40,6 +40,8 @@ from .providerbase import ProviderBase
 
 from .dbtool import toUnoDateTime
 
+from .unotool import getResourceLocation
+
 from .configuration import g_identifier
 from .configuration import g_scheme
 from .configuration import g_provider
@@ -50,7 +52,6 @@ from .configuration import g_userfields
 from .configuration import g_itemfields
 from .configuration import g_childfields
 from .configuration import g_chunk
-from .configuration import g_buffer
 from .configuration import g_pages
 from .configuration import g_IdentifierRange
 from .configuration import g_folder
@@ -63,17 +64,14 @@ import traceback
 
 
 class Provider(ProviderBase):
-    def __init__(self, ctx, logger):
+    def __init__(self, ctx, folder, link, logger):
         self._ctx = ctx
+        self._folder = folder
+        self._link = link
         self._logger = logger
         self.Scheme = g_scheme
-        self.Link = ''
-        self.Folder = ''
-        self.SourceURL = ''
-        self.SessionMode = OFFLINE
-        self._Error = ''
+        self.SourceURL = getResourceLocation(ctx, g_identifier, g_scheme)
         self._folders = []
-        self._chunk = 64 * 1024
 
     @property
     def Name(self):
@@ -94,14 +92,15 @@ class Provider(ProviderBase):
     def Document(self):
         return g_doc_map
     @property
-    def Chunk(self):
-        return g_chunk
+    def DateTimeFormat(self):
+        return '%Y-%m-%dT%H:%M:%S.%fZ'
     @property
-    def Buffer(self):
-        return g_buffer
+    def Folder(self):
+        return self._folder
     @property
-    def TimeStampPattern(self):
-        return '%Y-%m-%dT%H:%M:%S.00'
+    def Link(self):
+        return self._link
+
     @property
     def IdentifierRange(self):
         return g_IdentifierRange
@@ -121,7 +120,7 @@ class Provider(ProviderBase):
     def parseNewIdentifiers(self, response):
         events = ijson.sendable_list()
         parser = ijson.parse_coro(events)
-        iterator = response.iterContent(self._chunk, False)
+        iterator = response.iterContent(g_chunk, False)
         while iterator.hasMoreElements():
             chunk = iterator.nextElement().value
             print("Provider.parseNewIdentifiers() Content:\n%s" % chunk.decode('utf-8'))
@@ -140,13 +139,13 @@ class Provider(ProviderBase):
             response = request.execute(parameter)
             if not response.Ok:
                 break
-            iterator = response.iterContent(self._chunk, False)
+            iterator = response.iterContent(g_chunk, False)
             while iterator.hasMoreElements():
                 chunk = iterator.nextElement().value
                 print("Provider.parseItems() Method: %s- Page: %s - Content: \n: %s" % (parameter.Name, parameter.PageCount, chunk.decode('utf-8')))
                 parser.send(chunk)
                 for prefix, event, value in events:
-                    #print("Provider._parseFolderContent() Prefix: %s - Event: %s - Value: %s" % (prefix, event, value))
+                    print("Provider.parseItems() Prefix: %s - Event: %s - Value: %s" % (prefix, event, value))
                     if (prefix, event) == ('nextPageToken', 'string'):
                         parameter.setNextPage('pageToken', value, QUERY)
                     elif (prefix, event) == ('files.item', 'start_map'):
@@ -192,7 +191,7 @@ class Provider(ProviderBase):
             response = request.execute(parameter)
             if not response.Ok:
                 break
-            iterator = response.iterContent(self._chunk, False)
+            iterator = response.iterContent(g_chunk, False)
             while iterator.hasMoreElements():
                 chunk = iterator.nextElement().value
                 print("Provider.parseChanges() Method: %s- Page: %s - Content: \n: %s" % (parameter.Name, parameter.PageCount, chunk.decode('utf-8')))
@@ -244,7 +243,7 @@ class Provider(ProviderBase):
         userid = name = displayname = None
         events = ijson.sendable_list()
         parser = ijson.parse_coro(events)
-        iterator = response.iterContent(self._chunk, False)
+        iterator = response.iterContent(g_chunk, False)
         while iterator.hasMoreElements():
             parser.send(iterator.nextElement().value)
             for prefix, event, value in events:
@@ -264,7 +263,7 @@ class Provider(ProviderBase):
         trashed = readonly = versionable = False
         events = ijson.sendable_list()
         parser = ijson.parse_coro(events)
-        iterator = response.iterContent(self._chunk, False)
+        iterator = response.iterContent(g_chunk, False)
         while iterator.hasMoreElements():
             parser.send(iterator.nextElement().value)
             for prefix, event, value in events:
@@ -304,7 +303,7 @@ class Provider(ProviderBase):
         itemid = None
         events = ijson.sendable_list()
         parser = ijson.items_coro(events, 'id')
-        iterator = response.iterContent(self._chunk, False)
+        iterator = response.iterContent(g_chunk, False)
         while iterator.hasMoreElements():
             parser.send(iterator.nextElement().value)
             for prefix, event, value in events:
@@ -319,7 +318,7 @@ class Provider(ProviderBase):
         token = None
         events = ijson.sendable_list()
         parser = ijson.parse_coro(events)
-        iterator = response.iterContent(self._chunk, False)
+        iterator = response.iterContent(g_chunk, False)
         while iterator.hasMoreElements():
             parser.send(iterator.nextElement().value)
             for prefix, event, value in events:
@@ -342,7 +341,7 @@ class Provider(ProviderBase):
             parameter.Url = '%s/files' % self.BaseUrl
             query = ['"fields": "%s"' % g_childfields]
             query += ['"pageSize": "%s"' % g_pages]
-            parents = "'%s' in parents" % data
+            parents = "'%s' in parents" % data.Id
             query += ['"q": "%s"' % parents]
             parameter.Query = '{%s}' % ','.join(query)
         elif method == 'getFirstPull':
@@ -413,7 +412,7 @@ class Provider(ProviderBase):
             parameter.Url = data.getHeader('Location')
         return parameter
 
-    def initUser(self, database, user):
+    def initUser(self, database, user, token):
         token = self.getUserToken(user)
         if database.updateToken(user.Id, token):
             user.setToken(token)
