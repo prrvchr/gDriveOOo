@@ -293,9 +293,6 @@ class Provider(ProviderBase):
                 "MediaType": mimetype, 'Trashed': trashed, 'CanAddChild': addchild, 
                 'CanRename': canrename, 'IsReadOnly': readonly, 'IsVersionable': versionable}
 
-
-
-
     def parseItemId(self, response):
         return self._parseItemId(response)
 
@@ -327,7 +324,6 @@ class Provider(ProviderBase):
             del events[:]
         parser.close()
         return token
-
 
     def getRequestParameter(self, request, method, data=None):
         parameter = request.getRequestParameter(method)
