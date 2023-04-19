@@ -112,33 +112,33 @@ class Provider(ProviderBase):
         return (user.RootId, )
 
     def getUser(self, source, request, name):
-        user = {}
-        user.update(self._getUser(source, request, name))
-        user.update(self._getRoot(source, request, name))
-        return user
+        user = self._getUser(source, request, name)
+        root = self._getRoot(source, request, name)
+        return user, root
 
     def parseNewIdentifiers(self, response):
         events = ijson.sendable_list()
         parser = ijson.parse_coro(events)
         iterator = response.iterContent(g_chunk, False)
         while iterator.hasMoreElements():
-            chunk = iterator.nextElement().value
-            print("Provider.parseNewIdentifiers() Content:\n%s" % chunk.decode('utf-8'))
-            parser.send(chunk)
+            parser.send(iterator.nextElement().value)
             for prefix, event, value in events:
-                print("Provider.parseNewIdentifiers() Prefix: %s - Event: %s - Value: %s" % (prefix, event, value))
                 if (prefix, event) == ('ids.item', 'string'):
                     yield value
             del events[:]
         parser.close()
 
+    def mergePullUser(self, user, parameter, iterator, timestamp):
+        count = user.DataBase.pullChanges(iterator, user.Id, timestamp)
+        return parameter.SyncToken, count, parameter.PageCount
+
     def parseItems(self, request, parameter):
         while parameter.hasNextPage():
-            events = ijson.sendable_list()
-            parser = ijson.parse_coro(events)
             response = request.execute(parameter)
             if not response.Ok:
                 break
+            events = ijson.sendable_list()
+            parser = ijson.parse_coro(events)
             iterator = response.iterContent(g_chunk, False)
             while iterator.hasMoreElements():
                 chunk = iterator.nextElement().value
@@ -186,11 +186,11 @@ class Provider(ProviderBase):
 
     def parseChanges(self, request, parameter):
         while parameter.hasNextPage():
-            events = ijson.sendable_list()
-            parser = ijson.parse_coro(events)
             response = request.execute(parameter)
             if not response.Ok:
                 break
+            events = ijson.sendable_list()
+            parser = ijson.parse_coro(events)
             iterator = response.iterContent(g_chunk, False)
             while iterator.hasMoreElements():
                 chunk = iterator.nextElement().value
@@ -255,7 +255,7 @@ class Provider(ProviderBase):
                     displayname = value
             del events[:]
         parser.close()
-        return {'UserId': userid, 'UserName': name, 'DisplayName': displayname}
+        return userid, name, displayname
 
     def _parseRoot(self, response):
         rootid = name = created = modified = mimetype = None
@@ -289,9 +289,7 @@ class Provider(ProviderBase):
                     versionable = value
             del events[:]
         parser.close()
-        return {'RootId': rootid, 'Title': name, 'DateCreated': created, 'DateModified': modified, 
-                "MediaType": mimetype, 'Trashed': trashed, 'CanAddChild': addchild, 
-                'CanRename': canrename, 'IsReadOnly': readonly, 'IsVersionable': versionable}
+        return rootid, name, created, modified, mimetype, trashed, addchild, canrename, readonly, versionable
 
     def parseItemId(self, response):
         return self._parseItemId(response)
