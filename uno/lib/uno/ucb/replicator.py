@@ -263,18 +263,19 @@ class Replicator(unohelper.Base,
                 created = getDateTimeToString(metadata.get('DateCreated'))
                 if user.Provider.isFolder(mediatype):
                     print("Replicator._pushItem() INSERT 3")
-                    response = user.Provider.createFolder(user.Request, metadata)
+                    status = user.Provider.createFolder(user, metadata)
                     print("Replicator._pushItem() INSERT 4")
-                    status = self.callBack(itemid, response)
-                    print("Replicator._pushItem() INSERT 5")
                     self._logger.logprb(INFO, 'Replicator', '_pushItem()', 141, metadata.get('Title'), created)
-                    print("Replicator._pushItem() INSERT 6")
+                    print("Replicator._pushItem() INSERT 5")
                 elif user.Provider.isLink(mediatype):
                     pass
                 elif user.Provider.isDocument(mediatype):
                     if user.Provider.createFile(user.Request, metadata):
                         #if self._needPush('SizeUpdated', itemid, operations):
-                        status = user.Provider.uploadFile(user, metadata, True)
+                        response = user.Provider.uploadFile(user, metadata, True)
+                        if response is not None:
+                            status = response.Ok
+                            response.close()
                         self._logger.logprb(INFO, 'Replicator', '_pushItem()', 142, metadata.get('Title'), created)
             # UPDATE procedures, only a few properties are synchronized: Title and content(ie: Size or DateModified)
             elif action & UPDATE:

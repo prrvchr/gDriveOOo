@@ -38,6 +38,7 @@ from com.sun.star.ucb import IllegalIdentifierException
 
 from .providerbase import ProviderBase
 
+from .dbtool import currentDateTimeInTZ
 from .dbtool import toUnoDateTime
 
 from .unotool import getResourceLocation
@@ -128,9 +129,24 @@ class Provider(ProviderBase):
             del events[:]
         parser.close()
 
-    def mergePullUser(self, user, parameter, iterator, timestamp):
+    def pullUser(self, user):
+        timestamp = currentDateTimeInTZ()
+        parameter = self.getRequestParameter(user.Request, 'getPull', user)
+        iterator = self.parseChanges(user.Request, parameter)
         count = user.DataBase.pullChanges(iterator, user.Id, timestamp)
         return parameter.SyncToken, count, parameter.PageCount
+
+    def parseUploadLocation(self, response):
+        location = response.getHeader('Location') if response.hasHeader('Location') else None
+
+    def getDocumentLocation(self, content):
+        return content
+
+    def mergeNewFolder(self, response, user, item):
+        # FIXME: Nothing to merge: we already have the final ItemId
+        status = response.Ok
+        response.close()
+        return status
 
     def parseItems(self, request, parameter):
         while parameter.hasNextPage():
