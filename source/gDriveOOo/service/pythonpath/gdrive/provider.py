@@ -137,7 +137,7 @@ class Provider(ProviderBase):
         return parameter.SyncToken, count, parameter.PageCount
 
     def parseUploadLocation(self, response):
-        location = response.getHeader('Location') if response.hasHeader('Location') else None
+        return response.getHeader('Location') if response.hasHeader('Location') else None
 
     def getDocumentLocation(self, content):
         return content
@@ -404,11 +404,22 @@ class Provider(ProviderBase):
             parameter.Json = '{"id": "%s", "parents": ["%s"], "name": "%s", "mimeType": "%s"}' % \
                                 (data.get('Id'), data.get('ParentId'),
                                  data.get('Title'), data.get('MediaType'))
-        elif method == 'getUploadLocation':
+
+        elif method == 'getUploadLocation1':
             parameter.Method = 'PATCH'
             parameter.Url = '%s/%s' % (self.UploadUrl, data.get('Id'))
             parameter.Query = '{"uploadType": "resumable"}'
             parameter.Headers = '{"X-Upload-Content-Type": "%s"}' % data.get('MediaType')
+
+        elif method == 'getUploadLocation':
+            parameter.Method = 'POST'
+            parameter.Url = self.UploadUrl
+            parameter.Query = '{"uploadType": "resumable"}'
+            parameter.Json = '{"id": "%s", "parents": ["%s"], "name": "%s", "mimeType": "%s"}' % \
+                                (data.get('Id'), data.get('ParentId'),
+                                 data.get('Title'), data.get('MediaType'))
+            parameter.Headers = '{"X-Upload-Content-Type": "%s"}' % data.get('MediaType')
+
         elif method == 'getNewUploadLocation':
             parameter.Method = 'POST'
             parameter.Url = self.UploadUrl
@@ -417,9 +428,10 @@ class Provider(ProviderBase):
                                 (data.get('Id'), data.get('ParentId'),
                                  data.get('Title'), data.get('MediaType'))
             parameter.Headers = '{"X-Upload-Content-Type": "%s"}' % data.get('MediaType')
+
         elif method == 'getUploadStream':
             parameter.Method = 'PUT'
-            parameter.Url = data.getHeader('Location')
+            parameter.Url = data
         return parameter
 
     def initUser(self, database, user, token):
