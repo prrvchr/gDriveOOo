@@ -24,28 +24,17 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
  */
 
-#ifndef __com_sun_star_rest_RequestParameter_idl__
-#define __com_sun_star_rest_RequestParameter_idl__
-
-#include <com/sun/star/io/XInputStream.idl>
+#ifndef __com_sun_star_rest_ContentType_idl__
+#define __com_sun_star_rest_ContentType_idl__
 
 module com { module sun { module star { module rest {
 
-struct RequestParameter
+constants ContentType
 {
 
-    string Name;
-    string Method;
-    string Url;
-    string Header;
-    string Query;
-    string Data;
-    string Json;
-    com::sun::star::io::XInputStream DataSink;
-    boolean NoAuth;
-    sequence<string> Auth;
-    boolean NoRedirect;
-    boolean NoVerify;
+    const short HTML = 0;
+    const short JSON = 1;
+    const short XML = 2;
 
 };
 
