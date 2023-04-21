@@ -148,11 +148,8 @@ class Provider(ProviderBase):
             parser = ijson.parse_coro(events)
             iterator = response.iterContent(g_chunk, False)
             while iterator.hasMoreElements():
-                chunk = iterator.nextElement().value
-                print("Provider.parseItems() Method: %s- Page: %s - Content: \n: %s" % (parameter.Name, parameter.PageCount, chunk.decode('utf-8')))
-                parser.send(chunk)
+                parser.send(iterator.nextElement().value)
                 for prefix, event, value in events:
-                    print("Provider.parseItems() Prefix: %s - Event: %s - Value: %s" % (prefix, event, value))
                     if (prefix, event) == ('nextPageToken', 'string'):
                         parameter.setNextPage('pageToken', value, QUERY)
                     elif (prefix, event) == ('files.item', 'start_map'):
@@ -237,8 +234,6 @@ class Provider(ProviderBase):
                     yield value
             del events[:]
         parser.close()
-
-
 
     def _getUser(self, source, request, name):
         parameter = self.getRequestParameter(request, 'getUser')
@@ -346,93 +341,105 @@ class Provider(ProviderBase):
 
     def getRequestParameter(self, request, method, data=None):
         parameter = request.getRequestParameter(method)
+        parameter.Url = self.BaseUrl
         if method == 'getUser':
-            parameter.Url = '%s/about' % self.BaseUrl
-            parameter.Query = '{"fields": "%s"}' % g_userfields
+            parameter.Url += '/about'
+            parameter.setQuery('fields', g_userfields)
+
         elif method == 'getRoot' :
-            parameter.Url = '%s/files/root' % self.BaseUrl
-            parameter.Query = '{"fields": "%s"}' % g_itemfields
+            parameter.Url += '/files/root'
+            parameter.setQuery('fields', g_itemfields)
+
         elif method == 'getFolderContent':
-            parameter.Url = '%s/files' % self.BaseUrl
-            query = ['"fields": "%s"' % g_childfields]
-            query += ['"pageSize": "%s"' % g_pages]
-            parents = "'%s' in parents" % data.Id
-            query += ['"q": "%s"' % parents]
-            parameter.Query = '{%s}' % ','.join(query)
+            parameter.Url += '/files'
+            parameter.setQuery('fields', g_childfields)
+            parameter.setQuery('pageSize', g_pages)
+            parameter.setQuery('q', "'%s' in parents" % data.Id)
+
         elif method == 'getFirstPull':
-            parameter.Url = '%s/files' % self.BaseUrl
-            query = ['"orderBy": "folder,createdTime"']
-            query += ['"fields": "%s"' % g_childfields]
-            query += ['"pageSize": "%s"' % g_pages]
-            parameter.Query = '{%s}' % ','.join(query)
+            parameter.Url += '/files'
+            parameter.setQuery('orderBy', 'folder,createdTime')
+            parameter.setQuery('fields', g_childfields)
+            parameter.setQuery('pageSize', g_pages)
+
         elif method == 'getNewIdentifier':
-            parameter.Url = '%s/files/generateIds' % self.BaseUrl
-            parameter.Query = '{"count": "%s", "space": "drive"}' % max(g_IdentifierRange)
+            parameter.Url += '/files/generateIds'
+            parameter.setQuery('count', str(max(g_IdentifierRange)))
+            parameter.setQuery('space', 'drive')
 
         elif method == 'getItem':
-            parameter.Url = '%s/files/%s' % (self.BaseUrl, data.get('Id'))
-            parameter.Query = '{"fields": "%s"}' % g_itemfields
+            parameter.Url += f'/files/{data.get("Id")}'
+            parameter.setQuery('fields', g_itemfields)
+
         elif method == 'getToken':
-            parameter.Url = '%s/changes/startPageToken' % self.BaseUrl
+            parameter.Url += '/changes/startPageToken'
+
         elif method == 'getPull':
-            parameter.Url = '%s/changes' % self.BaseUrl
-            parameter.Query = '{"pageToken": %s}' % data.Token
+            parameter.Url += '/changes'
+            parameter.setQuery('pageToken', data.Token)
             #token.SyncField = 'newStartPageToken'
 
         elif method == 'getDocumentContent':
-            parameter.Url = '%s/files/%s' % (self.BaseUrl, data.Id)
+            parameter.Url += f'/files/{data.get("Id")}'
             if data.MediaType in g_doc_map:
                 parameter.Url += '/export'
-                parameter.Query = '{"mimeType": "%s"}' % data.MediaType
+                parameter.setQuery('mimeType', data.MediaType)
             else:
-                parameter.Query = '{"alt": "media"}'
+                parameter.setQuery('alt', 'media')
+
         elif method == 'updateTitle':
             parameter.Method = 'PATCH'
-            parameter.Url = '%s/files/%s' % (self.BaseUrl, data.get('Id'))
-            parameter.Json = '{"name": "%s"}' % data.get('Title')
+            parameter.Url += f'/files/{data.get("Id")}'
+            parameter.setJson('name',  data.get('Title'))
+
         elif method == 'updateTrashed':
             parameter.Method = 'PATCH'
-            parameter.Url = '%s/files/%s' % (self.BaseUrl, data.get('Id'))
-            parameter.Json = '{"trashed": true}'
+            parameter.Url += f'/files/{data.get("Id")}'
+            parameter.setJson('trashed', True)
+
         elif method == 'updateParents':
             parameter.Method = 'PATCH'
-            parameter.Url = '%s/files/%s' % (self.BaseUrl, data.get('Id'))
+            parameter.Url += f'/files/{data.get("Id")}'
             toadd = data.get('ParentToAdd')
             toremove = data.get('ParentToRemove')
             if len(toadd) > 0:
-                parameter.Json = '{"addParents": %s}' % ','.join(toadd)
+                parameter.setJson('addParents', ','.join(toadd))
             if len(toremove) > 0:
-                parameter.Json = '{"removeParents": %s}' % ','.join(toremove)
+                parameter.setJson('removeParents', ','.join(toremove))
+
         elif method == 'createNewFolder':
             parameter.Method = 'POST'
-            parameter.Url = '%s/files' % self.BaseUrl
-            parameter.Json = '{"id": "%s", "parents": ["%s"], "name": "%s", "mimeType": "%s"}' % \
-                                (data.get('Id'), data.get('ParentId'),
-                                 data.get('Title'), data.get('MediaType'))
+            parameter.Url += '/files'
+            parameter.setJson('id', data.get('Id'))
+            parameter.setJson('parents', data.get('ParentId'))
+            parameter.setJson('name', data.get('Title'))
+            parameter.setJson('mimeType', data.get('MediaType'))
 
         elif method == 'getUploadLocation1':
             parameter.Method = 'PATCH'
-            parameter.Url = '%s/%s' % (self.UploadUrl, data.get('Id'))
-            parameter.Query = '{"uploadType": "resumable"}'
-            parameter.Headers = '{"X-Upload-Content-Type": "%s"}' % data.get('MediaType')
+            parameter.Url += f'/{data.get("Id")}'
+            parameter.setQuery('uploadType', 'resumable')
+            parameter.setHeader('X-Upload-Content-Type', data.get('MediaType'))
 
         elif method == 'getUploadLocation':
             parameter.Method = 'POST'
             parameter.Url = self.UploadUrl
-            parameter.Query = '{"uploadType": "resumable"}'
-            parameter.Json = '{"id": "%s", "parents": ["%s"], "name": "%s", "mimeType": "%s"}' % \
-                                (data.get('Id'), data.get('ParentId'),
-                                 data.get('Title'), data.get('MediaType'))
-            parameter.Headers = '{"X-Upload-Content-Type": "%s"}' % data.get('MediaType')
+            parameter.setQuery('uploadType', 'resumable')
+            parameter.setJson('id', data.get('Id'))
+            parameter.setJson('parents', data.get('ParentId'))
+            parameter.setJson('name', data.get('Title'))
+            parameter.setJson('mimeType', data.get('MediaType'))
+            parameter.setHeader('X-Upload-Content-Type', data.get('MediaType'))
 
         elif method == 'getNewUploadLocation':
             parameter.Method = 'POST'
             parameter.Url = self.UploadUrl
-            parameter.Query = '{"uploadType": "resumable"}'
-            parameter.Json = '{"id": "%s", "parents": ["%s"], "name": "%s", "mimeType": "%s"}' % \
-                                (data.get('Id'), data.get('ParentId'),
-                                 data.get('Title'), data.get('MediaType'))
-            parameter.Headers = '{"X-Upload-Content-Type": "%s"}' % data.get('MediaType')
+            parameter.setQuery('uploadType', 'resumable')
+            parameter.setJson('id', data.get('Id'))
+            parameter.setJson('parents', data.get('ParentId'))
+            parameter.setJson('name', data.get('Title'))
+            parameter.setJson('mimeType', data.get('MediaType'))
+            parameter.setHeader('X-Upload-Content-Type', data.get('MediaType'))
 
         elif method == 'getUploadStream':
             parameter.Method = 'PUT'
