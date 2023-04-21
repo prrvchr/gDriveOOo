@@ -30,8 +30,6 @@
 import uno
 import unohelper
 
-from com.sun.star.ucb.ConnectionMode import OFFLINE
-
 from com.sun.star.rest.ParameterType import QUERY
 
 from com.sun.star.ucb import IllegalIdentifierException
@@ -112,22 +110,15 @@ class Provider(ProviderBase):
     def getFirstPullRoots(self, user):
         return (user.RootId, )
 
+    def initUser(self, database, user, token):
+        token = self.getUserToken(user)
+        if database.updateToken(user.Id, token):
+            user.setToken(token)
+
     def getUser(self, source, request, name):
         user = self._getUser(source, request, name)
         root = self._getRoot(source, request, name)
         return user, root
-
-    def parseNewIdentifiers(self, response):
-        events = ijson.sendable_list()
-        parser = ijson.parse_coro(events)
-        iterator = response.iterContent(g_chunk, False)
-        while iterator.hasMoreElements():
-            parser.send(iterator.nextElement().value)
-            for prefix, event, value in events:
-                if (prefix, event) == ('ids.item', 'string'):
-                    yield value
-            del events[:]
-        parser.close()
 
     def pullUser(self, user):
         timestamp = currentDateTimeInTZ()
@@ -234,6 +225,20 @@ class Provider(ProviderBase):
                 del events[:]
             parser.close()
             response.close()
+
+    def parseNewIdentifiers(self, response):
+        events = ijson.sendable_list()
+        parser = ijson.parse_coro(events)
+        iterator = response.iterContent(g_chunk, False)
+        while iterator.hasMoreElements():
+            parser.send(iterator.nextElement().value)
+            for prefix, event, value in events:
+                if (prefix, event) == ('ids.item', 'string'):
+                    yield value
+            del events[:]
+        parser.close()
+
+
 
     def _getUser(self, source, request, name):
         parameter = self.getRequestParameter(request, 'getUser')
@@ -433,9 +438,4 @@ class Provider(ProviderBase):
             parameter.Method = 'PUT'
             parameter.Url = data
         return parameter
-
-    def initUser(self, database, user, token):
-        token = self.getUserToken(user)
-        if database.updateToken(user.Id, token):
-            user.setToken(token)
 
