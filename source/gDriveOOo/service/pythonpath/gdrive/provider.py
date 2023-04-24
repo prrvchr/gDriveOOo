@@ -143,7 +143,10 @@ class Provider(ProviderBase):
         response.close()
         return status
 
-    def parseItems(self, request, parameter, path=None):
+    def parseRootFolder(self, parameter, content):
+        return self.parseItems(content.User.Request, parameter)
+
+    def parseItems(self, request, parameter):
         while parameter.hasNextPage():
             response = request.execute(parameter)
             if not response.Ok:
@@ -187,7 +190,7 @@ class Provider(ProviderBase):
                     elif (prefix, event) == ('files.item.capabilities.canReadRevisions', 'boolean'):
                         versionable = value
                     elif (prefix, event) == ('files.item', 'end_map'):
-                        yield itemid, name, created, modified, mimetype, size, trashed, addchild, canrename, readonly, versionable, path, parents
+                        yield itemid, name, created, modified, mimetype, size, trashed, addchild, canrename, readonly, versionable, None, parents
                 del events[:]
             parser.close()
             response.close()
