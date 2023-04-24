@@ -128,7 +128,11 @@ class Provider(ProviderBase):
         return parameter.SyncToken, count, parameter.PageCount
 
     def parseUploadLocation(self, response):
-        return response.getHeader('Location') if response.hasHeader('Location') else None
+        url = None
+        if response.Ok and response.hasHeader('Location'):
+            url = response.getHeader('Location')
+        response.close()
+        return url
 
     def getDocumentLocation(self, content):
         return content
