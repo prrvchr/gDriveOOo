@@ -183,7 +183,7 @@ class Provider(ProviderBase):
                     elif (prefix, event) == ('files.item.capabilities.canReadRevisions', 'boolean'):
                         versionable = value
                     elif (prefix, event) == ('files.item', 'end_map'):
-                        yield itemid, name, created, modified, mimetype, size, trashed, addchild, canrename, readonly, versionable, parents
+                        yield itemid, name, created, modified, mimetype, size, trashed, addchild, canrename, readonly, versionable, None, parents
                 del events[:]
             parser.close()
             response.close()
@@ -444,5 +444,6 @@ class Provider(ProviderBase):
         elif method == 'getUploadStream':
             parameter.Method = 'PUT'
             parameter.Url = data
+
         return parameter
 
