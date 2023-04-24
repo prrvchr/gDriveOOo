@@ -120,13 +120,6 @@ class Provider(ProviderBase):
         root = self._getRoot(source, request, name)
         return user, root
 
-    def pullUser(self, user):
-        timestamp = currentDateTimeInTZ()
-        parameter = self.getRequestParameter(user.Request, 'getPull', user)
-        iterator = self.parseChanges(user.Request, parameter)
-        count = user.DataBase.pullChanges(iterator, user.Id, timestamp)
-        return parameter.SyncToken, count, parameter.PageCount
-
     def parseUploadLocation(self, response):
         url = None
         if response.Ok and response.hasHeader('Location'):
