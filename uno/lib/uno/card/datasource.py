@@ -43,7 +43,6 @@ from .configuration import g_compact
 from .database import DataBase
 
 from .user import User
-from .user import getUserUri
 
 from .addressbook import AddressBook
 from .provider import Provider
@@ -54,8 +53,6 @@ from .listener import TerminateListener
 
 from .unotool import getDesktop
 from .unotool import getUrl
-
-from .dbtool import getSqlException
 
 from .configuration import g_scheme
 
@@ -69,7 +66,7 @@ class DataSource(unohelper.Base):
         self._users = {}
         self._listener = EventListener(self)
         self._database = DataBase(ctx)
-        self._provider = Provider(ctx)
+        self._provider = Provider(ctx, self._database)
         self._replicator = Replicator(ctx, self._database, self._provider, self._users)
         listener = TerminateListener(self._replicator)
         getDesktop(ctx).addTerminateListener(listener)
@@ -89,7 +86,7 @@ class DataSource(unohelper.Base):
     def getConnection(self, scheme, server, account, password):
         try: 
             print("DataSource.getConnection () 1")
-            uri = getUserUri(server, account)
+            uri = self._provider.getUserUri(server, account)
             if uri in self._maps:
                 name = self._maps.get(uri)
                 user = self._users.get(name)

@@ -35,9 +35,9 @@ from .configuration import g_host
 
 from .datasource import DataSource
 
-from .logger import getLogger
-
 from .options import OptionsManager
+
+from .logger import getLogger
 
 from .dbtool import getDriverPropertyInfos
 
