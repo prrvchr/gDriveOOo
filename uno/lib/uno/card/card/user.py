@@ -35,16 +35,14 @@ from com.sun.star.ucb.ConnectionMode import ONLINE
 
 from .addressbook import AddressBooks
 
-from .provider import Provider
+from .provider import getSqlException
 
-from .unotool import getConnectionMode
-from .providerbase import getException
+from ..dbconfig import g_user
+from ..dbconfig import g_schema
 
-from .oauth2 import getRequest
-from .oauth2 import g_oauth2
-
-from .dbconfig import g_user
-from .dbconfig import g_schema
+from ..unotool import getConnectionMode
+from ..oauth2 import getRequest
+from ..oauth2 import g_oauth2
 
 import traceback
 
@@ -60,7 +58,7 @@ class User(unohelper.Base):
             new = self._metadata is None
             if new:
                 if self._isOffLine(server):
-                    raise getException(self._ctx, self, 1004, 1108, '_getNewUser', name)
+                    raise getSqlException(self._ctx, self, 1004, 1108, '_getNewUser', name)
                 self._metadata = self._getNewUser(database, provider, scheme, server, name, pwd)
                 self._initNewUser(database, provider)
             self._addressbooks = AddressBooks(ctx, self._metadata, new)
@@ -147,12 +145,12 @@ class User(unohelper.Base):
 
     def _getNewUser(self, database, provider, scheme, server, name, pwd):
         if self.Request is None:
-            raise getException(self._ctx, self, 1003, 1105, '_getNewUser', g_oauth2)
+            raise getSqlException(self._ctx, self, 1003, 1105, '_getNewUser', g_oauth2)
         return provider.insertUser(database, self.Request, scheme, server, name, pwd)
 
     def _initNewUser(self, database, provider):
         name = self.getName()
         if not database.createUser(name, self.getPassword()):
-            raise provider.getException(1005, 1106, '_initNewUser', name)
+            raise provider.getSqlException(1005, 1106, '_initNewUser', name)
         database.createUserSchema(self.getSchema(), name)
 

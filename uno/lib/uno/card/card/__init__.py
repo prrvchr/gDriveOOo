@@ -27,56 +27,11 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-import uno
-import unohelper
+from .database import DataBase
 
-from com.sun.star.logging.LogLevel import SEVERE
+from .datasource import DataSource
 
-from .dbtool import getDateTimeFromString
-from .dbtool import getSqlException
+from .provider import Provider
 
-from .logger import getLogger
-
-from .configuration import g_errorlog
-from .configuration import g_basename
-
-import traceback
-
-
-class ProviderBase(unohelper.Base):
-
-    @property
-    def DateTimeFormat(self):
-        return '%Y-%m-%dT%H:%M:%SZ'
-
-    def parseDateTime(self, timestamp):
-        return getDateTimeFromString(timestamp, self.DateTimeFormat)
-
-    # Need to be implemented method
-    def insertUser(self, database, request, scheme, server, name, pwd):
-        raise NotImplementedError
-
-    def initAddressbooks(self, database, user):
-        raise NotImplementedError
-
-    def firstPullCard(self, database, user, addressbook, pages, count):
-        raise NotImplementedError
-
-    def pullCard(self, database, user, addressbook, pages, count):
-        raise NotImplementedError
-
-    def parseCard(self, database):
-        raise NotImplementedError
-
-    # Can be overwritten method
-    def syncGroups(self, database, user, addressbook, pages, count):
-        pass
-
-def getException(ctx, source, state, code, method, *args):
-    logger = getLogger(ctx, g_errorlog, g_basename)
-    state = logger.resolveString(state)
-    msg = logger.resolveString(code, *args)
-    logger.logp(SEVERE, g_basename, method, msg)
-    error = getSqlException(state, code, msg, source)
-    return error
+from .provider import getSqlException
 

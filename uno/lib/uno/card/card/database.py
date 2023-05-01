@@ -40,50 +40,51 @@ from com.sun.star.sdbc.DataType import INTEGER
 from com.sun.star.sdbc.DataType import TIMESTAMP
 from com.sun.star.sdbc.DataType import VARCHAR
 
-from .unolib import KeyMap
+from ..unolib import KeyMap
 
-from .unotool import parseDateTime
-from .unotool import createService
-from .unotool import getConfiguration
-from .unotool import getResourceLocation
-from .unotool import getSimpleFile
-from .unotool import getUrlPresentation
+from ..dbtool import Array
+from ..dbtool import checkDataBase
+from ..dbtool import createDataSource
+from ..dbtool import createStaticTable
+from ..dbtool import currentDateTimeInTZ
+from ..dbtool import getConnectionInfo
+from ..dbtool import getDataBaseConnection
+from ..dbtool import getDataBaseUrl
+from ..dbtool import executeSqlQueries
+from ..dbtool import getDataFromResult
+from ..dbtool import getDataSourceCall
+from ..dbtool import getDataSourceConnection
+from ..dbtool import executeQueries
+from ..dbtool import getDictFromResult
+from ..dbtool import getKeyMapFromResult
+from ..dbtool import getRowDict
+from ..dbtool import getSequenceFromResult
+from ..dbtool import getValueFromResult
+from ..dbtool import getKeyMapKeyMapFromResult
 
-from .configuration import g_identifier
-from .configuration import g_admin
-from .configuration import g_group
-from .configuration import g_host
+from ..unotool import parseDateTime
+from ..unotool import createService
+from ..unotool import getConfiguration
+from ..unotool import getResourceLocation
+from ..unotool import getSimpleFile
+from ..unotool import getUrlPresentation
 
-from .dbqueries import getSqlQuery
+from ..configuration import g_identifier
+from ..configuration import g_admin
+from ..configuration import g_group
+from ..configuration import g_host
 
-from .dbconfig import g_dba
-from .dbconfig import g_folder
-from .dbconfig import g_jar
-from .dbconfig import g_role
-from .dbconfig import g_schema
-from .dbconfig import g_user
-from .dbconfig import g_cardview
-from .dbconfig import g_bookmark
+from ..dbqueries import getSqlQuery
 
-from .dbtool import Array
-from .dbtool import checkDataBase
-from .dbtool import createDataSource
-from .dbtool import createStaticTable
-from .dbtool import currentDateTimeInTZ
-from .dbtool import getConnectionInfo
-from .dbtool import getDataBaseConnection
-from .dbtool import getDataBaseUrl
-from .dbtool import executeSqlQueries
-from .dbtool import getDataFromResult
-from .dbtool import getDataSourceCall
-from .dbtool import getDataSourceConnection
-from .dbtool import executeQueries
-from .dbtool import getDictFromResult
-from .dbtool import getKeyMapFromResult
-from .dbtool import getRowDict
-from .dbtool import getSequenceFromResult
-from .dbtool import getValueFromResult
-from .dbtool import getKeyMapKeyMapFromResult
+from ..dbconfig import g_dba
+from ..dbconfig import g_folder
+from ..dbconfig import g_jar
+from ..dbconfig import g_role
+from ..dbconfig import g_schema
+from ..dbconfig import g_user
+from ..dbconfig import g_cardview
+from ..dbconfig import g_bookmark
+from ..dbconfig import g_csv
 
 from .dbinit import getStaticTables
 from .dbinit import getQueries
@@ -145,7 +146,7 @@ class DataBase(unohelper.Base):
         version, error = checkDataBase(self._ctx, connection)
         if error is None:
             statement = connection.createStatement()
-            createStaticTable(self._ctx, statement, getStaticTables(), True)
+            createStaticTable(self._ctx, statement, getStaticTables(), g_csv, True)
             tables = getTables(self._ctx, connection, version)
             executeSqlQueries(statement, tables)
             executeQueries(self._ctx, statement, getQueries())

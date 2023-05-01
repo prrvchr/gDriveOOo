@@ -27,34 +27,56 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-from .configuration import g_identifier
-from .configuration import g_extension
-from .configuration import g_defaultlog
-from .configuration import g_scheme
-from .configuration import g_host
+import uno
+import unohelper
 
-from .card import DataSource
+from com.sun.star.logging.LogLevel import SEVERE
 
-from .provider import Provider
+from ..dbtool import getDateTimeFromString
+from ..dbtool import getSqlException as getException
 
-from .database import DataBase
+from ..logger import getLogger
 
-from .options import OptionsManager
+from ..configuration import g_errorlog
+from ..configuration import g_basename
 
-from .logger import getLogger
+import traceback
 
-from .dbtool import getDriverPropertyInfos
 
-from .card import getSqlException
+class Provider(unohelper.Base):
 
-from .unotool import createMessageBox
-from .unotool import createService
-from .unotool import getDesktop
-from .unotool import getDialog
-from .unotool import getFileSequence
-from .unotool import getResourceLocation
-from .unotool import getSimpleFile
-from .unotool import getStringResource
-# FIXME Import necessary exclusively for vCardOOo
-from .unotool import getUrl
+    @property
+    def DateTimeFormat(self):
+        return '%Y-%m-%dT%H:%M:%SZ'
+
+    def parseDateTime(self, timestamp):
+        return getDateTimeFromString(timestamp, self.DateTimeFormat)
+
+    # Need to be implemented method
+    def insertUser(self, database, request, scheme, server, name, pwd):
+        raise NotImplementedError
+
+    def initAddressbooks(self, database, user):
+        raise NotImplementedError
+
+    def firstPullCard(self, database, user, addressbook, pages, count):
+        raise NotImplementedError
+
+    def pullCard(self, database, user, addressbook, pages, count):
+        raise NotImplementedError
+
+    def parseCard(self, database):
+        raise NotImplementedError
+
+    # Can be overwritten method
+    def syncGroups(self, database, user, addressbook, pages, count):
+        pass
+
+def getSqlException(ctx, source, state, code, method, *args):
+    logger = getLogger(ctx, g_errorlog, g_basename)
+    state = logger.resolveString(state)
+    msg = logger.resolveString(code, *args)
+    logger.logp(SEVERE, g_basename, method, msg)
+    error = getException(state, code, msg, source)
+    return error
 

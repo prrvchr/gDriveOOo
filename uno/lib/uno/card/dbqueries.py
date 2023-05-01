@@ -30,8 +30,6 @@
 from com.sun.star.logging.LogLevel import INFO
 from com.sun.star.logging.LogLevel import SEVERE
 
-from .dbconfig import g_csv
-
 from .configuration import g_member
 from .configuration import g_errorlog
 
@@ -114,7 +112,7 @@ def getSqlQuery(ctx, name, format=None):
         query = 'CREATE TEXT TABLE IF NOT EXISTS "PropertyType"(%s)' % ','.join(c)
 
     elif name == 'setTableSource':
-        query = 'SET TABLE "%s" SOURCE "%s"' % (format, g_csv % format)
+        query = 'SET TABLE "%s" SOURCE "%s"' % format
 
     elif name == 'setTableHeader':
         query = 'SET TABLE "%s" SOURCE HEADER "%s"' % format
