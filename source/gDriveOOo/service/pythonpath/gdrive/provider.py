@@ -128,7 +128,9 @@ class Provider(ProviderBase):
         return url
 
     def getDocumentLocation(self, content):
-        return content
+        # FIXME: This method being also called by the replicator,
+        # FIXME: we must provide a dictionary
+        return content.MetaData
 
     def mergeNewFolder(self, response, user, item):
         # FIXME: Nothing to merge: we already have the final ItemId
@@ -381,9 +383,9 @@ class Provider(ProviderBase):
 
         elif method == 'getDocumentContent':
             parameter.Url += f'/files/{data.get("Id")}'
-            if data.MediaType in g_doc_map:
+            if data.get('MediaType') in g_doc_map:
                 parameter.Url += '/export'
-                parameter.setQuery('mimeType', data.MediaType)
+                parameter.setQuery('mimeType', data.get('MediaType'))
             else:
                 parameter.setQuery('alt', 'media')
 
