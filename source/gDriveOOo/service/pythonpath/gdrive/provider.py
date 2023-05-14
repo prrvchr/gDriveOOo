@@ -370,7 +370,7 @@ class Provider(ProviderBase):
             parameter.setQuery('space', 'drive')
 
         elif method == 'getItem':
-            parameter.Url += f'/files/{data.get("Id")}'
+            parameter.Url += '/files/' + data.get('Id')
             parameter.setQuery('fields', g_itemfields)
 
         elif method == 'getToken':
@@ -382,7 +382,7 @@ class Provider(ProviderBase):
             #token.SyncField = 'newStartPageToken'
 
         elif method == 'getDocumentContent':
-            parameter.Url += f'/files/{data.get("Id")}'
+            parameter.Url += '/files/' + data.get('Id')
             if data.get('MediaType') in g_doc_map:
                 parameter.Url += '/export'
                 parameter.setQuery('mimeType', data.get('MediaType'))
@@ -391,17 +391,17 @@ class Provider(ProviderBase):
 
         elif method == 'updateTitle':
             parameter.Method = 'PATCH'
-            parameter.Url += f'/files/{data.get("Id")}'
+            parameter.Url += '/files/' + data.get('Id')
             parameter.setJson('name',  data.get('Title'))
 
         elif method == 'updateTrashed':
             parameter.Method = 'PATCH'
-            parameter.Url += f'/files/{data.get("Id")}'
+            parameter.Url += '/files/' + data.get('Id')
             parameter.setJson('trashed', True)
 
         elif method == 'updateParents':
             parameter.Method = 'PATCH'
-            parameter.Url += f'/files/{data.get("Id")}'
+            parameter.Url += '/files/' + data.get('Id')
             toadd = data.get('ParentToAdd')
             toremove = data.get('ParentToRemove')
             if len(toadd) > 0:
@@ -417,21 +417,10 @@ class Provider(ProviderBase):
             parameter.setJson('name', data.get('Title'))
             parameter.setJson('mimeType', data.get('MediaType'))
 
-        elif method == 'getUploadLocation1':
-            parameter.Method = 'PATCH'
-            parameter.Url += f'/{data.get("Id")}'
-            parameter.setQuery('uploadType', 'resumable')
-            parameter.setHeader('X-Upload-Content-Type', data.get('MediaType'))
-
         elif method == 'getUploadLocation':
-            parameter.Method = 'POST'
-            parameter.Url = self.UploadUrl
+            parameter.Method = 'PATCH'
+            parameter.Url = self.UploadUrl + '/' + data.get('Id')
             parameter.setQuery('uploadType', 'resumable')
-            parameter.setJson('id', data.get('Id'))
-            parameter.setJson('parents', data.get('ParentId'))
-            parameter.setJson('name', data.get('Title'))
-            parameter.setJson('mimeType', data.get('MediaType'))
-            parameter.setHeader('X-Upload-Content-Type', data.get('MediaType'))
 
         elif method == 'getNewUploadLocation':
             parameter.Method = 'POST'
