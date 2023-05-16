@@ -11,23 +11,23 @@
             <node oor:name="SecondaryKeys">
                 <node oor:name="Office">
                     <node oor:name="ProviderData">
-                        <node oor:name="ProviderGoogle1" oor:op="fuse">
-                            <prop oor:name="ServiceName">
-                                <value>io.github.prrvchr.gDriveOOo.ContentProvider</value>
-                            </prop>
-                            <prop oor:name="URLTemplate">
-                                <value>"vnd-google://"[^/?#]+"@gmail.com"([/?#].*)?</value>
-                            </prop>
-                            <prop oor:name="Arguments">
-                                <value>WithAuthority</value>
-                            </prop>
-                        </node>
                         <node oor:name="ProviderGoogle10" oor:op="fuse">
                             <prop oor:name="ServiceName">
                                 <value>io.github.prrvchr.gDriveOOo.ContentProvider</value>
                             </prop>
                             <prop oor:name="URLTemplate">
-                                <value>"vnd-google://"([/?#].*)?</value>
+                                <value>"vnd-google://"[^/?#]+""([/?#].*)?</value>
+                            </prop>
+                            <prop oor:name="Arguments">
+                                <value>WithAuthority</value>
+                            </prop>
+                        </node>
+                        <node oor:name="ProviderGoogle20" oor:op="fuse">
+                            <prop oor:name="ServiceName">
+                                <value>io.github.prrvchr.gDriveOOo.ContentProvider</value>
+                            </prop>
+                            <prop oor:name="URLTemplate">
+                                <value>"vnd-google:///".*</value>
                             </prop>
                             <prop oor:name="Arguments">
                                 <value>WithOutAuthority</value>
