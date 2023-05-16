@@ -30,6 +30,9 @@
 import uno
 import unohelper
 
+from com.sun.star.rest.HTTPStatusCode import PERMANENT_REDIRECT
+
+from com.sun.star.rest.ParameterType import HEADER
 from com.sun.star.rest.ParameterType import QUERY
 
 from com.sun.star.ucb import IllegalIdentifierException
@@ -435,6 +438,7 @@ class Provider(ProviderBase):
         elif method == 'getUploadStream':
             parameter.Method = 'PUT'
             parameter.Url = data
+            parameter.setUpload(PERMANENT_REDIRECT, 'Range', '-([0-9]+)', 1, HEADER)
 
         return parameter
 
