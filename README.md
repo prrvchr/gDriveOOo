@@ -53,7 +53,8 @@ I recommend [Adoptium][13] as your Java installation source.
 If you are using **LibreOffice on Linux**, you need to make sure of two things:
   - You are subject to [bug 139538][14]. To work around the problem, please **uninstall the packages** with commands:
     - `sudo apt remove libreoffice-sdbc-hsqldb`
-    - `sudo apt remove libhsqldb1.8.0-java`  
+    - `sudo apt remove libhsqldb1.8.0-java`
+
 If you still want to use the Embedded HsqlDB functionality provided by LibreOffice, then install the [HsqlDBembeddedOOo][15] extension.  
 
   - If the python3-cffi-backend package is installed then you need to **install the python3-cffi package** with the command:
