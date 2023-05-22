@@ -53,11 +53,13 @@ Je vous recommande [Adoptium][13] comme source d'installation de Java.
 Si vous utilisez **LibreOffice sous Linux**, vous devez vous assurez de deux choses:
   - Vous êtes sujet au [dysfonctionnement 139538][14]. Pour contourner le problème, veuillez **désinstaller les paquets** avec les commandes:
     - `sudo apt remove libreoffice-sdbc-hsqldb`
-    - `sudo apt remove libhsqldb1.8.0-java`
+    - `sudo apt remove libhsqldb1.8.0-java`  
   Si vous souhaitez quand même utiliser la fonctionnalité HsqlDB intégré fournie par LibreOffice, alors installez l'extension [HsqlDBembeddedOOo][15].  
+
   - Si le paquet python3-cffi-backend est installé alors vous devez **installer le paquet python3-cffi** avec les commandes:
     - `dpkg -s python3-cffi-backend` (pour savoir si le paquet est installé)
     - `sudo apt install python3-cffi`
+
 OpenOffice et LibreOffice sous Windows ne sont pas soumis à ces dysfonctionnements.
 
 ## Installation:
