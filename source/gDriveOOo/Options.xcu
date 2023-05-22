@@ -24,7 +24,7 @@
 ║                                                                                    ║
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 -->
-<oor:component-data oor:name="gDriveOOo"  oor:package="io.github.prrvchr"
+<oor:component-data oor:name="gDriveOOo" oor:package="io.github.prrvchr"
   xsi:schemaLocation="http://openoffice.org/2001/registry/component-update.xsd"
   xmlns:xs="http://www.w3.org/2001/XMLSchema"
   xmlns:oor="http://openoffice.org/2001/registry"

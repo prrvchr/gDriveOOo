@@ -54,7 +54,7 @@ class OptionsManager(unohelper.Base):
         version  = ' '.join(sys.version.split())
         path = os.pathsep.join(sys.path)
         infos = {111: version, 112: path}
-        self._logger = LogManager(self._ctx, window.Peer, infos, g_identifier, g_defaultlog)
+        self._logger = LogManager(ctx, window.Peer, infos, g_identifier, g_defaultlog)
 
     def saveSetting(self):
         self._model.setSynchronizePolicy(self._view.getSynchronizePolicy())
