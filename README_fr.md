@@ -118,17 +118,15 @@ Après avoir autorisé l'application [OAuth2OOo][22] à accéder à vos fichiers
 
 ## A été testé avec:
 
-* LibreOffice 6.4.4.2 - Ubuntu 20.04 -  LxQt 0.14.1
+* LibreOffice 7.3.7.2 - Lubuntu 22.04 - OpenJDK-11-JRE (amd64)
 
-* LibreOffice 7.0.0.0.alpha1 - Ubuntu 20.04 -  LxQt 0.14.1
+* LibreOffice 7.4.3.2(x64) - Windows 10(x64) - Adoptium JDK Hotspot 11.0.17 (x64) (sous Lubuntu 22.04 / VirtualBox 6.1.38)
 
-* OpenOffice 4.1.8 x86_64 - Ubuntu 20.04 - LxQt 0.14.1
+* OpenOffice 4.1.13 - Lubuntu 22.04 - OpenJDK-11-JRE (amd64) (sous Lubuntu 22.04 / VirtualBox 6.1.38)
 
-* OpenOffice 4.2.0.Build:9820 x86_64 - Ubuntu 20.04 - LxQt 0.14.1
+* OpenOffice 4.1.14 - Windows 10(x64) - Adoptium JDK Hotspot 11.0.19 (x32) (sous Lubuntu 22.04 / VirtualBox 6.1.38)
 
-* LibreOffice 6.1.5.2 - Raspbian 10 buster - Raspberry Pi 4 Model B
-
-* LibreOffice 6.4.4.2 (x64) - Windows 7 SP1
+* OpenOffice 4.1.13 - Windows 10(x32) - Adoptium JDK Hotspot 11.0.19 (x32) (sous Lubuntu 22.04 / VirtualBox 6.1.38)
 
 Je vous encourage en cas de problème :-(  
 de créer un [dysfonctionnement][10]  
