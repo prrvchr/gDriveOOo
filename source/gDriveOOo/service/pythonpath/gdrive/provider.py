@@ -130,6 +130,12 @@ class Provider(ProviderBase):
         response.close()
         return url
 
+    def updateItemIdentifier(self, user, item, response):
+        # TODO: Google drive API already provides the definitive identifiers, there is nothing to do here...
+        status = response.Ok
+        response.close()
+        return status
+
     def getDocumentLocation(self, content):
         # FIXME: This method being also called by the replicator,
         # FIXME: we must provide a dictionary
