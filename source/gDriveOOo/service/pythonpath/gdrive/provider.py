@@ -143,10 +143,10 @@ class Provider(ProviderBase):
         # FIXME: we must provide a dictionary
         return content.MetaData
 
-    def mergeNewFolder(self, oldid, response):
+    def mergeNewFolder(self, user, oldid, response):
         # FIXME: Nothing to merge: we already have the final ItemId
-        status = response.Ok
-        response.close()
+        if response:
+            response.close()
         return oldid
 
     def parseRootFolder(self, parameter, content):
