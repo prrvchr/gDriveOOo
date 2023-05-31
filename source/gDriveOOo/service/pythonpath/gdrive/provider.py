@@ -135,19 +135,19 @@ class Provider(ProviderBase):
         # TODO: there is nothing to do here, just close the response if valid...
         if response is not None:
             response.close()
-            return True
-        return False
+            return oldid
+        return None
 
     def getDocumentLocation(self, content):
         # FIXME: This method being also called by the replicator,
         # FIXME: we must provide a dictionary
         return content.MetaData
 
-    def mergeNewFolder(self, response, user, item):
+    def mergeNewFolder(self, oldid, response):
         # FIXME: Nothing to merge: we already have the final ItemId
         status = response.Ok
         response.close()
-        return status
+        return oldid
 
     def parseRootFolder(self, parameter, content):
         return self.parseItems(content.User.Request, parameter)
