@@ -130,7 +130,7 @@ class Provider(ProviderBase):
         response.close()
         return url
 
-    def updateItemIdentifier(self, database, user, itemid, new, response):
+    def updateItemId(self, database, oldid, response):
         # TODO: Google drive API already provides the definitive identifiers, there is nothing to do here...
         status = response.Ok
         response.close()
