@@ -37,12 +37,10 @@ from com.sun.star.rest.ParameterType import QUERY
 
 from com.sun.star.ucb import IllegalIdentifierException
 
-from .providerbase import ProviderBase
+from .ucp import Provider as ProviderBase
 
 from .dbtool import currentDateTimeInTZ
 from .dbtool import toUnoDateTime
-
-from .unotool import getResourceLocation
 
 from .configuration import g_identifier
 from .configuration import g_scheme
@@ -67,13 +65,7 @@ import traceback
 
 class Provider(ProviderBase):
     def __init__(self, ctx, folder, link, logger):
-        self._ctx = ctx
-        self._folder = folder
-        self._link = link
-        self._logger = logger
-        self.Scheme = g_scheme
-        self.SourceURL = getResourceLocation(ctx, g_identifier, g_scheme)
-        self._folders = []
+        super(Provider, self).__init__(ctx, folder, link, logger)
 
     @property
     def Name(self):

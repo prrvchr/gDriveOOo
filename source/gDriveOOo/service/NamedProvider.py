@@ -39,7 +39,7 @@ from com.sun.star.ucb import XParameterizedContentProvider
 
 from com.sun.star.logging.LogLevel import INFO
 
-from gdrive import ParameterizedProvider
+from gdrive import ContentProvider
 
 from gdrive import getLogger
 
@@ -79,7 +79,7 @@ class NamedProvider(unohelper.Base,
     # XContentProviderSupplier
     def getContentProvider(self):
         if self._provider is None:
-            self._provider = ParameterizedProvider(self._ctx, self._logger, True, 'Named')
+            self._provider = ContentProvider(self._ctx, self._logger, True, 'Named')
         return self._provider
 
     # XParameterizedContentProvider
