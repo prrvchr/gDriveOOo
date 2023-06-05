@@ -46,7 +46,7 @@ Car c'est ensemble que nous pouvons rendre le Logiciel Libre plus intelligent.
 
 ## Prérequis:
 
-Si vous utilisez **OpenOffice sur Windows** quelle que soit la version, vous êtes sujet au [dysfonctionnement 128569][11]. Je n'ai pas trouvé de solution de contournement, pour l'instant je ne peux que vous conseiller d'installer **LibreOffice**...
+Si vous utilisez **OpenOffice sous Windows** quelle que soit la version, vous êtes sujet au [dysfonctionnement 128569][11]. Je n'ai pas trouvé de solution de contournement, pour l'instant je ne peux que vous conseiller d'installer **LibreOffice**...
 
 gDriveOOo utilise une base de données locale [HsqlDB][12] version 2.7.1.  
 HsqlDB étant une base de données écrite en Java, son utilisation nécessite [l'installation et la configuration][13] dans LibreOffice / OpenOffice d'un **JRE version 11 ou ultérieure**.  
@@ -82,25 +82,7 @@ Vous devez installer cette extension, si elle n'est pas déjà installée.
 
 Redémarrez LibreOffice / OpenOffice après l'installation.
 
-## Configuration:
-
-Configurer les boîtes de dialogue Ouvrir / Enregistrer de LibreOffice (non nécessaire sous OpenOffice):
-
-- **Pour LibreOffice V5.x et avant:**
-
-Dans le menu: Outils - Options - LibreOffice - General: cocher utiliser les boîtes de dialogue LibreOffice.
-
-- **Pour LibreOffice V6.x et aprés:**
-
-Dans le menu: Outils - Options - LibreOffice - Advancé - Ouvrir la configuration avancée
-
-Rechercher: UseSystemFileDialog (Trouvé sous: org.openoffice.Office.Common > Misc)
-
-Editer ou changer "true" par "false" (réglez-le sur "false")
-
 ## Utilisation:
-
-Si vous êtes sous LibreOffice, il est important d'avoir au préalable [reconfiguré les boîtes de dialogue][22] Ouvrir / Enregistrer.
 
 **Ouvrir votre Drive Google:**
 
@@ -213,7 +195,6 @@ Bien que cette fonctionnalité ne soit nécessaire que pour gDriveOOo, elle est 
 [19]: <https://prrvchr.github.io/jdbcDriverOOo/img/jdbcDriverOOo.png>
 [20]: <https://github.com/prrvchr/jdbcDriverOOo/raw/master/source/jdbcDriverOOo/dist/jdbcDriverOOo.oxt>
 [21]: <https://github.com/prrvchr/gDriveOOo/raw/master/source/gDriveOOo/dist/gDriveOOo.oxt>
-[22]: <https://prrvchr.github.io/gDriveOOo/README_fr#configuration>
 [23]: <https://prrvchr.github.io/OAuth2OOo/README_fr>
 [24]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/replicator.py>
 [25]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/database.py>
