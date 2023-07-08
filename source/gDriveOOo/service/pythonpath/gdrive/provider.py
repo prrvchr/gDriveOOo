@@ -59,7 +59,7 @@ from .configuration import g_office
 from .configuration import g_link
 from .configuration import g_doc_map
 
-from . import ijson
+import ijson
 import traceback
 
 

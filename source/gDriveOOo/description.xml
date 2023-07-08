@@ -28,7 +28,7 @@
   xmlns="http://openoffice.org/extensions/description/2006"
   xmlns:d="http://openoffice.org/extensions/description/2006"
   xmlns:xlink="http://www.w3.org/1999/xlink">
-    <version value="0.0.6"/>
+    <version value="1.0.0"/>
     <identifier value="io.github.prrvchr.gDriveOOo"/>
     <platform value="all"/>
     <dependencies>
@@ -38,8 +38,8 @@
         <src xlink:href="https://prrvchr.github.io/gDriveOOo/gDriveOOo.update.xml"/>
     </update-information>
     <publisher>
-        <name xlink:href="https://prrvchr.github.io/gDriveOOo/" lang="en-US">Google Drive for LibreOffice / OpenOffice</name>
-        <name xlink:href="https://prrvchr.github.io/gDriveOOo/README_fr" lang="fr-FR">Google Drive pour LibreOffice / OpenOffice</name>
+        <name xlink:href="https://prrvchr.github.io/gDriveOOo/" lang="en-US">Google Drive for LibreOffice</name>
+        <name xlink:href="https://prrvchr.github.io/gDriveOOo/README_fr" lang="fr-FR">Google Drive pour LibreOffice</name>
     </publisher>
     <registration>
         <simple-license accept-by="admin" suppress-on-update="true">

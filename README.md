@@ -29,12 +29,12 @@
 
 **The use of this software subjects you to our [Terms Of Use][3] and [Data Protection Policy][4].**
 
-# version [0.0.6][5]
+# version [1.0.0][5]
 
 ## Introduction:
 
-**gDriveOOo** is part of a [Suite][6] of [LibreOffice][7] and/or [OpenOffice][8] extensions allowing to offer you innovative services in these office suites.  
-This extension allows you to work in LibreOffice / OpenOffice on your files on your phone (files that you have downloaded to your Android phone), even while offline.
+**gDriveOOo** is part of a [Suite][6] of [LibreOffice][7] ~~and/or [OpenOffice][8]~~ extensions allowing to offer you innovative services in these office suites.  
+This extension allows you to work in LibreOffice on your files on your phone (files that you have downloaded to your Android phone), even while offline.
 
 Being free software I encourage you:
 - To duplicate its [source code][9].
@@ -44,33 +44,30 @@ Being free software I encourage you:
 In short, to participate in the development of this extension.
 Because it is together that we can make Free Software smarter.
 
+___
 ## Requirement:
 
-If you are using **OpenOffice on Windows** regardless of the version then you are subject to [bug 128569][11]. I haven't found a workaround, for now I can only advise you to install **LibreOffice**...
+In order to take advantage of the latest versions of the Python libraries used in OAuth2OOo, version 2 of Python has been abandoned in favor of **Python 3.8 minimum**.  
+This means that **OAuth2OOo no longer supports OpenOffice and LibreOffice 6.x on Windows since version 1.1.0**.
+I can only advise you **to migrate to LibreOffice 7.x**.
 
 gDriveOOo uses a local [HsqlDB][12] database version 2.7.1.  
 HsqlDB being a database written in Java, its use requires the [installation and configuration][13] in LibreOffice / OpenOffice of a **JRE version 11 or later**.  
 I recommend [Adoptium][14] as your Java installation source.
 
-If you are using **LibreOffice on Linux**, you need to make sure of two things:
-  - You are subject to [bug 139538][15]. To work around the problem, please **uninstall the packages** with commands:
-    - `sudo apt remove libreoffice-sdbc-hsqldb` (to uninstall the libreoffice-sdbc-hsqldb package)
-    - `sudo apt remove libhsqldb1.8.0-java` (to uninstall the libhsqldb1.8.0-java package)
+If you are using **LibreOffice on Linux**, you are subject to [bug 139538][15]. To work around the problem, please **uninstall the packages** with commands:
+- `sudo apt remove libreoffice-sdbc-hsqldb` (to uninstall the libreoffice-sdbc-hsqldb package)
+- `sudo apt remove libhsqldb1.8.0-java` (to uninstall the libhsqldb1.8.0-java package)
 
 If you still want to use the Embedded HsqlDB functionality provided by LibreOffice, then install the [HsqlDBembeddedOOo][16] extension.  
 
-  - If the python3-cffi-backend package is installed then you need to **install the python3-cffi package** with the command:
-    - `dpkg -s python3-cffi-backend` (to know if the python3-cffi-backend package is installed)
-    - `sudo apt install python3-cffi` (to install the python3-cffi package if needed)
-
-OpenOffice on Linux and LibreOffice on Windows are not subject to these malfunctions.
-
+___
 ## Installation:
 
 It seems important that the file was not renamed when it was downloaded.
 If necessary, rename it before installing it.
 
-- Install ![OAuth2OOo logo][17] **[OAuth2OOo.oxt][18]** extension version 0.0.6.
+- Install ![OAuth2OOo logo][17] **[OAuth2OOo.oxt][18]** extension version 1.1.0.
 
 You must first install this extension, if it is not already installed.
 
@@ -78,10 +75,11 @@ You must first install this extension, if it is not already installed.
 
 You must install this extension, if it is not already installed.
 
-- Install ![gDriveOOo logo][1] **[gDriveOOo.oxt][21]** extension version 0.0.6.
+- Install ![gDriveOOo logo][1] **[gDriveOOo.oxt][21]** extension version 1.0.0.
 
 Restart LibreOffice / OpenOffice after installation.
 
+___
 ## Use:
 
 **Open your Google Drive:**
@@ -100,20 +98,22 @@ Anonymous Urls allow you to remain anonymous (your account does not appear in th
 
 After authorizing the [OAuth2OOo][23] application to access your Drive files, your Google Drive should open!!! normally  ;-)
 
+___
 ## Has been tested with:
 
-* LibreOffice 7.3.7.2 - Lubuntu 22.04 - OpenJDK-11-JRE (amd64)
+* LibreOffice 7.3.7.2 - Lubuntu 22.04 - Python version 3.10.12
 
-* LibreOffice 7.4.3.2(x64) - Windows 10(x64) - Adoptium JDK Hotspot 11.0.17 (x64) (under Lubuntu 22.04 / VirtualBox 6.1.38)
+* LibreOffice 7.5.4.2(x86) - Windows 10 - Python version 3.8.16 (under Lubuntu 22.04 / VirtualBox 6.1.38)
 
-* OpenOffice 4.1.13 - Lubuntu 22.04 - OpenJDK-11-JRE (amd64) (under Lubuntu 22.04 / VirtualBox 6.1.38)
+* LibreOffice 7.4.3.2(x64) - Windows 10(x64) - Python version 3.8.15 (under Lubuntu 22.04 / VirtualBox 6.1.38)
 
-* **Does not work with OpenOffice on Windows** see [bug 128569][11]. Having no solution, I encourage you to install **LibreOffice**.
+* **Does not work with OpenOffice** see [bug 128569][11]. Having no solution, I encourage you to install **LibreOffice**.
 
-I encourage you in case of problem :-(  
+I encourage you in case of problem :confused:  
 to create an [issue][10]  
-I will try to solve it ;-)
+I will try to solve it :smile:
 
+___
 ## Historical:
 
 ### What has been done for version 0.0.5:
@@ -142,10 +142,10 @@ Although this functionality is only needed for gDriveOOo, it is implemented glob
 - Using new scheme: **vnd-google://** as claimed by [draft-king-vnd-urlscheme-03.txt][28]
 
 - Achievement of handling duplicate file/folder names by SQL views in HsqlDB:
-  - A [**Twin**][29] view grouping all the duplicates by parent folder and ordering them by creation date, modification date.
-  - A [**Uri**][30] view generating unique indexes for each duplicate.
-  - A [**Title**][31] view generating unique names for each duplicate.
-  - A recursive view [**Path**][32] to generate a unique path for each file / folder.
+    - A [**Twin**][29] view grouping all the duplicates by parent folder and ordering them by creation date, modification date.
+    - A [**Uri**][30] view generating unique indexes for each duplicate.
+    - A [**Title**][31] view generating unique names for each duplicate.
+    - A recursive view [**Path**][32] to generate a unique path for each file / folder.
 
 - Creation of a [Provider][33] able to respond to the two types of Urls supported (named and anonymous).  
   Regular expressions (regex), declared in the [UCB configuration file][34], are now used by OpenOffice/LibreOffice to send URLs to the appropriate ContentProvider.
@@ -154,15 +154,15 @@ Although this functionality is only needed for gDriveOOo, it is implemented glob
   Although this struct already exists in LibreOffice, its creation was necessary in order to remain compatible with OpenOffice (see [Enhancement Request 128560][37]).
 
 - Modification of the [Replicator][24] interface, in order to allow:
-  - To choose the data synchronization order (local first then remote or vice versa).
-  - Synchronization of local changes by atomic operations performed in chronological order to fully support offline work.  
-  To do this, three SQL procedures [GetPushItems][38], [GetPushProperties][39] and [UpdatePushItems][40] are used for each user who has accessed his files / folders.
+    - To choose the data synchronization order (local first then remote or vice versa).
+    - Synchronization of local changes by atomic operations performed in chronological order to fully support offline work.  
+    To do this, three SQL procedures [GetPushItems][38], [GetPushProperties][39] and [UpdatePushItems][40] are used for each user who has accessed his files / folders.
 
 - Rewrite of the [options window][41] accessible by: **Tools -> Options -> Internet -> gDriveOOo** in order to allow:
-  - Access to the two log files concerning the activities of the UCP and the data replicator.
-  - Choice of synchronization order.
-  - The modification of the interval between two synchronizations.
-  - Access to the underlying HsqlDB 2.7.1 database managing your Google Drive metadata.
+    - Access to the two log files concerning the activities of the UCP and the data replicator.
+    - Choice of synchronization order.
+    - The modification of the interval between two synchronizations.
+    - Access to the underlying HsqlDB 2.7.1 database managing your Google Drive metadata.
 
 - The presence or absence of a trailing slash in the Url is now supported.
 
