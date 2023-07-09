@@ -1,4 +1,4 @@
-remote_theme: BDHU/minimalist
+remote_theme: prrvchr/minimalist
 plugins:
   - jekyll-remote-theme
   - jekyll-sitemap
