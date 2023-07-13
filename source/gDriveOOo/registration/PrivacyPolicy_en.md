@@ -1,10 +1,10 @@
 # Data Protection Policy
 
-**Ce [document][2] en français.**
+**Ce [document][1] en français.**
 
-**Use of this software also subjects you to our [Terms Of Use][3].**
+**Use of this software also subjects you to our [Terms Of Use][2].**
 
-Regarding installation, configuration and use, please consult the **[documentation][4]**.
+Regarding installation, configuration and use, please consult the **[documentation][3]**.
 
 ## Introduction:
 
@@ -17,7 +17,7 @@ For simplicity, in the rest of this document, will be named:
 - `User`: the user of the gDriveOOo software.
 - `Supplier`: the internet service provider delivering internet services to `gDriveOOo`.
 
-Although **gDriveOOo does not share or transfer any data to any other application**, `gDriveOOo` adhere to [Google API Services User Data Policy][5], including the Limited Use requirements.
+Although **gDriveOOo does not share or transfer any data to any other application**, `gDriveOOo` adhere to [Google API Services User Data Policy][4], including the Limited Use requirements.
 
 ___
 ## Contact:
@@ -63,8 +63,7 @@ Use of the `Supplier` services via `gDriveOOo` may subject you to the data prote
 
 `Supplier` is solely responsible for the expiration of the data it collects as described in its Policy.
 
-[1]: <https://prrvchr.github.io/gDriveOOo/img/gDriveOOo.png>
-[2]: <https://prrvchr.github.io/gDriveOOo/source/gDriveOOo/registration/PrivacyPolicy_fr>
-[3]: <https://prrvchr.github.io/gDriveOOo/source/gDriveOOo/registration/TermsOfUse_en>
-[4]: <https://prrvchr.github.io/gDriveOOo>
-[5]: <https://developers.google.com/terms/api-services-user-data-policy?hl=en>
+[1]: <https://prrvchr.github.io/gDriveOOo/source/gDriveOOo/registration/PrivacyPolicy_fr>
+[2]: <https://prrvchr.github.io/gDriveOOo/source/gDriveOOo/registration/TermsOfUse_en>
+[3]: <https://prrvchr.github.io/gDriveOOo>
+[4]: <https://developers.google.com/terms/api-services-user-data-policy?hl=en>

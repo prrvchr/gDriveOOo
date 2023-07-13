@@ -174,7 +174,7 @@ Although this functionality is only needed for gDriveOOo, it is implemented glob
 
 - Anything welcome...
 
-[1]: <img/gDriveOOo.png>
+[1]: <img/gDriveOOo.svg>
 [2]: <https://prrvchr.github.io/gDriveOOo/README_fr>
 [3]: <https://prrvchr.github.io/gDriveOOo/source/gDriveOOo/registration/TermsOfUse_en>
 [4]: <https://prrvchr.github.io/gDriveOOo/source/gDriveOOo/registration/PrivacyPolicy_en>
@@ -190,7 +190,7 @@ Although this functionality is only needed for gDriveOOo, it is implemented glob
 [14]: <https://adoptium.net/releases.html?variant=openjdk11>
 [15]: <https://bugs.documentfoundation.org/show_bug.cgi?id=139538>
 [16]: <https://prrvchr.github.io/HsqlDBembeddedOOo/>
-[17]: <https://prrvchr.github.io/OAuth2OOo/img/OAuth2OOo.png>
+[17]: <https://prrvchr.github.io/OAuth2OOo/img/OAuth2OOo.svg>
 [18]: <https://github.com/prrvchr/OAuth2OOo/raw/master/OAuth2OOo.oxt>
 [19]: <https://prrvchr.github.io/jdbcDriverOOo/img/jdbcDriverOOo.png>
 [20]: <https://github.com/prrvchr/jdbcDriverOOo/raw/master/source/jdbcDriverOOo/dist/jdbcDriverOOo.oxt>
