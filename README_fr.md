@@ -96,7 +96,7 @@ Si vous ne donnez pas **votre_compte@gmail.com**, il vous sera demandé...
 
 Les Urls anonymes vous permettent de rester anonyme (votre compte n'apparaît pas dans l'Url) tandis que les Urls nommées vous permettent d'accéder à plusieurs comptes simultanément.
 
-Après avoir autorisé l'application [OAuth2OOo][23] à accéder à vos fichiers de votre Google Drive, votre Google Drive devrait s'ouvrir!!! normalement  ;-)
+Après avoir autorisé l'application [OAuth2OOo][23] à accéder à vos fichiers de votre Google Drive, votre Google Drive devrait s'ouvrir!!! normalement  :wink:
 
 ___
 ## A été testé avec:

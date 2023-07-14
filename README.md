@@ -96,7 +96,7 @@ If you don't give **your_account@gmail.com**, you will be asked for...
 
 Anonymous Urls allow you to remain anonymous (your account does not appear in the Url) while named Urls allow you to access several accounts simultaneously.
 
-After authorizing the [OAuth2OOo][23] application to access your Drive files, your Google Drive should open!!! normally  ;-)
+After authorizing the [OAuth2OOo][23] application to access your Drive files, your Google Drive should open!!! normally  :wink:
 
 ___
 ## Has been tested with:
