@@ -40,7 +40,9 @@ from com.sun.star.ucb import IllegalIdentifierException
 from .ucp import Provider as ProviderBase
 
 from .dbtool import currentDateTimeInTZ
-from .dbtool import toUnoDateTime
+from .dbtool import currentUnoDateTime
+
+from .unotool import generateUuid
 
 from .configuration import g_identifier
 from .configuration import g_scheme
@@ -113,6 +115,51 @@ class Provider(ProviderBase):
         root = self._getRoot(source, request, name)
         return user, root
 
+    def initSharedDocuments(self, user, datetime):
+        itemid = generateUuid()
+        timestamp = currentUnoDateTime()
+        user.DataBase.createSharedFolder(user, itemid, self.SharedFolderName, g_folder, datetime, timestamp)
+        parameter = self.getRequestParameter(user.Request, 'getSharedFolderContent')
+        iterator = self._parseSharedFolder(user.Request, parameter, itemid, timestamp)
+        user.DataBase.pullItems(iterator, user.Id, datetime, 0)
+
+    def _parseSharedFolder(self, request, parameter, itemid, timestamp):
+        parents = [itemid, ]
+        addchild = True
+        trashed = readonly = versionable = False
+        mimetype = g_folder
+        size = 0
+        link = path = None
+        while parameter.hasNextPage():
+            response = request.execute(parameter)
+            if response.Ok:
+                events = ijson.sendable_list()
+                parser = ijson.parse_coro(events)
+                iterator = response.iterContent(g_chunk, False)
+                while iterator.hasMoreElements():
+                    parser.send(iterator.nextElement().value)
+                    for prefix, event, value in events:
+                        if (prefix, event) == ('nextPageToken', 'string'):
+                            parameter.setNextPage('pageToken', value, QUERY)
+                        elif (prefix, event) == ('drives.item', 'start_map'):
+                            itemid = link = name = None
+                            created = modified = timestamp
+                            rename = False
+                        elif (prefix, event) == ('drives.item.id', 'string'):
+                            itemid = value
+                        elif (prefix, event) == ('drives.item.name', 'string'):
+                            name = value
+                        elif (prefix, event) == ('drives.item.createdTime', 'string'):
+                            created = modified = self.parseDateTime(value)
+                        elif (prefix, event) == ('drives.item.capabilities.canRenameDrive', 'boolean'):
+                            rename = value
+                        elif (prefix, event) == ('value.item', 'end_map'):
+                            yield itemid, name, created, modified, mimetype, size, link, trashed, addchild, rename, readonly, versionable, path, parents
+                    del events[:]
+                parser.close()
+            response.close()
+
+
     def parseUploadLocation(self, response):
         url = None
         if response.Ok and response.hasHeader('Location'):
@@ -142,53 +189,53 @@ class Provider(ProviderBase):
     def parseRootFolder(self, parameter, content):
         return self.parseItems(content.User.Request, parameter)
 
-    def parseItems(self, request, parameter):
+    def parseItems(self, request, parameter, link=None):
+        path = None
         while parameter.hasNextPage():
             response = request.execute(parameter)
-            if not response.Ok:
-                break
-            events = ijson.sendable_list()
-            parser = ijson.parse_coro(events)
-            iterator = response.iterContent(g_chunk, False)
-            while iterator.hasMoreElements():
-                parser.send(iterator.nextElement().value)
-                for prefix, event, value in events:
-                    if (prefix, event) == ('nextPageToken', 'string'):
-                        parameter.setNextPage('pageToken', value, QUERY)
-                    elif (prefix, event) == ('files.item', 'start_map'):
-                        itemid = name = created = modified = mimetype = None
-                        size = 0
-                        addchild = canrename = True
-                        trashed = readonly = versionable = False
-                        parents = []
-                    elif (prefix, event) == ('files.item.id', 'string'):
-                        itemid = value
-                    elif (prefix, event) == ('files.item.name', 'string'):
-                        name = value
-                    elif (prefix, event) == ('files.item.createdTime', 'string'):
-                        created = self.parseDateTime(value)
-                    elif (prefix, event) == ('files.item.modifiedTime', 'string'):
-                        modified = self.parseDateTime(value)
-                    elif (prefix, event) == ('files.item.mimeType', 'string'):
-                        mimetype = value
-                    elif (prefix, event) == ('files.item.trashed', 'boolean'):
-                        trashed = value
-                    elif (prefix, event) == ('files.item.size', 'string'):
-                        size = int(value)
-                    elif (prefix, event) == ('files.item.parents.item', 'string'):
-                        parents.append(value)
-                    elif (prefix, event) == ('files.item.capabilities.canAddChildren', 'boolean'):
-                        addchild = value
-                    elif (prefix, event) == ('files.item.capabilities.canRename', 'boolean'):
-                        canrename = value
-                    elif (prefix, event) == ('files.item.capabilities.canEdit', 'boolean'):
-                        readonly = not value
-                    elif (prefix, event) == ('files.item.capabilities.canReadRevisions', 'boolean'):
-                        versionable = value
-                    elif (prefix, event) == ('files.item', 'end_map'):
-                        yield itemid, name, created, modified, mimetype, size, trashed, addchild, canrename, readonly, versionable, None, parents
-                del events[:]
-            parser.close()
+            if response.Ok:
+                events = ijson.sendable_list()
+                parser = ijson.parse_coro(events)
+                iterator = response.iterContent(g_chunk, False)
+                while iterator.hasMoreElements():
+                    parser.send(iterator.nextElement().value)
+                    for prefix, event, value in events:
+                        if (prefix, event) == ('nextPageToken', 'string'):
+                            parameter.setNextPage('pageToken', value, QUERY)
+                        elif (prefix, event) == ('files.item', 'start_map'):
+                            itemid = name = created = modified = mimetype = None
+                            size = 0
+                            addchild = canrename = True
+                            trashed = readonly = versionable = False
+                            parents = []
+                        elif (prefix, event) == ('files.item.id', 'string'):
+                            itemid = value
+                        elif (prefix, event) == ('files.item.name', 'string'):
+                            name = value
+                        elif (prefix, event) == ('files.item.createdTime', 'string'):
+                            created = self.parseDateTime(value)
+                        elif (prefix, event) == ('files.item.modifiedTime', 'string'):
+                            modified = self.parseDateTime(value)
+                        elif (prefix, event) == ('files.item.mimeType', 'string'):
+                            mimetype = value
+                        elif (prefix, event) == ('files.item.trashed', 'boolean'):
+                            trashed = value
+                        elif (prefix, event) == ('files.item.size', 'string'):
+                            size = int(value)
+                        elif (prefix, event) == ('files.item.parents.item', 'string'):
+                            parents.append(value)
+                        elif (prefix, event) == ('files.item.capabilities.canAddChildren', 'boolean'):
+                            addchild = value
+                        elif (prefix, event) == ('files.item.capabilities.canRename', 'boolean'):
+                            canrename = value
+                        elif (prefix, event) == ('files.item.capabilities.canEdit', 'boolean'):
+                            readonly = not value
+                        elif (prefix, event) == ('files.item.capabilities.canReadRevisions', 'boolean'):
+                            versionable = value
+                        elif (prefix, event) == ('files.item', 'end_map'):
+                            yield itemid, name, created, modified, mimetype, size, link, trashed, addchild, canrename, readonly, versionable, path, parents
+                    del events[:]
+                parser.close()
             response.close()
 
     def parseChanges(self, request, parameter):
@@ -352,6 +399,9 @@ class Provider(ProviderBase):
         elif method == 'getRoot' :
             parameter.Url += '/files/root'
             parameter.setQuery('fields', g_itemfields)
+
+        elif method == 'getSharedFolderContent':
+            parameter.Url += '/drives'
 
         elif method == 'getFolderContent':
             parameter.Url += '/files'
