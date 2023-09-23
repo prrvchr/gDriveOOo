@@ -27,6 +27,7 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
+from .unotool import checkVersion
 from .unotool import createMessageBox
 from .unotool import createService
 from .unotool import createWindow
@@ -44,6 +45,7 @@ from .unotool import getDialog
 from .unotool import getDialogUrl
 from .unotool import getDocument
 from .unotool import getExceptionMessage
+from .unotool import getExtensionVersion
 from .unotool import getFilePicker
 from .unotool import getFileSequence
 from .unotool import getFileUrl
