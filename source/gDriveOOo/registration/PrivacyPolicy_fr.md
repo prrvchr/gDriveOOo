@@ -21,7 +21,7 @@ Pour plus de simplicité, dans la suite de ce document, on nommera:
 
 `gDriveOOo` utilisant des services logiciels fourni par `OAuth2OOo`, **son utilisation vous soumet également à la [Politique de protection des données][6]** de `OAuth2OOo`.
 
-Bien que `OAuth2OOo` et/ou `gDriveOOo` **ne partagent ni ne transfèrent aucune données avec toutes autres applications**, `OAuth2OOo` et/ou `gContactOOo` respecte [la politique de données utilisateur des services API Google][7], y compris les exigences d'utilisation limitée.
+Bien que `OAuth2OOo` et/ou `gDriveOOo` **ne partagent ni ne transfèrent aucune données avec toutes autres applications**, `OAuth2OOo` et/ou `gDriveOOo` respecte [la politique de données utilisateur des services API Google][7], y compris les exigences d'utilisation limitée.
 
 ___
 ## Contact:
