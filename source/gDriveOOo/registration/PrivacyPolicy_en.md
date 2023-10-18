@@ -46,18 +46,18 @@ Use of the `Supplier` services through `OAuth2OOo` and/or `gDriveOOo`, may submi
 `Supplier` is solely responsible for the use of the data it collects as described in its Policy.
 
 ___
-## Security of your personal information:
+## Nature and scope rights over your data:
+
+`gDriveOOo` allows you to get a copy of your Google Drive files on your `Computer`. Consequently, `gDriveOOo` claims through `OAuth2OOo` the right to **consult, modify and delete your Google Drive files**.
+
+___
+## Security of collected data:
 
 Since the data collected by `OAuth2OOo` and/or `gDriveOOo` is located on the `Computer`, **only the** `User` **is responsible for the security of the data collected**.
 
 Use of the `Supplier` services through `OAuth2OOo` and/or `gDriveOOo` may subject you to the data protection Policy of `Supplier`. It is the responsibility of the `User` to take knowledge of these Policy from the `Supplier` website.
 
 `Supplier` is solely responsible for the security of the data it collects as described in its Policy.
-
-___
-## Nature and scope rights over the data collected:
-
-`gDriveOOo` allows you to get a copy of your Google Drive files on your `Computer`. Consequently, `gDriveOOo` claims through `OAuth2OOo` the right to **consult, modify and delete your Google Drive files**.
 
 ___
 ## Expiration of collected data:
