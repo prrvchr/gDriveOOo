@@ -1,0 +1,13 @@
+namespace: gDriveOOo
+output:
+  file_path: ./Fluid-Attacks-Results.csv
+  format: CSV
+working_dir: .
+sast:
+  include:
+    - source/gDriveOOo/service/pythonpath/gdrive/
+    - glob(source/gDriveOOo/service/*.py)
+sca:
+  include:
+    - .
+language: EN
