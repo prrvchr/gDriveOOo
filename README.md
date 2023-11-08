@@ -29,7 +29,7 @@
 
 **The use of this software subjects you to our [Terms Of Use][3] and [Data Protection Policy][4].**
 
-# version [1.0.3][5]
+# version [1.0.4][5]
 
 ## Introduction:
 
@@ -67,7 +67,7 @@ ___
 It seems important that the file was not renamed when it was downloaded.
 If necessary, rename it before installing it.
 
-- Install ![OAuth2OOo logo][17] **[OAuth2OOo.oxt][18]** extension version 1.2.0.
+- Install ![OAuth2OOo logo][17] **[OAuth2OOo.oxt][18]** extension version 1.2.1.
 
 You must first install this extension, if it is not already installed.
 
@@ -75,7 +75,7 @@ You must first install this extension, if it is not already installed.
 
 You must install this extension, if it is not already installed.
 
-- Install ![gDriveOOo logo][1] **[gDriveOOo.oxt][21]** extension version 1.0.3.
+- Install ![gDriveOOo logo][1] **[gDriveOOo.oxt][21]** extension version [![Version][22]][21]
 
 Restart LibreOffice / OpenOffice after installation.
 
@@ -188,7 +188,11 @@ Although this functionality is only needed for gDriveOOo, it is implemented glob
 
 - Support for version **1.2.0** of the **OAuth2OOo** extension. Previous versions will not work with **OAuth2OOo** extension 1.2.0 or higher.
 
-### What remains to be done for version 1.0.3:
+### What has been done for version 1.0.4:
+
+- Support for version **1.2.1** of the **OAuth2OOo** extension. Previous versions will not work with **OAuth2OOo** extension 1.2.1 or higher.
+
+### What remains to be done for version 1.0.4:
 
 - Add new language for internationalization...
 
@@ -211,10 +215,11 @@ Although this functionality is only needed for gDriveOOo, it is implemented glob
 [15]: <https://bugs.documentfoundation.org/show_bug.cgi?id=139538>
 [16]: <https://prrvchr.github.io/HyperSQLOOo/>
 [17]: <https://prrvchr.github.io/OAuth2OOo/img/OAuth2OOo.svg>
-[18]: <https://github.com/prrvchr/OAuth2OOo/raw/master/OAuth2OOo.oxt>
+[18]: <https://github.com/prrvchr/OAuth2OOo/releases/latest/download/OAuth2OOo.oxt>
 [19]: <https://prrvchr.github.io/jdbcDriverOOo/img/jdbcDriverOOo.svg>
-[20]: <https://github.com/prrvchr/jdbcDriverOOo/raw/master/source/jdbcDriverOOo/dist/jdbcDriverOOo.oxt>
-[21]: <https://github.com/prrvchr/gDriveOOo/raw/master/source/gDriveOOo/dist/gDriveOOo.oxt>
+[20]: <https://github.com/prrvchr/jdbcDriverOOo/releases/latest/download/jdbcDriverOOo.oxt>
+[21]: <https://github.com/prrvchr/gDriveOOo/releases/latest/download/gDriveOOo.oxt>
+[22]: <https://img.shields.io/github/downloads/prrvchr/gDriveOOo/v1.0.4/total?label=v1.0.4>
 [23]: <https://prrvchr.github.io/OAuth2OOo>
 [24]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/replicator.py>
 [25]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/database.py>
