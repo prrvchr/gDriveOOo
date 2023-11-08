@@ -75,7 +75,7 @@ Vous devez d'abord installer cette extension, si elle n'est pas déjà installé
 
 Vous devez installer cette extension, si elle n'est pas déjà installée.
 
-- Installer l'extension ![gDriveOOo logo][1] **[gDriveOOo.oxt][21]** version [![Version][22]][21]
+- Installer l'extension ![gDriveOOo logo][1] **[gDriveOOo.oxt][21]** version [![Version][0]][21]
 
 Redémarrez LibreOffice / OpenOffice après l'installation.
 
@@ -198,6 +198,7 @@ Bien que cette fonctionnalité ne soit nécessaire que pour gDriveOOo, elle est 
 
 - Tout ce qui est bienvenu...
 
+[0]: <https://img.shields.io/github/downloads/prrvchr/gDriveOOo/latest/total?label=v1.0.4>
 [1]: <img/gDriveOOo.svg>
 [2]: <https://prrvchr.github.io/gDriveOOo>
 [3]: <https://prrvchr.github.io/gDriveOOo/source/gDriveOOo/registration/TermsOfUse_fr>
@@ -219,7 +220,6 @@ Bien que cette fonctionnalité ne soit nécessaire que pour gDriveOOo, elle est 
 [19]: <https://prrvchr.github.io/jdbcDriverOOo/img/jdbcDriverOOo.svg>
 [20]: <https://github.com/prrvchr/jdbcDriverOOo/releases/latest/download/jdbcDriverOOo.oxt>
 [21]: <https://github.com/prrvchr/gDriveOOo/releases/latest/download/gDriveOOo.oxt>
-[22]: <https://img.shields.io/github/downloads/prrvchr/gDriveOOo/v1.0.4/total?label=v1.0.4>
 [23]: <https://prrvchr.github.io/OAuth2OOo/README_fr>
 [24]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/replicator.py>
 [25]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/database.py>
