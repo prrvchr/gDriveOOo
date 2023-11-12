@@ -23,7 +23,7 @@
 ║                                                                                    ║
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 -->
-# Documentation
+# [![gDriveOOo logo][0]][-1] Documentation
 
 **Ce [document][1] en français.**
 
@@ -203,6 +203,8 @@ Although this functionality is only needed for gDriveOOo, it is implemented glob
 
 - Anything welcome...
 
+[0]: </img/drive.svg#collapse>
+[-1]: <https://prrvchr.github.io/gDriveOOo/>
 [1]: <https://prrvchr.github.io/gDriveOOo/README_fr>
 [2]: <https://prrvchr.github.io/gDriveOOo/source/gDriveOOo/registration/TermsOfUse_en>
 [3]: <https://prrvchr.github.io/gDriveOOo/source/gDriveOOo/registration/PrivacyPolicy_en>
