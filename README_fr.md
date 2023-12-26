@@ -29,7 +29,7 @@
 
 **L'utilisation de ce logiciel vous soumet à nos [Conditions d'utilisation][4] et à notre [Politique de protection des données][5].**
 
-# version [1.0.5][6]
+# version [1.0.6][6]
 
 ## Introduction:
 
@@ -191,17 +191,21 @@ Bien que cette fonctionnalité ne soit nécessaire que pour gDriveOOo, elle est 
 
 ### Ce qui a été fait pour la version 1.0.3:
 
-- Prise en charge de la version 1.2.0 de l'extension **OAuth2OOo**. Les versions précédentes ne fonctionneront pas avec l'extension **OAuth2OOo** 1.2.0 ou ultérieure.
+- Prise en charge de la version **1.2.0** de l'extension **OAuth2OOo**. Les versions précédentes ne fonctionneront pas avec l'extension **OAuth2OOo** 1.2.0 ou ultérieure.
 
 ### Ce qui a été fait pour la version 1.0.4:
 
-- Prise en charge de la version 1.2.1 de l'extension **OAuth2OOo**. Les versions précédentes ne fonctionneront pas avec l'extension **OAuth2OOo** 1.2.1 ou ultérieure.
+- Prise en charge de la version **1.2.1** de l'extension **OAuth2OOo**. Les versions précédentes ne fonctionneront pas avec l'extension **OAuth2OOo** 1.2.1 ou ultérieure.
 
 ### Ce qui a été fait pour la version 1.0.5:
 
-- Prise en charge de la version 1.2.3 de l'extension **OAuth2OOo**. Correction du [dysfonctionnement #12][46]
+- Prise en charge de la version **1.2.3** de l'extension **OAuth2OOo**. Correction du [dysfonctionnement #12][46]
 
-### Que reste-t-il à faire pour la version 1.0.5:
+### Ce qui a été fait pour la version 1.0.6:
+
+- Prise en charge de la version **1.2.4** de l'extension **OAuth2OOo**. De nombreux problèmes résolus.
+
+### Que reste-t-il à faire pour la version 1.0.6:
 
 - Ajouter de nouvelles langue pour l'internationalisation...
 
@@ -233,7 +237,7 @@ Bien que cette fonctionnalité ne soit nécessaire que pour gDriveOOo, elle est 
 [24]: <https://img.shields.io/github/v/tag/prrvchr/jdbcDriverOOo?label=latest#right>
 [25]: <img/gDriveOOo.svg#middle>
 [26]: <https://github.com/prrvchr/gDriveOOo/releases/latest/download/gDriveOOo.oxt>
-[27]: <https://img.shields.io/github/downloads/prrvchr/gDriveOOo/latest/total?label=v1.0.5#right>
+[27]: <https://img.shields.io/github/downloads/prrvchr/gDriveOOo/latest/total?label=v1.0.6#right>
 [28]: <https://bz.apache.org/ooo/show_bug.cgi?id=128569>
 [29]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/replicator.py>
 [30]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/database.py>

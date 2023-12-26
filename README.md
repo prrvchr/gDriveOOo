@@ -29,7 +29,7 @@
 
 **The use of this software subjects you to our [Terms Of Use][4] and [Data Protection Policy][5].**
 
-# version [1.0.5][6]
+# version [1.0.6][6]
 
 ## Introduction:
 
@@ -201,7 +201,11 @@ Although this functionality is only needed for gDriveOOo, it is implemented glob
 
 - Support for version **1.2.3** of the **OAuth2OOo** extension. Fixed [issue #12][46].
 
-### What remains to be done for version 1.0.5:
+### What has been done for version 1.0.6:
+
+- Support for version **1.2.4** of the **OAuth2OOo** extension. Many issues resolved.
+
+### What remains to be done for version 1.0.6:
 
 - Add new language for internationalization...
 
@@ -233,7 +237,7 @@ Although this functionality is only needed for gDriveOOo, it is implemented glob
 [24]: <https://img.shields.io/github/v/tag/prrvchr/jdbcDriverOOo?label=latest#right>
 [25]: <img/gDriveOOo.svg#middle>
 [26]: <https://github.com/prrvchr/gDriveOOo/releases/latest/download/gDriveOOo.oxt>
-[27]: <https://img.shields.io/github/downloads/prrvchr/gDriveOOo/latest/total?label=v1.0.5#right>
+[27]: <https://img.shields.io/github/downloads/prrvchr/gDriveOOo/latest/total?label=v1.0.6#right>
 [28]: <https://bz.apache.org/ooo/show_bug.cgi?id=128569>
 [29]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/replicator.py>
 [30]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/database.py>
