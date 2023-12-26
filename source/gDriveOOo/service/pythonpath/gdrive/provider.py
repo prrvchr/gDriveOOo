@@ -129,7 +129,7 @@ class Provider(ProviderBase):
         trashed = readonly = versionable = False
         mimetype = g_folder
         size = 0
-        link = path = None
+        link = path = ''
         while parameter.hasNextPage():
             response = request.execute(parameter)
             if response.Ok:
@@ -142,7 +142,7 @@ class Provider(ProviderBase):
                         if (prefix, event) == ('nextPageToken', 'string'):
                             parameter.setNextPage('pageToken', value, QUERY)
                         elif (prefix, event) == ('drives.item', 'start_map'):
-                            itemid = link = name = None
+                            itemid = name = None
                             created = modified = timestamp
                             rename = False
                         elif (prefix, event) == ('drives.item.id', 'string'):
@@ -154,7 +154,8 @@ class Provider(ProviderBase):
                         elif (prefix, event) == ('drives.item.capabilities.canRenameDrive', 'boolean'):
                             rename = value
                         elif (prefix, event) == ('value.item', 'end_map'):
-                            yield itemid, name, created, modified, mimetype, size, link, trashed, addchild, rename, readonly, versionable, path, parents
+                            if itemid and name:
+                                yield itemid, name, created, modified, mimetype, size, link, trashed, addchild, rename, readonly, versionable, path, parents
                     del events[:]
                 parser.close()
             response.close()
@@ -162,18 +163,16 @@ class Provider(ProviderBase):
 
     def parseUploadLocation(self, response):
         url = None
-        if response.Ok and response.hasHeader('Location'):
+        if response.hasHeader('Location'):
             url = response.getHeader('Location')
         response.close()
         return url
 
     def updateItemId(self, database, oldid, response):
         # TODO: Google drive API already provides the definitive identifiers,
-        # TODO: there is nothing to do here, just close the response if valid...
-        if response is not None:
-            response.close()
-            return oldid
-        return None
+        # TODO: there is nothing to do here, just close the response...
+        response.close()
+        return oldid
 
     def getDocumentLocation(self, content):
         # FIXME: This method being also called by the replicator,
@@ -189,8 +188,9 @@ class Provider(ProviderBase):
     def parseRootFolder(self, parameter, content):
         return self.parseItems(content.User.Request, parameter)
 
-    def parseItems(self, request, parameter, link=None):
-        path = None
+    def parseItems(self, request, parameter):
+        link = ''
+        timestamp = currentUnoDateTime()
         while parameter.hasNextPage():
             response = request.execute(parameter)
             if response.Ok:
@@ -203,7 +203,8 @@ class Provider(ProviderBase):
                         if (prefix, event) == ('nextPageToken', 'string'):
                             parameter.setNextPage('pageToken', value, QUERY)
                         elif (prefix, event) == ('files.item', 'start_map'):
-                            itemid = name = created = modified = mimetype = None
+                            itemid = name = mimetype = None
+                            created = modified = timestamp
                             size = 0
                             addchild = canrename = True
                             trashed = readonly = versionable = False
@@ -233,7 +234,8 @@ class Provider(ProviderBase):
                         elif (prefix, event) == ('files.item.capabilities.canReadRevisions', 'boolean'):
                             versionable = value
                         elif (prefix, event) == ('files.item', 'end_map'):
-                            yield itemid, name, created, modified, mimetype, size, link, trashed, addchild, canrename, readonly, versionable, path, parents
+                            if itemid and name and mimetype:
+                                yield itemid, name, created, modified, mimetype, size, link, trashed, addchild, canrename, readonly, versionable, parents
                     del events[:]
                 parser.close()
             response.close()
@@ -464,7 +466,7 @@ class Provider(ProviderBase):
             parameter.Method = 'POST'
             parameter.Url += '/files'
             parameter.setJson('id', data.get('Id'))
-            parameter.setJson('parents', data.get('ParentId'))
+            parameter.setJson('parents', [data.get('ParentId')])
             parameter.setJson('name', data.get('Title'))
             parameter.setJson('mimeType', data.get('MediaType'))
 
@@ -478,7 +480,7 @@ class Provider(ProviderBase):
             parameter.Url = self.UploadUrl
             parameter.setQuery('uploadType', 'resumable')
             parameter.setJson('id', data.get('Id'))
-            parameter.setJson('parents', data.get('ParentId'))
+            parameter.setJson('parents', [data.get('ParentId')])
             parameter.setJson('name', data.get('Title'))
             parameter.setJson('mimeType', data.get('MediaType'))
             parameter.setHeader('X-Upload-Content-Type', data.get('MediaType'))

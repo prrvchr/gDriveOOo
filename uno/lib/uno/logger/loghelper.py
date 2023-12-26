@@ -137,7 +137,7 @@ class LogWrapper(object):
         return self._resolveErrorMessage(resolver, resource)
 
     def _resolveErrorMessage(self, resolver, resource):
-        return resolver.resolveString(151) % (resource, self._url, self._basename)
+        return resolver.resolveString(121).format(resource, self._url, self._basename)
 
 
 # This LogController allows using listener and access content of logger
@@ -166,15 +166,15 @@ class LogController(LogWrapper):
             self._logger.removeModifyListener(self._listener)
 
     def logInfos(self, level, infos, clazz, method):
-        msg = self._resolver.resolveString(111) % ' '.join(sys.version.split())
+        msg = self._resolver.resolveString(111).format(' '.join(sys.version.split()))
         self._logger.logp(level, clazz, method, msg)
-        msg = self._resolver.resolveString(112) % os.pathsep.join(sys.path)
+        msg = self._resolver.resolveString(112).format(os.pathsep.join(sys.path))
         self._logger.logp(level, clazz, method, msg)
         for name, info in infos.items():
             try:
                 mod = importlib.import_module(name)
             except Exception as e:
-                msg = self._resolver.resolveString(113) % (name, e, traceback.format_exc())
+                msg = self._resolver.resolveString(113).format(name, e, traceback.format_exc())
             else:
                 attr, minimum = info
                 unknown = '<unknown>'
@@ -182,16 +182,16 @@ class LogController(LogWrapper):
                 if not path:
                     path = unknown
                 if attr is None:
-                    msg = self._resolver.resolveString(114) % (name, minimum, path)
+                    msg = self._resolver.resolveString(114).format(name, minimum, path)
                 elif hasattr(mod, attr):
                     version = getattr(mod, attr)
                     if minimum is None or checkVersion(version, minimum):
-                        msg = self._resolver.resolveString(114) % (name, version, path)
+                        msg = self._resolver.resolveString(114).format(name, version, path)
                     else:
-                        msg = self._resolver.resolveString(115) % (name, version, path, minimum)
+                        msg = self._resolver.resolveString(115).format(name, version, path, minimum)
                 else:
                     modattr = ', '.join(dir(mod))
-                    msg = self._resolver.resolveString(116) % (name, path, modattr)
+                    msg = self._resolver.resolveString(116).format(name, path, modattr)
             self._logger.logp(level, clazz, method, msg)
 
     def clearLogger(self):
@@ -199,13 +199,11 @@ class LogController(LogWrapper):
         sf = getSimpleFile(self._ctx)
         if sf.exists(url):
             sf.kill(url)
-            print("LogController.clearLogger() 1")
-            msg = self._resolver.resolveString(161)
+            msg = self._resolver.resolveString(131)
             handler = RollerHandler(self._ctx, self.Name)
             self.addRollerHandler(handler)
             self._logMessage(SEVERE, msg, 'Logger', 'clearLogger()')
             self.removeRollerHandler(handler)
-            print("LogController.clearLogger() 2")
 
     def addModifyListener(self, listener):
         self._logger.addModifyListener(listener)
