@@ -189,7 +189,7 @@ class Provider(ProviderBase):
         return self.parseItems(content.User.Request, parameter)
 
     def parseItems(self, request, parameter):
-        link = ''
+        link = path = ''
         timestamp = currentUnoDateTime()
         while parameter.hasNextPage():
             response = request.execute(parameter)
@@ -235,7 +235,7 @@ class Provider(ProviderBase):
                             versionable = value
                         elif (prefix, event) == ('files.item', 'end_map'):
                             if itemid and name and mimetype:
-                                yield itemid, name, created, modified, mimetype, size, link, trashed, addchild, canrename, readonly, versionable, parents
+                                yield itemid, name, created, modified, mimetype, size, link, trashed, addchild, canrename, readonly, versionable, path, parents
                     del events[:]
                 parser.close()
             response.close()
