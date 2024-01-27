@@ -33,13 +33,16 @@
 
 ## Introduction:
 
-**gDriveOOo** fait partie d'une [Suite][7] d'extensions [LibreOffice][8] ~~et/ou [OpenOffice][9]~~ permettant de vous offrir des services inovants dans ces suites bureautique.  
-Cette extension vous permet de travailler sous LibreOffice sur vos fichiers présents sur votre téléphone (fichiers que vous avez téléchargés sur votre téléphone Android), même hors ligne.
+**gDriveOOo** fait partie d'une [Suite][7] d'extensions [LibreOffice][8] ~~et/ou [OpenOffice][9]~~ permettant de vous offrir des services inovants dans ces suites bureautique.
+
+Cette extension vous permet de travailler sous LibreOffice sur vos fichiers présents sur votre téléphone (fichiers que vous avez téléchargés sur votre téléphone Android), même hors ligne.  
+Elle utilise [l'API Google Drive][10] pour synchroniser vos fichier Google Drive distant avec l'aide d'une base de données locale HsqlDB 2.7.2.  
+Cette extension est vu par LibreOffice comme un [fournisseur de contenu][11] (Content Provider) répondant à l'URL: `vnd-google://*`.
 
 Etant un logiciel libre je vous encourage:
-- A dupliquer son [code source][10].
+- A dupliquer son [code source][12].
 - A apporter des modifications, des corrections, des ameliorations.
-- D'ouvrir un [dysfonctionnement][11] si nécessaire.
+- D'ouvrir un [dysfonctionnement][13] si nécessaire.
 
 Bref, à participer au developpement de cette extension.
 Car c'est ensemble que nous pouvons rendre le Logiciel Libre plus intelligent.
@@ -49,10 +52,10 @@ ___
 ## Prérequis:
 
 L'extension gDriveOOo utilise l'extension OAuth2OOo pour fonctionner.  
-Elle doit donc répondre aux [prérequis de l'extension OAuth2OOo][12].
+Elle doit donc répondre aux [prérequis de l'extension OAuth2OOo][14].
 
 L'extension gDriveOOo utilise l'extension jdbcDriverOOo pour fonctionner.  
-Elle doit donc répondre aux [prérequis de l'extension jdbcDriverOOo][13].
+Elle doit donc répondre aux [prérequis de l'extension jdbcDriverOOo][15].
 
 **Sous Linux et macOS les paquets Python** utilisés par l'extension, peuvent s'il sont déja installé provenir du système et donc, **peuvent ne pas être à jour**.  
 Afin de s'assurer que vos paquets Python sont à jour il est recommandé d'utiliser l'option **Info système** dans les Options de l'extension accessible par:  
@@ -60,7 +63,7 @@ Afin de s'assurer que vos paquets Python sont à jour il est recommandé d'utili
 Si des paquets obsolètes apparaissent, vous pouvez les mettre à jour avec la commande:  
 `pip install --upgrade <package-name>`
 
-Pour plus d'information voir: [Ce qui a été fait pour la version 1.1.0][14].
+Pour plus d'information voir: [Ce qui a été fait pour la version 1.1.0][16].
 
 ___
 
@@ -119,7 +122,7 @@ ___
 * **Ne fonctionne pas avec OpenOffice** voir [dysfonctionnement 128569][28]. N'ayant aucune solution, je vous encourrage d'installer **LibreOffice**.
 
 Je vous encourage en cas de problème :confused:  
-de créer un [dysfonctionnement][11]  
+de créer un [dysfonctionnement][13]  
 J'essaierai de le résoudre :smile:
 
 ___
@@ -234,11 +237,13 @@ Bien que cette fonctionnalité ne soit nécessaire que pour gDriveOOo, elle est 
 [7]: <https://prrvchr.github.io/README_fr>
 [8]: <https://fr.libreoffice.org/download/telecharger-libreoffice/>
 [9]: <https://www.openoffice.org/fr/Telecharger/>
-[10]: <https://github.com/prrvchr/gDriveOOo>
-[11]: <https://github.com/prrvchr/gDriveOOo/issues/new>
-[12]: <https://prrvchr.github.io/OAuth2OOo/README_fr#pr%C3%A9requis>
-[13]: <https://prrvchr.github.io/jdbcDriverOOo/README_fr#pr%C3%A9requis>
-[14]: <https://prrvchr.github.io/gDriveOOo/README_fr#ce-qui-a-%C3%A9t%C3%A9-fait-pour-la-version-110>
+[10]: <https://developers.google.com/drive/api/guides/about-sdk?hl=fr>
+[11]: <https://wiki.openoffice.org/wiki/Documentation/DevGuide/UCB/Content_Providers>
+[12]: <https://github.com/prrvchr/gDriveOOo>
+[13]: <https://github.com/prrvchr/gDriveOOo/issues/new>
+[14]: <https://prrvchr.github.io/OAuth2OOo/README_fr#pr%C3%A9requis>
+[15]: <https://prrvchr.github.io/jdbcDriverOOo/README_fr#pr%C3%A9requis>
+[16]: <https://prrvchr.github.io/gDriveOOo/README_fr#ce-qui-a-%C3%A9t%C3%A9-fait-pour-la-version-110>
 [17]: <https://prrvchr.github.io/OAuth2OOo/img/OAuth2OOo.svg#middle>
 [18]: <https://prrvchr.github.io/OAuth2OOo/README_fr>
 [19]: <https://github.com/prrvchr/OAuth2OOo/releases/latest/download/OAuth2OOo.oxt>
@@ -269,6 +274,6 @@ Bien que cette fonctionnalité ne soit nécessaire que pour gDriveOOo, elle est 
 [44]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/dbqueries.py#L494>
 [45]: <https://github.com/prrvchr/gDriveOOo/tree/master/uno/lib/uno/options/ucb>
 [46]: <https://github.com/prrvchr/gDriveOOo/issues/12>
-[47]: <https://github.com/prrvchr/gDriveOOo/tree/master/source/gDriveOOo/requirements.txt>
+[47]: <https://github.com/prrvchr/gDriveOOo/releases/latest/download/requirements.txt>
 [48]: <https://peps.python.org/pep-0508/>
 [49]: <https://prrvchr.github.io/gDriveOOo/README_fr#pr%C3%A9requis>
