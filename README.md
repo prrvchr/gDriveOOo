@@ -36,7 +36,7 @@
 **gDriveOOo** is part of a [Suite][7] of [LibreOffice][8] ~~and/or [OpenOffice][9]~~ extensions allowing to offer you innovative services in these office suites.
 
 This extension allows you to work in LibreOffice on your files on your phone (files that you have downloaded to your Android phone), even while offline.  
-It uses [Google Drive API][10] to synchronize your remote Google Drive files with the help of a local HsqlDB 2.7.2 database.
+It uses [Google Drive API][10] to synchronize your remote Google Drive files with the help of a local HsqlDB 2.7.2 database.  
 This extension is seen by LibreOffice as a [Content Provider][11] responding to the URL: `vnd-google://*`.
 
 Being free software I encourage you:
