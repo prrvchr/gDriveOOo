@@ -29,7 +29,7 @@
 
 **L'utilisation de ce logiciel vous soumet à nos [Conditions d'utilisation][4] et à notre [Politique de protection des données][5].**
 
-# version [1.1.0][6]
+# version [1.1.1][6]
 
 ## Introduction:
 
@@ -222,7 +222,12 @@ Bien que cette fonctionnalité ne soit nécessaire que pour gDriveOOo, elle est 
   `pip install requirements.txt`
 - Modification de la section [Prérequis][49].
 
-### Que reste-t-il à faire pour la version 1.1.0:
+### Ce qui a été fait pour la version 1.1.1:
+
+- Correction d'une régression empêchant la création de nouveaux fichiers.
+- Intégration d'un correctif pour contourner le [dysfonctionnement #159988][50].
+
+### Que reste-t-il à faire pour la version 1.1.1:
 
 - Ajouter de nouvelles langue pour l'internationalisation...
 
@@ -254,7 +259,7 @@ Bien que cette fonctionnalité ne soit nécessaire que pour gDriveOOo, elle est 
 [24]: <https://img.shields.io/github/v/tag/prrvchr/jdbcDriverOOo?label=latest#right>
 [25]: <img/gDriveOOo.svg#middle>
 [26]: <https://github.com/prrvchr/gDriveOOo/releases/latest/download/gDriveOOo.oxt>
-[27]: <https://img.shields.io/github/downloads/prrvchr/gDriveOOo/latest/total?label=v1.1.0#right>
+[27]: <https://img.shields.io/github/downloads/prrvchr/gDriveOOo/latest/total?label=v1.1.1#right>
 [28]: <https://bz.apache.org/ooo/show_bug.cgi?id=128569>
 [29]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/replicator.py>
 [30]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/database.py>
@@ -277,3 +282,4 @@ Bien que cette fonctionnalité ne soit nécessaire que pour gDriveOOo, elle est 
 [47]: <https://github.com/prrvchr/gDriveOOo/releases/latest/download/requirements.txt>
 [48]: <https://peps.python.org/pep-0508/>
 [49]: <https://prrvchr.github.io/gDriveOOo/README_fr#pr%C3%A9requis>
+[50]: <https://bugs.documentfoundation.org/show_bug.cgi?id=159988>
