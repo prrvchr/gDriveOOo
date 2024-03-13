@@ -35,7 +35,7 @@
         <OpenOffice.org-minimal-version value="4.1" d:name="OpenOffice.org 4.1"/>
     </dependencies>
     <update-information>
-        <src xlink:href="https://prrvchr.github.io/gDriveOOo/gDriveOOo.update.xml"/>
+        <src xlink:href="https://github.com/prrvchr/gDriveOOo/releases/latest/download/gDriveOOo.update.xml"/>
     </update-information>
     <publisher>
         <name xlink:href="https://prrvchr.github.io/gDriveOOo/" lang="en-US">Google Drive for LibreOffice</name>
