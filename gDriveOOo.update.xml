@@ -28,7 +28,7 @@
   xmlns="http://openoffice.org/extensions/update/2006"
   xmlns:xlink="http://www.w3.org/1999/xlink">
     <identifier value="io.github.prrvchr.gDriveOOo"/>
-    <version value="1.1.1"/> 
+    <version value="1.1.1"/>
     <update-download>
         <src xlink:href="https://github.com/prrvchr/gDriveOOo/releases/latest/download/gDriveOOo.oxt"/>
     </update-download>
