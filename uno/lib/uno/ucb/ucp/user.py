@@ -110,6 +110,7 @@ class User():
                 # the OAuth2 Wizard, there is nothing more to do except throw an exception
                 msg = self._getExceptionMessage(method, 501, g_oauth2)
                 raise IllegalIdentifierException(msg, source)
+            print("User.__init__() Request: %s" % (request, ))
             user, root = self.Provider.getUser(source, request, name)
             metadata = database.insertUser(user, root)
             if metadata is None:
@@ -129,6 +130,7 @@ class User():
             # Start Replicator for pushing changes…
             self._sync.set()
         self._logger.logprb(INFO, 'User', method, 509)
+        print("User.__init__()")
 
     @property
     def Name(self):

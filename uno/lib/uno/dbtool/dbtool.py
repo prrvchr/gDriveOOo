@@ -32,6 +32,13 @@ import uno
 from com.sun.star.sdbc import SQLException
 from com.sun.star.sdbc import SQLWarning
 
+from com.sun.star.sdbc.KeyRule import CASCADE
+
+from com.sun.star.sdbcx import PrivilegeObject
+
+from com.sun.star.sdbcx.KeyType import PRIMARY
+from com.sun.star.sdbcx.KeyType import FOREIGN
+
 from com.sun.star.sdb.CommandType import TABLE
 
 from com.sun.star.sdbc.DataType2 import BIT
@@ -72,6 +79,7 @@ from com.sun.star.logging.LogLevel import SEVERE
 from .object import Object
 
 from ..unotool import createService
+from ..unotool import getDefaultPropertyValueSet
 from ..unotool import getPropertyValue
 from ..unotool import getPropertyValueSet
 from ..unotool import getResourceLocation
@@ -91,6 +99,7 @@ from ..logger import getLogger
 
 from ..configuration import g_errorlog
 from ..configuration import g_identifier
+from keyring.util import properties
 
 g_basename = 'dbtool'
 
@@ -103,9 +112,10 @@ def getConnectionUrl(ctx, path):
     location = getResourceLocation(ctx, g_identifier, path)
     return getUrlPresentation(ctx, location)
 
-def getDataSourceConnection(ctx, url, name='', password='', create=True, isolated=True):
+def getDataSourceConnection(ctx, url, name='', password='', create=True, infos=None, isolated=True):
     if create:
-        datasource = createDataSource(ctx, url)
+        # XXX: The connection infos must be given to the creation
+        datasource = createDataSource(ctx, url, infos)
     else:
         datasource = getDataSource(ctx, url)
     if isolated:
@@ -114,13 +124,13 @@ def getDataSourceConnection(ctx, url, name='', password='', create=True, isolate
         connection = datasource.getConnection(name, password)
     return connection
 
-def createDataSource(ctx, url, path=None):
+def createDataSource(ctx, url, infos=None):
     service = 'com.sun.star.sdb.DatabaseContext'
     dbcontext = createService(ctx, service)
     datasource = dbcontext.createInstance()
     datasource.URL = getDataBaseUrl(url)
-    if path is not None:
-        datasource.Settings.JavaDriverClassPath = path
+    if infos is not None:
+        datasource.Info = infos
     return datasource
 
 def getDataSource(ctx, url):
@@ -436,15 +446,6 @@ def getRowValue(row, dbtype, index=1, default=None):
         value = default
     return value
 
-def createStaticTable(ctx, statement, tables, csv, readonly=False):
-    for table in tables:
-        query = getSqlQuery(ctx, 'createTable' + table)
-        statement.executeUpdate(query)
-    for table in tables:
-        statement.executeUpdate(getSqlQuery(ctx, 'setTableSource', (table, csv % table)))
-        if readonly:
-            statement.executeUpdate(getSqlQuery(ctx, 'setTableReadOnly', table))
-
 def executeSqlQueries(statement, queries):
     for query in queries:
         statement.executeQuery(query)
@@ -548,3 +549,286 @@ def _currentDateTime(now, utc=True):
 def _getTimeZone():
     offset = time.timezone if time.localtime().tm_isdst else time.altzone
     return offset / 60 * -1
+
+def getConnectionInfos(connection, *options):
+    infos = []
+    # XXX: We need infos in the same order as the given options
+    for option in options:
+        for info in connection.getMetaData().getConnectionInfo():
+            if info.Name == option:
+                infos.append(info.Value)
+    return infos
+
+def createTables(tables, items):
+    for name, item in items:
+        catalog = item.get('CatalogName')
+        schema = item.get('SchemaName')
+        table = tables.createDataDescriptor()
+        table.setPropertyValue('Name', name)
+        table.setPropertyValue('CatalogName', catalog)
+        table.setPropertyValue('SchemaName', schema)
+        table.setPropertyValue('Type',  item.get('Type', 'TABLE'))
+        _createTableColumns(table.getColumns(), item.get('Columns'), catalog, schema)
+        primarykeys = item.get('PrimaryKeys')
+        if primarykeys is not None:
+            _createPrimaryKey(table, primarykeys)
+        tables.appendByDescriptor(table)
+
+def createIndexes(tables, items):
+    i = 1
+    for name, unique, columns in items:
+        if not tables.hasByName(name):
+            continue
+        table = tables.getByName(name)
+        indexes = table.getIndexes()
+        index = indexes.createDataDescriptor()
+        index.setPropertyValue('Name', 'IDX_%s_%s' % (table.Name, i))
+        index.setPropertyValue('IsUnique', unique)
+        i += 1
+        _addColums(index.getColumns(), columns)
+        indexes.appendByDescriptor(index)
+
+def createForeignKeys(tables, items):
+    i = 1
+    for name, column, referencedtable, relatedcolumn, updaterule, deleterule in items:
+        if not tables.hasByName(name) or not tables.hasByName(referencedtable):
+            continue
+        table = tables.getByName(name)
+        keys = table.getKeys()
+        key = keys.createDataDescriptor()
+        key.setPropertyValue('Name', 'FK_%s_%s' % (table.Name, i))
+        key.setPropertyValue('Type', FOREIGN)
+        key.setPropertyValue('ReferencedTable', referencedtable)
+        key.setPropertyValue('UpdateRule', updaterule)
+        key.setPropertyValue('DeleteRule', deleterule)
+        i += 1
+        _addColum(key.getColumns(), column, relatedcolumn)
+        keys.appendByDescriptor(key)
+
+def _createTableColumns(columns, items, catalog, schema):
+    for item in items:
+        column = columns.createDataDescriptor()
+        column.setPropertyValue('CatalogName', catalog)
+        column.setPropertyValue('SchemaName', schema)
+        for name, value in item.items():
+            column.setPropertyValue(name, value)
+        columns.appendByDescriptor(column)
+
+def _createPrimaryKey(table, primarykeys):
+    keys = table.getKeys()
+    key = keys.createDataDescriptor()
+    key.setPropertyValue('Name', 'PK_%s' % table.Name)
+    key.setPropertyValue("Type", PRIMARY)
+    _addColums(key.getColumns(), primarykeys)
+    keys.appendByDescriptor(key)
+
+def getDataBaseTables(connection, statement, query, sql, autoincrement, rowversion):
+    call = connection.prepareCall(query)
+    for catalog, schema, table in _getTableNames(statement, sql):
+        columns, primarykeys = _getColumns(call, catalog, schema, table, autoincrement, rowversion)
+        data = {'CatalogName': catalog, 'SchemaName': schema, 'Columns': columns}
+        if primarykeys:
+            data['PrimaryKeys'] = primarykeys
+        yield table, data
+    call.close()
+
+def _getTableNames(statement, query):
+    result = statement.executeQuery(query)
+    while result.next():
+        yield result.getString(1), result.getString(2), result.getString(3)
+    result.close()
+
+def _getColumns(call, catalog, schema, table, autoincrement, rowversion):
+    columns = []
+    primarykeys = []
+    index = 0
+    call.setString(1, catalog)
+    call.setString(2, schema)
+    call.setString(3, table)
+    result = call.executeQuery()
+    while result.next():
+        name = result.getString(1)
+        column = {'Name': name}
+        column['CatalogName'] = catalog
+        column['SchemaName'] = schema
+        column['TypeName'] = result.getString(2)
+        column['Type'] = result.getInt(3)
+        scale = result.getInt(4)
+        if not result.wasNull():
+            column['Scale'] = scale
+        nullable = result.getInt(5)
+        if not result.wasNull():
+            column['IsNullable'] = nullable
+        default = result.getString(6)
+        if not result.wasNull():
+            column['DefaultValue'] = default
+        isrowversion = result.getBoolean(7)
+        if not result.wasNull() and isrowversion:
+            column['IsRowVersion'] = isrowversion
+            column['IsAutoIncrement'] = True
+            # FIXME: Here we assume that only two columns (START and END)
+            # FIXME: are required to declare a system versioning table
+            column['AutoIncrementCreation'] = rowversion[index]
+            index = 0 if index else 1
+        isautoincrement = result.getBoolean(8)
+        if not result.wasNull() and isautoincrement:
+            column['IsAutoIncrement'] = isautoincrement
+            column['AutoIncrementCreation'] = autoincrement
+        columns.append(column)
+        pk = result.getBoolean(9)
+        if not result.wasNull() and pk:
+            primarykeys.append(name)
+    result.close()
+    return columns, primarykeys
+
+def getDataBaseIndexes(statement, query):
+    result = statement.executeQuery(query)
+    while result.next():
+        catalog = result.getString(1)
+        if result.wasNull():
+            catalog = ''
+        schema = result.getString(2)
+        if result.wasNull():
+            schema = ''
+        name = result.getString(3)
+        if result.wasNull():
+            continue
+        unique = result.getBoolean(4)
+        if result.wasNull():
+            unique = False
+        columns = result.getArray(5)
+        if result.wasNull():
+            continue
+        yield catalog + '.' + schema + '.' + name, unique, columns.getArray(None)
+    result.close()
+
+def getDataBaseForeignKeys(statement, query):
+    i = 1
+    result = statement.executeQuery(query)
+    while result.next():
+        names = []
+        catalog = result.getString(1)
+        if not result.wasNull():
+            names.append(catalog)
+        schema = result.getString(2)
+        if not result.wasNull():
+            names.append(schema)
+        name = result.getString(3)
+        if result.wasNull():
+            continue
+        names.append(name)
+        table = '.'.join(names)
+        column = result.getString(4)
+        if result.wasNull():
+            continue
+        fnames = []
+        fcatalog = result.getString(5)
+        if not result.wasNull():
+            fnames.append(fcatalog)
+        fschema = result.getString(6)
+        if not result.wasNull():
+            fnames.append(fschema)
+        fname = result.getString(7)
+        if result.wasNull():
+            continue
+        fnames.append(fname)
+        referencedtable = '.'.join(fnames)
+        updaterule = result.getInt(8)
+        if result.wasNull():
+            updaterule = 0
+        deleterule = result.getInt(9)
+        if result.wasNull():
+            deleterule = 0
+        relatedcolumn = result.getString(10)
+        if result.wasNull():
+            continue
+        yield table, column, referencedtable, relatedcolumn, updaterule, deleterule
+    result.close()
+
+def _addColums(columns, items):
+    column = columns.createDataDescriptor()
+    for item in items:
+        column.setPropertyValue('Name', item)
+        columns.appendByDescriptor(column)
+
+def _addColum(columns, name, relatedcolumn):
+    column = columns.createDataDescriptor()
+    column.setPropertyValue('Name', name)
+    column.setPropertyValue('RelatedColumn', relatedcolumn)
+    columns.appendByDescriptor(column)
+
+def createRoleAndPrivileges(statement, tables, groups, query):
+    result = statement.executeQuery(query)
+    while result.next():
+        catalog = result.getString(1)
+        if result.wasNull():
+            continue
+        schema = result.getString(2)
+        if result.wasNull():
+            continue
+        name = result.getString(3)
+        if result.wasNull():
+            continue
+        fullname = catalog + '.' + schema + '.' + name
+        if not tables.hasByName(fullname):
+            continue
+        column = result.getString(4)
+        if result.wasNull():
+            column = None
+        role = result.getString(5)
+        if result.wasNull():
+            continue
+        privilege = result.getInt(6)
+        if result.wasNull():
+            continue
+        if not groups.hasByName(role):
+            _addRole(groups, role)
+        group = groups.getByName(role)
+        group.grantPrivileges(fullname, _getPrivilegeType(column), privilege)
+
+def _getPrivilegeType(column):
+    return PrivilegeObject.TABLE if column is None else PrivilegeObject.COLUMN
+
+def getDriverInfos(ctx, location, options):
+    infos = {}
+    properties = getDefaultPropertyValueSet(options, '')
+    for name, value in _getDriverPropertyInfo(ctx, location, properties, options):
+        infos[name] = value
+    return getPropertyValueSet(infos) if infos else None
+
+def _getDriverPropertyInfo(ctx, location, properties, options):
+    url = g_protocol + location
+    service = 'com.sun.star.sdbc.DriverManager'
+    drivers = createService(ctx, service).createEnumeration()
+    while drivers.hasMoreElements():
+        driver = drivers.nextElement()
+        if driver is not None and driver.acceptsURL(url):
+            for info in driver.getPropertyInfo(url, properties):
+                if info.Name in options:
+                    yield info.Name, options[info.Name](info)
+            break
+
+def createUser(connection, name, password='', role=None):
+    users = connection.getUsers()
+    if not users.hasByName(name):
+        user = users.createDataDescriptor()
+        user.setPropertyValue('Name', name)
+        user.setPropertyValue('Password', password)
+        users.appendByDescriptor(user)
+        if role is not None:
+            return self._addGroup(users, name, role)
+    return True
+
+def _addGroup(users, name, role):
+    if users.hasByName(name):
+        groups = users.getByName(name).getGroups()
+        _addRole(groups, role)
+        return True
+    return False
+
+def _addRole(groups, role):
+    if not groups.hasByName(role):
+        group = groups.createDataDescriptor()
+        group.setPropertyValue('Name', role)
+        groups.appendByDescriptor(group)
+

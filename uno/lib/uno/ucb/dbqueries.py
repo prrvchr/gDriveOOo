@@ -32,90 +32,16 @@ from com.sun.star.logging.LogLevel import SEVERE
 
 from .logger import getLogger
 
-from .configuration import g_errorlog
+from .configuration import g_defaultlog
 
 g_basename = 'dbqueries'
 
 
 def getSqlQuery(ctx, name, format=None):
 
-
-# Create Static Table Queries
-    if name == 'createTableTables':
-        c1 = '"Table" INTEGER NOT NULL PRIMARY KEY'
-        c2 = '"Name" VARCHAR(100) NOT NULL'
-        c3 = '"Identity" INTEGER DEFAULT NULL'
-        c4 = '"View" BOOLEAN DEFAULT TRUE'
-        c5 = '"Versioned" BOOLEAN DEFAULT FALSE'
-        k1 = 'CONSTRAINT "UniqueTablesName" UNIQUE("Name")'
-        c = (c1, c2, c3, c4, c5, k1)
-        query = 'CREATE TEXT TABLE "Tables"(%s);' % ','.join(c)
-    elif name == 'createTableColumns':
-        c1 = '"Column" INTEGER NOT NULL PRIMARY KEY'
-        c2 = '"Name" VARCHAR(100) NOT NULL'
-        k1 = 'CONSTRAINT "UniqueColumnsName" UNIQUE("Name")'
-        c = (c1, c2, k1)
-        query = 'CREATE TEXT TABLE "Columns"(%s);' % ','.join(c)
-    elif name == 'createTableTableColumn':
-        c1 = '"Table" INTEGER NOT NULL'
-        c2 = '"Column" INTEGER NOT NULL'
-        c3 = '"Type" VARCHAR(100) NOT NULL'
-        c4 = '"Default" VARCHAR(100) DEFAULT NULL'
-        c5 = '"Options" VARCHAR(100) DEFAULT NULL'
-        c6 = '"Primary" BOOLEAN NOT NULL'
-        c7 = '"Unique" BOOLEAN NOT NULL'
-        c8 = '"ForeignTable" INTEGER DEFAULT NULL'
-        c9 = '"ForeignColumn" INTEGER DEFAULT NULL'
-        k1 = 'PRIMARY KEY("Table","Column")'
-        k2 = 'CONSTRAINT "ForeignTableColumnTable" FOREIGN KEY("Table") REFERENCES '
-        k2 += '"Tables"("Table") ON DELETE CASCADE ON UPDATE CASCADE'
-        k3 = 'CONSTRAINT "ForeignTableColumnColumn" FOREIGN KEY("Column") REFERENCES '
-        k3 += '"Columns"("Column") ON DELETE CASCADE ON UPDATE CASCADE'
-        c = (c1, c2, c3, c4, c5, c6, c7, c8, c9, k1, k2, k3)
-        query = 'CREATE TEXT TABLE "TableColumn"(%s);' % ','.join(c)
-    elif name == 'createTableSettings':
-        c1 = '"Id" INTEGER NOT NULL PRIMARY KEY'
-        c2 = '"Name" VARCHAR(100) NOT NULL'
-        c3 = '"Value1" VARCHAR(100) NOT NULL'
-        c4 = '"Value2" VARCHAR(100) DEFAULT NULL'
-        c5 = '"Value3" VARCHAR(100) DEFAULT NULL'
-        c = (c1, c2, c3, c4, c5)
-        p = ','.join(c)
-        query = 'CREATE TEXT TABLE "Settings"(%s);' % p
-    elif name == 'setTableSource':
-        query = 'SET TABLE "%s" SOURCE "%s"' % format
-    elif name == 'setTableHeader':
-        query = 'SET TABLE "%s" SOURCE HEADER "%s"' % format
-    elif name == 'setTableReadOnly':
-        query = 'SET TABLE "%s" READONLY TRUE' % format
-
-# Create Cached Table Options
-    elif name == 'getPrimayKey':
-        query = 'PRIMARY KEY(%s)' % ','.join(format)
-
-    elif name == 'getUniqueConstraint':
-        query = 'CONSTRAINT "Unique%(Table)s%(Column)s" UNIQUE("%(Column)s")' % format
-
-    elif name == 'getForeignConstraint':
-        q = 'CONSTRAINT "Foreign%(Table)s%(Column)s" FOREIGN KEY("%(Column)s") REFERENCES '
-        q += '"%(ForeignTable)s"("%(ForeignColumn)s") ON DELETE CASCADE ON UPDATE CASCADE'
-        query = q % format
-
-# Create Cached Table Queries
-    elif name == 'createTable':
-        query = 'CREATE CACHED TABLE "%s"(%s)' % format
-
-    elif name == 'getPeriodColumns':
-        query = '"RowStart" TIMESTAMP GENERATED ALWAYS AS ROW START,'
-        query += '"RowEnd" TIMESTAMP GENERATED ALWAYS AS ROW END,'
-        query += 'PERIOD FOR SYSTEM_TIME("RowStart","RowEnd")'
-
-    elif name == 'getSystemVersioning':
-        query = ' WITH SYSTEM VERSIONING'
-
-
+# Select queries for creating table, index, foreignkey and privileges from static table
 # Create Function Queries
-    elif name == 'createGetTitle':
+    if name == 'createGetTitle':
         query = '''\
 CREATE FUNCTION "GetTitle"(IN TITLE VARCHAR(100),
                            IN URN VARCHAR(100),
@@ -215,68 +141,20 @@ GRANT SELECT ON "Children" TO "%(Role)s";''' % format
     elif name == 'createPathView':
         query = '''\
 CREATE VIEW "Path" AS WITH RECURSIVE TREE ("UserId", "ParentId", "ItemId", "Path", "Uri") AS (
-    SELECT "UserId", CAST(NULL AS VARCHAR(100)), "RootId", '', '' FROM "Users"
-  UNION ALL
-    SELECT I."UserId", C."ParentId", C."ItemId", TRIM(T."Path") || T."Uri" || '%(Separator)s', C."Uri"
+    SELECT U."UserId", U."RootId", C."ItemId", '/', C."Uri"
+    FROM "Users" AS U
+    INNER JOIN "Children" AS C ON U."RootId" = C."ParentId"
+  UNION
+    SELECT I."UserId", C1."ParentId", C1."ItemId", TRIM(T."Path") || T."Uri" || '%(Separator)s', C1."Uri"
     FROM "Items" AS I
-    INNER JOIN "Children" AS C ON I."ItemId" = C."ItemId"
-    INNER JOIN TREE AS T ON T."ItemId" = C."ParentId"
+    INNER JOIN "Children" AS C1 ON I."ItemId" = C1."ItemId"
+    INNER JOIN TREE AS T ON T."ItemId" = C1."ParentId"
   )
   SELECT "UserId", "ParentId", "ItemId", "Path", "Uri"
   FROM TREE;
 GRANT SELECT ON "Path" TO "%(Role)s";''' % format
 
-# Create User
-    elif name == 'createUser':
-        q = """\
-CREATE USER "%(User)s" PASSWORD '%(Password)s'"""
-        if format.get('Admin', False):
-            q += ' ADMIN'
-        query = q % format
-
-    elif name == 'createRole':
-        query = 'CREATE ROLE "%(Role)s";' % format
-
-    elif name == 'grantRole':
-        query = 'GRANT "%(Role)s" TO "%(User)s";' % format
-
-    elif name == 'grantPrivilege':
-        query = 'GRANT %(Privilege)s ON TABLE "%(Table)s" TO "%(Role)s";' % format
-
-    elif name == 'setSession':
-        query = "SET SESSION AUTHORIZATION '%s'" % format
-
 # Select Queries
-    elif name == 'getTableNames':
-        query = 'SELECT "Name" FROM "Tables" ORDER BY "Table";'
-
-    elif name == 'getTables':
-        s1 = '"T"."Table" AS "TableId"'
-        s2 = '"C"."Column" AS "ColumnId"'
-        s3 = '"T"."Name" AS "Table"'
-        s4 = '"C"."Name" AS "Column"'
-        s5 = '"TC"."Type"'
-        s6 = '"TC"."Default"'
-        s7 = '"TC"."Options"'
-        s8 = '"TC"."Primary"'
-        s9 = '"TC"."Unique"'
-        s10 = '"TC"."ForeignTable" AS "ForeignTableId"'
-        s11 = '"TC"."ForeignColumn" AS "ForeignColumnId"'
-        s12 = '"T2"."Name" AS "ForeignTable"'
-        s13 = '"C2"."Name" AS "ForeignColumn"'
-        s14 = '"T"."View"'
-        s15 = '"T"."Versioned"'
-        s = (s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12,s13,s14,s15)
-        f1 = '"Tables" AS "T"'
-        f2 = 'JOIN "TableColumn" AS "TC" ON "T"."Table"="TC"."Table"'
-        f3 = 'JOIN "Columns" AS "C" ON "TC"."Column"="C"."Column"'
-        f4 = 'LEFT JOIN "Tables" AS "T2" ON "TC"."ForeignTable"="T2"."Table"'
-        f5 = 'LEFT JOIN "Columns" AS "C2" ON "TC"."ForeignColumn"="C2"."Column"'
-        w = '"T"."Name"=?'
-        f = (f1, f2, f3, f4, f5)
-        p = (','.join(s), ' '.join(f), w)
-        query = 'SELECT %s FROM %s WHERE %s;' % p
-
     elif name == 'getContentType':
         query = """\
 SELECT "Value2" "Folder","Value3" "Link" FROM "Settings" WHERE "Name"='ContentType';"""
@@ -321,9 +199,6 @@ SELECT "ItemId" FROM "Children" WHERE "ParentId" = ? AND "Uri" = ?;'''
 
     elif name == 'hasTitle':
         query = 'SELECT COUNT("Title") > 0 FROM "Child" WHERE "UserId" = ? AND "ParentId" = ? AND "Title" = ?;'
-
-    elif name == 'getToken':
-        query = 'SELECT "Token" FROM "Users" WHERE "UserId" = ?;'
 
 # Insert Queries
     elif name == 'insertNewIdentifier':
@@ -763,11 +638,13 @@ CREATE PROCEDURE "MergeParent"(IN ITEMID VARCHAR(100),
     END IF;
     DELETE FROM "Parents" WHERE "ChildId"=ITEMID AND "ItemId" NOT IN (UNNEST(TMP));
     WHILE INDEX <= CARDINALITY(TMP) DO
-      MERGE INTO "Parents" USING (VALUES(ITEMID, TMP[INDEX], DATETIME)) 
-      AS vals(x,y,z) ON "Parents"."ChildId"=vals.x AND "Parents"."ItemId"=vals.y 
-        WHEN NOT MATCHED THEN 
-          INSERT ("ChildId","ItemId","TimeStamp") 
-          VALUES vals.x, vals.y, vals.z;
+      IF ITEMID != TMP[INDEX] THEN
+        MERGE INTO "Parents" USING (VALUES(ITEMID, TMP[INDEX], DATETIME)) 
+        AS vals(x,y,z) ON "Parents"."ChildId"=vals.x AND "Parents"."ItemId"=vals.y 
+          WHEN NOT MATCHED THEN 
+            INSERT ("ChildId","ItemId","TimeStamp") 
+            VALUES vals.x, vals.y, vals.z;
+      END IF;
       SET INDEX = INDEX + 1;
     END WHILE;
   END;
@@ -853,10 +730,6 @@ GRANT EXECUTE ON SPECIFIC ROUTINE "InsertItem_1" TO "%(Role)s";''' % format
     elif name == 'updateNewItemId':
         query = 'CALL "UpdateNewItemId"(?,?,?,?)'
 
-# Get DataBase Version Query
-    elif name == 'getVersion':
-        query = 'Select DISTINCT DATABASE_VERSION() as "HSQL Version" From INFORMATION_SCHEMA.SYSTEM_TABLES;'
-
 # ShutDown Queries
     elif name == 'shutdown':
         query = 'SHUTDOWN;'
@@ -865,7 +738,7 @@ GRANT EXECUTE ON SPECIFIC ROUTINE "InsertItem_1" TO "%(Role)s";''' % format
 
 # Queries don't exist!!!
     else:
-        logger = getLogger(ctx, g_errorlog, g_basename)
-        logger.logp(SEVERE, g_basename, 'getSqlQuery()', 101, name)
+        logger = getLogger(ctx, g_defaultlog, g_basename)
+        logger.logprb(SEVERE, g_basename, 'getSqlQuery()', 101, name)
         query = None
     return query

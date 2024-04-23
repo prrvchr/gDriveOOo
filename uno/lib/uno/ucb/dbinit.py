@@ -27,147 +27,141 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-from com.sun.star.sdbc import SQLException
 from com.sun.star.logging.LogLevel import INFO
 from com.sun.star.logging.LogLevel import SEVERE
 
-from .unotool import checkVersion
-from .unotool import createService
-from .unotool import getResourceLocation
-from .unotool import getSimpleFile
+from com.sun.star.sdbc.ColumnValue import NO_NULLS
+from com.sun.star.sdbc.ColumnValue import NULLABLE
 
-from .dbconfig import g_path
-from .dbconfig import g_version
-from .dbconfig import g_role
-from .dbconfig import g_csv
+from com.sun.star.sdbc.DataType import INTEGER
+from com.sun.star.sdbc.DataType import VARCHAR
 
-from .dbtool import registerDataSource
+from com.sun.star.sdbc.KeyRule import CASCADE
+
+from .dbtool import createStaticTables
+from .dbtool import createStaticIndexes
+from .dbtool import createStaticForeignKeys
+from .dbtool import setStaticTable
+from .dbtool import createTables
+from .dbtool import createIndexes
+from .dbtool import createForeignKeys
+from .dbtool import createRoleAndPrivileges
 from .dbtool import executeQueries
-from .dbtool import executeSqlQueries
+from .dbtool import getConnectionInfos
+from .dbtool import getDataBaseTables
+from .dbtool import getDataBaseIndexes
+from .dbtool import getDataBaseForeignKeys
 from .dbtool import getDataSourceConnection
-from .dbtool import getDataSourceCall
-from .dbtool import getSequenceFromResult
-from .dbtool import getDataFromResult
-from .dbtool import createDataSource
-from .dbtool import checkDataBase
-from .dbtool import createStaticTable
+from .dbtool import getDriverInfos
+from .dbtool import getTableNames
+from .dbtool import getTables
+from .dbtool import getIndexes
+from .dbtool import getForeignKeys
+from .dbtool import getPrivileges
 
-from .dbqueries import getSqlQuery
-
-from .configuration import g_scheme
 from .configuration import g_separator
+
+from .dbconfig import g_csv
+from .dbconfig import g_role
+from .dbconfig import g_drvinfos
+
 
 import traceback
 
+def getDataBaseConnection(ctx, url, user, pwd, new, infos=None):
+    if new:
+        infos = getDriverInfos(ctx, url, g_drvinfos)
+    return getDataSourceConnection(ctx, url, user, pwd, new, infos)
 
-def getDataSourceUrl(ctx, dbname, plugin, register):
-    error = None
-    url = getResourceLocation(ctx, plugin, g_path)
-    odb = '%s/%s.odb' % (url, dbname)
-    dbcontext = createService(ctx, 'com.sun.star.sdb.DatabaseContext')
-    if not getSimpleFile(ctx).exists(odb):
-        datasource = createDataSource(dbcontext, url, dbname)
-        error = createDataBase(ctx, datasource, url, dbname)
-        if error is None:
-            datasource.DatabaseDocument.storeAsURL(odb, ())
-    if error is None and register:
-        registerDataSource(dbcontext, dbname, odb)
-    return url, error
+def createDataBase(ctx, logger, connection, odb, version):
+    logger.logprb(INFO, 'DataBase', '_createDataBase()', 411, version)
+    tables = connection.getTables()
+    statement = connection.createStatement()
+    statics = createStaticTables(tables, **_getStaticTables())
+    createStaticIndexes(tables)
+    createStaticForeignKeys(tables, *_getForeignKeys())
+    setStaticTable(statement, statics, g_csv, True)
+    _createTables(connection, statement, tables)
+    _createIndexes(statement, tables)
+    _createForeignKeys(statement, tables)
+    _createRoleAndPrivileges(statement, tables, connection.getGroups())
+    executeQueries(ctx, statement, _getQueries())
+    statement.close()
+    connection.getParent().DatabaseDocument.storeAsURL(odb, ())
+    logger.logprb(INFO, 'DataBase', '_createDataBase()', 412)
 
-def createDataBase(ctx, connection):
-    version, error = checkDataBase(ctx, connection)
-    if error is None:
-        statement = connection.createStatement()
-        createStaticTable(statement, getStaticTables(), g_csv, True)
-        tables, statements = getTablesAndStatements(statement, version)
-        executeSqlQueries(statement, tables)
-        executeQueries(statement, getViews())
-    return error
+def _createTables(connection, statement, tables):
+    infos = getConnectionInfos(connection, 'AutoIncrementCreation', 'RowVersionCreation')
+    createTables(tables, getDataBaseTables(connection, statement, getTables(), getTableNames(), infos[0], infos[1]))
 
-def _getTableNames(ctx, statement):
-    result = statement.executeQuery(getSqlQuery(ctx, 'getTableNames'))
-    names = getSequenceFromResult(result)
-    result.close()
-    return names
+def _createIndexes(statement, tables):
+    createIndexes(tables, getDataBaseIndexes(statement, getIndexes()))
 
-def getTablesAndStatements(ctx, statement, version=g_version):
-    tables = []
-    statements = []
-    call = getDataSourceCall(ctx, statement.getConnection(), 'getTables')
-    for table in _getTableNames(ctx, statement):
-        view = False
-        versioned = False
-        columns = []
-        primary = []
-        unique = []
-        constraint = []
-        call.setString(1, table)
-        result = call.executeQuery()
-        while result.next():
-            data = getDataFromResult(result)
-            view = data.get('View')
-            versioned = data.get('Versioned')
-            column = data.get('Column')
-            definition = '"%s"' % column
-            definition += ' %s' % data.get('Type')
-            default = data.get('Default')
-            definition += ' DEFAULT %s' % default if default else ''
-            options = data.get('Options')
-            definition += ' %s' % options if options else ''
-            columns.append(definition)
-            if data.get('Primary'):
-                primary.append('"%s"' % column)
-            if data.get('Unique'):
-                unique.append({'Table': table, 'Column': column})
-            if data.get('ForeignTable') and data.get('ForeignColumn'):
-                constraint.append({'Table': table,
-                                   'Column': column,
-                                   'ForeignTable': data.get('ForeignTable'),
-                                   'ForeignColumn': data.get('ForeignColumn')})
-        if primary:
-            columns.append(getSqlQuery(ctx, 'getPrimayKey', primary))
-        for format in unique:
-            columns.append(getSqlQuery(ctx, 'getUniqueConstraint', format))
-        for format in constraint:
-            columns.append(getSqlQuery(ctx, 'getForeignConstraint', format))
-        if checkVersion(version, g_version) and versioned:
-            columns.append(getSqlQuery(ctx, 'getPeriodColumns'))
-        format = (table, ','.join(columns))
-        query = getSqlQuery(ctx, 'createTable', format)
-        if checkVersion(version, g_version) and versioned:
-            query += getSqlQuery(ctx, 'getSystemVersioning')
-        tables.append(query)
-        if view:
-            typed = False
-            for format in constraint:
-                if format['Column'] == 'Type':
-                    typed = True
-                    break
-            format = {'Table': table}
-            if typed:
-                merge = getSqlQuery(ctx, 'createTypedDataMerge', format)
-            else:
-                merge = getSqlQuery(ctx, 'createUnTypedDataMerge', format)
-            statements.append(merge)
-    call.close()
-    return tables, statements
+def _createForeignKeys(statement, tables):
+    createForeignKeys(tables, getDataBaseForeignKeys(statement, getForeignKeys()))
 
-def getStaticTables():
-    tables = ('Tables',
-              'Columns',
-              'TableColumn',
-              'Settings')
-    return tables
+def _createRoleAndPrivileges(statement, tables, groups):
+    createRoleAndPrivileges(statement, tables, groups, getPrivileges())
 
-def getQueries():
-    return (('createRole',{'Role': g_role}),
-            ('grantPrivilege',{'Privilege':'SELECT,UPDATE','Table': 'Users', 'Role': g_role}),
-            ('grantPrivilege',{'Privilege':'SELECT,INSERT,DELETE','Table': 'Identifiers', 'Role': g_role}),
-            ('grantPrivilege',{'Privilege':'SELECT,INSERT,UPDATE,DELETE','Table': 'Items', 'Role': g_role}),
-            ('grantPrivilege',{'Privilege':'SELECT,INSERT,UPDATE,DELETE','Table': 'Parents', 'Role': g_role}),
-            ('grantPrivilege',{'Privilege':'SELECT,INSERT,UPDATE,DELETE','Table': 'Capabilities', 'Role': g_role}),
+def _getStaticTables():
+    return {'Privileges':    {'CatalogName': 'PUBLIC',
+                              'SchemaName':  'PUBLIC',
+                              'Type':        'TEXT TABLE',
+                              'Columns': ({'Name': 'Table',
+                                           'TypeName': 'INTEGER',
+                                           'Type': INTEGER,
+                                           'IsNullable': NO_NULLS},
+                                          {'Name': 'Column',
+                                           'TypeName': 'INTEGER',
+                                           'Type': INTEGER,
+                                           'IsNullable': NULLABLE,
+                                           'DefaultValue': 'NULL'},
+                                          {'Name': 'Role',
+                                           'TypeName': 'VARCHAR',
+                                           'Type': VARCHAR,
+                                           'Scale': 100,
+                                           'IsNullable': NO_NULLS},
+                                          {'Name': 'Privilege',
+                                           'TypeName': 'INTEGER',
+                                           'Type': INTEGER,
+                                           'IsNullable': NO_NULLS})},
+            'Settings':      {'CatalogName': 'PUBLIC',
+                              'SchemaName':  'PUBLIC',
+                              'Type':        'TEXT TABLE',
+                              'Columns': ({'Name': 'Id',
+                                           'TypeName': 'INTEGER',
+                                           'Type': INTEGER,
+                                           'IsNullable': NO_NULLS},
+                                          {'Name': 'Name',
+                                           'TypeName': 'VARCHAR',
+                                           'Type': VARCHAR,
+                                           'Scale': 100,
+                                           'IsNullable': NO_NULLS},
+                                          {'Name': 'Value1',
+                                           'TypeName': 'VARCHAR',
+                                           'Type': VARCHAR,
+                                           'Scale': 100,
+                                           'IsNullable': NO_NULLS},
+                                          {'Name': 'Value2',
+                                           'TypeName': 'VARCHAR',
+                                           'Type': VARCHAR,
+                                           'Scale': 100,
+                                           'IsNullable': NULLABLE,
+                                           'DefaultValue': 'NULL'},
+                                          {'Name': 'Value3',
+                                           'TypeName': 'VARCHAR',
+                                           'Type': VARCHAR,
+                                           'Scale': 100,
+                                           'IsNullable': NULLABLE,
+                                           'DefaultValue': 'NULL'}),
+                              'PrimaryKeys': ('Id', )}}
 
-            ('createGetTitle',{'Role': g_role}),
+def _getForeignKeys():
+    return (('PUBLIC.PUBLIC.Privileges', 'Table',  'PUBLIC.PUBLIC.Tables',  'Table',  CASCADE, CASCADE),
+            ('PUBLIC.PUBLIC.Privileges', 'Column', 'PUBLIC.PUBLIC.Columns', 'Column', CASCADE, CASCADE))
+
+def _getQueries():
+    return (('createGetTitle',{'Role': g_role}),
             ('createGetUniqueName',{'Role': g_role, 'Prefix': ' ~', 'Suffix': ''}),
 
             ('createChildView',{'Role': g_role}),
@@ -194,3 +188,4 @@ def getQueries():
             ('createInsertItem',{'Role': g_role}),
             ('createPullChanges',{'Role': g_role}),
             ('createUpdateNewItemId',{'Role': g_role}))
+

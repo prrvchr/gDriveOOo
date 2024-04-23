@@ -35,32 +35,20 @@ from com.sun.star.logging.LogLevel import SEVERE
 
 from com.sun.star.sdb.CommandType import QUERY
 
-from com.sun.star.sdbc.DataType2 import INTEGER
-from com.sun.star.sdbc.DataType2 import VARCHAR
+from com.sun.star.sdbc.DataType import VARCHAR
 
 from ..dbtool import Array
-from ..dbtool import checkDataBase
-from ..dbtool import createDataSource
-from ..dbtool import createStaticTable
+from ..dbtool import createUser
 from ..dbtool import currentDateTimeInTZ
-from ..dbtool import getConnectionInfo
-from ..dbtool import getDataBaseConnection
-from ..dbtool import getDataBaseUrl
-from ..dbtool import executeSqlQueries
 from ..dbtool import getDataFromResult
 from ..dbtool import getDataSourceCall
 from ..dbtool import getDataSourceConnection
-from ..dbtool import executeQueries
-from ..dbtool import getDictFromResult
-from ..dbtool import getRowDict
 from ..dbtool import getSequenceFromResult
 from ..dbtool import getValueFromResult
 
 from ..unotool import checkVersion
-from ..unotool import createService
 from ..unotool import getConfiguration
 from ..unotool import getSimpleFile
-from ..unotool import parseDateTime
 
 from ..configuration import g_identifier
 from ..configuration import g_admin
@@ -68,20 +56,15 @@ from ..configuration import g_host
 
 from ..dbqueries import getSqlQuery
 
-from ..dbconfig import g_jar
 from ..dbconfig import g_cardview
 from ..dbconfig import g_bookmark
-from ..dbconfig import g_csv
 from ..dbconfig import g_dotcode
 from ..dbconfig import g_version
 
-from ..dbinit import getStaticTables
-from ..dbinit import getQueries
-from ..dbinit import getTables
-from ..dbinit import getViews
+from ..dbinit import getDataBaseConnection
+from ..dbinit import createDataBase
 
 from collections import OrderedDict
-from time import sleep
 import json
 import traceback
 
@@ -92,14 +75,15 @@ class DataBase(object):
         self._statement = None
         self._fieldsMap = {}
         self._batchedCalls = OrderedDict()
-        self._addressbook = None
+        config = getConfiguration(ctx, g_identifier, False)
+        self._addressbook = config.getByName('AddressBookName')
         self._url = url
         odb = url + '.odb'
         new = not getSimpleFile(ctx).exists(odb)
-        connection = getDataSourceConnection(ctx, url, user, pwd, new)
+        connection = getDataBaseConnection(ctx, url, user, pwd, new)
         self._version = connection.getMetaData().getDriverVersion()
         if new and self.isUptoDate():
-            self._createDataBase(connection, odb)
+            createDataBase(ctx, connection, odb, self._addressbook)
         connection.close()
 
     @property
@@ -130,36 +114,6 @@ class DataBase(object):
             #connection.getParent().dispose()
             connection.close()
             print("gContact.DataBase.dispose() ***************** database: %s closed!!!" % g_host)
-
-# Procedures called by Initialization
-    def _createDataBase(self, connection, odb):
-        statement = connection.createStatement()
-        createStaticTable(self._ctx, statement, getStaticTables(), g_csv, True)
-        tables = getTables(self._ctx, connection, self._version)
-        executeSqlQueries(statement, tables)
-        executeQueries(self._ctx, statement, getQueries())
-        columns = self._getAddressbookColumns(connection)
-        views = getViews(self._ctx, columns, self._getViewName())
-        executeSqlQueries(statement, views)
-        statement.close()
-        connection.getParent().DatabaseDocument.storeAsURL(odb, ())
-
-    def _getAddressbookColumns(self, connection):
-        columns = OrderedDict()
-        call = getDataSourceCall(self._ctx, connection, 'getColumns')
-        result = call.executeQuery()
-        while result.next():
-            index = result.getInt(1)
-            name = result.getString(2)
-            view = result.getString(3)
-            print("DataBase._getAddressbookColumns() Index: %s - Name: %s - View: %s" % (index, name, view))
-            if view is not None:
-                if view not in columns:
-                    columns[view] = OrderedDict()
-                columns[view][name] = index
-        result.close()
-        call.close()
-        return columns
 
     def getDataSource(self):
         return self.Connection.getParent()
@@ -224,24 +178,21 @@ class DataBase(object):
         return metadata, books
 
     def createUser(self, schema, userid, name, password):
-        format = {'Public': 'PUBLIC',
-                  'Schema': schema,
-                  'User': userid,
-                  'Name': name,
-                  'Password': password,
-                  'CardView': g_cardview,
-                  'View': self._getViewName(),
-                  'Admin': g_admin}
-        statement = self.Connection.createStatement()
-        query = getSqlQuery(self._ctx, 'createUser', format)
-        status = statement.executeUpdate(query)
-        query = getSqlQuery(self._ctx, 'createUserSchema', format)
-        statement.execute(query)
-        query = getSqlQuery(self._ctx, 'setUserSchema', format)
-        statement.execute(query)
-        query = getSqlQuery(self._ctx, 'createUserView', format)
-        statement.execute(query)
-        statement.close()
+        if createUser(self.Connection, name, password):
+            statement = self.Connection.createStatement()
+            format = {'Public': 'PUBLIC',
+                      'Schema': schema,
+                      'User': userid,
+                      'Name': name,
+                      'CardView': g_cardview,
+                      'View': self._getViewName()}
+            query = getSqlQuery(self._ctx, 'createUserSchema', format)
+            statement.execute(query)
+            query = getSqlQuery(self._ctx, 'setUserSchema', format)
+            statement.execute(query)
+            query = getSqlQuery(self._ctx, 'createUserView', format)
+            statement.execute(query)
+            statement.close()
 
     def selectUser(self, server, name):
         metadata = None
@@ -598,9 +549,6 @@ class DataBase(object):
 
 # Procedures called internaly
     def _getViewName(self):
-        if self._addressbook is None:
-            configuration = getConfiguration(self._ctx, g_identifier, False)
-            self._addressbook = configuration.getByName('AddressBookName')
         return self._addressbook
 
     def _getCall(self, name, format=None):

@@ -28,7 +28,6 @@
 """
 
 import uno
-import unohelper
 
 from com.sun.star.logging.LogLevel import INFO
 from com.sun.star.logging.LogLevel import SEVERE
@@ -46,22 +45,16 @@ from .unotool import getSimpleFile
 
 from .dbqueries import getSqlQuery
 
-from .dbtool import createStaticTable
+from .dbtool import createUser
 from .dbtool import currentDateTimeInTZ
 from .dbtool import currentUnoDateTime
-from .dbtool import executeSqlQueries
 from .dbtool import getDataSourceCall
-from .dbtool import getDataSourceConnection
 from .dbtool import getDataFromResult
-from .dbtool import executeQueries
 
-from .dbinit import getStaticTables
-from .dbinit import getQueries
-from .dbinit import getTablesAndStatements
+from .dbinit import createDataBase
+from .dbinit import getDataBaseConnection
 
 from .dbconfig import g_role
-from .dbconfig import g_dba
-from .dbconfig import g_csv
 from .dbconfig import g_version
 
 from .configuration import g_admin
@@ -78,11 +71,12 @@ class DataBase():
         self._url = url
         odb = url + '.odb'
         new = not getSimpleFile(ctx).exists(odb)
-        connection = getDataSourceConnection(ctx, url, user, pwd, new)
-        self._version = connection.getMetaData().getDriverVersion()
-        if new and self.isUptoDate():
-            self._createDataBase(connection, odb)
+        connection = getDataBaseConnection(ctx, url, user, pwd, new)
+        version = connection.getMetaData().getDriverVersion()
+        if new and checkVersion(version, g_version):
+            createDataBase(ctx, logger, connection, odb, version)
         self._statement = connection.createStatement()
+        self._version = version
         self._logger.logprb(INFO, 'DataBase', '__init__()', 401)
 
     @property
@@ -100,17 +94,6 @@ class DataBase():
         return checkVersion(self._version, g_version)
 
 # Procedures called by the DataSource
-    def _createDataBase(self, connection, odb):
-        self._logger.logprb(INFO, 'DataBase', '_createDataBase()', 411, self._version)
-        statement = connection.createStatement()
-        createStaticTable(self._ctx, statement, getStaticTables(), g_csv, True)
-        tables, statements = getTablesAndStatements(self._ctx, statement, self._version)
-        executeSqlQueries(statement, tables)
-        executeQueries(self._ctx, statement, getQueries())
-        statement.close()
-        connection.getParent().DatabaseDocument.storeAsURL(odb, ())
-        self._logger.logprb(INFO, 'DataBase', '_createDataBase()', 412)
-
     def getDataSource(self):
         return self.Connection.getParent().DatabaseDocument.DataSource
 
@@ -128,12 +111,7 @@ class DataBase():
         self._statement.execute(query)
 
     def createUser(self, name, password):
-        format = {'User': name, 'Password': password, 'Role': g_role, 'Admin': g_admin}
-        sql = getSqlQuery(self._ctx, 'createUser', format)
-        status = self._statement.executeUpdate(sql)
-        sql = getSqlQuery(self._ctx, 'grantRole', format)
-        status += self._statement.executeUpdate(sql)
-        return status == 0
+        return createUser(self.Connection, name, password, g_role)
 
     def createSharedFolder(self, user, itemid, folder, mediatype, datetime, timestamp):
         call = self._getCall('insertSharedFolder')
@@ -476,10 +454,6 @@ class DataBase():
         update.executeUpdate()
         update.close()
 
-    def setSession(self, user=g_dba):
-        query = getSqlQuery(self._ctx, 'setSession', user)
-        self._statement.execute(query)
-
     # Procedure to retrieve all the UPDATE AND INSERT in the 'Capabilities' table
     def getPushItems(self, userid, start, end):
         select = self._getCall('getPushItems')
@@ -576,3 +550,4 @@ class DataBase():
         #query = self.Connection.getQueries().getByName(name).Command
         #self._CallsPool[name] = self.Connection.prepareCall(query)
         return self.Connection.prepareCommand(name, QUERY)
+
