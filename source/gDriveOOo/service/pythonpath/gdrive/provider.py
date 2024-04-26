@@ -38,6 +38,8 @@ from com.sun.star.rest.ParameterType import QUERY
 from com.sun.star.ucb import IllegalIdentifierException
 
 from .ucp import Provider as ProviderBase
+from .ucp import ucbfolder
+from .ucp import ucbfile
 
 from .dbtool import currentDateTimeInTZ
 from .dbtool import currentUnoDateTime
@@ -56,6 +58,7 @@ from .configuration import g_childfields
 from .configuration import g_chunk
 from .configuration import g_pages
 from .configuration import g_IdentifierRange
+from .configuration import g_content
 from .configuration import g_folder
 from .configuration import g_office
 from .configuration import g_link
@@ -81,16 +84,16 @@ class Provider(ProviderBase):
         return g_upload
     @property
     def Office(self):
-        return g_office
+        return ucbfile
     @property
     def Document(self):
         return g_doc_map
     @property
     def Folder(self):
-        return self._folder
+        return ucbfolder
     @property
     def Link(self):
-        return self._link
+        return g_link
 
     @property
     def IdentifierRange(self):
@@ -115,7 +118,7 @@ class Provider(ProviderBase):
     def initSharedDocuments(self, user, datetime):
         itemid = generateUuid()
         timestamp = currentUnoDateTime()
-        user.DataBase.createSharedFolder(user, itemid, self.SharedFolderName, g_folder, datetime, timestamp)
+        user.DataBase.createSharedFolder(user, itemid, self.SharedFolderName, g_folder, g_content(g_folder), datetime, timestamp)
         parameter = self.getRequestParameter(user.Request, 'getSharedFolderContent')
         iterator = self._parseSharedFolder(user.Request, parameter, itemid, timestamp)
         user.DataBase.pullItems(iterator, user.Id, datetime, 0)
@@ -125,6 +128,7 @@ class Provider(ProviderBase):
         addchild = True
         trashed = readonly = versionable = False
         mimetype = g_folder
+        content = g_content(g_folder)
         size = 0
         link = path = ''
         while parameter.hasNextPage():
@@ -152,7 +156,7 @@ class Provider(ProviderBase):
                             rename = value
                         elif (prefix, event) == ('value.item', 'end_map'):
                             if itemid and name:
-                                yield itemid, name, created, modified, mimetype, size, link, trashed, addchild, rename, readonly, versionable, path, parents
+                                yield itemid, name, created, modified, mimetype, content, size, link, trashed, addchild, rename, readonly, versionable, path, parents
                     del events[:]
                 parser.close()
             response.close()
@@ -232,7 +236,8 @@ class Provider(ProviderBase):
                             versionable = value
                         elif (prefix, event) == ('files.item', 'end_map'):
                             if itemid and name and mimetype:
-                                yield itemid, name, created, modified, mimetype, size, link, trashed, addchild, canrename, readonly, versionable, path, parents
+                                content = g_content.get(mimetype, ucbfile)
+                                yield itemid, name, created, modified, mimetype, content, size, link, trashed, addchild, canrename, readonly, versionable, path, parents
                     del events[:]
                 parser.close()
             response.close()
@@ -334,27 +339,13 @@ class Provider(ProviderBase):
             for prefix, event, value in events:
                 if (prefix, event) == ('id', 'string'):
                     rootid = value
-                elif (prefix, event) == ('name', 'string'):
-                    name = value
                 elif (prefix, event) == ('createdTime', 'string'):
                     created = self.parseDateTime(value)
                 elif (prefix, event) == ('modifiedTime', 'string'):
                     modified = self.parseDateTime(value)
-                elif (prefix, event) == ('mimeType', 'string'):
-                    mimetype = value
-                elif (prefix, event) == ('trashed', 'boolean'):
-                    trashed = value
-                elif (prefix, event) == ('capabilities.canAddChildren', 'boolean'):
-                    addchild = value
-                elif (prefix, event) == ('capabilities.canRename', 'boolean'):
-                    canrename = value
-                elif (prefix, event) == ('capabilities.canEdit', 'boolean'):
-                    readonly = not value
-                elif (prefix, event) == ('capabilities.canReadRevisions', 'boolean'):
-                    versionable = value
             del events[:]
         parser.close()
-        return rootid, name, created, modified, mimetype, trashed, addchild, canrename, readonly, versionable
+        return rootid, created, modified
 
     def parseItemId(self, response):
         return self._parseItemId(response)
