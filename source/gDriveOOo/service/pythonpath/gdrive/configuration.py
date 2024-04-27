@@ -27,7 +27,7 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-from .ucp import ucbfolder
+from .ucp import g_ucbfolder
 
 # Provider configuration
 g_scheme = 'vnd-google'
@@ -52,21 +52,17 @@ g_chunk = 256 * 1024
 g_pages = 200
 g_IdentifierRange = (10, 50)
 
-g_folder = 'application/vnd.google-apps.folder'
-g_link = 'application/vnd.google-apps.link'
-g_content = {g_folder: ucbfolder}
+g_ucpfolder = 'application/vnd.google-apps.folder'
+g_ucplink = 'application/vnd.google-apps.link'
 
-g_office = 'application/vnd.oasis.opendocument'
+
 g_doc_map = {'application/vnd.google-apps.document':     'application/vnd.oasis.opendocument.text',
-             'application/vnd.google-apps.spreadsheet':  'application/x-vnd.oasis.opendocument.spreadsheet',
+             'application/vnd.google-apps.spreadsheet':  'application/vnd.oasis.opendocument.spreadsheet',
              'application/vnd.google-apps.presentation': 'application/vnd.oasis.opendocument.presentation',
-             'application/vnd.google-apps.drawing':      'application/pdf'}
+             'application/vnd.google-apps.drawing':      'application/vnd.oasis.opendocument.graphics'}
 
 g_cache = 20
 g_admin = False
-
-# The URL separator
-g_separator = '/'
 
 # Resource strings files folder
 g_resource = 'resource'

@@ -38,8 +38,7 @@ from com.sun.star.rest.ParameterType import QUERY
 from com.sun.star.ucb import IllegalIdentifierException
 
 from .ucp import Provider as ProviderBase
-from .ucp import ucbfolder
-from .ucp import ucbfile
+from .ucp import g_ucboffice
 
 from .dbtool import currentDateTimeInTZ
 from .dbtool import currentUnoDateTime
@@ -58,10 +57,6 @@ from .configuration import g_childfields
 from .configuration import g_chunk
 from .configuration import g_pages
 from .configuration import g_IdentifierRange
-from .configuration import g_content
-from .configuration import g_folder
-from .configuration import g_office
-from .configuration import g_link
 from .configuration import g_doc_map
 
 import ijson
@@ -82,18 +77,6 @@ class Provider(ProviderBase):
     @property
     def UploadUrl(self):
         return g_upload
-    @property
-    def Office(self):
-        return ucbfile
-    @property
-    def Document(self):
-        return g_doc_map
-    @property
-    def Folder(self):
-        return ucbfolder
-    @property
-    def Link(self):
-        return g_link
 
     @property
     def IdentifierRange(self):
@@ -118,7 +101,7 @@ class Provider(ProviderBase):
     def initSharedDocuments(self, user, datetime):
         itemid = generateUuid()
         timestamp = currentUnoDateTime()
-        user.DataBase.createSharedFolder(user, itemid, self.SharedFolderName, g_folder, g_content(g_folder), datetime, timestamp)
+        user.DataBase.createSharedFolder(user, itemid, self.SharedFolderName, g_ucpfolder, datetime, timestamp)
         parameter = self.getRequestParameter(user.Request, 'getSharedFolderContent')
         iterator = self._parseSharedFolder(user.Request, parameter, itemid, timestamp)
         user.DataBase.pullItems(iterator, user.Id, datetime, 0)
@@ -127,10 +110,9 @@ class Provider(ProviderBase):
         parents = [itemid, ]
         addchild = True
         trashed = readonly = versionable = False
-        mimetype = g_folder
-        content = g_content(g_folder)
+        mimetype = g_ucpfolder
         size = 0
-        link = path = ''
+        link = ''
         while parameter.hasNextPage():
             response = request.execute(parameter)
             if response.Ok:
@@ -156,7 +138,7 @@ class Provider(ProviderBase):
                             rename = value
                         elif (prefix, event) == ('value.item', 'end_map'):
                             if itemid and name:
-                                yield itemid, name, created, modified, mimetype, content, size, link, trashed, addchild, rename, readonly, versionable, path, parents
+                                yield itemid, name, created, modified, mimetype, size, link, trashed, addchild, rename, readonly, versionable, parents
                     del events[:]
                 parser.close()
             response.close()
@@ -170,14 +152,14 @@ class Provider(ProviderBase):
         return url
 
     def updateItemId(self, database, oldid, response):
-        # TODO: Google drive API already provides the definitive identifiers,
-        # TODO: there is nothing to do here, just close the response...
+        # XXX: Google drive API already provides the definitive identifiers,
+        # XXX: there is nothing to do here, just close the response...
         response.close()
         return oldid
 
     def getDocumentLocation(self, content):
-        # FIXME: This method being also called by the replicator,
-        # FIXME: we must provide a dictionary
+        # XXX: This method being also called by the replicator,
+        # XXX: we must provide a dictionary
         return content.MetaData
 
     def mergeNewFolder(self, user, oldid, response):
@@ -190,7 +172,7 @@ class Provider(ProviderBase):
         return self.parseItems(content.User.Request, parameter)
 
     def parseItems(self, request, parameter):
-        link = path = ''
+        link = ''
         timestamp = currentUnoDateTime()
         while parameter.hasNextPage():
             response = request.execute(parameter)
@@ -236,8 +218,7 @@ class Provider(ProviderBase):
                             versionable = value
                         elif (prefix, event) == ('files.item', 'end_map'):
                             if itemid and name and mimetype:
-                                content = g_content.get(mimetype, ucbfile)
-                                yield itemid, name, created, modified, mimetype, content, size, link, trashed, addchild, canrename, readonly, versionable, path, parents
+                                yield itemid, name, created, modified, mimetype, size, link, trashed, addchild, canrename, readonly, versionable, parents
                     del events[:]
                 parser.close()
             response.close()
@@ -424,9 +405,10 @@ class Provider(ProviderBase):
 
         elif method == 'getDocumentContent':
             parameter.Url += '/files/' + data.get('Id')
-            if data.get('MediaType') in g_doc_map:
+            mediatype = data.get('MediaType')
+            if mediatype in g_doc_map:
                 parameter.Url += '/export'
-                parameter.setQuery('mimeType', data.get('MediaType'))
+                parameter.setQuery('mimeType', g_doc_map.get(mediatype))
             else:
                 parameter.setQuery('alt', 'media')
 
