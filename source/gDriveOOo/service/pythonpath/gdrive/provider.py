@@ -81,9 +81,6 @@ class Provider(ProviderBase):
     @property
     def IdentifierRange(self):
         return g_IdentifierRange
-    @property
-    def SupportDuplicate(self):
-        return True
 
     def getFirstPullRoots(self, user):
         return (user.RootId, )

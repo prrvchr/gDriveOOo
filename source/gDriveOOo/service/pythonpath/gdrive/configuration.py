@@ -27,8 +27,6 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-from .ucp import g_ucbfolder
-
 # Provider configuration
 g_scheme = 'vnd-google'
 g_extension = 'gDriveOOo'
@@ -53,8 +51,7 @@ g_pages = 200
 g_IdentifierRange = (10, 50)
 
 g_ucpfolder = 'application/vnd.google-apps.folder'
-g_ucplink = 'application/vnd.google-apps.link'
-
+g_ucplink   = 'application/vnd.google-apps.link'
 
 g_doc_map = {'application/vnd.google-apps.document':     'application/vnd.oasis.opendocument.text',
              'application/vnd.google-apps.spreadsheet':  'application/vnd.oasis.opendocument.spreadsheet',
@@ -62,7 +59,6 @@ g_doc_map = {'application/vnd.google-apps.document':     'application/vnd.oasis.
              'application/vnd.google-apps.drawing':      'application/vnd.oasis.opendocument.graphics'}
 
 g_cache = 20
-g_admin = False
 
 # Resource strings files folder
 g_resource = 'resource'
@@ -72,5 +68,4 @@ g_defaultlog = 'gDriveLog'
 g_errorlog = 'gDriveError'
 # Logging global variable
 g_synclog = 'gDriveSync'
-
 

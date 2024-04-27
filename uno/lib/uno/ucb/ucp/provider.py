@@ -107,9 +107,6 @@ class Provider(object):
     def FolderSyncModes(self):
         return (SYNC_FOLDER, )
     @property
-    def SupportDuplicate(self):
-        return False
-    @property
     def SupportSharedDocuments(self):
         return self._config.getByName('SupportShare') and self._config.getByName('SharedDocuments')
     @property

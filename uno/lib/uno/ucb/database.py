@@ -57,8 +57,6 @@ from .dbinit import getDataBaseConnection
 from .dbconfig import g_role
 from .dbconfig import g_version
 
-from .configuration import g_admin
-
 import os
 import traceback
 
