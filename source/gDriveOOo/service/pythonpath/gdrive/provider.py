@@ -57,6 +57,7 @@ from .configuration import g_childfields
 from .configuration import g_chunk
 from .configuration import g_pages
 from .configuration import g_IdentifierRange
+from .configuration import g_ucpfolder
 from .configuration import g_doc_map
 
 import ijson
