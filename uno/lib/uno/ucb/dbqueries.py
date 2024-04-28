@@ -87,6 +87,57 @@ CREATE FUNCTION "GetUniqueName"(IN NAME VARCHAR(100),
   END;
 GRANT EXECUTE ON SPECIFIC ROUTINE "GetUniqueName_1" TO "%(Role)s";''' % format
 
+# Create View Command
+    elif name == 'getChildViewCommand':
+        query = '''\
+SELECT I."UserId", P."ParentId", I."ItemId", I."Name", I."DateCreated", I."DateModified"
+  FROM %(Items)s AS I
+  INNER JOIN %(Parents)s AS P ON I."ItemId" = P."ItemId"
+  WHERE I."Trashed" = FALSE;''' % format
+
+    elif name == 'getTwinViewCommand':
+        query = '''\
+SELECT C."UserId", C."ParentId", C."Name", ARRAY_AGG(C."ItemId" ORDER BY C."DateCreated", C."DateModified") AS "Indexes"
+  FROM %(Child)s AS C
+  GROUP BY C."UserId", C."ParentId", C."Name"
+  HAVING COUNT(*) > 1;''' % format
+
+    elif name == 'getDuplicateViewCommand':
+        query = '''\
+SELECT T."UserId", T."ParentId", C."ItemId", "GetUniqueName"(T."Name", POSITION_ARRAY(C."ItemId" IN T."Indexes")) AS "Name"
+  FROM %(Twin)s AS T
+  JOIN %(Child)s AS C ON T."Name" = C."Name" AND T."ParentId" = C."ParentId";''' % format
+
+    elif name == 'getPathViewCommand':
+        query = '''\
+WITH RECURSIVE TREE ("UserId", "ParentId", "ItemId", "Name", "Path", "Title") AS
+  (
+    SELECT U."UserId", U."RootId", C."ItemId", C."Name", CAST('%(Separator)s' AS VARCHAR(1024)), COALESCE(D."Name", C."Name")
+    FROM %(Users)s AS U
+    INNER JOIN %(Child)s AS C ON U."UserId" = C."UserId" AND U."RootId" = C."ParentId"
+    LEFT JOIN %(Duplicate)s AS D ON C."UserId" = D."UserId" AND C."ParentId" = D."ParentId" AND C."ItemId" = D."ItemId"
+  UNION
+    SELECT C1."UserId", C1."ParentId", C1."ItemId", C1."Name", T."Path" || T."Title" || '%(Separator)s', COALESCE(D1."Name", C1."Name")
+    FROM %(Child)s AS C1
+    INNER JOIN TREE AS T ON T."UserId" = C1."UserId" AND T."ItemId" = C1."ParentId"
+    LEFT JOIN %(Duplicate)s AS D1 ON C1."UserId" = D1."UserId" AND C1."ParentId" = D1."ParentId" AND C1."ItemId" = D1."ItemId"
+  )
+  SELECT "UserId", "ParentId", "ItemId", "Name", "Path", "Title" FROM TREE;''' % format
+
+    elif name == 'getChildrenViewCommand':
+        query = '''\
+SELECT C."UserId", C."ItemId", C."ParentId", P."Name", P."Path",
+       P."Title", I."Link", I."DateCreated", I."DateModified",
+       "GetIsFolder"(I."MediaType") AS "IsFolder", I."MediaType",
+       I."Size", I."ConnectionMode"
+  FROM %(Path)s AS P
+  INNER JOIN %(Child)s AS C ON P."ItemId" = C."ItemId" AND P."ParentId" = C."ParentId"
+  INNER JOIN %(Items)s AS I ON C."ItemId" = I."ItemId";''' % format
+
+
+
+
+
 # Create Cached View Queries
     elif name == 'createChildView':
         query = '''\
