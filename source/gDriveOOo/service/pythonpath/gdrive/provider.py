@@ -136,7 +136,7 @@ class Provider(ProviderBase):
                             rename = value
                         elif (prefix, event) == ('value.item', 'end_map'):
                             if itemid and name:
-                                yield itemid, name, created, modified, mimetype, size, link, trashed, addchild, rename, readonly, versionable, parents
+                                yield itemid, name, created, modified, mimetype, size, link, trashed, addchild, rename, readonly, versionable, parents, None
                     del events[:]
                 parser.close()
             response.close()
@@ -167,9 +167,9 @@ class Provider(ProviderBase):
         return oldid
 
     def parseRootFolder(self, parameter, content):
-        return self.parseItems(content.User.Request, parameter)
+        return self.parseItems(content.User.Request, parameter, content.User.RootId)
 
-    def parseItems(self, request, parameter):
+    def parseItems(self, request, parameter, rootid):
         link = ''
         timestamp = currentUnoDateTime()
         while parameter.hasNextPage():
@@ -216,7 +216,7 @@ class Provider(ProviderBase):
                             versionable = value
                         elif (prefix, event) == ('files.item', 'end_map'):
                             if itemid and name and mimetype:
-                                yield itemid, name, created, modified, mimetype, size, link, trashed, addchild, canrename, readonly, versionable, parents
+                                yield itemid, name, created, modified, mimetype, size, link, trashed, addchild, canrename, readonly, versionable, parents, None
                     del events[:]
                 parser.close()
             response.close()
