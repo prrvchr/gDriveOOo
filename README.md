@@ -29,7 +29,7 @@
 
 **The use of this software subjects you to our [Terms Of Use][4] and [Data Protection Policy][5].**
 
-# version [1.1.1][6]
+# version [1.1.2][6]
 
 ## Introduction:
 
@@ -227,7 +227,16 @@ Although this functionality is only needed for gDriveOOo, it is implemented glob
 - Fixed a regression preventing the creation of new files.
 - Integration of a fix to workaround the [issue #159988][50].
 
-### What remains to be done for version 1.1.1:
+### What has been done for version 1.1.2:
+
+- The creation of the database, during the first connection, uses the UNO API offered by the jdbcDriverOOo extension since version 1.3.2. This makes it possible to record all the information necessary for creating the database in 6 text tables which are in fact [6 csv files][51].
+- Rewriting the [SQL views][52] necessary for managing duplicates. Now a folder or file's path is calculated by a recursive view that supports duplicates.
+- Although the extension supports handling duplicate files and folder, it is no longer possible to create or rename them.
+- Installing the extension will disable the option to create a backup copy (ie: .bak file) in LibreOffice. If this option is validated then the extension is no longer capable of saving files.
+- The extension will ask you to install the OAuth2OOo and jdbcDriverOOo extensions in versions 1.3.4 and 1.3.2 respectively minimum.
+- Many fixes.
+
+### What remains to be done for version 1.1.2:
 
 - Add new language for internationalization...
 
@@ -259,7 +268,7 @@ Although this functionality is only needed for gDriveOOo, it is implemented glob
 [24]: <https://img.shields.io/github/v/tag/prrvchr/jdbcDriverOOo?label=latest#right>
 [25]: <img/gDriveOOo.svg#middle>
 [26]: <https://github.com/prrvchr/gDriveOOo/releases/latest/download/gDriveOOo.oxt>
-[27]: <https://img.shields.io/github/downloads/prrvchr/gDriveOOo/latest/total?label=v1.1.1#right>
+[27]: <https://img.shields.io/github/downloads/prrvchr/gDriveOOo/latest/total?label=v1.1.2#right>
 [28]: <https://bz.apache.org/ooo/show_bug.cgi?id=128569>
 [29]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/replicator.py>
 [30]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/database.py>
@@ -283,3 +292,5 @@ Although this functionality is only needed for gDriveOOo, it is implemented glob
 [48]: <https://peps.python.org/pep-0508/>
 [49]: <https://prrvchr.github.io/gDriveOOo/#requirement>
 [50]: <https://bugs.documentfoundation.org/show_bug.cgi?id=159988>
+[51]: <https://github.com/prrvchr/gDriveOOo/tree/master/uno/lib/uno/ucb/hsqldb>
+[52]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/dbqueries.py#L111>

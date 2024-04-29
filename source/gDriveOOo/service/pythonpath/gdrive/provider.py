@@ -161,7 +161,7 @@ class Provider(ProviderBase):
         return content.MetaData
 
     def mergeNewFolder(self, user, oldid, response):
-        # FIXME: Nothing to merge: we already have the final ItemId
+        # XXX: Nothing to merge: we already have the final ItemId
         if response:
             response.close()
         return oldid
@@ -410,10 +410,10 @@ class Provider(ProviderBase):
             else:
                 parameter.setQuery('alt', 'media')
 
-        elif method == 'updateTitle':
+        elif method == 'updateName':
             parameter.Method = 'PATCH'
             parameter.Url += '/files/' + data.get('Id')
-            parameter.setJson('name',  data.get('Title'))
+            parameter.setJson('name',  data.get('Name'))
 
         elif method == 'updateTrashed':
             parameter.Method = 'PATCH'
@@ -435,7 +435,7 @@ class Provider(ProviderBase):
             parameter.Url += '/files'
             parameter.setJson('id', data.get('Id'))
             parameter.setJson('parents', [data.get('ParentId')])
-            parameter.setJson('name', data.get('Title'))
+            parameter.setJson('name', data.get('Name'))
             parameter.setJson('mimeType', data.get('MediaType'))
 
         elif method == 'getUploadLocation':
@@ -449,7 +449,7 @@ class Provider(ProviderBase):
             parameter.setQuery('uploadType', 'resumable')
             parameter.setJson('id', data.get('Id'))
             parameter.setJson('parents', [data.get('ParentId')])
-            parameter.setJson('name', data.get('Title'))
+            parameter.setJson('name', data.get('Name'))
             parameter.setJson('mimeType', data.get('MediaType'))
             parameter.setHeader('X-Upload-Content-Type', data.get('MediaType'))
 

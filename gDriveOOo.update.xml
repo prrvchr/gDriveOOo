@@ -28,7 +28,7 @@
   xmlns="http://openoffice.org/extensions/update/2006"
   xmlns:xlink="http://www.w3.org/1999/xlink">
     <identifier value="io.github.prrvchr.gDriveOOo"/>
-    <version value="1.1.1"/>
+    <version value="1.1.2"/>
     <update-download>
         <src xlink:href="https://github.com/prrvchr/gDriveOOo/releases/latest/download/gDriveOOo.oxt"/>
     </update-download>
@@ -40,7 +40,7 @@
         <name xlink:href="https://prrvchr.github.io/gDriveOOo/README_fr" lang="fr">gDriveOOo</name>
     </publisher>
     <release-notes>
-        <src xlink:href="https://prrvchr.github.io/gDriveOOo/#what-has-been-done-for-version-111" lang="en"/>
-        <src xlink:href="https://prrvchr.github.io/gDriveOOo/README_fr#ce-qui-a-%C3%A9t%C3%A9-fait-pour-la-version-111" lang="fr"/>
+        <src xlink:href="https://prrvchr.github.io/gDriveOOo/#what-has-been-done-for-version-112" lang="en"/>
+        <src xlink:href="https://prrvchr.github.io/gDriveOOo/README_fr#ce-qui-a-%C3%A9t%C3%A9-fait-pour-la-version-112" lang="fr"/>
     </release-notes>
 </description>
