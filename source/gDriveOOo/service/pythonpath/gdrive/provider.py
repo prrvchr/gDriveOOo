@@ -104,8 +104,8 @@ class Provider(ProviderBase):
         iterator = self._parseSharedFolder(user.Request, parameter, itemid, timestamp)
         user.DataBase.pullItems(iterator, user.Id, datetime, 0)
 
-    def _parseSharedFolder(self, request, parameter, itemid, timestamp):
-        parents = [itemid, ]
+    def _parseSharedFolder(self, request, parameter, parentid, timestamp):
+        parents = [parentid, ]
         addchild = True
         trashed = readonly = versionable = False
         mimetype = g_ucpfolder
@@ -167,9 +167,9 @@ class Provider(ProviderBase):
         return oldid
 
     def parseRootFolder(self, parameter, content):
-        return self.parseItems(content.User.Request, parameter, content.User.RootId)
+        return self.parseItems(content.User.Request, parameter)
 
-    def parseItems(self, request, parameter, rootid):
+    def parseItems(self, request, parameter, rootid=None):
         link = ''
         timestamp = currentUnoDateTime()
         while parameter.hasNextPage():
