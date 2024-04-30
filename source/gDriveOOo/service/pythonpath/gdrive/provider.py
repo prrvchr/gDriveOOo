@@ -99,7 +99,7 @@ class Provider(ProviderBase):
     def initSharedDocuments(self, user, datetime):
         itemid = generateUuid()
         timestamp = currentUnoDateTime()
-        user.DataBase.createSharedFolder(user, itemid, self.SharedFolderName, g_ucpfolder, datetime, timestamp)
+        user.DataBase.createSharedFolder(user, itemid, self.SharedFolderName, g_ucpfolder, timestamp, datetime)
         parameter = self.getRequestParameter(user.Request, 'getSharedFolderContent')
         iterator = self._parseSharedFolder(user.Request, parameter, itemid, timestamp)
         user.DataBase.pullItems(iterator, user.Id, datetime, 0)
