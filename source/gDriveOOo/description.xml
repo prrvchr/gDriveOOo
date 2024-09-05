@@ -28,7 +28,7 @@
   xmlns="http://openoffice.org/extensions/description/2006"
   xmlns:d="http://openoffice.org/extensions/description/2006"
   xmlns:xlink="http://www.w3.org/1999/xlink">
-    <version value="1.1.3"/>
+    <version value="1.1.4"/>
     <identifier value="io.github.prrvchr.gDriveOOo"/>
     <platform value="all"/>
     <dependencies>
@@ -55,8 +55,8 @@
         <name lang="en-US">gDriveOOo</name>
     </display-name>
     <icon>
-        <default xlink:href="gDriveOOo/gDriveOOo.svg"/>
-        <high-contrast xlink:href="gDriveOOo/gDriveOOo.svg"/>
+        <default xlink:href="img/gDriveOOo.svg"/>
+        <high-contrast xlink:href="img/gDriveOOo.svg"/>
     </icon>
     <extension-description>
         <src xlink:href="description/desc_en.txt" lang="en-US"/>

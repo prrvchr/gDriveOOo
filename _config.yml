@@ -7,6 +7,7 @@ plugins:
 favicon: true
 logo: /img/drive.svg
 email: prrvchr@gmail.com
+google_analytics: G-TT7YJSW8XB
 title: gDriveOOo
 blank_title: true
 description: Your Google Drive data available in LibreOffice even offline
