@@ -175,12 +175,14 @@ class DataBase():
         data['AtRoot'] = data.get('ParentId') == rootid
         return data
 
-    def updateNewItemId(self, oldid, newid, created, modified):
+    def updateNewItemId(self, userid, oldid, newid, created, modified):
         call = self._getCall('updateNewItemId')
-        call.setString(1, oldid)
-        call.setString(2, newid)
-        call.setTimestamp(3, created)
-        call.setTimestamp(4, modified)
+        call.setString(1, userid)
+        call.setString(2, oldid)
+        call.setString(3, newid)
+        call.setTimestamp(4, created)
+        call.setTimestamp(5, modified)
+        call.executeUpdate()
         call.close()
         return newid
 
@@ -466,13 +468,14 @@ class DataBase():
         return properties
 
     def updatePushItems(self, user, itemids):
-        call = self._getCall('updatePushItems')
-        call.setString(1, user.Id)
-        call.setArray(2, Array('VARCHAR', itemids))
-        call.execute()
-        timestamp = call.getObject(3, None)
-        call.close()
-        user.TimeStamp = timestamp
+        # XXX: We push items only if needed (ie: not empty)
+        if itemids:
+            call = self._getCall('updatePushItems')
+            call.setString(1, user.Id)
+            call.setArray(2, Array('VARCHAR', itemids))
+            call.execute()
+            user.TimeStamp = call.getObject(3, None)
+            call.close()
 
     def getItemParentIds(self, itemid, metadata, start, end):
         call = self._getCall('getItemParentIds')
