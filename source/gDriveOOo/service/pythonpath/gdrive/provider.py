@@ -162,8 +162,7 @@ class Provider(ProviderBase):
 
     def mergeNewFolder(self, user, oldid, response):
         # XXX: Nothing to merge: we already have the final ItemId
-        if response:
-            response.close()
+        response.close()
         return oldid
 
     def parseRootFolder(self, parameter, content):
