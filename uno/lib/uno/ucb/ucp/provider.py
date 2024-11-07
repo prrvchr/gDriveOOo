@@ -30,6 +30,7 @@
 import uno
 import unohelper
 
+from com.sun.star.logging.LogLevel import INFO
 from com.sun.star.logging.LogLevel import SEVERE
 
 from com.sun.star.ucb.ConnectionMode import OFFLINE
@@ -74,6 +75,7 @@ class Provider(object):
         self.SourceURL = getResourceLocation(ctx, g_identifier, g_scheme)
         self._folders = []
         self._config = getConfiguration(ctx, g_identifier, False)
+        self._logger.logprb(INFO, 'Provider', '__init__()', 551)
 
     # Must be implemented properties
     @property

@@ -92,8 +92,8 @@ class Provider(ProviderBase):
             user.setToken(token)
 
     def getUser(self, source, request, name):
-        user = self._getUser(source, request, name)
-        root = self._getRoot(source, request, name)
+        user = self._getUser(source, request)
+        root = self._getRoot(source, request)
         return user, root
 
     def initSharedDocuments(self, user, datetime):
@@ -267,25 +267,26 @@ class Provider(ProviderBase):
             del events[:]
         parser.close()
 
-    def _getUser(self, source, request, name):
+    def _getUser(self, source, request):
         parameter = self.getRequestParameter(request, 'getUser')
         response = request.execute(parameter)
         if not response.Ok:
-            msg = self._logger.resolveString(403, name)
+            msg = self._logger.resolveString(561, parameter.Name, response.StatusCode, response.Text)
             raise IllegalIdentifierException(msg, source)
         user = self._parseUser(response)
         response.close()
         return user
 
-    def _getRoot(self, source, request, name):
+    def _getRoot(self, source, request):
         parameter = self.getRequestParameter(request, 'getRoot')
         response = request.execute(parameter)
         if not response.Ok:
-            msg = self._logger.resolveString(403, name)
+            msg = self._logger.resolveString(571, parameter.Name, response.StatusCode, response.Text)
             raise IllegalIdentifierException(msg, source)
         root = self._parseRoot(response)
         response.close()
-        return root
+        timestamp = currentUnoDateTime()
+        return root, timestamp, timestamp
 
     def _parseUser(self, response):
         userid = name = displayname = None
@@ -306,24 +307,21 @@ class Provider(ProviderBase):
         return userid, name, displayname
 
     def _parseRoot(self, response):
-        rootid = name = created = modified = mimetype = None
-        addchild = canrename = True
-        trashed = readonly = versionable = False
+        rootid = None
         events = ijson.sendable_list()
         parser = ijson.parse_coro(events)
         iterator = response.iterContent(g_chunk, False)
         while iterator.hasMoreElements():
             parser.send(iterator.nextElement().value)
             for prefix, event, value in events:
-                if (prefix, event) == ('id', 'string'):
+                 if (prefix, event) == ('files.item.parents.item', 'string'):
                     rootid = value
-                elif (prefix, event) == ('createdTime', 'string'):
-                    created = self.parseDateTime(value)
-                elif (prefix, event) == ('modifiedTime', 'string'):
-                    modified = self.parseDateTime(value)
+                    break
             del events[:]
+            if rootid:
+                break
         parser.close()
-        return rootid, created, modified
+        return rootid
 
     def parseItemId(self, response):
         return self._parseItemId(response)
@@ -365,8 +363,10 @@ class Provider(ProviderBase):
             parameter.setQuery('fields', g_userfields)
 
         elif method == 'getRoot' :
-            parameter.Url += '/files/root'
-            parameter.setQuery('fields', g_itemfields)
+            parameter.Url += '/files'
+            parameter.setQuery('fields', 'files(parents)')
+            parameter.setQuery('pageSize', g_pages)
+            parameter.setQuery('q', "'root' in parents")
 
         elif method == 'getSharedFolderContent':
             parameter.Url += '/drives'
