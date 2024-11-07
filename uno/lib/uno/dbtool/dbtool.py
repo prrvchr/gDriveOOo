@@ -4,7 +4,7 @@
 """
 ╔════════════════════════════════════════════════════════════════════════════════════╗
 ║                                                                                    ║
-║   Copyright (c) 2020 https://prrvchr.github.io                                     ║
+║   Copyright (c) 2020-24 https://prrvchr.github.io                                  ║
 ║                                                                                    ║
 ║   Permission is hereby granted, free of charge, to any person obtaining            ║
 ║   a copy of this software and associated documentation files (the "Software"),     ║
@@ -172,7 +172,7 @@ def checkDataBase(ctx, connection):
         logger = getLogger(ctx, g_errorlog, g_basename)
         state = logger.resolveString(101)
         msg = logger.resolveString(102, g_jar, g_version, version)
-        logger.logp(SEVERE, g_basename, 'checkDataBase()', msg)
+        logger.logp(SEVERE, g_basename, 'checkDataBase', msg)
         error = getSqlException(state, 1112, msg)
     return version, error
 

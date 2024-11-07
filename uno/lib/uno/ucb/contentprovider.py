@@ -4,7 +4,7 @@
 """
 ╔════════════════════════════════════════════════════════════════════════════════════╗
 ║                                                                                    ║
-║   Copyright (c) 2020 https://prrvchr.github.io                                     ║
+║   Copyright (c) 2020-24 https://prrvchr.github.io                                  ║
 ║                                                                                    ║
 ║   Permission is hereby granted, free of charge, to any person obtaining            ║
 ║   a copy of this software and associated documentation files (the "Software"),     ║
@@ -51,6 +51,8 @@ from .datasource import DataSource
 
 from .unotool import checkVersion
 from .unotool import getExtensionVersion
+from .unotool import getUrlTransformer
+from .unotool import parseUrl
 
 from .dbtool import getConnectionUrl
 
@@ -86,8 +88,9 @@ class ContentProvider(unohelper.Base,
         self._authority = authority
         self._cls = f'{arguments}ContentProvider'
         self._services = ('com.sun.star.ucb.ContentProvider', f'{g_identifier}.ContentProvider')
+        self._transformer = getUrlTransformer(ctx)
         self._logger = logger
-        self._logger.logprb(INFO, self._cls, '__init__()', 201, arguments)
+        self._logger.logprb(INFO, self._cls, '__init__', 201, arguments)
 
     __datasource = None
 
@@ -99,35 +102,35 @@ class ContentProvider(unohelper.Base,
 
     # XContentIdentifierFactory
     def createContentIdentifier(self, url):
-        identifier = Identifier(url)
-        self._logger.logprb(INFO, self._cls, 'createContentIdentifier()', 211, url, identifier.getContentIdentifier())
+        identifier = Identifier(self._getPresentationUrl(url))
+        self._logger.logprb(INFO, self._cls, 'createContentIdentifier', 211, url, identifier.getContentIdentifier())
         return identifier
 
     # XContentProvider
     def queryContent(self, identifier):
         try:
-            url = identifier.getContentIdentifier()
+            url = self._getPresentationUrl(identifier.getContentIdentifier())
             content = self._datasource.queryContent(self, self._authority, url)
-            self._logger.logprb(INFO, self._cls, 'queryContent()', 231, url)
+            self._logger.logprb(INFO, self._cls, 'queryContent', 231, url)
             return content
         except IllegalIdentifierException as e:
-            self._logger.logprb(INFO, self._cls, 'queryContent()', 232, e.Message)
+            self._logger.logprb(INFO, self._cls, 'queryContent', 232, e.Message)
             raise e
         except Exception as e:
             msg = self._logger.resolveString(233, traceback.format_exc())
-            self._logger.logp(SEVERE, self._cls, 'queryContent()', msg)
+            self._logger.logp(SEVERE, self._cls, 'queryContent', msg)
             print(msg)
 
     def compareContentIds(self, id1, id2):
-        uri1 = self._datasource.parseIdentifier(id1)
-        uri2 = self._datasource.parseIdentifier(id2)
+        uri1 = self._datasource.parseUrl(self._getPresentationUrl(id1.getContentIdentifier()))
+        uri2 = self._datasource.parseUrl(self._getPresentationUrl(id2.getContentIdentifier()))
         auth1 = uri1.getAuthority() if uri1.hasAuthority() else self._datasource.getDefaultUser()
         auth2 = uri2.getAuthority() if uri2.hasAuthority() else self._datasource.getDefaultUser()
         if (auth1 != auth2 or uri1.getPath() != uri2.getPath()):
-            self._logger.logprb(INFO, self._cls, 'compareContentIds()', 242, uri1.getUriReference(), uri2.getUriReference())
+            self._logger.logprb(INFO, self._cls, 'compareContentIds', 242, uri1.getUriReference(), uri2.getUriReference())
             compare = -1
         else:
-            self._logger.logprb(INFO, self._cls, 'compareContentIds()', 241, uri1.getUriReference(), uri2.getUriReference())
+            self._logger.logprb(INFO, self._cls, 'compareContentIds', 241, uri1.getUriReference(), uri2.getUriReference())
             compare = 0
         return compare
 
@@ -141,20 +144,20 @@ class ContentProvider(unohelper.Base,
 
     # Private methods
     def _getDataSource(self):
-        method = '_getDataSource()'
+        mtd = '_getDataSource'
         oauth2 = getOAuth2Version(self._ctx)
         driver = getExtensionVersion(self._ctx, g_jdbcid)
         if oauth2 is None:
-            msg = self._getExceptionMessage(method, 221, g_oauth2ext, g_oauth2ext, g_extension)
+            msg = self._getExceptionMessage(mtd, 221, g_oauth2ext, g_oauth2ext, g_extension)
             raise IllegalIdentifierException(msg, self)
         elif not checkVersion(oauth2, g_oauth2ver):
-            msg = self._getExceptionMessage(method, 223, g_oauth2ext, oauth2, g_oauth2ext, g_oauth2ver)
+            msg = self._getExceptionMessage(mtd, 223, g_oauth2ext, oauth2, g_oauth2ext, g_oauth2ver)
             raise IllegalIdentifierException(msg, self)
         elif driver is None:
-            msg = self._getExceptionMessage(method, 221, g_jdbcext, g_jdbcext, g_extension)
+            msg = self._getExceptionMessage(mtd, 221, g_jdbcext, g_jdbcext, g_extension)
             raise IllegalIdentifierException(msg, self)
         elif not checkVersion(driver, g_jdbcver):
-            msg = self._getExceptionMessage(method, 223, g_jdbcext, driver, g_jdbcext, g_jdbcver)
+            msg = self._getExceptionMessage(mtd, 223, g_jdbcext, driver, g_jdbcext, g_jdbcver)
             raise IllegalIdentifierException(msg, self)
         else:
             path = g_folder + g_ucbseparator + g_scheme
@@ -162,16 +165,24 @@ class ContentProvider(unohelper.Base,
             try:
                 database = DataBase(self._ctx, self._logger, url)
             except SQLException as e:
-                msg = self._getExceptionMessage(method, 225, g_extension, url, e.Message)
+                msg = self._getExceptionMessage(mtd, 225, g_extension, url, e.Message)
                 raise IllegalIdentifierException(msg, self)
             else:
                 if not database.isUptoDate():
-                    msg = self._getExceptionMessage(method, 227, g_jdbcext, database.Version, g_version)
+                    msg = self._getExceptionMessage(mtd, 227, g_jdbcext, database.Version, g_version)
                     raise IllegalIdentifierException(msg, self)
                 else:
                     return DataSource(self._ctx, self._logger, database)
         return None
 
-    def _getExceptionMessage(self, method, code, extension, *args):
-        return getExceptionMessage(self._ctx, self._logger, self._cls, method, code, extension, *args)
+    def _getPresentationUrl(self, url):
+        # FIXME: Sometimes the url can end with a dot or a slash, it must be deleted
+        url = url.rstrip('/.')
+        uri = parseUrl(self._transformer, url)
+        if uri is not None:
+            url = self._transformer.getPresentation(uri, True)
+        return url
+
+    def _getExceptionMessage(self, mtd, code, extension, *args):
+        return getExceptionMessage(self._ctx, self._logger, self._cls, mtd, code, extension, *args)
 

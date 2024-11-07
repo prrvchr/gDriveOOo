@@ -1,5 +1,7 @@
-<?xml version='1.0' encoding='UTF-8'?>
-<!--
+#!
+# -*- coding: utf-8 -*-
+
+"""
 ╔════════════════════════════════════════════════════════════════════════════════════╗
 ║                                                                                    ║
 ║   Copyright (c) 2020-24 https://prrvchr.github.io                                  ║
@@ -23,56 +25,31 @@
 ║   OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                    ║
 ║                                                                                    ║
 ╚════════════════════════════════════════════════════════════════════════════════════╝
--->
-<oor:component-data oor:name="gDriveOOo" oor:package="io.github.prrvchr"
-  xsi:schemaLocation="http://openoffice.org/2001/registry/component-update.xsd"
-  xmlns:xs="http://www.w3.org/2001/XMLSchema"
-  xmlns:oor="http://openoffice.org/2001/registry"
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <prop oor:name="ResetSync">
-    <value>0</value>
-  </prop>
-  <prop oor:name="SupportShare">
-    <value>true</value>
-  </prop>
-  <prop oor:name="SharedDocuments">
-    <value>true</value>
-  </prop>
-  <prop oor:name="SharedFolderName">
-    <value xml:lang="en">Shared with me</value>
-    <value xml:lang="fr">Partagés avec moi</value>
-  </prop>
-  <prop oor:name="ReplicateTimeout">
-    <value>60</value>
-  </prop>
-  <prop oor:name="SynchronizePolicy">
-    <value>CLIENT_IS_MASTER</value>
-  </prop>
-  <prop oor:name="ResumableUpload">
-    <value>true</value>
-  </prop>
-  <node oor:name="Settings">
-    <node oor:name="Download" oor:op="fuse">
-      <prop oor:name="Chunk">
-        <value>262144</value>
-      </prop>
-      <prop oor:name="Delay">
-        <value>30</value>
-      </prop>
-      <prop oor:name="Retry">
-        <value>3</value>
-      </prop>
-    </node>
-    <node oor:name="Upload" oor:op="fuse">
-      <prop oor:name="Chunk">
-        <value>262144</value>
-      </prop>
-      <prop oor:name="Delay">
-        <value>30</value>
-      </prop>
-      <prop oor:name="Retry">
-        <value>3</value>
-      </prop>
-    </node>
-  </node>
-</oor:component-data>
+"""
+
+import unohelper
+
+from com.sun.star.util import XCloseListener
+from com.sun.star.util import CloseVetoException
+
+import traceback
+
+
+class CloseListener(unohelper.Base,
+                    XCloseListener):
+    def __init__(self, datasource):
+        self._datasource = datasource
+
+    # XCloseListener
+    def queryClosing(self, source, ownership):
+        # XXX: If it's the ownership we need to throw CloseVetoException
+        if ownership:
+            raise CloseVetoException()
+        self._datasource.dispose()
+
+    def notifyClosing(self, source):
+        pass
+
+    def disposing(self, source):
+        pass
+

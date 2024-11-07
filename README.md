@@ -29,7 +29,7 @@
 
 **The use of this software subjects you to our [Terms Of Use][4] and [Data Protection Policy][5].**
 
-# version [1.1.5][6]
+# version [1.1.6][6]
 
 ## Introduction:
 
@@ -259,7 +259,16 @@ Although this functionality is only needed for gDriveOOo, it is implemented glob
 - The extension will ask you to install the OAuth2OOo and jdbcDriverOOo extensions in versions 1.3.8 and 1.4.6 respectively minimum.
 - Modification of the extension options accessible via: **Tools -> Options... -> Internet -> gDriveOOo** in order to comply with the new graphic charter.
 
-### What remains to be done for version 1.1.5:
+### What has been done for version 1.1.6:
+
+- In order to meet the request of [issue #16][58], the management of the **Shared with me** folder has been implemented.
+- Preparation of the extension to the use of a more restricted scope of rights and not requiring the [Casa tier 2 certification][59] which is now chargeable. Thanks Google...
+- Remote modifications of the contents of the files are taken into account by the replicator.
+- If necessary, it is possible to request an initial synchronization in the extension options. It is also possible to request the download of all files already viewed that have a local copy.
+- The replicator provides more comprehensive logging.
+- Many fixes.
+
+### What remains to be done for version 1.1.6:
 
 - Add new language for internationalization...
 
@@ -270,7 +279,7 @@ Although this functionality is only needed for gDriveOOo, it is implemented glob
 [3]: <https://prrvchr.github.io/gDriveOOo/README_fr>
 [4]: <https://prrvchr.github.io/gDriveOOo/source/gDriveOOo/registration/TermsOfUse_en>
 [5]: <https://prrvchr.github.io/gDriveOOo/source/gDriveOOo/registration/PrivacyPolicy_en>
-[6]: <https://prrvchr.github.io/gDriveOOo#what-has-been-done-for-version-115>
+[6]: <https://prrvchr.github.io/gDriveOOo#what-has-been-done-for-version-116>
 [7]: <https://prrvchr.github.io/>
 [8]: <https://www.libreoffice.org/download/download/>
 [9]: <https://www.openoffice.org/download/index.html>
@@ -291,7 +300,7 @@ Although this functionality is only needed for gDriveOOo, it is implemented glob
 [24]: <https://img.shields.io/github/v/tag/prrvchr/jdbcDriverOOo?label=latest#right>
 [25]: <img/gDriveOOo.svg#middle>
 [26]: <https://github.com/prrvchr/gDriveOOo/releases/latest/download/gDriveOOo.oxt>
-[27]: <https://img.shields.io/github/downloads/prrvchr/gDriveOOo/latest/total?label=v1.1.5#right>
+[27]: <https://img.shields.io/github/downloads/prrvchr/gDriveOOo/latest/total?label=v1.1.6#right>
 [28]: <https://bz.apache.org/ooo/show_bug.cgi?id=128569>
 [29]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/replicator.py>
 [30]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/database.py>
@@ -322,3 +331,5 @@ Although this functionality is only needed for gDriveOOo, it is implemented glob
 [55]: <https://pypi.org/project/packaging/>
 [56]: <https://pypi.org/project/setuptools/>
 [57]: <https://github.com/prrvchr/gDriveOOo/security/dependabot/1>
+[58]: <https://github.com/prrvchr/gDriveOOo/issues/16>
+[59]: <https://github.com/prrvchr/OAuth2OOo/blob/master/LOV_OAuth2OOo.pdf>

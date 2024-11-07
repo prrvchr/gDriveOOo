@@ -4,7 +4,7 @@
 """
 ╔════════════════════════════════════════════════════════════════════════════════════╗
 ║                                                                                    ║
-║   Copyright (c) 2020 https://prrvchr.github.io                                     ║
+║   Copyright (c) 2020-24 https://prrvchr.github.io                                  ║
 ║                                                                                    ║
 ║   Permission is hereby granted, free of charge, to any person obtaining            ║
 ║   a copy of this software and associated documentation files (the "Software"),     ║
@@ -31,22 +31,27 @@ import traceback
 
 
 class OptionsView():
-    def __init__(self, window, exist, resumable):
+    def __init__(self, window, exist, hasfile, resumable):
         self._window = window
         if exist:
             self._disableShare()
+        self._getResetSync().Model.Enabled = exist
+        self._getResetFile().Model.Enabled = exist
         self._getDatasource().Model.Enabled = exist
+        self._getFile().Model.Enabled = hasfile
         self._getUpload().Model.Enabled = resumable
 
 # OptionsView getter methods
     def getViewData(self):
+        reset = self._getResetSync().State
+        reset += self._getResetFile().State
         share = bool(self._getShare().State)
         name = self._getShareName().Text
         index = self._getOptionIndex()
         timeout = int(self._getTimeout().Value)
         download = self._getSetting(0)
         upload = self._getSetting(1)
-        return share, name, index, timeout, download, upload
+        return reset, share, name, index, timeout, download, upload
 
     def getChunk(self, index):
         return int(self._getChunk(index).Value)
@@ -58,9 +63,13 @@ class OptionsView():
         # XXX: because it was lost (ie: after setting the new step everything is visible).
         self.setRestart(restart)
 
-    def setViewData(self, support, share, name, index, timeout, download, upload, restart):
+    def setViewData(self, exist, reset, support, share, name, index, timeout, download, upload, restart):
+        self._getResetSync().State = int(reset != 0)
+        self._getResetFile().State = int(reset == 2)
+        self.enableResetFile(reset != 0)
         if support:
             self._getShare().State = int(share)
+            self._getShare().Model.Enabled = True
             self._getShareName().Text = name
             self.enableShare(share)
         else:
@@ -69,7 +78,7 @@ class OptionsView():
             self._getShareName().Text = name
             self.enableShare(False)
         self._getOption(index).State = 1
-        self.enableSync(index != 3, restart)
+        self.enableSync(index != 3, restart, exist)
         self._getTimeout().Value = timeout
         self._setSetting(download, 0)
         self._setSetting(upload, 1)
@@ -78,10 +87,16 @@ class OptionsView():
     def enableShare(self, enabled):
         self._getShareName().Model.Enabled = enabled
 
-    def enableSync(self, enabled, restart):
+    def enableSync(self, enabled, restart, exist):
+        self._getResetSync().Model.Enabled = enabled and exist
         self._getTimeoutLabel().Model.Enabled = enabled
         self._getTimeout().Model.Enabled = enabled
         self._enableUpload(enabled, restart)
+
+    def enableResetFile(self, enabled):
+        self._getResetFile().Model.Enabled = enabled
+        if not enabled:
+            self._getResetFile().State = 0
 
     def setRestart(self, enabled):
         self._getRestart().setVisible(enabled)
@@ -124,8 +139,14 @@ class OptionsView():
         control.Model.Enabled = enabled
 
 # OptionsView private control methods
-    def _getShare(self):
+    def _getResetSync(self):
         return self._window.getControl('CheckBox1')
+
+    def _getResetFile(self):
+        return self._window.getControl('CheckBox2')
+
+    def _getShare(self):
+        return self._window.getControl('CheckBox3')
 
     def _getShareName(self):
         return self._window.getControl('TextField1')
@@ -142,12 +163,15 @@ class OptionsView():
     def _getDatasource(self):
         return self._window.getControl('CommandButton1')
 
+    def _getFile(self):
+        return self._window.getControl('CommandButton2')
+
     def _getSpinUp(self, index):
-        index += 2
+        index += 3
         return self._window.getControl('CommandButton%s' % index)
 
     def _getSpinDown(self, index):
-        index += 4
+        index += 5
         return self._window.getControl('CommandButton%s' % index)
 
     def _getDownload(self):

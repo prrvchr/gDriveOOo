@@ -4,7 +4,7 @@
 """
 ╔════════════════════════════════════════════════════════════════════════════════════╗
 ║                                                                                    ║
-║   Copyright (c) 2020 https://prrvchr.github.io                                     ║
+║   Copyright (c) 2020-24 https://prrvchr.github.io                                  ║
 ║                                                                                    ║
 ║   Permission is hereby granted, free of charge, to any person obtaining            ║
 ║   a copy of this software and associated documentation files (the "Software"),     ║
@@ -35,6 +35,7 @@ from .optionsview import OptionsView
 
 from ..unotool import executeDispatch
 from ..unotool import getDesktop
+from ..unotool import getFilePicker
 
 from ..logger import getLogger
 from ..logger import LogManager
@@ -54,33 +55,42 @@ class OptionsManager():
         self._logmanager = LogManager(ctx, window, 'requirements.txt', g_defaultlog, g_synclog)
         self._view = OptionsView(window, *self._model.getInitData())
         self._view.setViewData(*self._model.getViewData(OptionsManager._restart))
-        self._logger.logprb(INFO, 'OptionsManager', '__init__()', 151)
+        self._logger.logprb(INFO, 'OptionsManager', '__init__', 151)
 
     _restart = False
 
     def loadSetting(self):
         self._view.setViewData(*self._model.getViewData(OptionsManager._restart))
         self._logmanager.loadSetting()
-        self._logger.logprb(INFO, 'OptionsManager', 'loadSetting()', 161)
+        self._logger.logprb(INFO, 'OptionsManager', 'loadSetting', 161)
 
     def saveSetting(self):
-        share, name, index, timeout, download, upload = self._view.getViewData()
-        option = self._model.setViewData(share, name, index, timeout, download, upload)
+        reset, share, name, index, timeout, download, upload = self._view.getViewData()
+        option = self._model.setViewData(reset, share, name, index, timeout, download, upload)
         changed = self._logmanager.saveSetting()
         if changed:
             OptionsManager._restart = True
             self._view.setRestart(True)
-        self._logger.logprb(INFO, 'OptionsManager', 'saveSetting()', 171, option, changed)
+        self._logger.logprb(INFO, 'OptionsManager', 'saveSetting', 171, option, changed)
 
     def enableShare(self, enabled):
         self._view.enableShare(enabled)
 
     def enableSync(self, enabled):
-        self._view.enableSync(enabled, OptionsManager._restart)
+        self._view.enableSync(enabled, OptionsManager._restart, self._model.hasDataBase())
+
+    def setReset(self, enabled):
+        self._view.enableResetFile(enabled)
 
     def viewData(self):
         url = self._model.getDatasourceUrl()
         getDesktop(self._ctx).loadComponentFromURL(url, '_default', 0, ())
+
+    def viewFile(self):
+        fp = getFilePicker(self._ctx)
+        fp.setDisplayDirectory(self._model.getFileUrl())
+        fp.execute()
+        fp.dispose()
 
     def download(self):
         self._view.setStep(1, OptionsManager._restart)

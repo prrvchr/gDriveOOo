@@ -4,7 +4,7 @@
 """
 ╔════════════════════════════════════════════════════════════════════════════════════╗
 ║                                                                                    ║
-║   Copyright (c) 2020 https://prrvchr.github.io                                     ║
+║   Copyright (c) 2020-24 https://prrvchr.github.io                                  ║
 ║                                                                                    ║
 ║   Permission is hereby granted, free of charge, to any person obtaining            ║
 ║   a copy of this software and associated documentation files (the "Software"),     ║
@@ -79,8 +79,14 @@ class OptionsHandler(unohelper.Base,
             elif method == 'DisableSync':
                 self._manager.enableSync(False)
                 handled = True
+            elif method == 'Reset':
+                self._manager.setReset(bool(event.Source.State))
+                handled = True
             elif method == 'ViewData':
                 self._manager.viewData()
+                handled = True
+            elif method == 'ViewFile':
+                self._manager.viewFile()
                 handled = True
             elif method == 'Download':
                 self._manager.download()
@@ -103,14 +109,16 @@ class OptionsHandler(unohelper.Base,
             return handled
         except Exception as e:
             print("OptionsHandler.callHandlerMethod() Error: %s - %s" % (e, traceback.format_exc()))
-            getLogger(self._ctx, g_defaultlog).logprb(SEVERE, 'OptionsHandler', 'callHandlerMethod()', 141, e, traceback.format_exc())
+            getLogger(self._ctx, g_defaultlog).logprb(SEVERE, 'OptionsHandler', 'callHandlerMethod', 141, e, traceback.format_exc())
 
     def getSupportedMethodNames(self):
         return ('external_event',
                 'EnableShare',
                 'EnableSync',
                 'DisableSync',
+                'Reset'
                 'ViewData',
+                'ViewFile',
                 'Download',
                 'Upload',
                 'SpinUp1',
