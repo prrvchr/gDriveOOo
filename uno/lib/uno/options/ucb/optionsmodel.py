@@ -48,12 +48,12 @@ import traceback
 class OptionsModel():
     def __init__(self, ctx):
         self._config = getConfiguration(ctx, g_identifier, True)
-        self._url = getResourceLocation(ctx, g_identifier)
+        folder = g_folder + g_ucbseparator + g_scheme
+        location = getResourceLocation(ctx, g_identifier, folder)
+        self._url = location + '.odb'
+        self._exist = getSimpleFile(ctx).exists(self._url)
         self._policies = {'SERVER_IS_MASTER': 1, 'CLIENT_IS_MASTER': 2, 'NONE_IS_MASTER': 3}
         self._factors = {'Timeout': 60, 'Chunk': 1024}
-        sf = getSimpleFile(ctx)
-        self._hasdatabase = sf.exists(self.getDatasourceUrl())
-        self._hasfile = sf.exists(self.getFileUrl())
 
     @property
     def _ResetSync(self):
@@ -87,23 +87,18 @@ class OptionsModel():
 # OptionsModel getter methods
     def getInitData(self):
         resumable = self._config.getByName('ResumableUpload')
-        return self._hasdatabase, self._hasfile, resumable
+        return self._exist, resumable
 
     def hasDataBase(self):
-        return self._hasdatabase
+        return self._exist
 
     def getViewData(self, restart):
-        return (self._hasdatabase, self._ResetSync, self._SupportShare,
+        return (self._exist, self._ResetSync, self._SupportShare,
                 self._IsShared, self._ShareName, self._Policy,
                 self._Timeout, self._Download, self._Upload, restart)
 
     def getDatasourceUrl(self):
-        folder = g_ucbseparator + g_folder + g_ucbseparator + g_scheme
-        return self._url + folder + '.odb'
-
-    def getFileUrl(self):
-        folder = g_ucbseparator + g_scheme
-        return self._url + folder
+        return self._url
 
 # OptionsModel setter methods
     def setViewData(self, reset, share, name, index, timeout, download, upload):

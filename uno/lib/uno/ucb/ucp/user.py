@@ -74,7 +74,7 @@ import traceback
 
 class User():
     def __init__(self, ctx, source, logger, database, provider, sync, name, password=''):
-        mtd = '__init__'
+        method = '__init__()'
         self._ctx = ctx
         self._name = name
         self._sync = sync
@@ -91,25 +91,25 @@ class User():
             if request is None:
                 # If we have a Null value here then it means that the user has abandoned
                 # the OAuth2 Wizard, there is nothing more to do except throw an exception
-                msg = self._getExceptionMessage(mtd, 501, name)
+                msg = self._getExceptionMessage(method, 501, name)
                 raise IllegalIdentifierException(msg, source)
         else:
             if not self.Provider.isOnLine():
-                msg = self._getExceptionMessage(mtd, 503, name)
+                msg = self._getExceptionMessage(method, 503, name)
                 raise IllegalIdentifierException(msg, source)
             request = getRequest(ctx, self.Provider.Scheme, name)
             if request is None:
                 # If we have a Null value here then it means that the user has abandoned
                 # the OAuth2 Wizard, there is nothing more to do except throw an exception
-                msg = self._getExceptionMessage(mtd, 501, g_oauth2)
+                msg = self._getExceptionMessage(method, 501, g_oauth2)
                 raise IllegalIdentifierException(msg, source)
-            user = self.Provider.getUser(source, request, name)
-            metadata = database.insertUser(user)
+            user, root = self.Provider.getUser(source, request, name)
+            metadata = database.insertUser(user, root)
             if metadata is None:
-                msg = self._getExceptionMessage(mtd, 505, name)
+                msg = self._getExceptionMessage(method, 505, name)
                 raise IllegalIdentifierException(msg, source)
             if not database.createUser(name, password):
-                msg = self._getExceptionMessage(mtd, 507, name)
+                msg = self._getExceptionMessage(method, 507, name)
                 raise IllegalIdentifierException(msg, source)
         self._paths = {}
         self._contents = {}
@@ -121,7 +121,7 @@ class User():
             # Start Replicator for pushing changes…
             self._lock = Event()
             self._sync.set()
-        self._logger.logprb(INFO, 'User', mtd, 509)
+        self._logger.logprb(INFO, 'User', method, 509)
 
     @property
     def Name(self):
@@ -132,9 +132,6 @@ class User():
     @property
     def RootId(self):
         return self._metadata.get('RootId')
-    @property
-    def ShareId(self):
-        return self._metadata.get('ShareId')
     @property
     def Token(self):
         return self._metadata.get('Token')
@@ -157,7 +154,6 @@ class User():
     @TimeStamp.setter
     def TimeStamp(self, timestamp):
         self._metadata['TimeStamp'] = timestamp
-        self.DataBase.updateTimeStamp(self.Id, timestamp)
 
     # method called from DataSource
     def dispose(self):
