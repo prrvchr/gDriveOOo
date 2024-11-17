@@ -116,7 +116,7 @@ class OptionsHandler(unohelper.Base,
                 'EnableShare',
                 'EnableSync',
                 'DisableSync',
-                'Reset'
+                'Reset',
                 'ViewData',
                 'ViewFile',
                 'Download',
