@@ -58,8 +58,6 @@ g_doc_map = {'application/vnd.google-apps.document':     'application/vnd.oasis.
              'application/vnd.google-apps.presentation': 'application/vnd.oasis.opendocument.presentation',
              'application/vnd.google-apps.drawing':      'application/vnd.oasis.opendocument.graphics'}
 
-g_cache = 20
-
 # Resource strings files folder
 g_resource = 'resource'
 # Logging required global variable
