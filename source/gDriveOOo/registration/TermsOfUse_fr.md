@@ -1,11 +1,11 @@
-# Conditions d'utilisation
+# Conditions d'Utilisation
 
-**This [document][1] in English.**
+**This [document][1] in english.**
 
-**L’utilisation de ce logiciel vous soumet également à nos [Règles de Confidentialité][2]**.
+**L'utilisation de ce logiciel vous soumet également à notre [Politique de Protection des Données][2].**
 
 Concernant l'installation, la configuration et l'utilisation,
-veuillez consulter la **[documentation][3]**.
+veuillez consulter la **[Documentation][3]**.
 
 ## Introduction:
 

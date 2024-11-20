@@ -4,7 +4,7 @@
 
 **Use of this software also subjects you to our [Terms Of Use][2].**
 
-Regarding installation, configuration and use, please consult the **[documentation][3]**.
+Regarding installation, configuration and use, please consult the **[Documentation][3]**.
 
 ## Introduction:
 
@@ -57,14 +57,16 @@ ___
 - [https://www.googleapis.com/auth/drive.appdata][8]
 - [https://www.googleapis.com/auth/drive.appfolder][8]
 
-`Supplier` is solely responsible for the nature and scope of the rights over the data it collects, as described in its Data Protection Policy.
+Use of the `Supplier` services through `OAuth2OOo` and/or `gDriveOOo`, may submit you to the Data Protection Policy of `Supplier`. It is the responsibility of the `User` to take knowledge of these Policy from the `Supplier` website.
+
+`Supplier` is solely responsible for the nature and scope of the rights over the data it collects, as described in its Policy.
 
 ___
 ## Security of collected data:
 
 Since the data collected by `OAuth2OOo` and/or `gDriveOOo` is located on the `Computer`, **only the** `User` **is responsible for the security of the data collected**.
 
-Use of the `Supplier` services through `OAuth2OOo` and/or `gDriveOOo` may subject you to the data protection Policy of `Supplier`. It is the responsibility of the `User` to take knowledge of these Policy from the `Supplier` website.
+Use of the `Supplier` services through `OAuth2OOo` and/or `gDriveOOo` may subject you to the Data Protection Policy of `Supplier`. It is the responsibility of the `User` to take knowledge of these Policy from the `Supplier` website.
 
 `Supplier` is solely responsible for the security of the data it collects as described in its Policy.
 
@@ -77,7 +79,7 @@ Updating the data collected locally is done each time `OAuth2OOo` and/or `gDrive
 
 It is the responsibility of the `User` to uninstall `OAuth2OOo` and/or `gDriveOOo` in order to delete the collected data.
 
-Use of the `Supplier` services through `OAuth2OOo` and/or `gDriveOOo` may subject you to the data protection Policy of `Supplier`. It is the responsibility of the `User` to take knowledge of these Policy from the `Supplier` website.
+Use of the `Supplier` services through `OAuth2OOo` and/or `gDriveOOo` may subject you to the Data Protection Policy of `Supplier`. It is the responsibility of the `User` to take knowledge of these Policy from the `Supplier` website.
 
 `Supplier` is solely responsible for the expiration of the data it collects as described in its Policy.
 

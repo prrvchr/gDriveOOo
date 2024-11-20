@@ -25,9 +25,9 @@
 -->
 # Documentation
 
-**This [document][3] in English.**
+**This [document][3] in english.**
 
-**L'utilisation de ce logiciel vous soumet à nos [Conditions d'utilisation][4] et à notre [Politique de protection des données][5].**
+**L'utilisation de ce logiciel vous soumet à nos [Conditions d'Utilisation][4] et à notre [Politique de Protection des Données][5].**
 
 # version [1.1.6][6]
 
