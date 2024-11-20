@@ -48,7 +48,16 @@ Use of the `Supplier` services through `OAuth2OOo` and/or `gDriveOOo`, may submi
 ___
 ## Nature and scope rights over your data:
 
-`gDriveOOo` allows you to get a copy of your Google Drive files on your `Computer`. Consequently, `gDriveOOo` claims through `OAuth2OOo` the right to **consult, modify and delete your Google Drive files**.
+`gDriveOOo` allows you to get a copy of your Google Drive files on your `Computer`. Consequently, `gDriveOOo` claims through `OAuth2OOo` the right to **consult, modify and delete your Google Drive files**
+
+**The exact scope of the rights claimed over your data are:**
+- [https://www.googleapis.com/auth/drive.apps.readonly][8]
+- [https://www.googleapis.com/auth/drive.install][8]
+- [https://www.googleapis.com/auth/drive.file][8]
+- [https://www.googleapis.com/auth/drive.appdata][8]
+- [https://www.googleapis.com/auth/drive.appfolder][8]
+
+`Supplier` is solely responsible for the nature and scope of the rights over the data it collects, as described in its Data Protection Policy.
 
 ___
 ## Security of collected data:
@@ -79,3 +88,4 @@ Use of the `Supplier` services through `OAuth2OOo` and/or `gDriveOOo` may subjec
 [5]: <https://github.com/prrvchr/gDriveOOo/releases/latest/download/gDriveOOo.oxt>
 [6]: <https://prrvchr.github.io/OAuth2OOo/source/OAuth2OOo/registration/PrivacyPolicy_en>
 [7]: <https://developers.google.com/terms/api-services-user-data-policy?hl=en>
+[8]: <https://developers.google.com/identity/protocols/oauth2/scopes#drive>

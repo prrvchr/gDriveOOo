@@ -50,6 +50,15 @@ ___
 
 `gDriveOOo` vous permet d'obtenir une copie de vos fichiers Google Drive sur votre `Ordinateur`. En conséquence, `gDriveOOo` revendique au travers de `OAuth2OOo` le droit de **consulter, modifier et supprimer vos fichiers Google Drive**.
 
+**L'étendue exacte des droits revendiqués sur vos données est la suivante:**
+- [https://www.googleapis.com/auth/drive.apps.readonly][8]
+- [https://www.googleapis.com/auth/drive.install][8]
+- [https://www.googleapis.com/auth/drive.file][8]
+- [https://www.googleapis.com/auth/drive.appdata][8]
+- [https://www.googleapis.com/auth/drive.appfolder][8]
+
+Le `Fournisseur` est seul responsable de la nature et de l’étendue des droits sur les données qu’il collecte, comme décrit dans sa Politique de Protection des Données.
+
 ___
 ## Sécurité des données collectées:
 
@@ -79,3 +88,4 @@ Le `Fournisseur` est seul responsable de l'expiration des données qu'il collect
 [5]: <https://github.com/prrvchr/gDriveOOo/releases/latest/download/gDriveOOo.oxt>
 [6]: <https://prrvchr.github.io/OAuth2OOo/source/OAuth2OOo/registration/PrivacyPolicy_fr>
 [7]: <https://developers.google.com/terms/api-services-user-data-policy?hl=fr>
+[8]: <https://developers.google.com/identity/protocols/oauth2/scopes#drive>
