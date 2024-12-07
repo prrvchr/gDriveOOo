@@ -179,10 +179,9 @@ def hasService(ctx, name):
 
 def getComponentTypes(component):
     try:
-        types = component.getTypes()
+        return component.getTypes()
     except:
-        types = ()
-    return types
+        return ()
 
 def getInterfaceTypes(component):
     return getComponentTypes(component)
