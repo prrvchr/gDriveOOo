@@ -42,7 +42,7 @@
         <value>Google</value>
       </prop>
       <prop oor:name="Values">
-        <value>https://www.googleapis.com/auth/drive.apps.readonly https://www.googleapis.com/auth/drive.install https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/drive.appfolder</value>
+        <value>https://www.googleapis.com/auth/drive.apps.readonly https://www.googleapis.com/auth/drive.install https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appdata</value>
       </prop>
     </node>
   </node>

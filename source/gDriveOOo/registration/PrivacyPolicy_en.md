@@ -55,7 +55,6 @@ ___
 - [https://www.googleapis.com/auth/drive.install][8]
 - [https://www.googleapis.com/auth/drive.file][8]
 - [https://www.googleapis.com/auth/drive.appdata][8]
-- [https://www.googleapis.com/auth/drive.appfolder][8]
 
 Use of the `Supplier` services through `OAuth2OOo` and/or `gDriveOOo`, may submit you to the Data Protection Policy of `Supplier`. It is the responsibility of the `User` to take knowledge of these Policy from the `Supplier` website.
 
