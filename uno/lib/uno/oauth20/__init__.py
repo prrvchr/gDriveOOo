@@ -27,28 +27,26 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-from ..unotool import createService
-from ..unotool import getExtensionVersion
+from .oauth2lib import CustomParser
+from .oauth2lib import InteractionRequest
+from .oauth2lib import NoOAuth2
+from .oauth2lib import OAuth2OOo
 
+from .oauth2tool import getOAuth2
+from .oauth2tool import getOAuth2Version
+from .oauth2tool import getParserItems
+from .oauth2tool import getRequest
+from .oauth2tool import getResponseResults
+from .oauth2tool import setItemsIdentifier
+from .oauth2tool import setParametersArguments
+from .oauth2tool import setResquestParameter
+
+from .oauth2core import getOAuth2UserName
+from .oauth2core import getOAuth2Token
+
+from .configuration import g_extension
 from .configuration import g_identifier
 from .configuration import g_service
-
-
-def getOAuth2(ctx, url='', name=''):
-    if url and name:
-        oauth2 = createService(ctx, g_service, url, name)
-    else:
-        oauth2 = createService(ctx, g_service)
-    return oauth2
-
-def getOAuth2Version(ctx):
-    version = getExtensionVersion(ctx, g_identifier)
-    return version
-
-def getRequest(ctx, url=None, name=None):
-    if url and name:
-        request = createService(ctx, g_service, url, name)
-    else:
-        request = createService(ctx, g_service)
-    return request
+from .configuration import g_token
+from .configuration import g_version
 
