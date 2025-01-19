@@ -29,7 +29,7 @@
 
 **The use of this software subjects you to our [Terms Of Use][4] and [Data Protection Policy][5].**
 
-# version [1.1.6][6]
+# version [1.2.0][6]
 
 ## Introduction:
 
@@ -269,7 +269,14 @@ Although this functionality is only needed for gDriveOOo, it is implemented glob
 - Shared folders are now recognizable by their icon.
 - Many fixes.
 
-### What remains to be done for version 1.1.6:
+### What has been done for version 1.2.0:
+
+- The extension will ask you to install the OAuth2OOo and jdbcDriverOOo extensions in versions 1.4.0 and 1.4.6 respectively minimum.
+- It is possible to build the extension archive (ie: the oxt file) with the [Apache Ant][60] utility and the [build.xml][61] script file.
+- The extension will refuse to install under OpenOffice regardless of version or LibreOffice other than 7.x or higher.
+- Added binaries needed for Python libraries to work on Linux and LibreOffice 24.8 (ie: Python 3.9).
+
+### What remains to be done for version 1.2.0:
 
 - Add new language for internationalization...
 
@@ -280,7 +287,7 @@ Although this functionality is only needed for gDriveOOo, it is implemented glob
 [3]: <https://prrvchr.github.io/gDriveOOo/README_fr>
 [4]: <https://prrvchr.github.io/gDriveOOo/source/gDriveOOo/registration/TermsOfUse_en>
 [5]: <https://prrvchr.github.io/gDriveOOo/source/gDriveOOo/registration/PrivacyPolicy_en>
-[6]: <https://prrvchr.github.io/gDriveOOo#what-has-been-done-for-version-116>
+[6]: <https://prrvchr.github.io/gDriveOOo#what-has-been-done-for-version-120>
 [7]: <https://prrvchr.github.io/>
 [8]: <https://www.libreoffice.org/download/download/>
 [9]: <https://www.openoffice.org/download/index.html>
@@ -301,7 +308,7 @@ Although this functionality is only needed for gDriveOOo, it is implemented glob
 [24]: <https://img.shields.io/github/v/tag/prrvchr/jdbcDriverOOo?label=latest#right>
 [25]: <img/gDriveOOo.svg#middle>
 [26]: <https://github.com/prrvchr/gDriveOOo/releases/latest/download/gDriveOOo.oxt>
-[27]: <https://img.shields.io/github/downloads/prrvchr/gDriveOOo/latest/total?label=v1.1.6#right>
+[27]: <https://img.shields.io/github/downloads/prrvchr/gDriveOOo/latest/total?label=v1.2.0#right>
 [28]: <https://bz.apache.org/ooo/show_bug.cgi?id=128569>
 [29]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/replicator.py>
 [30]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/database.py>
@@ -334,3 +341,5 @@ Although this functionality is only needed for gDriveOOo, it is implemented glob
 [57]: <https://github.com/prrvchr/gDriveOOo/security/dependabot/1>
 [58]: <https://github.com/prrvchr/gDriveOOo/issues/16>
 [59]: <https://github.com/prrvchr/OAuth2OOo/blob/master/LOV_OAuth2OOo.pdf>
+[60]: <https://ant.apache.org/>
+[61]: <https://github.com/prrvchr/gDriveOOo/blob/master/source/gDriveOOo/build.xml>
