@@ -275,6 +275,7 @@ Although this functionality is only needed for gDriveOOo, it is implemented glob
 - It is possible to build the extension archive (ie: the oxt file) with the [Apache Ant][60] utility and the [build.xml][61] script file.
 - The extension will refuse to install under OpenOffice regardless of version or LibreOffice other than 7.x or higher.
 - Added binaries needed for Python libraries to work on Linux and LibreOffice 24.8 (ie: Python 3.9).
+- The ability to not specify the user's account name in the URL is working again.
 
 ### What remains to be done for version 1.2.0:
 
