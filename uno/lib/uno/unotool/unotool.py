@@ -4,7 +4,7 @@
 """
 ╔════════════════════════════════════════════════════════════════════════════════════╗
 ║                                                                                    ║
-║   Copyright (c) 2020-24 https://prrvchr.github.io                                  ║
+║   Copyright (c) 2020-25 https://prrvchr.github.io                                  ║
 ║                                                                                    ║
 ║   Permission is hereby granted, free of charge, to any person obtaining            ║
 ║   a copy of this software and associated documentation files (the "Software"),     ║
@@ -153,6 +153,10 @@ def getFileSequence(ctx, url, default=None):
         sequence = getStreamSequence(fs.openFileRead(path))
     return len(sequence), sequence
 
+def getPathSubstitution(ctx, path):
+     pathsubstitution = createService(ctx, 'com.sun.star.util.PathSubstitution')
+     return pathsubstitution.substituteVariables(path, True)
+
 def getStreamSequence(stream, chunk=64*1024):
     close = False
     sequence = uno.ByteSequence(b'')
@@ -204,6 +208,16 @@ def getExtensionVersion(ctx, extension):
         if name == extension:
             return version
     return None
+
+def getLibreOfficeInfo(ctx):
+    config = getConfiguration(ctx, '/org.openoffice.Setup/Product')
+    name = config.getByName('ooName')
+    version = config.getByName('ooSetupVersion')
+    return name, version
+
+def getLibreOfficeVersion(ctx):
+    version = getConfiguration(ctx, '/org.openoffice.Setup/Product').getByName('ooSetupVersion')
+    return version
 
 def getResourceLocation(ctx, identifier, path=None):
     service = '/singletons/com.sun.star.deployment.PackageInformationProvider'

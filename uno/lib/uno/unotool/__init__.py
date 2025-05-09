@@ -4,7 +4,7 @@
 """
 ╔════════════════════════════════════════════════════════════════════════════════════╗
 ║                                                                                    ║
-║   Copyright (c) 2020-24 https://prrvchr.github.io                                  ║
+║   Copyright (c) 2020-25 https://prrvchr.github.io                                  ║
 ║                                                                                    ║
 ║   Permission is hereby granted, free of charge, to any person obtaining            ║
 ║   a copy of this software and associated documentation files (the "Software"),     ║
@@ -52,11 +52,14 @@ from .unotool import getFileSequence
 from .unotool import getFileUrl
 from .unotool import getInteractionHandler
 from .unotool import getInterfaceTypes
+from .unotool import getLibreOfficeInfo
+from .unotool import getLibreOfficeVersion
 from .unotool import getMimeTypeFactory
 from .unotool import getNamedValue
 from .unotool import getNamedValueSet
 from .unotool import getParentWindow
 from .unotool import getPathSettings
+from .unotool import getPathSubstitution
 from .unotool import getProperty
 from .unotool import getPropertyValue
 from .unotool import getPropertyValueSet
