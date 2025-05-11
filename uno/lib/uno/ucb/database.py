@@ -4,7 +4,7 @@
 """
 ╔════════════════════════════════════════════════════════════════════════════════════╗
 ║                                                                                    ║
-║   Copyright (c) 2020-24 https://prrvchr.github.io                                  ║
+║   Copyright (c) 2020-25 https://prrvchr.github.io                                  ║
 ║                                                                                    ║
 ║   Permission is hereby granted, free of charge, to any person obtaining            ║
 ║   a copy of this software and associated documentation files (the "Software"),     ║
@@ -36,7 +36,7 @@ from com.sun.star.sdb.CommandType import QUERY
 
 from com.sun.star.sdbc.DataType import VARCHAR
 
-from io.github.prrvchr.css.util import DateTimeWithTimezone
+from com.sun.star.util import DateTimeWithTimezone
 
 from .dbtool import Array
 

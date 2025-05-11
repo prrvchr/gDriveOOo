@@ -64,6 +64,9 @@ def getConnectionMode(ctx, host, port=80):
 def getDesktop(ctx):
     return createService(ctx, 'com.sun.star.frame.Desktop')
 
+def getDispatcher(ctx):
+    return createService(ctx, 'com.sun.star.frame.DispatchHelper')
+
 def getSimpleFile(ctx):
     return createService(ctx, 'com.sun.star.ucb.SimpleFileAccess')
 

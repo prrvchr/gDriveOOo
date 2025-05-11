@@ -1,7 +1,5 @@
-#!
-# -*- coding: utf-8 -*-
-
-"""
+<?xml version='1.0' encoding='UTF-8'?>
+<!--
 ╔════════════════════════════════════════════════════════════════════════════════════╗
 ║                                                                                    ║
 ║   Copyright (c) 2020-25 https://prrvchr.github.io                                  ║
@@ -25,29 +23,18 @@
 ║   OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                    ║
 ║                                                                                    ║
 ╚════════════════════════════════════════════════════════════════════════════════════╝
-"""
-
-import unohelper
-
-from com.sun.star.ucb import XContentEventListener
-
-import traceback
-
-
-class ContentListener(unohelper.Base,
-                      XContentEventListener):
-    def __init__(self, user):
-        self._user = user
-
-    # XContentEventListener
-    def contentEvent(self, event):
-        try:
-            print("ContentListener.contentEvent()")
-            self._user.updateIdentifier(event)
-        except Exception as e:
-            msg = "Error: %s" % traceback.print_exc()
-            print(msg)
-
-    def disposing(self, event):
-        pass
-
+-->
+<oor:component-data
+  xmlns:oor="http://openoffice.org/2001/registry"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  oor:package="org.openoffice.Office"
+  oor:name="ProtocolHandler">
+    <node oor:name="HandlerSet">
+        <node oor:name="io.github.prrvchr.gDriveOOo.UCBDispatcher" oor:op="replace">
+            <prop oor:name="Protocols">
+                <value>gdrive:*</value>
+            </prop>
+        </node>
+    </node>
+</oor:component-data>

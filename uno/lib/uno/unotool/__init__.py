@@ -42,6 +42,7 @@ from .unotool import getCurrentLocale
 from .unotool import getDateTime
 from .unotool import getDefaultPropertyValueSet
 from .unotool import getDesktop
+from .unotool import getDispatcher
 from .unotool import getDialog
 from .unotool import getDialogUrl
 from .unotool import getDocument

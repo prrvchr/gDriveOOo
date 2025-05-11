@@ -111,6 +111,17 @@ After authorizing the [OAuth2OOo][18] application to access your Drive files, yo
 
 ___
 
+## How to customize LibreOffice menus:
+
+In order to be able to keep using system dialog windows for opening and saving files in LibreOffice, it is now possible to create custom menus for the commands: **Open Remote** and **Save Remote**.
+
+In the **Menu** tab of the **Tools -> Customize** window, select **Macros** in **Category** to access the two macros: `OpenRemote` and `SaveRemote` under: **My Macros -> gDriveOOo**.  
+You will first need to add the `OpenRemote` macro to one of the menus with the **Scope** set to **LibreOffice**, then you will need to open the applications (Writer, Calc, Draw...) possibly using a new document, and add the `OpenRemote` and `SaveRemote` macros with the **Scope** set to the application you want to add the menus to.
+
+This only needs to be done once for LibreOffice and each application, and unfortunately I haven't found anything simpler yet.
+
+___
+
 ## Has been tested with:
 
 * LibreOffice 7.3.7.2 - Lubuntu 22.04 - Python version 3.10.12

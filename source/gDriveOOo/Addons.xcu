@@ -1,7 +1,5 @@
-#!
-# -*- coding: utf-8 -*-
-
-"""
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
 ╔════════════════════════════════════════════════════════════════════════════════════╗
 ║                                                                                    ║
 ║   Copyright (c) 2020-25 https://prrvchr.github.io                                  ║
@@ -25,29 +23,44 @@
 ║   OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                    ║
 ║                                                                                    ║
 ╚════════════════════════════════════════════════════════════════════════════════════╝
-"""
-
-import unohelper
-
-from com.sun.star.ucb import XContentEventListener
-
-import traceback
-
-
-class ContentListener(unohelper.Base,
-                      XContentEventListener):
-    def __init__(self, user):
-        self._user = user
-
-    # XContentEventListener
-    def contentEvent(self, event):
-        try:
-            print("ContentListener.contentEvent()")
-            self._user.updateIdentifier(event)
-        except Exception as e:
-            msg = "Error: %s" % traceback.print_exc()
-            print(msg)
-
-    def disposing(self, event):
-        pass
-
+-->
+<oor:component-data
+  xmlns:oor="http://openoffice.org/2001/registry"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  oor:package="org.openoffice.Office"
+  oor:name="Addons">
+  <node oor:name="AddonUI">
+    <node oor:name="AddonMenu">
+      <node oor:name="io.github.prrvchr.gDriveOOo.Open" oor:op="replace">
+        <prop oor:name="Title" oor:type="xs:string">
+          <value xml:lang="en">Open gDrive</value>
+          <value xml:lang="fr">Ouvrir gDrive</value>
+        </prop>
+        <prop oor:name="Context" oor:type="xs:string">
+          <value></value>
+        </prop>
+        <prop oor:name="Target" oor:type="xs:string">
+          <value>_self</value>
+        </prop>
+        <prop oor:name="URL" oor:type="xs:string">
+          <value>gdrive:Open</value>
+        </prop>
+      </node>
+      <node oor:name="io.github.prrvchr.gDriveOOo.SaveAs" oor:op="replace">
+        <prop oor:name="Title" oor:type="xs:string">
+          <value xml:lang="en">Save as gDrive</value>
+          <value xml:lang="fr">Enregistrer sous gDrive</value>
+        </prop>
+        <prop oor:name="Context" oor:type="xs:string">
+          <value>com.sun.star.text.TextDocument,com.sun.star.sheet.SpreadsheetDocument</value>
+        </prop>
+        <prop oor:name="Target" oor:type="xs:string">
+          <value>_self</value>
+        </prop>
+        <prop oor:name="URL" oor:type="xs:string">
+          <value>gdrive:SaveAs</value>
+        </prop>
+      </node>
+    </node>
+  </node>
+</oor:component-data>

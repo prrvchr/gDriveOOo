@@ -4,7 +4,7 @@
 """
 ╔════════════════════════════════════════════════════════════════════════════════════╗
 ║                                                                                    ║
-║   Copyright (c) 2020-24 https://prrvchr.github.io                                  ║
+║   Copyright (c) 2020-25 https://prrvchr.github.io                                  ║
 ║                                                                                    ║
 ║   Permission is hereby granted, free of charge, to any person obtaining            ║
 ║   a copy of this software and associated documentation files (the "Software"),     ║
@@ -51,7 +51,8 @@ import traceback
 
 # pythonloader looks for a static g_ImplementationHelper variable
 g_ImplementationHelper = unohelper.ImplementationHelper()
-g_ImplementationName = f'{g_identifier}.NamedProvider'
+g_ImplementationName = 'io.github.prrvchr.gDriveOOo.NamedProvider'
+g_ServiceNames = ('io.github.prrvchr.gDriveOOo.NamedProvider', 'com.sun.star.ucb.ContentProviderProxy')
 
 
 class NamedProvider(unohelper.Base,
@@ -95,9 +96,6 @@ class NamedProvider(unohelper.Base,
     def getSupportedServiceNames(self):
         return g_ImplementationHelper.getSupportedServiceNames(g_ImplementationName)
 
-
-g_ImplementationHelper.addImplementation(NamedProvider,
-                                         g_ImplementationName,
-                                         (g_ImplementationName,
-                                         'com.sun.star.ucb.ContentProviderProxy'))
-
+g_ImplementationHelper.addImplementation(NamedProvider,                   # UNO object class
+                                         g_ImplementationName,            # Implementation name
+                                         g_ServiceNames)                  # List of implemented services

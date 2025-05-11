@@ -111,6 +111,17 @@ Après avoir autorisé l'application [OAuth2OOo][18] à accéder à vos fichiers
 
 ___
 
+## Comment personnaliser les menus de LibreOffice:
+
+Afin de pouvoir conserver l'utilisation des fenêtres de dialogue système pour l'ouverture et l'enregistrement des fichiers dans LibreOffice, il est désormais possible de créer des menus personnalisés pour les commandes: **Ouvrir distant** et **Enregistrer distant**.
+
+Dans l'onglet **Menu** de la fenêtre **Outils -> Personnaliser**, sélectionnez **Macros** dans **Catégorie** pour accéder aux deux macros: `OpenRemote` et `SaveRemote` sous: **Mes macros -> gDriveOOo**.  
+Il faudra d'abord ajouter la macro `OpenRemote` à l'un des menus avec l'**Étendue** définie sur **LibreOffice**, puis il faudra ouvrir les applications (Writer, Calc, Draw...) éventuellement en utilisant un nouveau document, et ajouter les macros `OpenRemote` et `SaveRemote` avec l'**Étendue** définie sur l'application à laquelle vous souhaitez ajouter les menus.
+
+Cela ne doit être fait qu'une seule fois pour LibreOffice et chaque application, et malheureusement je n'ai encore rien trouvé de plus simple.
+
+___
+
 ## A été testé avec:
 
 * LibreOffice 7.3.7.2 - Lubuntu 22.04 - Python version 3.10.12
