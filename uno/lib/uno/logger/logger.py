@@ -113,8 +113,8 @@ class Logger(unohelper.Base,
         self._notifyListener()
 
     def _notifyListener(self):
-        event = uno.createUnoStruct('com.sun.star.lang.EventObject')
-        event.Source = self
-        for listener in self._listeners:
-            listener.modified(event)
+        if self._listeners:
+            event = uno.createUnoStruct('com.sun.star.lang.EventObject', self)
+            for listener in self._listeners:
+                listener.modified(event)
 
