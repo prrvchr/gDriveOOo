@@ -41,13 +41,15 @@ from com.sun.star.frame.DispatchResultState import SUCCESS
 from com.sun.star.frame.DispatchResultState import FAILURE
 
 from .unotool import createService
+from .unotool import getArgumentSet
 from .unotool import getDesktop
+from .unotool import getMessageBox
 
 import traceback
 
 
-class UCBDispatch(unohelper.Base,
-                  XNotifyingDispatch):
+class Dispatch(unohelper.Base,
+               XNotifyingDispatch):
     def __init__(self, ctx, frame):
         self._ctx = ctx
         self._frame = frame
@@ -67,46 +69,42 @@ class UCBDispatch(unohelper.Base,
     def dispatch(self, url, arguments):
         state = FAILURE
         result = None
-        print("UCBDispatch.dispatch() 1")
         if url.Path == 'Open':
-            print("UCBDispatch.dispatch() 2")
             fp = createService(self._ctx, self._service, FILEOPEN_SIMPLE)
-            print("UCBDispatch.dispatch() 3 Url: %s" % UCBDispatch._path)
-            fp.setDisplayDirectory(UCBDispatch._path)
+            fp.setDisplayDirectory(Dispatch._path)
             fp.setMultiSelectionMode(True)
             urls = ()
             if fp.execute():
-                print("UCBDispatch.dispatch() 4")
                 urls = fp.getSelectedFiles()
-                UCBDispatch._path = fp.getDisplayDirectory()
+                Dispatch._path = fp.getDisplayDirectory()
                 state = SUCCESS
             fp.dispose()
             if state == SUCCESS:
                 desktop = getDesktop(self._ctx)
                 for url in urls:
-                    print("UCBDispatch.dispatch() 5 URL: %s" % url)
                     desktop.loadComponentFromURL(url, '_default', 0, ())
-                    print("UCBDispatch.dispatch() 6 Result: %s" % result)
         elif url.Path == 'SaveAs':
             document = self._frame.getController().getModel()
             source = document.getURL()
-            print("UCBDispatch.dispatch() 7 source: %s" % source)
             path, _, name = source.rpartition(self._sep)
             fp = createService(self._ctx, self._service, FILESAVE_SIMPLE)
-            print("UCBDispatch.dispatch() 8 path: %s - name: %s" % (path, name))
             fp.setDisplayDirectory(path + self._sep)
             fp.setDefaultName(name)
             if fp.execute():
                 target = fp.getSelectedFiles()[0]
+                Dispatch._path = fp.getDisplayDirectory()
                 if source != target:
-                    print("UCBDispatch.dispatch() 9 target: %s" % target)
                     document.storeAsURL(target, ())
                 else:
-                    print("UCBDispatch.dispatch() 10 target: %s" % target)
                     document.store()
                 state = SUCCESS
-                print("UCBDispatch.dispatch() 11 target: %s" % target)
             fp.dispose()
+        elif url.Path == 'ShowWarning':
+            window = self._frame.getContainerWindow().getToolkit().getActiveTopWindow()
+            msgbox = getMessageBox(window, **getArgumentSet(arguments))
+            msgbox.execute()
+            msgbox.dispose()
+            state = SUCCESS
         return state, result
 
     def addStatusListener(self, listener, url):

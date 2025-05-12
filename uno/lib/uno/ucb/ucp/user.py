@@ -56,6 +56,7 @@ from .content import Content
 
 from .contenthelper import getContentInfo
 from .contenthelper import getExceptionMessage
+from .contenthelper import showWarning
 
 from .configuration import g_ucbfolder
 from .configuration import g_ucbfile
@@ -89,25 +90,30 @@ class User():
             if request is None:
                 # If we have a Null value here then it means that the user has abandoned
                 # the OAuth2 Wizard, there is nothing more to do except throw an exception
-                msg = self._getExceptionMessage(mtd, 501, name)
+                title, msg = self._getExceptionMessage(mtd, 501, name)
+                showWarning(self._ctx, msg, title)
                 raise IllegalIdentifierException(msg, source)
         else:
             if not self.Provider.isOnLine():
-                msg = self._getExceptionMessage(mtd, 503, name)
+                title, msg = self._getExceptionMessage(mtd, 503, name)
+                showWarning(self._ctx, msg, title)
                 raise IllegalIdentifierException(msg, source)
             request = getRequest(ctx, self.Provider.Scheme, name)
             if request is None:
                 # If we have a Null value here then it means that the user has abandoned
                 # the OAuth2 Wizard, there is nothing more to do except throw an exception
-                msg = self._getExceptionMessage(mtd, 501, g_service)
+                title, msg = self._getExceptionMessage(mtd, 501, g_service)
+                showWarning(self._ctx, msg, title)
                 raise IllegalIdentifierException(msg, source)
             user = self.Provider.getUser(source, request, name)
             metadata = database.insertUser(user)
             if metadata is None:
-                msg = self._getExceptionMessage(mtd, 505, name)
+                title, msg = self._getExceptionMessage(mtd, 505, name)
+                showWarning(self._ctx, msg, title)
                 raise IllegalIdentifierException(msg, source)
             if not database.createUser(name, password):
-                msg = self._getExceptionMessage(mtd, 507, name)
+                title, msg = self._getExceptionMessage(mtd, 507, name)
+                showWarning(self._ctx, msg, title)
                 raise IllegalIdentifierException(msg, source)
         self._paths = {}
         self._contents = {}

@@ -31,7 +31,7 @@ from .contentprovider import ContentProvider
 
 from .options import OptionsManager
 
-from .ucbdispatch import UCBDispatch
+from .dispatch import Dispatch
 
 from .unotool import hasInterface
 

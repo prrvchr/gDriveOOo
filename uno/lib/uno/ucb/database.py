@@ -64,6 +64,7 @@ import traceback
 
 class DataBase():
     def __init__(self, ctx, logger, url, user='', pwd=''):
+        print("DataBase.__init__() 1")
         self._ctx = ctx
         cls, mtd = 'DataBase', '__init__'
         logger.logprb(INFO, cls, mtd, 401)
@@ -72,6 +73,7 @@ class DataBase():
         new = not getSimpleFile(ctx).exists(odb)
         connection = getDataBaseConnection(ctx, url, user, pwd, new)
         version = connection.getMetaData().getDriverVersion()
+        print("DataBase.__init__() 2 version: %s - new: %s" % (version, new))
         if new:
             if checkVersion(version, g_version):
                 logger.logprb(INFO, cls, mtd, 402, version)
@@ -83,6 +85,7 @@ class DataBase():
         self._version = version
         self._logger = logger
         logger.logprb(INFO, cls, mtd, 405)
+        print("DataBase.__init__() 3")
 
     @property
     def Url(self):

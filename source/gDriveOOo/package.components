@@ -17,9 +17,9 @@
       <service name="io.github.prrvchr.gDriveOOo.OptionsHandler"/>
     </implementation>
   </component>
-  <component loader="com.sun.star.loader.Python" uri="service/UCBDispatcher.py">
-    <implementation name="io.github.prrvchr.gDriveOOo.UCBDispatcher">
-      <service name="io.github.prrvchr.gDriveOOo.UCBDispatcher"/>
+  <component loader="com.sun.star.loader.Python" uri="service/Dispatcher.py">
+    <implementation name="io.github.prrvchr.gDriveOOo.Dispatcher">
+      <service name="io.github.prrvchr.gDriveOOo.Dispatcher"/>
     </implementation>
   </component>
 </components>

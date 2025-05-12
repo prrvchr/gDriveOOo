@@ -45,6 +45,7 @@ from com.sun.star.ucb import IllegalIdentifierException
 from .ucp import Identifier
 from .ucp import getDataSourceUrl
 from .ucp import getExceptionMessage
+from .ucp import showWarning
 
 from .datasource import DataSource
 
@@ -137,10 +138,12 @@ class ContentProvider(unohelper.Base,
         try:
             datasource = DataSource(self._ctx, self._logger, url)
         except SQLException as e:
-            msg = self._getExceptionMessage(mtd, 225, g_extension, url, e.Message)
+            title, msg = self._getExceptionMessage(mtd, 225, g_extension, url, e.Message)
+            showWarning(self._ctx, msg, title)
             raise IllegalIdentifierException(msg, self)
         if not datasource.isUptoDate():
-            msg = self._getExceptionMessage(mtd, 227, g_jdbcext, datasource.getDataBaseVersion(), g_version)
+            title, msg = self._getExceptionMessage(mtd, 227, g_jdbcext, datasource.getDataBaseVersion(), g_version)
+            showWarning(self._ctx, msg, title)
             raise IllegalIdentifierException(msg, self)
         return datasource
 
