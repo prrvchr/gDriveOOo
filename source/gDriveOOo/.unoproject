@@ -1,5 +1,5 @@
 #UNO project configuration file
-#Sat May 10 22:07:20 CEST 2025
+#Mon May 12 00:10:41 CEST 2025
 project.build=build
 project.idl=/idl
 project.implementation=gDriveOOo

@@ -24,7 +24,7 @@
 ║                                                                                    ║
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 -->
-<dlg:window xmlns:dlg="http://openoffice.org/2000/dialog" xmlns:script="http://openoffice.org/2000/script" dlg:id="OptionsDialog" dlg:page="1" dlg:left="0" dlg:top="0" dlg:width="260" dlg:height="245" dlg:help-text="&amp;OptionsDialog.HelpText" dlg:closeable="true" dlg:moveable="true" dlg:title="&amp;OptionsDialog.Title" dlg:withtitlebar="false">
+<dlg:window xmlns:dlg="http://openoffice.org/2000/dialog" xmlns:script="http://openoffice.org/2000/script" dlg:id="OptionsDialog" dlg:page="1" dlg:left="0" dlg:top="0" dlg:width="260" dlg:height="240" dlg:help-text="&amp;OptionsDialog.HelpText" dlg:closeable="true" dlg:moveable="true" dlg:title="&amp;OptionsDialog.Title" dlg:withtitlebar="false">
   <dlg:styles>
     <dlg:style dlg:style-id="0" dlg:font-weight="150"/>
   </dlg:styles>
@@ -92,10 +92,10 @@
     <dlg:checkbox dlg:id="CheckBox4" dlg:tab-index="22" dlg:left="10" dlg:top="200" dlg:width="80" dlg:height="15" dlg:help-text="&amp;OptionsDialog.CheckBox4.HelpText" dlg:value="&amp;OptionsDialog.CheckBox4.Label" dlg:valign="center" dlg:checked="false">
       <script:event script:event-name="on-itemstatechange" script:macro-name="vnd.sun.star.UNO:EnableMacro" script:language="UNO"/>
     </dlg:checkbox>
-    <dlg:linklabel dlg:id="Hyperlink1" dlg:tab-index="23" dlg:left="105" dlg:top="200" dlg:width="80" dlg:height="15" dlg:value="&amp;OptionsDialog.Hyperlink1.Label" dlg:url="&amp;OptionsDialog.Hyperlink1.Url" dlg:valign="center" dlg:align="center"/>
+    <dlg:linklabel dlg:id="Hyperlink1" dlg:tab-index="23" dlg:left="105" dlg:top="200" dlg:width="80" dlg:height="15" dlg:help-text="" dlg:help-url="" dlg:value="&amp;OptionsDialog.Hyperlink1.Label" dlg:url="" dlg:valign="center" dlg:align="center"/>
     <dlg:button dlg:id="CommandButton7" dlg:tab-index="24" dlg:left="195" dlg:top="200" dlg:width="55" dlg:height="15" dlg:help-text="&amp;OptionsDialog.CommandButton7.HelpText" dlg:value="&amp;OptionsDialog.CommandButton7.Label">
       <script:event script:event-name="on-performaction" script:macro-name="vnd.sun.star.UNO:Customize" script:language="UNO"/>
     </dlg:button>
-    <dlg:text dlg:style-id="0" dlg:id="Label8" dlg:left="10" dlg:top="225" dlg:width="240" dlg:height="15" dlg:help-text="&amp;OptionsDialog.Label8.HelpText" dlg:value="&amp;OptionsDialog.Label8.Label" dlg:align="center" dlg:valign="center"/>
+    <dlg:text dlg:style-id="0" dlg:id="Label8" dlg:left="10" dlg:top="220" dlg:width="240" dlg:height="15" dlg:help-text="&amp;OptionsDialog.Label8.HelpText" dlg:value="&amp;OptionsDialog.Label8.Label" dlg:align="center" dlg:valign="center"/>
   </dlg:bulletinboard>
 </dlg:window>

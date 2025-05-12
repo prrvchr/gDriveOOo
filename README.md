@@ -118,6 +118,7 @@ In order to be able to keep using system dialog windows for opening and saving f
 In the **Menu** tab of the **Tools -> Customize** window, select **Macros** in **Category** to access the two macros: `OpenRemote` and `SaveRemote` under: **My Macros -> gDriveOOo**.  
 You will first need to add the `OpenRemote` macro to one of the menus with the **Scope** set to **LibreOffice**, then you will need to open the applications (Writer, Calc, Draw...) possibly using a new document, and add the `OpenRemote` and `SaveRemote` macros with the **Scope** set to the application you want to add the menus to.
 
+The `OpenRemote` macro supports any type of **Scope**, while the `SaveRemote` macro should only be assigned to application-type scopes because it requires a document to already be open in LibreOffice.  
 This only needs to be done once for LibreOffice and each application, and unfortunately I haven't found anything simpler yet.
 
 ___

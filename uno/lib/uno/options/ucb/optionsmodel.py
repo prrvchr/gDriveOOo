@@ -34,6 +34,7 @@ from com.sun.star.ucb.SynchronizePolicy import NONE_IS_MASTER
 from ..unotool import getConfiguration
 from ..unotool import getResourceLocation
 from ..unotool import getSimpleFile
+from ..unotool import getStringResource
 
 from ..dbconfig  import g_folder
 
@@ -55,6 +56,9 @@ class OptionsModel():
         sf = getSimpleFile(ctx)
         self._hasdatabase = sf.exists(self.getDatasourceUrl())
         self._hasfile = sf.exists(self.getFileUrl())
+        self._resolver = getStringResource(ctx, g_identifier, 'dialogs', 'OptionsDialog')
+        self._resources = {'Link': 'OptionsDialog.Hyperlink1.Link'}
+
 
     @property
     def _ResetSync(self):
@@ -91,7 +95,7 @@ class OptionsModel():
 # OptionsModel getter methods
     def getInitData(self):
         resumable = self._config.getByName('ResumableUpload')
-        return self._hasdatabase, self._hasfile, resumable
+        return self._hasdatabase, self._hasfile, resumable, self._getLink()
 
     def hasDataBase(self):
         return self._hasdatabase
@@ -183,4 +187,8 @@ class OptionsModel():
     def _setMacro(self, enabled):
         if enabled != self._Macro:
             self._common.replaceByHierarchicalName('Misc/UseSystemFileDialog', enabled)
+
+    def _getLink(self):
+        resource = self._resources.get('Link')
+        return self._resolver.resolveString(resource)
 

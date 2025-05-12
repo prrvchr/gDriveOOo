@@ -116,8 +116,9 @@ ___
 Afin de pouvoir conserver l'utilisation des fenêtres de dialogue système pour l'ouverture et l'enregistrement des fichiers dans LibreOffice, il est désormais possible de créer des menus personnalisés pour les commandes: **Ouvrir distant** et **Enregistrer distant**.
 
 Dans l'onglet **Menu** de la fenêtre **Outils -> Personnaliser**, sélectionnez **Macros** dans **Catégorie** pour accéder aux deux macros: `OpenRemote` et `SaveRemote` sous: **Mes macros -> gDriveOOo**.  
-Il faudra d'abord ajouter la macro `OpenRemote` à l'un des menus avec l'**Étendue** définie sur **LibreOffice**, puis il faudra ouvrir les applications (Writer, Calc, Draw...) éventuellement en utilisant un nouveau document, et ajouter les macros `OpenRemote` et `SaveRemote` avec l'**Étendue** définie sur l'application à laquelle vous souhaitez ajouter les menus.
+Il faudra d'abord ajouter la macro `OpenRemote` à l'un des menus avec l'**Étendue** définie sur **LibreOffice**, puis il faudra ouvrir les applications (Writer, Calc, Draw...) éventuellement en ouvrant un nouveau document, et ajouter les macros `OpenRemote` et `SaveRemote` avec l'**Étendue** définie sur l'application à laquelle vous souhaitez ajouter les menus.
 
+La macro `OpenRemote` prend en charge tout type d'**Étendue**, tandis que la macro `SaveRemote` ne doit être attribuée qu'aux étendues de type application car elle nécessite qu'un document soit déjà ouvert dans LibreOffice.  
 Cela ne doit être fait qu'une seule fois pour LibreOffice et chaque application, et malheureusement je n'ai encore rien trouvé de plus simple.
 
 ___

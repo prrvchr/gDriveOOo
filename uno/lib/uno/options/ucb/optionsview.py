@@ -31,7 +31,7 @@ import traceback
 
 
 class OptionsView():
-    def __init__(self, window, exist, hasfile, resumable):
+    def __init__(self, window, exist, hasfile, resumable, link):
         self._window = window
         if exist:
             self._disableShare()
@@ -40,6 +40,7 @@ class OptionsView():
         self._getDatasource().Model.Enabled = exist
         self._getFile().Model.Enabled = hasfile
         self._getUpload().Model.Enabled = resumable
+        self._getLink().URL = link
 
 # OptionsView getter methods
     def getViewData(self):
@@ -102,6 +103,7 @@ class OptionsView():
             self._getResetFile().State = 0
 
     def enableCustomize(self, enabled):
+        self._getLink().Model.Enabled = enabled
         self._getCustomize().Model.Enabled = enabled
 
     def setRestart(self, enabled):
@@ -203,6 +205,9 @@ class OptionsView():
 
     def _getMacro(self):
         return self._window.getControl('CheckBox4')
+
+    def _getLink(self):
+        return self._window.getControl('Hyperlink1')
 
     def _getCustomize(self):
         return self._window.getControl('CommandButton7')
