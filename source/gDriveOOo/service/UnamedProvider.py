@@ -79,7 +79,7 @@ class UnamedProvider(unohelper.Base,
     # XContentProviderSupplier
     def getContentProvider(self):
         if self._provider is None:
-            self._provider = ContentProvider(self._ctx, self._logger, False, 'Unamed')
+            self._provider = ContentProvider(self._ctx, self._logger, g_ImplementationName, False, 'Unamed')
         return self._provider
 
     # XParameterizedContentProvider

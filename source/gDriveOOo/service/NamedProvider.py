@@ -79,7 +79,7 @@ class NamedProvider(unohelper.Base,
     # XContentProviderSupplier
     def getContentProvider(self):
         if self._provider is None:
-            self._provider = ContentProvider(self._ctx, self._logger, True, 'Named')
+            self._provider = ContentProvider(self._ctx, self._logger, g_ImplementationName, True, 'Named')
         return self._provider
 
     # XParameterizedContentProvider
