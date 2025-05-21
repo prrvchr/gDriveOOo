@@ -240,7 +240,7 @@ def getExceptionMessage(logger, code, extension, *args):
 def showWarning(ctx, message, title):
     box = uno.Enum('com.sun.star.awt.MessageBoxType', 'ERRORBOX')
     args = {'Box': box, 'Button': 1, 'Title': title, 'Message': message}
-    executeDispatch(ctx, 'gdrive:ShowWarning', **args)
+    executeDispatch(ctx, '%s:ShowWarning' % g_scheme, **args)
 
 # Private method
 def _checkConnection(connection, service, interface):

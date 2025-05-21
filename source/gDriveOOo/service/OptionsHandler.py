@@ -27,12 +27,12 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-import uno
 import unohelper
 
 from com.sun.star.logging.LogLevel import SEVERE
 
 from com.sun.star.lang import XServiceInfo
+
 from com.sun.star.awt import XContainerWindowEventHandler
 
 from gdrive import OptionsManager

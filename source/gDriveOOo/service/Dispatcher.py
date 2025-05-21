@@ -39,6 +39,7 @@ from gdrive import Dispatch
 from gdrive import hasInterface
 
 from gdrive import g_identifier
+from gdrive import g_scheme
 
 import traceback
 
@@ -55,6 +56,7 @@ class Dispatcher(unohelper.Base,
     def __init__(self, ctx):
         self._ctx = ctx
         self._frame = None
+        self._protocol = '%s:' % g_scheme
 
 # XInitialization
     def initialize(self, args):
@@ -66,7 +68,7 @@ class Dispatcher(unohelper.Base,
 # XDispatchProvider
     def queryDispatch(self, url, frame, flags):
         dispatch = None
-        if url.Protocol == 'gdrive:':
+        if url.Protocol == self._protocol:
             dispatch = Dispatch(self._ctx, self._frame)
         return dispatch
 
