@@ -82,11 +82,12 @@ class Dispatcher(unohelper.Base,
     # XServiceInfo
     def supportsService(self, service):
         return g_ImplementationHelper.supportsService(g_ImplementationName, service)
+
     def getImplementationName(self):
         return g_ImplementationName
+
     def getSupportedServiceNames(self):
         return g_ImplementationHelper.getSupportedServiceNames(g_ImplementationName)
-
 
 g_ImplementationHelper.addImplementation(Dispatcher,                      # UNO object class
                                          g_ImplementationName,            # Implementation name
