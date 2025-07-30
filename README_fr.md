@@ -29,7 +29,7 @@
 
 **L'utilisation de ce logiciel vous soumet à nos [Conditions d'Utilisation][4] et à notre [Politique de Protection des Données][5].**
 
-# version [1.3.0][6]
+# version [1.3.1][6]
 
 ## Introduction:
 
@@ -317,7 +317,13 @@ Bien que cette fonctionnalité ne soit nécessaire que pour gDriveOOo, elle est 
 - Nécessite l'extension **jdbcDriverOOo en version 1.5.0 minimum**.
 - Nécessite l'extension **OAuth2OOo en version 1.5.0 minimum**.
 
-### Que reste-t-il à faire pour la version 1.3.0:
+### Ce qui a été fait pour la version 1.3.1:
+
+- Support de LibreOffice 25.2.x et 25.8.x sous Windows 64 bits.
+- Nécessite l'extension **jdbcDriverOOo en version 1.5.4 minimum**.
+- Nécessite l'extension **OAuth2OOo en version 1.5.2 minimum**.
+
+### Que reste-t-il à faire pour la version 1.3.1:
 
 - Ajouter de nouvelles langue pour l'internationalisation...
 
@@ -328,7 +334,7 @@ Bien que cette fonctionnalité ne soit nécessaire que pour gDriveOOo, elle est 
 [3]: <https://prrvchr.github.io/gDriveOOo>
 [4]: <https://prrvchr.github.io/gDriveOOo/source/gDriveOOo/registration/TermsOfUse_fr>
 [5]: <https://prrvchr.github.io/gDriveOOo/source/gDriveOOo/registration/PrivacyPolicy_fr>
-[6]: <https://prrvchr.github.io/gDriveOOo/README_fr#ce-qui-a-%C3%A9t%C3%A9-fait-pour-la-version-130>
+[6]: <https://prrvchr.github.io/gDriveOOo/README_fr#ce-qui-a-%C3%A9t%C3%A9-fait-pour-la-version-131>
 [7]: <https://prrvchr.github.io/README_fr>
 [8]: <https://fr.libreoffice.org/download/telecharger-libreoffice/>
 [9]: <https://www.openoffice.org/fr/Telecharger/>
@@ -348,7 +354,7 @@ Bien que cette fonctionnalité ne soit nécessaire que pour gDriveOOo, elle est 
 [24]: <https://img.shields.io/github/v/tag/prrvchr/jdbcDriverOOo?label=latest#right>
 [25]: <img/gDriveOOo.svg#middle>
 [26]: <https://github.com/prrvchr/gDriveOOo/releases/latest/download/gDriveOOo.oxt>
-[27]: <https://img.shields.io/github/downloads/prrvchr/gDriveOOo/latest/total?label=v1.3.0#right>
+[27]: <https://img.shields.io/github/downloads/prrvchr/gDriveOOo/latest/total?label=v1.3.1#right>
 [28]: <https://github.com/LibreOffice/loeclipse>
 [29]: <https://adoptium.net/temurin/releases/?version=8&package=jdk>
 [30]: <https://ant.apache.org/manual/install.html>
