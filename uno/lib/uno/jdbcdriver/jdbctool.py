@@ -27,58 +27,18 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-from .optionmodel import OptionModel
-from .optionview import OptionWindow
-from .optionhandler import WindowHandler
+from ..unotool import createService
+from ..unotool import getPropertyValueSet
 
-from ..logger import LogManager
-
-import traceback
+from .configuration import g_instrumented
+from .configuration import g_service
 
 
-class OptionManager():
-    def __init__(self, ctx, window, options, instrumented, restart, offset, logger, *loggers):
-        self._logmanager = LogManager(ctx, window, 'requirements.txt', logger, *loggers)
-        self._model = OptionModel(ctx, instrumented)
-        self._view = OptionWindow(ctx, window, WindowHandler(self), options, restart, offset)
-
-# OptionManager setter methods
-    def initView(self):
-        self._logmanager.initView()
-        self._initView()
-
-    def dispose(self):
-        self._logmanager.dispose()
-        self._view.dispose()
-
-# OptionManager getter methods
-    def getConfigApiLevel(self):
-        return self._model.getConfigApiLevel()
-
-# OptionManager setter methods
-    def saveSetting(self):
-        saved = self._logmanager.saveSetting()
-        saved |= self._model.saveSetting()
-        return saved
-
-    def setRestart(self, state):
-        self._view.setRestart(state)
-
-    def loadSetting(self):
-        self._logmanager.loadSetting()
-        self._initView()
-
-    def setApiLevel(self, level):
-        self._view.enableCachedRowSet(self._model.setApiLevel(level))
-
-    def setCachedRowSet(self, level):
-        self._model.setCachedRowSet(level)
-
-    def setSystemTable(self, state):
-        self._model.setSystemTable(state)
-
-# OptionManager private methods
-    def _initView(self):
-        instrumented = self._model.isInstrumented()
-        self._view.initView(instrumented, *self._model.getViewData())
+def isInstrumented(ctx, url):
+    support = False
+    driver = createService(ctx, g_service)
+    for info in driver.getPropertyInfo(url, getPropertyValueSet({g_instrumented: True})):
+        if (info.Name == g_instrumented):
+            support = info.Value != 'false'
+    return support
 
