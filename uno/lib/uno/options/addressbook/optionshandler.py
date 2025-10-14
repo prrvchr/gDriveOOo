@@ -27,5 +27,29 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-from .wizard import Wizard
+import unohelper
+
+from com.sun.star.awt import XContainerWindowEventHandler
+
+import traceback
+
+
+class WindowHandler(unohelper.Base,
+                    XContainerWindowEventHandler):
+    def __init__(self, manager):
+        self._manager = manager
+
+    # XContainerWindowEventHandler
+    def callHandlerMethod(self, window, event, method):
+        try:
+            handled = False
+            if method == 'ViewData':
+                self._manager.viewData()
+                handled = True
+            return handled
+        except Exception as e:
+            print("ERROR: %s - %s" % (e, traceback.format_exc()))
+
+    def getSupportedMethodNames(self):
+        return ('ViewData', )
 

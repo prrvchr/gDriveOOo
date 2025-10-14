@@ -27,5 +27,63 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-from .wizard import Wizard
+from ...unotool import getConfiguration
 
+from ...configuration import g_identifier
+
+import traceback
+
+
+class OptionsModel():
+    def __init__(self, ctx, instrumented):
+        self._rebootkeys = ('ApiLevel', 'CachedRowSet')
+        configkeys = ('ShowSystemTable', )
+        self._keys = self._rebootkeys + configkeys
+        self._config = getConfiguration(ctx, g_identifier, True)
+        self._settings = self._getSettings()
+        self._instrumented = instrumented
+
+# OptionModel getter methods
+    def getConfigApiLevel(self):
+        return self._config.getByName('ApiLevel')
+
+    def getViewData(self):
+        self._settings = self._getSettings()
+        level = self._settings.get('ApiLevel')
+        crs = self._settings.get('CachedRowSet')
+        system = self._settings.get('ShowSystemTable')
+        return self._instrumented, level, crs, system, self._isRowSetEnabled(level)
+
+# OptionModel setter methods
+    def setApiLevel(self, level):
+        self._settings['ApiLevel'] = level
+        return self._instrumented and self._isRowSetEnabled(level)
+
+    def setCachedRowSet(self, level):
+        self._settings['CachedRowSet'] = level
+
+    def setSystemTable(self, state):
+        self._settings['ShowSystemTable'] = bool(state)
+
+    def saveSetting(self):
+        reboot = False
+        for key in self._keys:
+            if key != 'CachedRowSet' or self._instrumented:
+                value = self._settings.get(key)
+                if value != self._config.getByName(key):
+                    self._config.replaceByName(key, value)
+                    if key in self._rebootkeys:
+                        reboot = True
+        if self._config.hasPendingChanges():
+            self._config.commitChanges()
+        return reboot
+
+# OptionModel private methods
+    def _getSettings(self):
+        settings = {}
+        for key in self._keys:
+            settings[key] = self._config.getByName(key)
+        return settings
+
+    def _isRowSetEnabled(self, level):
+        return level != 0
