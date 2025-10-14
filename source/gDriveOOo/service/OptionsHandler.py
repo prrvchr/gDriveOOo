@@ -116,6 +116,7 @@ class OptionsHandler(unohelper.Base,
                 handled = True
             return handled
         except Exception as e:
+            print("OptionsHandler.callHandlerMethod() ERROR: %s" % traceback.format_exc())
             self._logger.logprb(SEVERE, 'OptionsHandler', 'callHandlerMethod', 141, e, traceback.format_exc())
 
     def getSupportedMethodNames(self):
@@ -145,6 +146,8 @@ class OptionsHandler(unohelper.Base,
     def getSupportedServiceNames(self):
         return g_ImplementationHelper.getSupportedServiceNames(g_ImplementationName)
 
+
 g_ImplementationHelper.addImplementation(OptionsHandler,                  # UNO object class
                                          g_ImplementationName,            # Implementation name
                                          g_ServiceNames)                  # List of implemented services
+
