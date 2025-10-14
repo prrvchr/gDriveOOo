@@ -24,11 +24,13 @@
 ║                                                                                    ║
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 -->
-<oor:component-schema oor:name="gDriveOOo" oor:package="io.github.prrvchr"
-  xml:lang="en-US"
+<!DOCTYPE oor:component-schema SYSTEM "component-schema.dtd">
+<oor:component-schema
   xmlns:oor="http://openoffice.org/2001/registry"
   xmlns:xs="http://www.w3.org/2001/XMLSchema"
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  oor:package="io.github.prrvchr"
+  oor:name="gDriveOOo"
+  xml:lang="en-US">
   <templates>
     <group oor:name="SettingSet">
       <prop oor:name="Chunk" oor:type="xs:int" />
@@ -47,3 +49,4 @@
     <set oor:name="Settings" oor:node-type="SettingSet" />
   </component>
 </oor:component-schema>
+

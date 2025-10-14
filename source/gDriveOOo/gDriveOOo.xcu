@@ -24,11 +24,13 @@
 ║                                                                                    ║
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 -->
-<oor:component-data oor:name="Configuration" oor:package="org.openoffice.ucb"
-  xsi:schemaLocation="http://openoffice.org/2001/registry/component-update.xsd"
-  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+<!DOCTYPE oor:component-data SYSTEM "component-update.dtd">
+<oor:component-data
+  xmlns:install="http://openoffice.org/2004/installation"
   xmlns:oor="http://openoffice.org/2001/registry"
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  oor:package="org.openoffice.ucb"
+  oor:name="Configuration">
   <node oor:name="ContentProviders">
     <node oor:name="Local">
       <node oor:name="SecondaryKeys">
@@ -62,3 +64,4 @@
     </node>
   </node>
 </oor:component-data>
+
