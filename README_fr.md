@@ -29,7 +29,7 @@
 
 **L'utilisation de ce logiciel vous soumet à nos [Conditions d'Utilisation][4] et à notre [Politique de Protection des Données][5].**
 
-# version [1.3.1][6]
+# version [1.4.0][6]
 
 ## Introduction:
 
@@ -43,19 +43,34 @@ Etant un logiciel libre je vous encourage:
 - A dupliquer son [code source][12].
 - A apporter des modifications, des corrections, des ameliorations.
 - D'ouvrir un [dysfonctionnement][13] si nécessaire.
+- De [participer au frais][14] de la [certification CASA][15].
 
 Bref, à participer au developpement de cette extension.
 Car c'est ensemble que nous pouvons rendre le Logiciel Libre plus intelligent.
 
 ___
 
+## Certification CASA:
+
+Afin de garantir l'interopérabilité avec **Google**, l'extension **gDriveOOo** utilise l'extension **OAuth2OOo** qui nécessite la [certification CASA][15].  
+Jusqu'à présent, cette certification était gratuite et réalisée par un partenaire de Google.  
+L'application **OAuth2OOo** a obtenu sa [certification CASA][16] le 28/11/2023.
+
+**Maintenant cette certification est devenue désormais payante et coûte 600$.**
+
+Je n'avais jamais anticipé de tels frais et je compte sur votre contribution pour financer cette certification.
+
+Merci pour votre aide. [![Sponsor][17]][14]
+
+___
+
 ## Prérequis:
 
 L'extension gDriveOOo utilise l'extension OAuth2OOo pour fonctionner.  
-Elle doit donc répondre aux [prérequis de l'extension OAuth2OOo][14].
+Elle doit donc répondre aux [prérequis de l'extension OAuth2OOo][18].
 
 L'extension gDriveOOo utilise l'extension jdbcDriverOOo pour fonctionner.  
-Elle doit donc répondre aux [prérequis de l'extension jdbcDriverOOo][15].  
+Elle doit donc répondre aux [prérequis de l'extension jdbcDriverOOo][19].  
 De plus, gDriveOOo nécessite que l'extension jdbcDriverOOo soit configurée pour fournir `com.sun.star.sdb` comme niveau d'API, qui est la configuration par défaut.
 
 ___
@@ -65,15 +80,15 @@ ___
 Il semble important que le fichier n'ait pas été renommé lors de son téléchargement.  
 Si nécessaire, renommez-le avant de l'installer.
 
-- [![OAuth2OOo logo][17]][18] Installer l'extension **[OAuth2OOo.oxt][19]** [![Version][20]][19]
+- [![OAuth2OOo logo][20]][21] Installer l'extension **[OAuth2OOo.oxt][22]** [![Version][23]][22]
 
     Vous devez d'abord installer cette extension, si elle n'est pas déjà installée.
 
-- [![jdbcDriverOOo logo][21]][22] Installer l'extension **[jdbcDriverOOo.oxt][23]** [![Version][24]][23]
+- [![jdbcDriverOOo logo][24]][25] Installer l'extension **[jdbcDriverOOo.oxt][26]** [![Version][27]][26]
 
     Vous devez installer cette extension, si elle n'est pas déjà installée.
 
-- ![gDriveOOo logo][25] Installer l'extension **[gDriveOOo.oxt][26]** [![Version][27]][26]
+- ![gDriveOOo logo][28] Installer l'extension **[gDriveOOo.oxt][29]** [![Version][30]][29]
 
 Redémarrez LibreOffice après l'installation.  
 **Attention, redémarrer LibreOffice peut ne pas suffire.**
@@ -100,7 +115,7 @@ Si vous ne donnez pas **votre_compte@gmail.com**, il vous sera demandé...
 
 Les Urls anonymes vous permettent de rester anonyme (votre compte n'apparaît pas dans l'Url) tandis que les Urls nommées vous permettent d'accéder à plusieurs comptes simultanément.
 
-Après avoir autorisé l'application [OAuth2OOo][18] à accéder à vos fichiers de votre Google Drive, votre Google Drive devrait s'ouvrir!!! normalement  :wink:
+Après avoir autorisé l'application [OAuth2OOo][21] à accéder à vos fichiers de votre Google Drive, votre Google Drive devrait s'ouvrir!!! normalement  :wink:
 
 ___
 
@@ -118,12 +133,12 @@ ___
 
 ## Comment créer l'extension:
 
-Normalement, l'extension est créée avec Eclipse pour Java et [LOEclipse][28]. Pour contourner Eclipse, j'ai modifié LOEclipse afin de permettre la création de l'extension avec Apache Ant.  
+Normalement, l'extension est créée avec Eclipse pour Java et [LOEclipse][31]. Pour contourner Eclipse, j'ai modifié LOEclipse afin de permettre la création de l'extension avec Apache Ant.  
 Pour créer l'extension gDriveOOo avec l'aide d'Apache Ant, vous devez:
-- Installer le [SDK Java][29] version 8 ou supérieure.
-- Installer [Apache Ant][30] version 1.10.0 ou supérieure.
-- Installer [LibreOffice et son SDK][31] version 7.x ou supérieure.
-- Cloner le dépôt [gDriveOOo][32] sur GitHub dans un dossier.
+- Installer le [SDK Java][32] version 8 ou supérieure.
+- Installer [Apache Ant][33] version 1.10.0 ou supérieure.
+- Installer [LibreOffice et son SDK][34] version 7.x ou supérieure.
+- Cloner le dépôt [gDriveOOo][35] sur GitHub dans un dossier.
 - Depuis ce dossier, accédez au répertoire: `source/gDriveOOo/`
 - Dans ce répertoire, modifiez le fichier `build.properties` afin que les propriétés `office.install.dir` et `sdk.dir` pointent vers les dossiers d'installation de LibreOffice et de son SDK, respectivement.
 - Lancez la création de l'archive avec la commande: `ant`
@@ -141,7 +156,7 @@ ___
 
 * LibreOffice 24.8.0.3 (X86_64) - Windows 10(x64) - Python version 3.9.19 (sous Lubuntu 22.04 / VirtualBox 6.1.38)
 
-* **Ne fonctionne pas avec OpenOffice** voir [dysfonctionnement 128569][33]. N'ayant aucune solution, je vous encourrage d'installer **LibreOffice**.
+* **Ne fonctionne pas avec OpenOffice** voir [dysfonctionnement 128569][36]. N'ayant aucune solution, je vous encourrage d'installer **LibreOffice**.
 
 Je vous encourage en cas de problème :confused:  
 de créer un [dysfonctionnement][13]  
@@ -155,7 +170,7 @@ ___
 
 - Intégration et utilisation de la nouvelle version de HsqlDB 2.5.1.
 
-- Ecriture d'une nouvelle interface [Replicator][34], lancé en arrière-plan (python Thread) responsable de:
+- Ecriture d'une nouvelle interface [Replicator][37], lancé en arrière-plan (python Thread) responsable de:
 
     - Effectuer les procédures nécessaires lors de la création d'un nouvel utilisateur (Pull initial).
 
@@ -163,37 +178,37 @@ ___
 
     - Répliquer à la demande toutes les modifications apportées à la base de données hsqldb 2.5.1 à l'aide du contrôle de version du système (Pousser toutes les modifications).
 
-- Ecriture d'une nouvelle interface [DataBase][35], responsable de tous les appels à la base de données.
+- Ecriture d'une nouvelle interface [DataBase][38], responsable de tous les appels à la base de données.
 
-- Mise en place d'un cache sur les identifiants, voir la méthode: [_getUser()][36], autorisant l'accès à un Contenu (fichier ou dossier) sans accès à la base de données pour les appels ultérieurs.
+- Mise en place d'un cache sur les identifiants, voir la méthode: [_getUser()][39], autorisant l'accès à un Contenu (fichier ou dossier) sans accès à la base de données pour les appels ultérieurs.
 
-- Gestion des doublons des noms des fichiers / dossiers par [Vues SQL][37]: Child, Twin, Uri, et Title générant des noms uniques s'il existe des doublons.  
+- Gestion des doublons des noms des fichiers / dossiers par [Vues SQL][40]: Child, Twin, Uri, et Title générant des noms uniques s'il existe des doublons.  
 Bien que cette fonctionnalité ne soit nécessaire que pour gDriveOOo, elle est implémentée globalement...
 
 - Beaucoup d'autres correctifs...
 
 ### Ce qui a été fait pour la version 0.0.6:
 
-- Utilisation du nouveau schéma: **vnd-google://** comme revendiqué par [draft-king-vnd-urlscheme-03.txt][38]
+- Utilisation du nouveau schéma: **vnd-google://** comme revendiqué par [draft-king-vnd-urlscheme-03.txt][41]
 
 - Aboutissement de la gestion des doublons des noms de fichiers / dossiers par des vues SQL dans HsqlDB:
-    - Une vue [**Twin**][39] regroupant tous les doublons par dossier parent et les ordonnant par date de création, date de modification.
-    - Une vue [**Uri**][40] générant des indexes uniques pour chaque doublon.
-    - Une vue [**Title**][41] générant des nom uniques pour chaque doublon.
-    - Une vue récursive [**Path**][42] pour générer un chemin unique pour chaque fichier/dossier.
+    - Une vue [**Twin**][42] regroupant tous les doublons par dossier parent et les ordonnant par date de création, date de modification.
+    - Une vue [**Uri**][43] générant des indexes uniques pour chaque doublon.
+    - Une vue [**Title**][44] générant des nom uniques pour chaque doublon.
+    - Une vue récursive [**Path**][45] pour générer un chemin unique pour chaque fichier/dossier.
 
-- Création d'un [Provider][43] capable de répondre aux deux types d'Urls supportées (nommées et anonymes).  
-  Des expressions régulières (regex), déclarées dans le [fichier de configuration de l'UCB][44], sont maintenant utilisées par OpenOffice/LibreOffice pour envoyer les Urls au ContentProvider approprié.
+- Création d'un [Provider][46] capable de répondre aux deux types d'Urls supportées (nommées et anonymes).  
+  Des expressions régulières (regex), déclarées dans le [fichier de configuration de l'UCB][47], sont maintenant utilisées par OpenOffice/LibreOffice pour envoyer les Urls au ContentProvider approprié.
 
-- Utilisation de la nouvelle struct UNO [DateTimeWithTimezone][45] fournie par l'extension [jdbcDriverOOo][22] depuis sa version 0.0.4.  
-  Bien que cette struct existe déjà dans LibreOffice, sa création était nécessaire afin de rester compatible avec OpenOffice (voir [Demande d'amélioration 128560][46]).
+- Utilisation de la nouvelle struct UNO [DateTimeWithTimezone][48] fournie par l'extension [jdbcDriverOOo][25] depuis sa version 0.0.4.  
+  Bien que cette struct existe déjà dans LibreOffice, sa création était nécessaire afin de rester compatible avec OpenOffice (voir [Demande d'amélioration 128560][49]).
 
-- Modification de l'interface [Replicator][34], afin de permettre:
+- Modification de l'interface [Replicator][37], afin de permettre:
     - De choisir l'ordre de synchronisation des données (locales d'abord puis distantes ensuite ou inversement).
     - La synchronisation des modifications locales par des opérations atomiques effectuées dans l'ordre chronologique pour supporter pleinement le travail hors ligne.  
-    Pour ce faire, trois procédures SQL [GetPushItems][47], [GetPushProperties][48] et [UpdatePushItems][49] sont utilisées pour chaque utilisateur ayant accédé à ses fichiers / dossiers.
+    Pour ce faire, trois procédures SQL [GetPushItems][50], [GetPushProperties][51] et [UpdatePushItems][52] sont utilisées pour chaque utilisateur ayant accédé à ses fichiers / dossiers.
 
-- Réécriture de la [fenêtre des options][50] accessible par : **Outils -> Options -> Internet -> gDriveOOo** afin de permettre :
+- Réécriture de la [fenêtre des options][53] accessible par : **Outils -> Options -> Internet -> gDriveOOo** afin de permettre :
     - L'accès aux deux fichiers journaux concernant les activités de l'UCP et du réplicateur de données.
     - Le choix de l'ordre de synchronisation.
     - La modification de l'intervalle entre deux synchronisations.
@@ -227,7 +242,7 @@ Bien que cette fonctionnalité ne soit nécessaire que pour gDriveOOo, elle est 
 
 ### Ce qui a été fait pour la version 1.0.5:
 
-- Prise en charge de la version **1.2.3** de l'extension **OAuth2OOo**. Correction du [dysfonctionnement #12][51]
+- Prise en charge de la version **1.2.3** de l'extension **OAuth2OOo**. Correction du [dysfonctionnement #12][54]
 
 ### Ce qui a été fait pour la version 1.0.6:
 
@@ -239,20 +254,20 @@ Bien que cette fonctionnalité ne soit nécessaire que pour gDriveOOo, elle est 
 
 ### Ce qui a été fait pour la version 1.1.0:
 
-- Tous les paquets Python nécessaires à l'extension sont désormais enregistrés dans un fichier [requirements.txt][52] suivant la [PEP 508][53].
+- Tous les paquets Python nécessaires à l'extension sont désormais enregistrés dans un fichier [requirements.txt][55] suivant la [PEP 508][56].
 - Désormais si vous n'êtes pas sous Windows alors les paquets Python nécessaires à l'extension peuvent être facilement installés avec la commande:  
   `pip install requirements.txt`
-- Modification de la section [Prérequis][54].
+- Modification de la section [Prérequis][57].
 
 ### Ce qui a été fait pour la version 1.1.1:
 
 - Correction d'une régression empêchant la création de nouveaux fichiers.
-- Intégration d'un correctif pour contourner le [dysfonctionnement #159988][55].
+- Intégration d'un correctif pour contourner le [dysfonctionnement #159988][58].
 
 ### Ce qui a été fait pour la version 1.1.2:
 
-- La création de la base de données, lors de la première connexion, utilise l'API UNO proposée par l'extension jdbcDriverOOo depuis la version 1.3.2. Cela permet d'enregistrer toutes les informations nécessaires à la création de la base de données dans 6 tables texte qui sont en fait [6 fichiers csv][56].
-- Réécriture des [vues SQL][57] nécessaires à la gestion des doublons. Désormais, le chemin d'un dossier ou d'un fichier est calculé par une vue récursive qui prend en charge les doublons.
+- La création de la base de données, lors de la première connexion, utilise l'API UNO proposée par l'extension jdbcDriverOOo depuis la version 1.3.2. Cela permet d'enregistrer toutes les informations nécessaires à la création de la base de données dans 6 tables texte qui sont en fait [6 fichiers csv][59].
+- Réécriture des [vues SQL][60] nécessaires à la gestion des doublons. Désormais, le chemin d'un dossier ou d'un fichier est calculé par une vue récursive qui prend en charge les doublons.
 - Bien que l'extension prenne en charge la gestion des fichiers et dossiers en double, il n'est plus possible de les créer ou de les renommer.
 - L'installation de l'extension désactivera l'option permettant de créer une copie de sauvegarde (ie: fichier .bak) dans LibreOffice. Si cette option est validée alors l'extension n'est plus capable d'enregistrer les fichiers.
 - L'extension vous demandera d'installer les extensions OAuth2OOo et jdbcDriverOOo en version respectivement 1.3.4 et 1.3.2 minimum.
@@ -260,15 +275,15 @@ Bien que cette fonctionnalité ne soit nécessaire que pour gDriveOOo, elle est 
 
 ### Ce qui a été fait pour la version 1.1.3:
 
-- Mise à jour du paquet [Python python-dateutil][58] vers la version 2.9.0.post0.
-- Mise à jour du paquet [Python ijson][59] vers la version 3.3.0.
-- Mise à jour du paquet [Python packaging][60] vers la version 24.1.
-- Mise à jour du paquet [Python setuptools][61] vers la version 72.1.0 afin de répondre à l'[alerte de sécurité Dependabot][62].
+- Mise à jour du paquet [Python python-dateutil][61] vers la version 2.9.0.post0.
+- Mise à jour du paquet [Python ijson][62] vers la version 3.3.0.
+- Mise à jour du paquet [Python packaging][63] vers la version 24.1.
+- Mise à jour du paquet [Python setuptools][64] vers la version 72.1.0 afin de répondre à l'[alerte de sécurité Dependabot][65].
 - L'extension vous demandera d'installer les extensions OAuth2OOo et jdbcDriverOOo en version respectivement 1.3.6 et 1.4.2 minimum.
 
 ### Ce qui a été fait pour la version 1.1.4:
 
-- Mise à jour du paquet [Python setuptools][61] vers la version 73.0.1.
+- Mise à jour du paquet [Python setuptools][64] vers la version 73.0.1.
 - L'extension vous demandera d'installer les extensions OAuth2OOo et jdbcDriverOOo en version respectivement 1.3.7 et 1.4.5 minimum.
 - Les modifications apportées aux options de l'extension, qui nécessitent un redémarrage de LibreOffice, entraîneront l'affichage d'un message.
 - Support de LibreOffice version 24.8.x.
@@ -281,8 +296,8 @@ Bien que cette fonctionnalité ne soit nécessaire que pour gDriveOOo, elle est 
 
 ### Ce qui a été fait pour la version 1.1.6:
 
-- Afin de répondre à la demande du [dysfonctionnement 16][63], la gestion du dossier **Partagés avec moi** a été implémentée.
-- Préparation de l'extension à l'utilisation d'un périmètre de droits plus restreint et ne nécessitant pas la [certification CASA tier 2][64] qui est désormais payante. Merci Google...
+- Afin de répondre à la demande du [dysfonctionnement 16][66], la gestion du dossier **Partagés avec moi** a été implémentée.
+- Préparation de l'extension à l'utilisation d'un périmètre de droits plus restreint et ne nécessitant pas la [certification CASA tier 2][15] qui est désormais payante. Merci Google...
 - Les modifications à distance du contenu des fichiers sont prises en compte par le réplicateur.
 - Si nécessaire, il est possible de demander, dans les options de l'extension, une synchronisation initiale. Il est également possible de demander le téléchargement de tous les fichiers déjà visualisés qui ont une copie locale.
 - Le réplicateur fournit une journalisation plus complète.
@@ -292,28 +307,28 @@ Bien que cette fonctionnalité ne soit nécessaire que pour gDriveOOo, elle est 
 ### Ce qui a été fait pour la version 1.2.0:
 
 - L'extension vous demandera d'installer les extensions OAuth2OOo et jdbcDriverOOo en version respectivement 1.4.0 et 1.4.6 minimum.
-- Il est possible de construire l'archive de l'extension (ie: le fichier oxt) avec l'utilitaire [Apache Ant][30] et le fichier script [build.xml][65].
+- Il est possible de construire l'archive de l'extension (ie: le fichier oxt) avec l'utilitaire [Apache Ant][33] et le fichier script [build.xml][67].
 - L'extension refusera de s'installer sous OpenOffice quelle que soit la version ou LibreOffice autre que 7.x ou supérieur.
 - Ajout des fichiers binaires nécessaires aux bibliothèques Python pour fonctionner sous Linux et LibreOffice 24.8 (ie: Python 3.9).
 - La possibilité de ne pas spécifier le nom du compte de l'utilisateur dans l'URL est à nouveau fonctionnelle.
 
 ### Ce qui a été fait pour la version 1.2.1:
 
-- Mise à jour du paquet [Python packaging][60] vers la version 24.2.
-- Mise à jour du paquet [Python setuptools][61] vers la version 75.8.0.
-- Mise à jour du paquet [Python six][66] vers la version 1.17.0.
+- Mise à jour du paquet [Python packaging][63] vers la version 24.2.
+- Mise à jour du paquet [Python setuptools][64] vers la version 75.8.0.
+- Mise à jour du paquet [Python six][68] vers la version 1.17.0.
 - Support de Python version 3.13.
 
 ### Ce qui a été fait pour la version 1.3.0:
 
 - Mise à jour du paquet [Python packaging][60] vers la version 25.0.
 - Rétrogradage du paquet [Python setuptools][61] vers la version 75.3.2, afin d'assurer la prise en charge de Python 3.8.
-- Déploiement de l'enregistrement passif permettant une installation beaucoup plus rapide des extensions et de différencier les services UNO enregistrés de ceux fournis par une implémentation Java ou Python. Cet enregistrement passif est assuré par l'extension [LOEclipse][28] via les [PR#152][67] et [PR#157][68].
-- Modification de [LOEclipse][28] pour prendre en charge le nouveau format de fichier `rdb` produit par l'utilitaire de compilation `unoidl-write`. Les fichiers `idl` ont été mis à jour pour prendre en charge les deux outils de compilation disponibles: idlc et unoidl-write.
-- Il est désormais possible de créer le fichier oxt de l'extension gDriveOOo uniquement avec Apache Ant et une copie du dépôt GitHub. La section [Comment créer l'extension][69] a été ajoutée à la documentation.
-- Implémentation de [PEP 570][70] dans la [journalisation][71] pour prendre en charge les arguments multiples uniques.
+- Déploiement de l'enregistrement passif permettant une installation beaucoup plus rapide des extensions et de différencier les services UNO enregistrés de ceux fournis par une implémentation Java ou Python. Cet enregistrement passif est assuré par l'extension [LOEclipse][31] via les [PR#152][69] et [PR#157][70].
+- Modification de [LOEclipse][31] pour prendre en charge le nouveau format de fichier `rdb` produit par l'utilitaire de compilation `unoidl-write`. Les fichiers `idl` ont été mis à jour pour prendre en charge les deux outils de compilation disponibles: idlc et unoidl-write.
+- Il est désormais possible de créer le fichier oxt de l'extension gDriveOOo uniquement avec Apache Ant et une copie du dépôt GitHub. La section [Comment créer l'extension][70] a été ajoutée à la documentation.
+- Implémentation de [PEP 570][72] dans la [journalisation][73] pour prendre en charge les arguments multiples uniques.
 - Pour garantir la création correcte de la base de données gDriveOOo, il sera vérifié que l'extension jdbcDriverOOo a `com.sun.star.sdb` comme niveau d'API.
-- Ecriture de deux macros `OpenRemote` et `SaveRemote` permettant de créer des menus personnalisés et de conserver la fenêtre de dialogue système pour l'ouverture et l'enregistrement de fichiers dans LibreOffice. Pour faciliter la création de ces menus personnalisés, la section [Comment personnaliser les menus de LibreOffice][72] a été ajoutée à la documentation.
+- Ecriture de deux macros `OpenRemote` et `SaveRemote` permettant de créer des menus personnalisés et de conserver la fenêtre de dialogue système pour l'ouverture et l'enregistrement de fichiers dans LibreOffice. Pour faciliter la création de ces menus personnalisés, la section [Comment personnaliser les menus de LibreOffice][74] a été ajoutée à la documentation.
 - Nécessite l'extension **jdbcDriverOOo en version 1.5.0 minimum**.
 - Nécessite l'extension **OAuth2OOo en version 1.5.0 minimum**.
 
@@ -323,7 +338,15 @@ Bien que cette fonctionnalité ne soit nécessaire que pour gDriveOOo, elle est 
 - Nécessite l'extension **jdbcDriverOOo en version 1.5.4 minimum**.
 - Nécessite l'extension **OAuth2OOo en version 1.5.2 minimum**.
 
-### Que reste-t-il à faire pour la version 1.3.1:
+### Ce qui a été fait pour la version 1.4.0:
+
+- Si l'extension jdbcDriverOOo fonctionne sans l'instrumentation Java, un message d'avertissement s'affichera dans les options de l'extension.
+- Toutes les fenêtres modales s'ouvrent désormais correctement en mode modal.
+- Nécessite l'extension **jdbcDriverOOo en version 1.6.1 minimum**.
+- Nécessite l'extension **OAuth2OOo en version 1.6.1 minimum**.
+- A été testé avec LibreOfficeDev 26.2.
+
+### Que reste-t-il à faire pour la version 1.4.0:
 
 - Ajouter de nouvelles langue pour l'internationalisation...
 
@@ -334,7 +357,7 @@ Bien que cette fonctionnalité ne soit nécessaire que pour gDriveOOo, elle est 
 [3]: <https://prrvchr.github.io/gDriveOOo>
 [4]: <https://prrvchr.github.io/gDriveOOo/source/gDriveOOo/registration/TermsOfUse_fr>
 [5]: <https://prrvchr.github.io/gDriveOOo/source/gDriveOOo/registration/PrivacyPolicy_fr>
-[6]: <https://prrvchr.github.io/gDriveOOo/README_fr#ce-qui-a-%C3%A9t%C3%A9-fait-pour-la-version-131>
+[6]: <https://prrvchr.github.io/gDriveOOo/README_fr#ce-qui-a-%C3%A9t%C3%A9-fait-pour-la-version-140>
 [7]: <https://prrvchr.github.io/README_fr>
 [8]: <https://fr.libreoffice.org/download/telecharger-libreoffice/>
 [9]: <https://www.openoffice.org/fr/Telecharger/>
@@ -342,61 +365,64 @@ Bien que cette fonctionnalité ne soit nécessaire que pour gDriveOOo, elle est 
 [11]: <https://wiki.openoffice.org/wiki/Documentation/DevGuide/UCB/Content_Providers>
 [12]: <https://github.com/prrvchr/gDriveOOo>
 [13]: <https://github.com/prrvchr/gDriveOOo/issues/new>
-[14]: <https://prrvchr.github.io/OAuth2OOo/README_fr#pr%C3%A9requis>
-[15]: <https://prrvchr.github.io/jdbcDriverOOo/README_fr#pr%C3%A9requis>
-[17]: <https://prrvchr.github.io/OAuth2OOo/img/OAuth2OOo.svg#middle>
-[18]: <https://prrvchr.github.io/OAuth2OOo/README_fr>
-[19]: <https://github.com/prrvchr/OAuth2OOo/releases/latest/download/OAuth2OOo.oxt>
-[20]: <https://img.shields.io/github/v/tag/prrvchr/OAuth2OOo?label=latest#right>
+[14]: <https://github.com/sponsors/prrvchr>
+[15]: <https://appdefensealliance.dev/casa>
+[16]: <https://github.com/prrvchr/OAuth2OOo/blob/master/LOV_OAuth2OOo.pdf>
+[17]: <https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&color=%23fe8e86#right>
+[18]: <https://prrvchr.github.io/OAuth2OOo/README_fr#pr%C3%A9requis>
+[19]: <https://prrvchr.github.io/jdbcDriverOOo/README_fr#pr%C3%A9requis>
+[20]: <https://prrvchr.github.io/OAuth2OOo/img/OAuth2OOo.svg#middle>
+[21]: <https://prrvchr.github.io/OAuth2OOo/README_fr>
+[22]: <https://github.com/prrvchr/OAuth2OOo/releases/latest/download/OAuth2OOo.oxt>
+[23]: <https://img.shields.io/github/v/tag/prrvchr/OAuth2OOo?label=latest#right>
 [21]: <https://prrvchr.github.io/jdbcDriverOOo/img/jdbcDriverOOo.svg#middle>
-[22]: <https://prrvchr.github.io/jdbcDriverOOo/README_fr>
-[23]: <https://github.com/prrvchr/jdbcDriverOOo/releases/latest/download/jdbcDriverOOo.oxt>
-[24]: <https://img.shields.io/github/v/tag/prrvchr/jdbcDriverOOo?label=latest#right>
-[25]: <img/gDriveOOo.svg#middle>
-[26]: <https://github.com/prrvchr/gDriveOOo/releases/latest/download/gDriveOOo.oxt>
-[27]: <https://img.shields.io/github/downloads/prrvchr/gDriveOOo/latest/total?label=v1.3.1#right>
-[28]: <https://github.com/LibreOffice/loeclipse>
-[29]: <https://adoptium.net/temurin/releases/?version=8&package=jdk>
-[30]: <https://ant.apache.org/manual/install.html>
-[31]: <https://downloadarchive.documentfoundation.org/libreoffice/old/7.6.7.2/>
-[32]: <https://github.com/prrvchr/gDriveOOo.git>
-[33]: <https://bz.apache.org/ooo/show_bug.cgi?id=128569>
-[34]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/replicator.py>
-[35]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/database.py>
-[36]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/datasource.py#L127>
-[37]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/dbqueries.py>
-[38]: <https://datatracker.ietf.org/doc/html/draft-king-vnd-urlscheme-03>
-[39]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/dbqueries.py#L163>
-[40]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/dbqueries.py#L173>
-[41]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/dbqueries.py#L193>
-[42]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/dbqueries.py#L213>
-[43]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/ucp/provider.py>
-[44]: <https://github.com/prrvchr/gDriveOOo/blob/master/source/gDriveOOo/gDriveOOo.xcu#L42>
-[45]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/rdb/idl/io/github/prrvchr/css/util/DateTimeWithTimezone.idl>
-[46]: <https://bz.apache.org/ooo/show_bug.cgi?id=128560>
-[47]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/dbqueries.py#L512>
-[48]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/dbqueries.py#L557>
-[49]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/dbqueries.py#L494>
-[50]: <https://github.com/prrvchr/gDriveOOo/tree/master/uno/lib/uno/options/ucb>
-[51]: <https://github.com/prrvchr/gDriveOOo/issues/12>
-[52]: <https://github.com/prrvchr/gDriveOOo/releases/latest/download/requirements.txt>
-[53]: <https://peps.python.org/pep-0508/>
-[54]: <https://prrvchr.github.io/gDriveOOo/README_fr#pr%C3%A9requis>
-[55]: <https://bugs.documentfoundation.org/show_bug.cgi?id=159988>
-[56]: <https://github.com/prrvchr/gDriveOOo/tree/master/uno/lib/uno/ucb/hsqldb>
-[57]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/dbqueries.py#L111>
-[58]: <https://pypi.org/project/python-dateutil/>
-[59]: <https://pypi.org/project/ijson/>
-[60]: <https://pypi.org/project/packaging/>
-[61]: <https://pypi.org/project/setuptools/>
-[62]: <https://github.com/prrvchr/gDriveOOo/security/dependabot/1>
-[63]: <https://github.com/prrvchr/gDriveOOo/issues/16>
-[64]: <https://github.com/prrvchr/OAuth2OOo/blob/master/LOV_OAuth2OOo.pdf>
-[65]: <https://github.com/prrvchr/gDriveOOo/blob/master/source/gDriveOOo/build.xml>
-[66]: <https://pypi.org/project/six/>
-[67]: <https://github.com/LibreOffice/loeclipse/pull/152>
-[68]: <https://github.com/LibreOffice/loeclipse/pull/157>
-[69]: <https://prrvchr.github.io/gDriveOOo/README_fr#comment-cr%C3%A9er-lextension>
-[70]: <https://peps.python.org/pep-0570/>
-[71]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/logger/logwrapper.py#L109>
-[72]: <https://prrvchr.github.io/gDriveOOo/README_fr#comment-personnaliser-les-menus-de-libreoffice>
+[25]: <https://prrvchr.github.io/jdbcDriverOOo/README_fr>
+[26]: <https://github.com/prrvchr/jdbcDriverOOo/releases/latest/download/jdbcDriverOOo.oxt>
+[27]: <https://img.shields.io/github/v/tag/prrvchr/jdbcDriverOOo?label=latest#right>
+[28]: <img/gDriveOOo.svg#middle>
+[29]: <https://github.com/prrvchr/gDriveOOo/releases/latest/download/gDriveOOo.oxt>
+[30]: <https://img.shields.io/github/downloads/prrvchr/gDriveOOo/latest/total?label=v1.4.0#right>
+[31]: <https://github.com/LibreOffice/loeclipse>
+[32]: <https://adoptium.net/temurin/releases/?version=8&package=jdk>
+[33]: <https://ant.apache.org/manual/install.html>
+[34]: <https://downloadarchive.documentfoundation.org/libreoffice/old/7.6.7.2/>
+[35]: <https://github.com/prrvchr/gDriveOOo.git>
+[36]: <https://bz.apache.org/ooo/show_bug.cgi?id=128569>
+[37]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/replicator.py>
+[38]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/database.py>
+[39]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/datasource.py#L127>
+[40]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/dbqueries.py>
+[41]: <https://datatracker.ietf.org/doc/html/draft-king-vnd-urlscheme-03>
+[42]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/dbqueries.py#L163>
+[43]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/dbqueries.py#L173>
+[44]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/dbqueries.py#L193>
+[45]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/dbqueries.py#L213>
+[46]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/ucp/provider.py>
+[47]: <https://github.com/prrvchr/gDriveOOo/blob/master/source/gDriveOOo/gDriveOOo.xcu#L42>
+[48]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/rdb/idl/io/github/prrvchr/css/util/DateTimeWithTimezone.idl>
+[49]: <https://bz.apache.org/ooo/show_bug.cgi?id=128560>
+[50]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/dbqueries.py#L512>
+[51]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/dbqueries.py#L557>
+[52]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/dbqueries.py#L494>
+[53]: <https://github.com/prrvchr/gDriveOOo/tree/master/uno/lib/uno/options/ucb>
+[54]: <https://github.com/prrvchr/gDriveOOo/issues/12>
+[55]: <https://github.com/prrvchr/gDriveOOo/releases/latest/download/requirements.txt>
+[56]: <https://peps.python.org/pep-0508/>
+[57]: <https://prrvchr.github.io/gDriveOOo/README_fr#pr%C3%A9requis>
+[58]: <https://bugs.documentfoundation.org/show_bug.cgi?id=159988>
+[59]: <https://github.com/prrvchr/gDriveOOo/tree/master/uno/lib/uno/ucb/hsqldb>
+[60]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/ucb/dbqueries.py#L111>
+[61]: <https://pypi.org/project/python-dateutil/>
+[62]: <https://pypi.org/project/ijson/>
+[63]: <https://pypi.org/project/packaging/>
+[64]: <https://pypi.org/project/setuptools/>
+[65]: <https://github.com/prrvchr/gDriveOOo/security/dependabot/1>
+[66]: <https://github.com/prrvchr/gDriveOOo/issues/16>
+[67]: <https://github.com/prrvchr/gDriveOOo/blob/master/source/gDriveOOo/build.xml>
+[68]: <https://pypi.org/project/six/>
+[69]: <https://github.com/LibreOffice/loeclipse/pull/152>
+[70]: <https://github.com/LibreOffice/loeclipse/pull/157>
+[71]: <https://prrvchr.github.io/gDriveOOo/README_fr#comment-cr%C3%A9er-lextension>
+[72]: <https://peps.python.org/pep-0570/>
+[73]: <https://github.com/prrvchr/gDriveOOo/blob/master/uno/lib/uno/logger/logwrapper.py#L109>
+[74]: <https://prrvchr.github.io/gDriveOOo/README_fr#comment-personnaliser-les-menus-de-libreoffice>
