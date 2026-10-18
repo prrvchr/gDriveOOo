@@ -67,3 +67,11 @@ g_errorlog = 'gDriveError'
 # Logging global variable
 g_synclog = 'gDriveSync'
 
+g_sep = '/'
+
+# Setup frame and Job name
+g_setup = '%s.Setup' % g_extension
+
+
+class State:
+    restart = False
