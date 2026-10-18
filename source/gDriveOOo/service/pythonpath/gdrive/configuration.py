@@ -38,10 +38,10 @@ g_version = 'v3'
 g_url = 'https://%s/drive/%s' % (g_host, g_version)
 g_upload = 'https://%s/upload/drive/%s/files' % (g_host, g_version)
 
-g_userkeys = ('permissionId','emailAddress','displayName')
+g_userkeys = ('permissionId', 'emailAddress', 'displayName')
 g_userfields = 'user(%s)' % ','.join(g_userkeys)
-g_capabilitykeys = ('canAddChildren','canRename','canEdit','canReadRevisions')
-g_itemkeys = ('id','name','createdTime','modifiedTime','mimeType','size','trashed','parents','capabilities')
+g_capabilitykeys = ('canAddChildren', 'canRename', 'canEdit', 'canReadRevisions')
+g_itemkeys = ('id', 'name', 'createdTime', 'modifiedTime', 'mimeType', 'size', 'trashed', 'parents', 'capabilities')
 g_itemfields = '%s(%s)' % (','.join(g_itemkeys), ','.join(g_capabilitykeys))
 g_childfields = 'kind,nextPageToken,files(%s)' % g_itemfields
 
@@ -67,3 +67,15 @@ g_errorlog = 'gDriveError'
 # Logging global variable
 g_synclog = 'gDriveSync'
 
+g_sep = '/'
+g_offset = 11
+
+# Setup frame and Job name
+g_setup = '%s.Setup' % g_extension
+
+# Replicator frame and Job name
+g_replicator = '%s.Replicator' % g_extension
+
+
+class State:
+    restart = False

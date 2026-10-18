@@ -27,25 +27,17 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-import uno
-import unohelper
-
 from com.sun.star.rest.HTTPStatusCode import PERMANENT_REDIRECT
 
 from com.sun.star.rest.ParameterType import HEADER
 from com.sun.star.rest.ParameterType import QUERY
 
-from com.sun.star.ucb import IllegalIdentifierException
-
 from .ucp import Provider as ProviderBase
-from .ucp import g_ucboffice
 
 from .dbtool import currentDateTimeInTZ
 from .dbtool import currentUnoDateTime
 
-
-from .configuration import g_identifier
-from .configuration import g_scheme
+from .configuration import State
 from .configuration import g_provider
 from .configuration import g_host
 from .configuration import g_url
@@ -59,8 +51,10 @@ from .configuration import g_pages
 from .configuration import g_IdentifierRange
 from .configuration import g_doc_map
 
-import ijson
-import traceback
+try:
+    import ijson
+except ImportError as e:
+    State.restart = True
 
 
 class Provider(ProviderBase):
@@ -69,12 +63,15 @@ class Provider(ProviderBase):
     @property
     def BaseUrl(self):
         return g_url
+
     @property
     def Host(self):
         return g_host
+
     @property
     def Name(self):
         return g_provider
+
     @property
     def UploadUrl(self):
         return g_upload
@@ -272,7 +269,7 @@ class Provider(ProviderBase):
                 user = {'RootId':       rootid,
                         'DateCreated':  datetime,
                         'DateModified': datetime}
-            except:
+            except Exception:
                 self.raiseIllegalIdentifierException(source, 571, parameter, response)
         else:
             self.raiseIllegalIdentifierException(source, 571, parameter, response)
@@ -494,4 +491,3 @@ class Provider(ProviderBase):
             parameter.setUpload(PERMANENT_REDIRECT, 'Range', '-([0-9]+)', 1, HEADER)
 
         return parameter
-
