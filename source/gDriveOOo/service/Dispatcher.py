@@ -38,10 +38,7 @@ from gdrive import Dispatch
 
 from gdrive import hasFrameInterface
 
-from gdrive import g_identifier
 from gdrive import g_scheme
-
-import traceback
 
 # pythonloader looks for a static g_ImplementationHelper variable
 g_ImplementationHelper = unohelper.ImplementationHelper()
@@ -91,4 +88,3 @@ class Dispatcher(unohelper.Base,
 g_ImplementationHelper.addImplementation(Dispatcher,                      # UNO object class
                                          g_ImplementationName,            # Implementation name
                                          g_ServiceNames)                  # List of implemented services
-

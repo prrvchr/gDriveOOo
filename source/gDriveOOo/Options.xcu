@@ -31,6 +31,9 @@
   xmlns:xs="http://www.w3.org/2001/XMLSchema"
   oor:package="io.github.prrvchr"
   oor:name="gDriveOOo">
+  <prop oor:name="DisplayDirectory">
+    <value></value>
+  </prop>
   <prop oor:name="ResetSync">
     <value>0</value>
   </prop>
@@ -52,6 +55,12 @@
   </prop>
   <prop oor:name="ResumableUpload">
     <value>true</value>
+  </prop>
+  <prop oor:name="SetupPosSize" oor:op="fuse">
+    <value>-1 -1 -1 -1</value>
+  </prop>
+  <prop oor:name="SetupUpdate">
+    <value>0</value>
   </prop>
   <node oor:name="Settings">
     <node oor:name="Download" oor:op="fuse">

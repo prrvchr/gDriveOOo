@@ -34,7 +34,6 @@ from com.sun.star.lang import XServiceInfo
 from com.sun.star.ucb import XContentProvider
 from com.sun.star.ucb import XContentProviderSupplier
 from com.sun.star.ucb import XContentIdentifierFactory
-from com.sun.star.ucb import XParameterizedContentProvider
 
 from com.sun.star.logging.LogLevel import INFO
 
@@ -42,16 +41,14 @@ from gdrive import ContentProvider
 
 from gdrive import getLogger
 
-from gdrive import g_identifier
 from gdrive import g_basename
 from gdrive import g_defaultlog
-
-import traceback
 
 # pythonloader looks for a static g_ImplementationHelper variable
 g_ImplementationHelper = unohelper.ImplementationHelper()
 g_ImplementationName = 'io.github.prrvchr.gDriveOOo.NamedProvider'
-g_ServiceNames = ('io.github.prrvchr.gDriveOOo.NamedProvider', 'com.sun.star.ucb.ContentProviderProxy')
+g_ServiceNames = ('io.github.prrvchr.gDriveOOo.NamedProvider',
+                  'com.sun.star.ucb.ContentProviderProxy')
 
 
 class NamedProvider(unohelper.Base,
@@ -68,6 +65,7 @@ class NamedProvider(unohelper.Base,
     # XContentProvider
     def queryContent(self, identifier):
         return self.getContentProvider().queryContent(identifier)
+
     def compareContentIds(self, identifier1, identifier2):
         return self.getContentProvider().compareContentIds(identifier1, identifier2)
 
@@ -84,16 +82,20 @@ class NamedProvider(unohelper.Base,
     # XParameterizedContentProvider
     def registerInstance(self, template, arguments, replace):
         return None
+
     def deregisterInstance(self, scheme, authority):
         pass
 
     # XServiceInfo
     def supportsService(self, service):
         return g_ImplementationHelper.supportsService(g_ImplementationName, service)
+
     def getImplementationName(self):
         return g_ImplementationName
+
     def getSupportedServiceNames(self):
         return g_ImplementationHelper.getSupportedServiceNames(g_ImplementationName)
+
 
 g_ImplementationHelper.addImplementation(NamedProvider,                   # UNO object class
                                          g_ImplementationName,            # Implementation name
