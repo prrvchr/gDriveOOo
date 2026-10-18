@@ -44,6 +44,7 @@ from .dbtool import checkConnection
 from .dbtool import createForeignKeys
 from .dbtool import createTables
 from .dbtool import createIndexes
+from .dbtool import createRoleAndPrivileges
 from .dbtool import createViews
 from .dbtool import executeQueries
 from .dbtool import getConnectionInfos
@@ -52,6 +53,7 @@ from .dbtool import getDataBaseIndexes
 from .dbtool import getDataBaseTables
 from .dbtool import getDataSourceConnection
 from .dbtool import getDriverInfos
+from .dbtool import getTablePrivileges
 
 from ..runner import RunnerException
 
@@ -184,6 +186,21 @@ class DBCheck():
             trace = traceback.format_exc()
             raise RunnerException(e, trace)
 
+    def stepCreateRoleAndPrivileges(self, privileges):
+        try:
+            groups = self._connection.getGroups()
+            createRoleAndPrivileges(self._tables, groups, privileges(self._statement))
+        except Exception as e:
+            trace = traceback.format_exc()
+            raise RunnerException(e, trace)
+
+    def stepCreateFunctions(self, ctx, functions, *options):
+        try:
+            executeQueries(ctx, self._statement, functions, 'create%s', *options)
+        except Exception as e:
+            trace = traceback.format_exc()
+            raise RunnerException(e, trace)
+
     def stepCreateViews(self, ctx, views):
         try:
             createViews(self._connection.getViews(), views(ctx, self._connection))
@@ -191,9 +208,9 @@ class DBCheck():
             trace = traceback.format_exc()
             raise RunnerException(e, trace)
 
-    def stepCreateProcedures(self, ctx, procedures):
+    def stepCreateProcedures(self, ctx, procedures, *options):
         try:
-            executeQueries(ctx, self._statement, procedures, 'create%s')
+            executeQueries(ctx, self._statement, procedures, 'create%s', *options)
         except Exception as e:
             trace = traceback.format_exc()
             raise RunnerException(e, trace)
@@ -239,14 +256,20 @@ class DBCheck():
     def _getstepCreateForeignKeys(self):
         return 239, (), self.stepCreateForeignKeys
 
-    def _getStepCreateViews(self, ctx, views):
-        return 240, (), self.stepCreateViews, ctx, views
+    def _getstepCreateRoleAndPrivileges(self, privileges):
+        return 240, (), self.stepCreateRoleAndPrivileges, privileges
 
-    def _getStepCreateProcedures(self, ctx, procedures):
-        return 241, (), self.stepCreateProcedures, ctx, procedures
+    def _getStepCreateFunctions(self, ctx, functions, *options):
+        return 241, (), self.stepCreateFunctions, ctx, functions, *options
+
+    def _getStepCreateViews(self, ctx, views):
+        return 242, (), self.stepCreateViews, ctx, views
+
+    def _getStepCreateProcedures(self, ctx, procedures, *options):
+        return 243, (), self.stepCreateProcedures, ctx, procedures, *options
 
     def _getStepFinalize(self, save):
-        return 242, (), self.stepFinalize, save
+        return 244, (), self.stepFinalize, save
 
     def _getReport(self):
         return self.resolver.resolveString(261), '', False

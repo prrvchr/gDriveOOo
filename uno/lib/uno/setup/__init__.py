@@ -29,6 +29,8 @@
 
 from .setupcheck import SetupCheck
 
+from .setupstate import SetupState
+
 from .dialog import SetupManager
 
 from .helper import canUpdatePackages
