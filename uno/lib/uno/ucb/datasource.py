@@ -69,7 +69,8 @@ class DataSource():
         self._sync = Event()
         self._lock = Lock()
         self._urifactory = getUriFactory(ctx)
-        self._database = DataBase(ctx, getDataSourceUrl(ctx), getDataBaseUrl(ctx))
+        url = getDataSourceUrl(ctx)
+        self._database = DataBase(ctx, url)
         self._provider = Provider(ctx, logger)
         self._replicator = Replicator(ctx, url, self._provider, self._users, self._sync, self._lock)
         self._logger = logger
