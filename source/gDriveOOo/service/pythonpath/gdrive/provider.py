@@ -43,7 +43,7 @@ from .ucp import g_ucboffice
 from .dbtool import currentDateTimeInTZ
 from .dbtool import currentUnoDateTime
 
-
+from .configuration import State
 from .configuration import g_identifier
 from .configuration import g_scheme
 from .configuration import g_provider
@@ -59,7 +59,10 @@ from .configuration import g_pages
 from .configuration import g_IdentifierRange
 from .configuration import g_doc_map
 
-import ijson
+try:
+    import ijson
+except ImportError as e:
+    State.restart = True
 import traceback
 
 
