@@ -39,12 +39,9 @@ from .dbsetup import DBSetup
 
 from .helper import getExtensions
 
-from .unotool import checkInternet
-from .unotool import createMessageBox
 from .unotool import executeDispatch
 from .unotool import findFrame
 from .unotool import getJobListener
-from .unotool import getStringResource
 from .unotool import hasFrameInterface
 from .unotool import notifyDispatch
 
