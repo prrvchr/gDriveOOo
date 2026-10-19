@@ -54,19 +54,22 @@ class Conflict(Check):
         self._parse = lambda x: x[1]
         dists = list(importlib.metadata.distributions())
         self.total = len(dists) + 1
-        self.label1 = self.resolver.resolveString(511)
-        self.label2 = self.resolver.resolveString(512)
+        self.label1 = self.resolver.resolveString(50101)
+        self.label2 = self.resolver.resolveString(50102)
         self.steps = self._getCheckStep(ctx, dists, packages, url)
 
     def getHeader(self, **kwargs):
-        return self.resolver.resolveString(521).format(**kwargs)
+        return self.resolver.resolveString(50201).format(**kwargs)
 
     def setReport(self, reports, success):
-        reports.append(self._getReport())
-        return self._getHeader(), self._getResult(), True
+        result = self._getResult()
+        if not success:
+            reports.append((self._getReport(), result, False))
+        return self._getHeader(), result
 
     def callback(self, callback, success=True, error=None):
-        callback(True, error)
+        success = len(self._paths) == 0
+        callback(success, error)
 
     def stepInitialize(self, ctx, packages, url):
         if url is None:
@@ -83,7 +86,7 @@ class Conflict(Check):
             path = os.path.normpath(dist.locate_file(''))
             if not path.startswith(self._location):
                 if dist.version != version:
-                    if not path in self._paths:
+                    if path not in self._paths:
                         self._paths[path] = []
                     self._paths[path].append((package, dist.version))
 
@@ -96,46 +99,51 @@ class Conflict(Check):
             extensions[getExtensionName(location, identifier)] = location
         self._extensions = extensions
 
-    def stepGetResults(self, path, package, version):
+    def stepGetResults(self, path, packages):
         for name, location in self._extensions.items():
             if path.startswith(location):
-                if name not in self._results:
-                    self._results[name] = []
-                self._results[name].append((package, version))
+                if name in self._results:
+                    self._results[name].extend(packages)
+                else:
+                    self._results[name] = packages
                 break
         else:
-            if path not in self._results:
-                self._results[path] = []
-            self._results[path].append((package, version))
+            if path in self._results:
+                self._results[path].extend(packages)
+            else:
+                self._results[path] = packages
 
     def _getCheckStep(self, ctx, dists, packages, url):
         yield self._getStepInitialize(ctx, packages, url)
         for dist in dists:
             yield self._getStepGetPackages(dist)
         if self._paths:
-            self.total += len(self._paths) + 1
-            yield self._getStepGetExtensions(ctx)
-            for path, data in self._paths.items():
-                yield self._getStepGetResults(path, *data)
+            yield from self._getCheckStepConflict(ctx)
+
+    def _getCheckStepConflict(self, ctx):
+        self.total += len(self._paths) + 1
+        yield self._getStepGetExtensions(ctx)
+        for path, packages in self._paths.items():
+            yield self._getStepGetResults(path, packages)
 
     def _getStepInitialize(self, ctx, packages, url):
-        return 531, (), self.stepInitialize, ctx, packages, url
+        return 50301, (), self.stepInitialize, ctx, packages, url
 
     def _getStepGetPackages(self, dist):
         package = dist.metadata.get('Name')
-        return 541, (package, ), self.stepGetPackages, package, dist
+        return 50401, (package, ), self.stepGetPackages, package, dist
 
     def _getStepGetExtensions(self, ctx):
-        return 551, (), self.stepGetExtensions, ctx
+        return 50501, (), self.stepGetExtensions, ctx
 
-    def _getStepGetResults(self, path, package, version):
-        return 561, (package, ), self.stepGetResults, path, package, version
+    def _getStepGetResults(self, path, packages):
+        return 50601, (path, ), self.stepGetResults, path, packages
 
     def _getHeader(self):
-        return self.resolver.resolveString(571)
+        return self.resolver.resolveString(50701)
 
     def _getReport(self):
-        return self._getHeader(), self._getResult(), True
+        return self.resolver.resolveString(50801)
 
     def _getPackages(self, packages):
         return ', '.join(f'{pkg} version {ver}' for pkg, ver in packages)

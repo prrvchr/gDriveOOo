@@ -182,14 +182,14 @@ class SetupManager():
         self._setHeader()
         self._model.startCheck(self.notifyPython, self._view.getIndicator(), self._cancel)
 
-    def notifyPython(self, success, checked, error):
+    def notifyPython(self, success, checked, internet, error):
         self._running = False
         if self._cancel.isSet():
             return self._dispose()
         if error:
             return self._setError(error)
         self._model.setPythonData()
-        if not checked:
+        if not checked and internet:
             self._steps.insert(0, self._installPackages)
         elif self._state.pcode == 3:
             self._steps.insert(0, self._checkConflict)

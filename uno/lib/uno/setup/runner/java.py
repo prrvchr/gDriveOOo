@@ -43,12 +43,12 @@ class Java(Check):
         self._minimum = ''
         self._version = ''
         self.total = 1
-        self.label1 = self.resolver.resolveString(211)
-        self.label2 = self.resolver.resolveString(212)
+        self.label1 = self.resolver.resolveString(20101)
+        self.label2 = self.resolver.resolveString(20102)
         self.steps = self._getCheckStep(java, agent)
 
     def getHeader(self, **kwargs):
-        return self.resolver.resolveString(221).format(**kwargs)
+        return self.resolver.resolveString(20201).format(**kwargs)
 
     def setReport(self, reports, success):
         if not success:
@@ -78,13 +78,13 @@ class Java(Check):
                 yield self._getStepCheckJavaAgent(*agent)
 
     def _getStepCheckJavaStatus(self, extension, version, script):
-        return 231, (), self.stepCheckJavaStatus, extension, version, script
+        return 20301, (), self.stepCheckJavaStatus, extension, version, script
 
     def _getStepCheckJavaVersion(self, extension, version, script):
-        return 241, (version, ), self.stepCheckJavaVersion, extension, version, script
+        return 20401, (version, ), self.stepCheckJavaVersion, extension, version, script
 
     def _getStepCheckJavaAgent(self, service, url, agent):
-        return 251, (), self.stepCheckJavaAgent, service, url, agent
+        return 20501, (), self.stepCheckJavaAgent, service, url, agent
 
     def _hasJava(self):
         return self._code == 0
@@ -93,11 +93,11 @@ class Java(Check):
         return self._code == 1
 
     def _getHeader(self):
-        code = 261 + self._code
+        code = 20601 + self._code
         return self.resolver.resolveString(code).format(version=self._version, minimum=self._minimum)
 
     def _getReport(self):
-        code = 271 if self._noAgent() else 272
+        code = 20701 if self._noAgent() else 20702
         return self.resolver.resolveString(code), self._getResult(), False
 
     def _getResult(self):

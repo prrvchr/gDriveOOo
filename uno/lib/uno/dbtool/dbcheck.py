@@ -68,6 +68,7 @@ from ..dbconfig import g_schema
 from ..dbconfig import g_version
 
 from ..configuration import g_identifier
+from ..configuration import g_resource
 
 import traceback
 
@@ -85,20 +86,21 @@ class DBCheck():
         self._connected = False
         self._statement = None
         self.total = 3
-        self.resolver = getStringResource(ctx, g_identifier, 'resource', 'dbtool')
-        self.label1 = self.resolver.resolveString(211)
-        self.label2 = self.resolver.resolveString(212)
+        self.resolver = getStringResource(ctx, g_identifier, g_resource, 'dbtool')
+        self.label1 = self.resolver.resolveString(10101)
+        self.label2 = self.resolver.resolveString(10102)
 
     def isExtended(self, total):
         return self.total > total
 
     def getHeader(self, **kwargs):
-        return self.resolver.resolveString(221).format(**kwargs)
+        return self.resolver.resolveString(10201).format(**kwargs)
 
     def setReport(self, reports, success):
+        result = self._getResult()
         if not success:
-            reports.append(self._getReport())
-        return self._getResult(), ''
+            reports.append((result, '', False))
+        return result, ''
 
     def callback(self, callback, success=True, error=None):
         callback(self._getSuccess(success), error)
@@ -230,57 +232,54 @@ class DBCheck():
             pass
 
     def _getStepGetConnection(self, ctx, user, pwd):
-        return 231, (), self.stepGetConnection, ctx, user, pwd
+        return 10301, (), self.stepGetConnection, ctx, user, pwd
 
     def _getStepCheckConnection(self, ctx):
-        return 232, (), self.stepCheckConnection, ctx
+        return 10401, (), self.stepCheckConnection, ctx
 
     def _getStepCreateStaticTables(self, tables=None):
-        return 233, (), self.stepCreateStaticTables, tables
+        return 10501, (), self.stepCreateStaticTables, tables
 
     def _getStepCreateStaticIndexes(self):
-        return 234, (), self.stepCreateStaticIndexes
+        return 10601, (), self.stepCreateStaticIndexes
 
     def _getStepCreateStaticForeignKeys(self, foreignkeys=None):
-        return 235, (), self.stepCreateStaticForeignKeys, foreignkeys
+        return 10701, (), self.stepCreateStaticForeignKeys, foreignkeys
 
     def _getStepSetStaticTable(self):
-        return 236, (), self.stepSetStaticTable
+        return 10801, (), self.stepSetStaticTable
 
     def _getStepCreateTables(self):
-        return 237, (), self.stepCreateTables
+        return 10901, (), self.stepCreateTables
 
     def _getstepCreateIndexes(self):
-        return 238, (), self.stepCreateIndexes
+        return 11001, (), self.stepCreateIndexes
 
     def _getstepCreateForeignKeys(self):
-        return 239, (), self.stepCreateForeignKeys
+        return 11101, (), self.stepCreateForeignKeys
 
     def _getstepCreateRoleAndPrivileges(self, privileges):
-        return 240, (), self.stepCreateRoleAndPrivileges, privileges
+        return 11201, (), self.stepCreateRoleAndPrivileges, privileges
 
     def _getStepCreateFunctions(self, ctx, functions, *options):
-        return 241, (), self.stepCreateFunctions, ctx, functions, *options
+        return 11301, (), self.stepCreateFunctions, ctx, functions, *options
 
     def _getStepCreateViews(self, ctx, views):
-        return 242, (), self.stepCreateViews, ctx, views
+        return 11401, (), self.stepCreateViews, ctx, views
 
     def _getStepCreateProcedures(self, ctx, procedures, *options):
-        return 243, (), self.stepCreateProcedures, ctx, procedures, *options
+        return 11501, (), self.stepCreateProcedures, ctx, procedures, *options
 
     def _getStepFinalize(self, save):
-        return 244, (), self.stepFinalize, save
-
-    def _getReport(self):
-        return self.resolver.resolveString(261), '', False
+        return 11601, (), self.stepFinalize, save
 
     def _getResult(self):
         if not self._connected:
-            code = 251 if checkVersion(self._version, g_version) else 252
+            code = 11701 if checkVersion(self._version, g_version) else 11702
         elif self._success:
-            code = 253 if self._exists else 254
+            code = 11703 if self._exists else 11704
         else:
-            code = 255
+            code = 11705
         return self.resolver.resolveString(code)
 
     def _getSuccess(self, success):

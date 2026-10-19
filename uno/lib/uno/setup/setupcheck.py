@@ -68,7 +68,7 @@ class SetupCheck(unohelper.Base,
 
     def start(self):
         if self._progress:
-            self._progress.start(self._resolver.resolveString(111), self._total)
+            self._progress.start(self._resolver.resolveString(10101), self._total)
         Timer(0.1, self._call).start()
 
     def notify(self, data):
@@ -127,22 +127,22 @@ class SetupCheck(unohelper.Base,
        self._asyncCall.addCallback(self, None)
 
     def _getStepCheckExtension(self, ctx, identifier, name, version):
-        return 121, (name, version), self.stepCheckExtension, ctx, identifier, name, version
+        return 10201, (name, version), self.stepCheckExtension, ctx, identifier, name, version
 
     def _getStepCheckJavaStatus(self, ctx):
-        return 131, (), self.stepCheckJavaStatus, ctx
+        return 10301, (), self.stepCheckJavaStatus, ctx
 
     def _getStepCheckJavaVersion(self, ctx, extension, version, script):
-        return 141, (version, ), self.stepCheckJavaVersion, ctx, extension, version, script
+        return 10401, (version, ), self.stepCheckJavaVersion, ctx, extension, version, script
 
     def _getStepCheckJavaAgent(self, ctx, service, url, agent):
-        return 151, (), self.stepCheckJavaAgent, ctx, service, url, agent
+        return 10501, (), self.stepCheckJavaAgent, ctx, service, url, agent
 
     def _getStepCheckDataBase(self, ctx, database):
-        return 161, (database, ), self.stepCheckDataBase, ctx, database
+        return 10601, (database, ), self.stepCheckDataBase, ctx, database
 
     def _getStepCheckPython(self, ctx):
-        return 171, (), self.stepCheckPython, ctx
+        return 10701, (), self.stepCheckPython, ctx
 
     def _hasJava(self):
         return self._code == 0

@@ -51,12 +51,12 @@ class Pypi(Check):
         self._fautly = False
         self.packages = {}
         self.total = 2
-        self.label1 = self.resolver.resolveString(411)
-        self.label2 = self.resolver.resolveString(412)
+        self.label1 = self.resolver.resolveString(40101)
+        self.label2 = self.resolver.resolveString(40102)
         self.steps = self._getCheckStep(packages)
 
     def getHeader(self, **kwargs):
-        return self.resolver.resolveString(421).format(**kwargs)
+        return self.resolver.resolveString(40201).format(**kwargs)
 
     def setReport(self, reports, success):
         if not success:
@@ -99,19 +99,19 @@ class Pypi(Check):
         yield self._getStepSetPythonCode(packages)
 
     def _getStepGetStepCount(self, packages):
-        return 431, (), self.stepGetStepCount, packages
+        return 40301, (), self.stepGetStepCount, packages
 
     def _getStepUninstallPackage(self, package):
-        return 441, (package, ), self.stepUninstallPackage, package
+        return 40401, (package, ), self.stepUninstallPackage, package
 
     def _getStepInstallPackage(self, package, version, url):
-        return 451, (package, ), self.stepInstallPackage, package, version, url
+        return 40501, (package, ), self.stepInstallPackage, package, version, url
 
     def _getStepRenamePackage(self, package):
-        return 461, (package, ), self.stepRenamePackage, package
+        return 40601, (package, ), self.stepRenamePackage, package
 
     def _getStepSetPythonCode(self, packages):
-        return 471, (), self.stepSetPythonCode, packages
+        return 40701, (), self.stepSetPythonCode, packages
 
     def _getStepCount(self, packages):
         self._fautly = hasFaultySuffix()
@@ -124,7 +124,7 @@ class Pypi(Check):
                     yield 2 if version1 else 1
 
     def _getHeader(self, success):
-        code = 481 if success else 482
+        code = 40801 if success else 40802
         return self.resolver.resolveString(code)
 
     def _getReport(self, success):
