@@ -34,7 +34,7 @@ from .optionmodel import OptionModel
 
 from .optionview import OptionView
 
-from .optionhandler import WindowHandler
+from .optionhandler import OptionHandler
 
 from ...unotool import getDesktop
 
@@ -48,7 +48,7 @@ class OptionManager():
     def __init__(self, ctx, logger, window, config):
         self._ctx = ctx
         self._model = OptionModel(ctx, config)
-        self._view = OptionView(ctx, window, WindowHandler(self))
+        self._view = OptionView(ctx, window, OptionHandler(self))
         self._logmanager = LogManager(ctx, self._view.getWindow(), 'requirements.txt', g_defaultlog, g_synclog)
         self._logmanager.initView()
         self._logger = logger
@@ -57,13 +57,11 @@ class OptionManager():
 
     def init(self, state):
         self._view.initView(*self._model.getInitData(state))
+        self._logmanager.loadSetting()
+        self._logger.logprb(INFO, 'OptionManager', 'init()', 311)
 
     def refresh(self, state):
         self._view.refreshView(state)
-
-    def loadSetting(self):
-        self._logmanager.loadSetting()
-        self._logger.logprb(INFO, 'OptionManager', 'loadSetting()', 311)
 
     def saveSetting(self):
         option = self._model.setViewData(*self._view.getViewData())
