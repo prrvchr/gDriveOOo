@@ -64,6 +64,8 @@ class OptionManager():
 
     def init(self, state):
         self._view.initView(*self._model.getInitData(state))
+        self._logmanager.loadSetting()
+        self._logger.logprb(INFO, 'OptionsManager', 'init', 161)
         if state.java and state.database:
             try:
                 url = self._model.getDatasourceUrl()
@@ -75,10 +77,6 @@ class OptionManager():
 
     def refresh(self, state):
         self._view.refreshView(self._model.getRefreshData(state))
-
-    def loadSetting(self):
-        self._logmanager.loadSetting()
-        self._logger.logprb(INFO, 'OptionsManager', 'loadSetting', 161)
 
     def saveSetting(self):
         option = self._model.setViewData(*self._view.getViewData())

@@ -81,12 +81,15 @@ class OptionsManager():
             self._loadView(self.refresh)
 
     def showSetup(self):
-        showSetup(self._ctx, g_identifier, DispatchListener=DispatchListener(self))
+        mode = self._view.getSetup()
+        showSetup(self._ctx, g_identifier, Dispatch=DispatchListener(self), Mode=mode)
 
     def dispatchFinished(self, notification):
         self._loadView(self.refresh)
 
     def _loadView(self, callback):
-        setup = SetupCheck(self._ctx, callback, self._manager.getDataSourceUrl(), java=self._java, agent=self._agent, python=True, **getExtensions())
+        mode = self._view.getSetup()
+        datasource = self._manager.getDataSourceUrl()
+        setup = SetupCheck(self._ctx, callback, datasource, java=self._java, agent=self._agent, python=True, extensions=getExtensions(), mode=mode)
         setup.start()
 

@@ -39,6 +39,9 @@ class OptionsView():
 
 # OptionsView getter methods
     def getViewData(self):
+        return self.getSetup()
+
+    def getSetup(self):
         return self._getSetup().getSelectedItemPos()
 
 # OptionView setter methods
