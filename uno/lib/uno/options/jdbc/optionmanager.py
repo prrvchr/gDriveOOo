@@ -31,7 +31,7 @@ from .optionmodel import OptionModel
 
 from .optionview import OptionView
 
-from .optionhandler import WindowHandler
+from .optionhandler import OptionHandler
 
 from ...runner import DispatchListener
 
@@ -53,11 +53,10 @@ class OptionManager():
         self._model = OptionModel(ctx)
         self._logmanager = LogManager(ctx, window, 'requirements.txt', logger, *loggers)
         self._logmanager.initView()
-        self._view = OptionView(ctx, window, WindowHandler(self), *self._model.getViewData())
+        self._view = OptionView(ctx, window, OptionHandler(self), *self._model.getViewData())
 
     def init(self, state):
         self._view.initView(*self._model.getInitData(state))
-        self._logmanager.loadSetting()
 
     def refresh(self, state):
         self._view.refreshView(*self._model.getRefreshData(state))
@@ -80,6 +79,9 @@ class OptionManager():
         saved |= self._model.saveSetting(self._view.getSetup())
         return saved
 
+    def loadSetting(self):
+        self._logmanager.loadSetting()
+
     def setApiLevel(self, level):
         enabled = self._model.setApiLevel(level)
         self._view.enableResultSetType(enabled)
@@ -96,6 +98,6 @@ class OptionManager():
         self._model.setSystemTable(state)
 
     def showSetup(self):
-        mode = self._view.getSetup()
+        mode = self.getSetupMode()
         showSetup(self._ctx, g_identifier, Dispatch=self._dispatch, Mode=mode)
 

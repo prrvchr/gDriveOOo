@@ -28,7 +28,9 @@
 """
 
 from .optionsmodel import OptionsModel
+
 from .optionsview import OptionsView
+
 from .optionshandler import OptionsListener
 
 from .option import OptionManager as Manager
@@ -56,6 +58,7 @@ import traceback
 class OptionsManager():
     def __init__(self, ctx, logger, window, url=None):
         self._ctx = ctx
+        self._disposed = False
         self._java = g_extension, g_java, g_script
         self._agent = g_service, g_protocol, g_agent
         self._extensions = getExtensions()
@@ -66,17 +69,20 @@ class OptionsManager():
         self._loadView(self.init)
 
     def init(self, state):
-        self._manager.init(state)
-        self._view.refreshView(state)
-        if state.java:
-            version = self._model.getDriverVersion(self._getConfigApiLevel())
-            self._view.setDriverVersion(version)
+        if not self._disposed:
+            self._manager.init(state)
+            self._view.refreshView(state)
+            if state.java:
+                version = self._model.getDriverVersion(self._getConfigApiLevel())
+                self._view.setDriverVersion(version)
 
     def refresh(self, state):
-        self._manager.refresh(state)
-        self._view.refreshView(state)
+        if not self._disposed:
+            self._manager.refresh(state)
+            self._view.refreshView(state)
 
     def dispose(self):
+        self._disposed = True
         self._manager.dispose()
 
 # OptionsManager setter methods
@@ -90,7 +96,8 @@ class OptionsManager():
         self._loadView(self.init)
 
     def dispatchFinished(self, notification):
-        self._loadView(self.refresh)
+        if not self._disposed:
+            self._loadView(self.refresh)
 
 # OptionsManager private getter methods
     def _getConfigApiLevel(self):
@@ -98,6 +105,7 @@ class OptionsManager():
 
 # OptionsManager private setter methods
     def _loadView(self, callback):
-        setup = SetupCheck(self._ctx, callback, java=self._java, agent=self._agent, python=True, **self._extensions)
+        mode = self._manager.getSetupMode()
+        setup = SetupCheck(self._ctx, callback, java=self._java, agent=self._agent, python=True, extensions=self._extensions, mode=mode)
         setup.start()
 

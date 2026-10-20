@@ -34,7 +34,7 @@ from com.sun.star.awt import XContainerWindowEventHandler
 import traceback
 
 
-class WindowHandler(unohelper.Base,
+class OptionHandler(unohelper.Base,
                     XContainerWindowEventHandler):
     def __init__(self, manager):
         self._manager = manager

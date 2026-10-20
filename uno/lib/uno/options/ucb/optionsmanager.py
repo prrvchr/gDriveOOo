@@ -31,6 +31,8 @@ from .optionsmodel import OptionsModel
 
 from .optionsview import OptionsView
 
+from .optionshandler import OptionsListener
+
 from .option import OptionManager
 
 from ..runner import DispatchListener
@@ -57,20 +59,24 @@ import traceback
 class OptionsManager():
     def __init__(self, ctx, source, logger, window):
         self._ctx = ctx
+        self._disposed = False
         self._java = g_extension, g_java, g_script
         self._agent = g_service, g_protocol, g_agent
         self._model = OptionsModel(ctx)
         self._view = OptionsView(window, *self._model.getViewData())
         self._manager = OptionManager(ctx, source, logger, window, self._model.getConfig())
+        window.addEventListener(OptionsListener(self))
         self._loadView(self.init)
 
     def init(self, state):
-        self._manager.init(state)
-        self._view.initView(*self._model.getInitData(state))
+        if not self._disposed:
+            self._manager.init(state)
+            self._view.initView(*self._model.getInitData(state))
 
     def refresh(self, state):
-        self._manager.refresh(state)
-        self._view.refreshView(self._model.getRefreshData(state))
+        if not self._disposed:
+            self._manager.refresh(state)
+            self._view.refreshView(self._model.getRefreshData(state))
 
     def loadSetting(self):
         self._loadView(self.init)
@@ -80,12 +86,16 @@ class OptionsManager():
             State.restart = True
             self._loadView(self.refresh)
 
+    def dispose(self):
+        self._disposed = True
+
     def showSetup(self):
         mode = self._view.getSetup()
         showSetup(self._ctx, g_identifier, Dispatch=DispatchListener(self), Mode=mode)
 
     def dispatchFinished(self, notification):
-        self._loadView(self.refresh)
+        if not self._disposed:
+            self._loadView(self.refresh)
 
     def _loadView(self, callback):
         mode = self._view.getSetup()
