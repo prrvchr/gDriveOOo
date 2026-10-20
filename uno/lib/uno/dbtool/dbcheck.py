@@ -56,6 +56,7 @@ from .dbtool import getDriverInfos
 from .dbtool import getTablePrivileges
 
 from ..runner import RunnerException
+from ..runner import Task
 
 from ..unotool import checkVersion
 from ..unotool import getSimpleFile
@@ -73,8 +74,9 @@ from ..configuration import g_resource
 import traceback
 
 
-class DBCheck():
+class DBCheck(Task):
     def __init__(self, ctx, path, url):
+        super().__init__()
         self._url = url
         self.path = path
         self._exists = getSimpleFile(ctx).exists(self.path)
@@ -85,13 +87,15 @@ class DBCheck():
         self._connection = None
         self._connected = False
         self._statement = None
+        self._callback = None
         self.total = 3
         self.resolver = getStringResource(ctx, g_identifier, g_resource, 'dbtool')
         self.label1 = self.resolver.resolveString(10101)
         self.label2 = self.resolver.resolveString(10102)
 
-    def isExtended(self, total):
-        return self.total > total
+    def withCallback(self, callback):
+        self._callback = callback
+        return self
 
     def getHeader(self, **kwargs):
         return self.resolver.resolveString(10201).format(**kwargs)
@@ -102,8 +106,9 @@ class DBCheck():
             reports.append((result, '', False))
         return result, ''
 
-    def callback(self, callback, success=True, error=None):
-        callback(self._getSuccess(success), error)
+    def callback(self, success=True, error=None):
+        if self._callback:
+            self._callback(self._getSuccess(success), error)
 
     def stepGetConnection(self, ctx, user, pwd, infos=None):
         new = not self._exists

@@ -44,8 +44,8 @@ import traceback
 
 
 class Conflict(Check):
-    def __init__(self, ctx, packages, url):
-        super().__init__(ctx)
+    def __init__(self, ctx, callback, packages, url):
+        super().__init__(ctx, callback)
         self._paths = {}
         self._packages = None
         self._location = None
@@ -67,9 +67,9 @@ class Conflict(Check):
             reports.append((self._getReport(), result, False))
         return self._getHeader(), result
 
-    def callback(self, callback, success=True, error=None):
+    def callback(self, success=True, error=None):
         success = len(self._paths) == 0
-        callback(success, error)
+        self._callback(success, error)
 
     def stepInitialize(self, ctx, packages, url):
         if url is None:

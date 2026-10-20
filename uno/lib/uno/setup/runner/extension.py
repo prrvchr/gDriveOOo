@@ -35,8 +35,8 @@ import traceback
 
 
 class Extension(Check):
-    def __init__(self, ctx, extensions):
-        super().__init__(ctx)
+    def __init__(self, ctx, callback, extensions):
+        super().__init__(ctx, callback)
         self._absent = []
         self._present = []
         self.total = len(extensions)
@@ -52,8 +52,8 @@ class Extension(Check):
             reports.append(self._getReport(success))
         return self._getHeader(success), self._getResult(success)
 
-    def callback(self, callback, success=True, error=None):
-        callback(self._getSuccess(success), error)
+    def callback(self, success=True, error=None):
+        self._callback(self._getSuccess(success), error)
 
     def stepCheckExtension(self, ctx, identifier, name, version):
         if checkExtension(ctx, identifier, name, version):

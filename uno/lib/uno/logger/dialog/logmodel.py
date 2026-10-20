@@ -90,6 +90,7 @@ class LogModel():
         return self._getLoggerSetting(name)
 
     def loadSetting(self):
+        self._settings = {}
         self._config.loadSetting()
         return self._getLoggerSetting(self._logger.Name)
 

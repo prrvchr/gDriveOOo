@@ -37,15 +37,15 @@ import traceback
 
 
 class Java(Check):
-    def __init__(self, ctx, java, agent=None):
-        super().__init__(ctx)
+    def __init__(self, ctx, callback, java, agent=None):
+        super().__init__(ctx, callback)
         self._code = 6
         self._minimum = ''
         self._version = ''
         self.total = 1
         self.label1 = self.resolver.resolveString(20101)
         self.label2 = self.resolver.resolveString(20102)
-        self.steps = self._getCheckStep(java, agent)
+        self.steps = self._getCheckStep(ctx, java, agent)
 
     def getHeader(self, **kwargs):
         return self.resolver.resolveString(20201).format(**kwargs)
@@ -55,36 +55,36 @@ class Java(Check):
             reports.append(self._getReport())
         return self._getHeader(), self._getResult()
 
-    def callback(self, callback, success=True, error=None):
-        callback(self._getSuccess(success), error)
+    def callback(self, success=True, error=None):
+        self._callback(self._getSuccess(success), error)
 
-    def stepCheckJavaStatus(self, extension, version, script):
+    def stepCheckJavaStatus(self, ctx, extension, version, script):
         self._minimum = version
-        self._code = getJavaStatus(self._ctx)
+        self._code = getJavaStatus(ctx)
 
-    def stepCheckJavaVersion(self, extension, version, script):
-        self._code, self._version = getJavaVersion(self._ctx, True, extension, version, script)
+    def stepCheckJavaVersion(self, ctx, extension, version, script):
+        self._code, self._version = getJavaVersion(ctx, extension, version, script, True)
 
-    def stepCheckJavaAgent(self, service, url, agent):
-        self._code = checkAgent(self._ctx, service, url, agent)
+    def stepCheckJavaAgent(self, ctx, service, url, agent):
+        self._code = checkAgent(ctx, service, url, agent)
 
-    def _getCheckStep(self, java, agent):
-        yield self._getStepCheckJavaStatus(*java)
+    def _getCheckStep(self, ctx, java, agent):
+        yield self._getStepCheckJavaStatus(ctx, *java)
         if self._hasJava():
             self.total += 1
-            yield self._getStepCheckJavaVersion(*java)
+            yield self._getStepCheckJavaVersion(ctx, *java)
             if self._hasJava() and agent:
                 self.total += 1
-                yield self._getStepCheckJavaAgent(*agent)
+                yield self._getStepCheckJavaAgent(ctx, *agent)
 
-    def _getStepCheckJavaStatus(self, extension, version, script):
-        return 20301, (), self.stepCheckJavaStatus, extension, version, script
+    def _getStepCheckJavaStatus(self, ctx, extension, version, script):
+        return 20301, (), self.stepCheckJavaStatus, ctx, extension, version, script
 
-    def _getStepCheckJavaVersion(self, extension, version, script):
-        return 20401, (version, ), self.stepCheckJavaVersion, extension, version, script
+    def _getStepCheckJavaVersion(self, ctx, extension, version, script):
+        return 20401, (version, ), self.stepCheckJavaVersion, ctx, extension, version, script
 
-    def _getStepCheckJavaAgent(self, service, url, agent):
-        return 20501, (), self.stepCheckJavaAgent, service, url, agent
+    def _getStepCheckJavaAgent(self, ctx, service, url, agent):
+        return 20501, (), self.stepCheckJavaAgent, ctx, service, url, agent
 
     def _hasJava(self):
         return self._code == 0

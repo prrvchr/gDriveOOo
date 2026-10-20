@@ -27,7 +27,7 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-from ...runner import CancelException
+from ...runner import Task
 
 from ...unotool import getStringResource
 
@@ -37,19 +37,9 @@ from ...configuration import g_resource
 import traceback
 
 
-class Check():
-    def __init__(self, ctx):
-        self._ctx = ctx
+class Check(Task):
+    def __init__(self, ctx, callback):
+        super().__init__()
+        self._callback = callback
         self.resolver = getStringResource(ctx, g_identifier, g_resource, 'SetupRunner')
-        self.total = 0
-
-    def isExtended(self, total):
-        return self.total > total
-
-    def callback(self, callback, success=True, error=None):
-        callback()
-
-    def stepFinalize(self, **kwargs):
-        pass
-
 

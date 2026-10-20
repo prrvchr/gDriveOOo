@@ -42,71 +42,79 @@ import traceback
 
 class Runner(unohelper.Base,
              XCallback):
-    def __init__(self, ctx, check, callback, progress, cancel):
-        self._check = check
-        self._total = check.total
+    def __init__(self, ctx, task, progress, cancel):
+        self._task = task
+        self._total = task.total
         self._progress = progress
-        self._callback = callback
         self._cancel = cancel
         self._step = 0
         self._asyncCall = getCallBack(ctx)
 
     def start(self):
         if self._progress:
-            self._progress.start(self._check.label1, self._check.total)
-        Timer(0.1, self._call).start()
+            self._progress.start(self._task.label1, self._task.total)
+        Timer(self._task.delay, self._call).start()
 
     def notify(self, data):
         try:
             if self._cancel.isSet():
                 raise CancelException()
 
-            if self._check.isExtended(self._total):
-                self._total = self._check.total
+            if self._task.isExtended(self._total):
+                self._total = self._task.total
                 if self._progress:
-                    self._progress.start(self._check.label2, self._check.total)
+                    self._progress.start(self._task.label2, self._task.total)
                     self._progress.setValue(self._step)
 
-            resource, args, call, *kwargs = next(self._check.steps)
+            resource, args, call, *kwargs = next(self._task.steps)
             call(*kwargs)
             if self._progress:
                 self._step += 1
-                self._progress.setText(self._check.resolver.resolveString(resource) % args)
+                self._progress.setText(self._task.resolver.resolveString(resource) % args)
                 self._progress.setValue(self._step)
-            Timer(0.1, self._call).start()
+            Timer(self._task.delay, self._call).start()
 
         except StopIteration:
             try:
                 if self._progress:
                     self._progress.end()
-                self._check.callback(self._callback)
+                self._task.callback()
             except Exception:
                 print("Runner.notify() StopIteration ERROR: %s" % traceback.format_exc())
 
         except CancelException:
             try:
-                self._check.stepFinalize()
+                self._task.stepFinalize()
                 if self._progress:
                     self._progress.end()
-                self._check.callback(self._callback, False)
+                self._task.callback(False)
             except Exception:
                 print("Runner.notify() CancelException ERROR: %s" % traceback.format_exc())
 
         except RunnerException as e:
             try:
-                self._check.stepFinalize()
+                self._task.stepFinalize()
                 if self._progress:
                     self._progress.end()
-                self._check.callback(self._callback, False, e)
+                self._task.callback(False, e)
             except Exception:
                 print("Runner.notify() RunnerException ERROR: %s" % e.trace)
 
         except Exception as e:
             try:
-                if self._progress:
-                    self._progress.end()
-                trace = traceback.format_exc()
-                self._check.callback(self._callback, False, RunnerException(e, trace))
+                self._task.stepFinalize()
+                skipped = self._task.skipSteps()
+                if skipped > 0:
+                    self._step += skipped
+                    if self._progress:
+                        self._progress.setValue(self._step)
+                        self._progress.setText(self._task.label3)
+                    Timer(self._task.delay, self._call).start()
+                else:
+                    if self._progress:
+                        self._progress.end()
+                    trace = traceback.format_exc()
+                    self._task.callback(False, RunnerException(e, trace))
             except Exception:
                 print("Runner.notify() RunnerException ERROR: %s" % traceback.format_exc())
 

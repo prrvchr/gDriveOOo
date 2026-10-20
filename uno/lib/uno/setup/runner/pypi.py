@@ -40,8 +40,8 @@ import traceback
 
 
 class Pypi(Check):
-    def __init__(self, ctx, packages, url, mode, state):
-        super().__init__(ctx)
+    def __init__(self, ctx, callback, packages, url, mode, state):
+        super().__init__(ctx, callback)
         self._installed = {}
         self._aborted = {}
         self._url = url
@@ -63,8 +63,8 @@ class Pypi(Check):
             reports.append(self._getReport(success))
         return self._getHeader(success), self._getResult(success), True
 
-    def callback(self, callback, success=True, error=None):
-        callback(self._getSuccess(success), error)
+    def callback(self, success=True, error=None):
+        self._callback(self._getSuccess(success), error)
 
     def stepGetStepCount(self, packages):
         self.total += sum(i for i in self._getStepCount(packages))

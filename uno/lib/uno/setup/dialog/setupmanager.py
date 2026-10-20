@@ -52,7 +52,7 @@ from ...unotool import notifyDispatch
 import traceback
 
 class SetupManager():
-    def __init__(self, ctx, source, /, database=None, java=None, agent=None, python=False, *, dispatch=None, frame=None, name=None, state=None, **extensions):
+    def __init__(self, ctx, source, /, database=None, java=None, agent=None, python=False, extensions=None, *, dispatch=None, mode=None, frame=None, name=None, state=None):
         self._ctx = ctx
         self._source = source
         self._dispatch = dispatch
@@ -60,14 +60,14 @@ class SetupManager():
         self._running = True
         self._steps = None
         self._reported = False
-        self._model = SetupModel(ctx, name, database, java, agent, python, extensions)
+        self._model = SetupModel(ctx, name, database, java, agent, python, extensions, mode)
         self._listener = CloseListener(self)
         self._view = SetupView(ctx, frame, WindowHandler(self), self._listener, name, *self._model.getViewData())
         if state:
             self.notify(state)
         else:
             path = self._model.getDataBasePath()
-            self._check = SetupCheck(self._ctx, self.notify, path, java, agent, python, **extensions)
+            self._check = SetupCheck(self._ctx, self.notify, path, java, agent, python, extensions)
             self._check.start()
 
     def notify(self, state):
@@ -160,27 +160,27 @@ class SetupManager():
 
     def _checkExtension(self):
         self._running = True
-        self._model.setCheckExtension()
+        self._model.setCheckExtension(self.notifyCheck)
         self._setHeader()
-        self._model.startCheck(self.notifyCheck, self._view.getIndicator(), self._cancel)
+        self._model.startCheck(self._view.getIndicator(), self._cancel)
 
     def _checkJava(self):
         self._running = True
-        self._model.setCheckJava()
+        self._model.setCheckJava(self.notifyCheck)
         self._setHeader()
-        self._model.startCheck(self.notifyCheck, self._view.getIndicator(), self._cancel)
+        self._model.startCheck(self._view.getIndicator(), self._cancel)
 
     def _checkDataBase(self):
         self._running = True
-        self._model.setCheckDataBase()
+        self._model.setCheckDataBase(self.notifyCheck)
         self._setHeader()
-        self._model.startCheck(self.notifyCheck, self._view.getIndicator(), Cancel())
+        self._model.startCheck(self._view.getIndicator(), Cancel())
 
     def _checkPython(self):
         self._running = True
-        self._model.setCheckPython()
+        self._model.setCheckPython(self.notifyPython)
         self._setHeader()
-        self._model.startCheck(self.notifyPython, self._view.getIndicator(), self._cancel)
+        self._model.startCheck(self._view.getIndicator(), self._cancel)
 
     def notifyPython(self, success, checked, internet, error):
         self._running = False
@@ -197,9 +197,9 @@ class SetupManager():
 
     def _installPackages(self):
         self._running = True
-        self._model.setCheckPypi(self._state)
+        self._model.setCheckPypi(self.notifyPypi, self._state)
         self._setHeader()
-        self._model.startCheck(self.notifyPypi, self._view.getIndicator(), self._cancel)
+        self._model.startCheck(self._view.getIndicator(), self._cancel)
 
     def notifyPypi(self, success, error):
         self._running = False
@@ -215,9 +215,9 @@ class SetupManager():
 
     def _checkConflict(self):
         self._running = True
-        self._model.setCheckConflict()
+        self._model.setCheckConflict(self.notifyCheck)
         self._setHeader()
-        self._model.startCheck(self.notifyCheck, self._view.getIndicator(), self._cancel)
+        self._model.startCheck(self._view.getIndicator(), self._cancel)
 
     def _setHeader(self):
         if not self._cancel.isSet():

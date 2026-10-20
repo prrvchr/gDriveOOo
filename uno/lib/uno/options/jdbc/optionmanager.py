@@ -57,6 +57,7 @@ class OptionManager():
 
     def init(self, state):
         self._view.initView(*self._model.getInitData(state))
+        self._logmanager.loadSetting()
 
     def refresh(self, state):
         self._view.refreshView(*self._model.getRefreshData(state))
@@ -70,14 +71,14 @@ class OptionManager():
     def getConfigApiLevel(self):
         return self._model.getConfigApiLevel()
 
+    def getSetupMode(self):
+        return self._view.getSetup()
+
 # OptionManager setter methods
     def saveSetting(self):
         saved = self._logmanager.saveSetting()
         saved |= self._model.saveSetting(self._view.getSetup())
         return saved
-
-    def loadSetting(self):
-        self._logmanager.loadSetting()
 
     def setApiLevel(self, level):
         enabled = self._model.setApiLevel(level)
@@ -95,5 +96,6 @@ class OptionManager():
         self._model.setSystemTable(state)
 
     def showSetup(self):
-        showSetup(self._ctx, g_identifier, DispatchListener=self._dispatch)
+        mode = self._view.getSetup()
+        showSetup(self._ctx, g_identifier, Dispatch=self._dispatch, Mode=mode)
 

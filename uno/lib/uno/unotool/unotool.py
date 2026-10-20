@@ -532,15 +532,21 @@ def executeDesktopDispatch(ctx, url, listener=None, /, **kwargs):
     properties = getPropertyValueSet(kwargs)
     executeFrameDispatch(ctx, frame, url, listener, *properties)
 
-def getJobListener(arguments, name='DispatchListener'):
-    listener = None
+def getJobArguments(arguments):
+    kwargs = {}
     for argument in arguments:
         if (argument.Name == 'DynamicData'):
             for arg in argument.Value:
-                if (arg.Name == name):
-                    listener = arg.Value
-                    break
-    return listener
+                kwargs[arg.Name.lower()] = arg.Value
+    return kwargs
+
+def getJobArgument(kwargs, key='dispatch'):
+    argument = None
+    for name in kwargs:
+        if (name == key):
+            argument = kwargs[name]
+            break
+    return argument
 
 def notifyDispatch(source, listener, result=SUCCESS, value=None):
     if listener is not None:

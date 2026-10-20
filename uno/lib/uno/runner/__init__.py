@@ -38,3 +38,5 @@ from .progress import Progress
 
 from .runner import Runner
 
+from .task import Task
+
