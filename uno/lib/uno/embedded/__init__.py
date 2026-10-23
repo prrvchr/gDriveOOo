@@ -42,7 +42,6 @@ from .logger import getLogger
 
 from .unotool import findFrame
 from .unotool import getJobArguments
-from .unotool import getJobArgument
 from .unotool import notifyDispatch
 
 from .jdbcdriver import g_agent

@@ -39,7 +39,6 @@ from .helper import getExtensions
 
 from .unotool import findFrame
 from .unotool import getJobArguments
-from .unotool import getJobArgument
 from .unotool import notifyDispatch
 
 from .logger import getLogger
