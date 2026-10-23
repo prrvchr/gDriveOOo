@@ -51,7 +51,6 @@ from ..jdbcdriver import g_service
 
 from ..configuration import State
 from ..configuration import g_extension
-from ..configuration import g_identifier
 
 import traceback
 
@@ -91,7 +90,7 @@ class OptionsManager():
 
     def showSetup(self):
         mode = self._view.getSetup()
-        showSetup(self._ctx, g_identifier, Dispatch=DispatchListener(self), Mode=mode)
+        showSetup(self._ctx, Dispatch=DispatchListener(self), Mode=mode)
 
     def dispatchFinished(self, notification):
         if not self._disposed:

@@ -28,11 +28,9 @@
 """
 
 import uno
-import unohelper
 
 from com.sun.star.awt import Size
 from com.sun.star.awt.PosSize import POS
-from com.sun.star.awt.PosSize import POSSIZE
 from com.sun.star.awt.PosSize import SIZE
 
 from com.sun.star.ui.dialogs.WizardButton import NEXT
@@ -45,9 +43,7 @@ from com.sun.star.util.MeasureUnit import APPFONT
 
 from ...unotool import getContainerWindow
 from ...unotool import getDialog
-from ...unotool import getDialogPosition
-from ...unotool import getWindowPosition
-from ...unotool import setDialogPosition
+from ...unotool import getParentWindow
 from ...unotool import setWindowPosition
 from ...unotool import getTopWindow
 
@@ -56,15 +52,11 @@ from ...configuration import g_identifier
 import traceback
 
 
-class WizardView(unohelper.Base):
+class WizardView():
     def __init__(self, ctx, handler, listener, parent, name, title, resize, point):
         self._name = 'Roadmap1'
-        if parent:
-            # XXX: With parent we use a MODAL XDialog
-            self._frame = None
-            self._dialog = getDialog(ctx, g_identifier, 'Wizard', handler, parent)
-        else:
-            # XXX: Without a parent we use a TOP XWindow
+        if name:
+            # XXX: With a name we use a TOP XWindow
             self._frame = getTopWindow(ctx, name)
             window = self._frame.getContainerWindow()
             self._dialog = getContainerWindow(ctx, window, handler, g_identifier, 'WizardTop')
@@ -72,6 +64,11 @@ class WizardView(unohelper.Base):
             self._frame.setComponent(self._dialog, None)
             self._frame.addCloseListener(listener)
             setWindowPosition(ctx, window, self._dialog, point, POS)
+        else:
+            # XXX: Without name we use a MODAL XDialog
+            self._frame = None
+            parent = getParentWindow(ctx, parent)
+            self._dialog = getDialog(ctx, g_identifier, 'Wizard', handler, parent)
         rectangle = uno.createUnoStruct('com.sun.star.awt.Rectangle', 0, 0, 85, 180)
         roadmap = self._getRoadmap(title, rectangle, 0)
         self._buttons = {CANCEL: 1, FINISH: 2, NEXT: 3, PREVIOUS: 4, HELP: 5}

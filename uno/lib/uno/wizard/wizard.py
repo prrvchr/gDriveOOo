@@ -32,8 +32,6 @@ import unohelper
 
 from com.sun.star.container import NoSuchElementException
 
-from com.sun.star.lang import XComponent
-from com.sun.star.lang import XInitialization
 from com.sun.star.lang import IllegalArgumentException
 
 from com.sun.star.logging.LogLevel import SEVERE
@@ -82,10 +80,10 @@ class Wizard(unohelper.Base,
         self._closed = False
         self._model = WizardModel(ctx)
         title = self._model.getRoadmapTitle()
-        if parent:
-            handler, self._listener = DialogHandler(self), None
-        else:
+        if name:
             handler, self._listener = WindowHandler(self), CloseListener(self)
+        else:
+            handler, self._listener = DialogHandler(self), None
         self._view = WizardView(ctx, handler, self._listener, parent, name, title, resize, point)
         self._view.addItemListener(ItemListener(self))
         self._model.setRoadmapModel(self._view.getRoadmapModel())

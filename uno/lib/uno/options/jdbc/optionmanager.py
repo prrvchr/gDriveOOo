@@ -41,8 +41,6 @@ from ..logger import LogManager
 
 from ...setup import showSetup
 
-from ...configuration import g_identifier
-
 import traceback
 
 
@@ -99,5 +97,5 @@ class OptionManager():
 
     def showSetup(self):
         mode = self.getSetupMode()
-        showSetup(self._ctx, g_identifier, Dispatch=self._dispatch, Mode=mode)
+        showSetup(self._ctx, Dispatch=self._dispatch, Mode=mode)
 

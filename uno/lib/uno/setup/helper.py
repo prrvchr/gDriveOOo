@@ -42,6 +42,7 @@ from ..unotool import getResourceLocation
 from ..unotool import hasInterface
 
 from ..configuration import g_extension
+from ..configuration import g_identifier
 
 import gzip
 import importlib
@@ -85,8 +86,8 @@ def getSetupUpdateMode(ctx, identifier):
 def canUpdatePackages():
     return sys.version_info >= (3, 10)
 
-def showSetup(ctx, identifier, listener=None, /, **kwargs):
-    url = f'vnd.sun.star.job:service={identifier}.Setup'
+def showSetup(ctx, listener=None, /, **kwargs):
+    url = f'vnd.sun.star.job:service={g_identifier}.Setup'
     executeDesktopDispatch(ctx, url, listener, **kwargs)
 
 def checkExtension(ctx, identifier, _, minimum):

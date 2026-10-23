@@ -30,6 +30,7 @@
 import uno
 
 from ..unotool import createService
+from ..unotool import executeDesktopDispatch
 from ..unotool import getExtensionVersion
 
 from ..configuration import State
@@ -55,6 +56,10 @@ def getRequest(ctx, url=None, name=None):
     else:
         request = createService(ctx, g_service)
     return request
+
+def showOAuth2(ctx, listener=None, /, **kwargs):
+    url = 'vnd.sun.star.job:service=io.github.prrvchr.OAuth2OOo.OAuth2'
+    executeDesktopDispatch(ctx, url, listener, **kwargs)
 
 def getOAuth2Version(ctx):
     version = getExtensionVersion(ctx, g_identifier)

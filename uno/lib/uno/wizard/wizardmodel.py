@@ -27,9 +27,6 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-import uno
-import unohelper
-
 from ...unotool import getStringResource
 from ...unotool import hasInterface
 
@@ -38,7 +35,7 @@ from ...configuration import g_identifier
 import traceback
 
 
-class WizardModel(unohelper.Base):
+class WizardModel():
     def __init__(self, ctx):
         self._pages = {}
         self._currentPageId = -1

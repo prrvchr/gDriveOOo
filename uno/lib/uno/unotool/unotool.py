@@ -394,6 +394,20 @@ def getDialog(ctx, identifier, xdl, handler=None, parent=None):
 def findFrame(ctx, name, flags=GLOBAL):
     return getDesktop(ctx).findFrame(name, flags)
 
+def getParentWindow(ctx, parent=None):
+    if parent is None:
+        desktop = getDesktop(ctx)
+        frame = desktop.getCurrentFrame()
+        if frame:
+            return frame.getContainerWindow()
+        toolkit = getToolKit(ctx)
+        window = toolkit.getActiveTopWindow()
+        if window:
+            return window
+        if toolkit.getTopWindowCount() > 0:
+            return toolkit.getTopWindow(0)
+    return parent
+
 def getDialogPosSize(ctx, extension, xdl, point=None, unit=APPFONT):
     dialog = getDialog(ctx, extension, xdl)
     size = dialog.convertSizeToPixel(Size(dialog.Model.Width, dialog.Model.Height), unit)
@@ -535,10 +549,10 @@ def getJobArguments(arguments):
                 kwargs[arg.Name.lower()] = arg.Value
     return kwargs
 
-def notifyDispatch(source, listener, result=SUCCESS, value=None):
+def notifyDispatch(source, listener, state=SUCCESS, result=None):
     if listener is not None:
         struct = 'com.sun.star.frame.DispatchResultEvent'
-        notification = uno.createUnoStruct(struct, source, result, value)
+        notification = uno.createUnoStruct(struct, source, state, result)
         listener.dispatchFinished(notification)
 
 def _getCurrentFrame(ctx):
