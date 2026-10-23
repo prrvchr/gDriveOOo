@@ -30,6 +30,7 @@
 from ...runner import Progress
 
 from ...unotool import getContainerWindow
+from ...unotool import getDesktop
 from ...unotool import getDialog
 from ...unotool import getDialogPosition
 from ...unotool import getTopWindow
@@ -43,35 +44,37 @@ import traceback
 
 
 class SetupView():
-    def __init__(self, ctx, frame, handler, listener, name, point, title, header, step=1):
-        self._ctx = ctx
-        if frame:
-            parent = frame.getComponentWindow().getPeer()
+    def __init__(self, ctx, parent, handler, listener, name, point, title, header, step=1):
+        if parent:
+            self._frame = parent
             self._dialog = getDialog(ctx, g_identifier, 'SetupDialog', parent=parent)
-            peer = self._dialog.getPeer()
-            self._frame = frame
+            window = self._dialog.getPeer()
         else:
             self._frame = getTopWindow(ctx, name)
-            peer = self._frame.getContainerWindow()
             self._dialog = None
-        self._window = getContainerWindow(ctx, peer, handler, g_identifier, 'SetupWindow')
-        if frame:
-            setDialogPosition(ctx, self._dialog, frame.getContainerWindow(), point)
+            window = self._frame.getContainerWindow()
+        self._window = getContainerWindow(ctx, window, handler, g_identifier, 'SetupWindow')
+        if parent:
+            setDialogPosition(ctx, self._dialog, parent, point)
             self._dialog.Title = title
             self._window.setVisible(True)
         else:
             # XXX: setComponent is needed if we want a StatusIndicator at the bottom
             self._frame.setComponent(self._window, None)
             self._frame.addCloseListener(listener)
-            setWindowPosition(ctx, self._frame, self._window, point, title)
+            setWindowPosition(ctx, window, self._window, point)
+            self._frame.setTitle(title)
+            self._window.setVisible(True)
+            # FIXME: If the window loads before the desktop, it should not be made visible.
+            if getDesktop(ctx).getCurrentFrame() is not None:
+                window.setVisible(True)
         self._getPageHeader(step).Text = header
 
 # SetupView getter methods
     def getWindowPosition(self):
-        window = self._frame.getContainerWindow()
         if self._dialog:
-            return getDialogPosition(self._dialog, window)
-        return getWindowPosition(window)
+            return getDialogPosition(self._dialog, self._frame)
+        return getWindowPosition(self._frame.getContainerWindow())
 
     def getTraceBack(self):
         return self._getErrorText().Text
@@ -83,7 +86,7 @@ class SetupView():
     def execute(self):
         if self._dialog:
             return self._dialog.execute()
-        return False
+        return 0
 
     def close(self, runnable):
         if self._dialog:

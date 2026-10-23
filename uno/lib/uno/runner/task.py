@@ -34,6 +34,7 @@ class Task():
     def __init__(self):
         self.total = 0
         self.delay = 0.1
+        self.step = 0
 
     def isExtended(self, total):
         return self.total > total

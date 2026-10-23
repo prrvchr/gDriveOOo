@@ -47,7 +47,6 @@ class Runner(unohelper.Base,
         self._total = task.total
         self._progress = progress
         self._cancel = cancel
-        self._step = 0
         self._asyncCall = getCallBack(ctx)
 
     def start(self):
@@ -64,14 +63,14 @@ class Runner(unohelper.Base,
                 self._total = self._task.total
                 if self._progress:
                     self._progress.start(self._task.label2, self._task.total)
-                    self._progress.setValue(self._step)
+                    self._progress.setValue(self._task.step)
 
             resource, args, call, *kwargs = next(self._task.steps)
             call(*kwargs)
             if self._progress:
-                self._step += 1
+                self._task.step += 1
                 self._progress.setText(self._task.resolver.resolveString(resource) % args)
-                self._progress.setValue(self._step)
+                self._progress.setValue(self._task.step)
             Timer(self._task.delay, self._call).start()
 
         except StopIteration:
@@ -102,15 +101,15 @@ class Runner(unohelper.Base,
 
         except Exception as e:
             try:
-                self._task.stepFinalize()
                 skipped = self._task.skipSteps()
                 if skipped > 0:
-                    self._step += skipped
+                    self._task.step += skipped
                     if self._progress:
-                        self._progress.setValue(self._step)
+                        self._progress.setValue(self._task.step)
                         self._progress.setText(self._task.label3)
                     Timer(self._task.delay, self._call).start()
                 else:
+                    self._task.stepFinalize()
                     if self._progress:
                         self._progress.end()
                     trace = traceback.format_exc()

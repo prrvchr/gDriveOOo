@@ -66,7 +66,6 @@ from .unotool import getInteractionHandler
 from .unotool import getInterfaceNames
 from .unotool import getInterfaceTypes
 from .unotool import getJobArguments
-from .unotool import getJobArgument
 from .unotool import getLastNamedParts
 from .unotool import getLibreOfficeInfo
 from .unotool import getLibreOfficeVersion

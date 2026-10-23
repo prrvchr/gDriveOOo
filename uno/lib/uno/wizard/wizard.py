@@ -70,7 +70,7 @@ import traceback
 
 class Wizard(unohelper.Base,
              XWizard):
-    def __init__(self, ctx, auto=-1, name=None, point=None, parent=None, resize=True):
+    def __init__(self, ctx, auto=-1, /, name=None, point=None, parent=None, resize=True, **kwargs):
         self._ctx = ctx
         self._helpUrl = ''
         self._auto = auto
@@ -82,13 +82,13 @@ class Wizard(unohelper.Base,
         self._closed = False
         self._model = WizardModel(ctx)
         title = self._model.getRoadmapTitle()
-        if name:
-            handler, self._listener = WindowHandler(self), CloseListener(self)
-        else:
+        if parent:
             handler, self._listener = DialogHandler(self), None
-        self._view = WizardView(ctx, handler, self._listener, ItemListener(self), parent, name, title, resize, point)
-        roadmap = self._view.getRoadmapModel()
-        self._model.setRoadmapModel(roadmap)
+        else:
+            handler, self._listener = WindowHandler(self), CloseListener(self)
+        self._view = WizardView(ctx, handler, self._listener, parent, name, title, resize, point)
+        self._view.addItemListener(ItemListener(self))
+        self._model.setRoadmapModel(self._view.getRoadmapModel())
 
 # XCloseListener
     def queryClosing(self, source, ownership):

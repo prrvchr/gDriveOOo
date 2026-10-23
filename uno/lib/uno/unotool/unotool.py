@@ -440,16 +440,11 @@ def getWindowPosition(window):
     size = window.getPosSize()
     return window.convertPointToLogic(Point(size.X, size.Y), APPFONT)
 
-def setWindowPosition(ctx, window, dialog, point, title):
+def setWindowPosition(ctx, window, dialog, point, mode=POSSIZE):
     x, y = _getPosition(ctx, dialog, point)
-    size = dialog.convertSizeToPixel(Size(dialog.Model.Width, dialog.Model.Height), APPFONT)
     point = dialog.convertPointToPixel(Point(x, y), APPFONT)
-    window.getContainerWindow().setPosSize(point.X, point.Y, size.Width, size.Height, POSSIZE)
-    window.setTitle(title)
-    # FIXME: If the window loads before the desktop, it should not be made visible.
-    if getDesktop(ctx).getCurrentFrame() is not None:
-        window.getContainerWindow().setVisible(True)
-    dialog.setVisible(True)
+    size = dialog.convertSizeToPixel(Size(dialog.Model.Width, dialog.Model.Height), APPFONT)
+    window.setPosSize(point.X, point.Y, size.Width, size.Height, mode)
 
 def _getPosition(ctx, dialog, point):
     area = getToolKit(ctx).getWorkArea()
@@ -539,14 +534,6 @@ def getJobArguments(arguments):
             for arg in argument.Value:
                 kwargs[arg.Name.lower()] = arg.Value
     return kwargs
-
-def getJobArgument(kwargs, key='dispatch'):
-    argument = None
-    for name in kwargs:
-        if (name == key):
-            argument = kwargs[name]
-            break
-    return argument
 
 def notifyDispatch(source, listener, result=SUCCESS, value=None):
     if listener is not None:
