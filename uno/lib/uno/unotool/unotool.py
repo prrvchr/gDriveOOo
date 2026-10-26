@@ -71,8 +71,12 @@ import datetime
 import operator
 from packaging.version import Version
 import socket
+import sys
 import traceback
 
+
+def canUpdatePackages():
+    return sys.version_info >= (3, 10)
 
 def checkInternet(host="8.8.8.8", port=53, timeout=3):
     try:
@@ -184,13 +188,13 @@ def parseUrl(transformer, location, protocol=None):
         success, url = transformer.parseSmart(url, protocol)
     return url if success else None
 
-def getDocument(ctx, url, readonly=True):
+def getDocument(ctx, url, readonly=True, template=False):
     # XXX: ReadOnly: documents opened for mailing are opened readonly because they must
     # XXX: be opened as a new document and this document could be open already
     # XXX: OpenNewView: always open a new document because it must be disposed afterwards.
     # XXX: Hidden: mailing is done in a hidden view
     # XXX: Silence: load document for mailing without user interaction
-    arguments = {'ReadOnly': readonly, 'OpenNewView': True, 'Hidden': True, 'Silence': True}
+    arguments = {'ReadOnly': readonly, 'OpenNewView': True, 'Hidden': True, 'Silence': True, 'AsTemplate': template}
     descriptor = getPropertyValueSet(arguments)
     document = getDesktop(ctx).loadComponentFromURL(url, '_blank', 0, descriptor)
     return document

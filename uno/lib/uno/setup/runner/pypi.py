@@ -27,7 +27,9 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-from .check import Check
+from .setup import Setup
+
+from ...unotool import Resource
 
 from ..helper import checkPython
 from ..helper import getRequirementsUrl
@@ -39,7 +41,7 @@ from ..helper import uninstallPackage
 import traceback
 
 
-class Pypi(Check):
+class Pypi(Setup):
     def __init__(self, ctx, callback, packages, url, mode, state):
         super().__init__(ctx, callback)
         self._installed = {}
@@ -51,12 +53,11 @@ class Pypi(Check):
         self._fautly = False
         self.packages = {}
         self.total = 2
-        self.label1 = self.resolver.resolveString(40101)
-        self.label2 = self.resolver.resolveString(40102)
-        self.steps = self._getCheckStep(packages)
+        self._resources = {1: Resource(40101), 2: Resource(40102)}
+        self.steps = self._getSetupSteps(packages)
 
     def getHeader(self, **kwargs):
-        return self.resolver.resolveString(40201).format(**kwargs)
+        return self._resolver.resolveString(40201).format(**kwargs)
 
     def setReport(self, reports, success):
         if not success:
@@ -86,7 +87,7 @@ class Pypi(Check):
         self._state.pcode = checkPython(self._url, requirements, self._mode)
         self.packages = packages
 
-    def _getCheckStep(self, packages):
+    def _getSetupSteps(self, packages):
         yield self._getStepGetStepCount(packages)
         for package, data in packages.items():
             version1, version2, url = data
@@ -125,7 +126,7 @@ class Pypi(Check):
 
     def _getHeader(self, success):
         code = 40801 if success else 40802
-        return self.resolver.resolveString(code)
+        return self._resolver.resolveString(code)
 
     def _getReport(self, success):
         return self._getHeader(success), self._getResult(success), True

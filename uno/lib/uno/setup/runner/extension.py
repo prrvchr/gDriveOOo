@@ -27,25 +27,26 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-from .check import Check
+from .setup import Setup
+
+from ...unotool import Resource
 
 from ..helper import checkExtension
 
 import traceback
 
 
-class Extension(Check):
+class Extension(Setup):
     def __init__(self, ctx, callback, extensions):
         super().__init__(ctx, callback)
         self._absent = []
         self._present = []
         self.total = len(extensions)
-        self.label1 = self.resolver.resolveString(10101)
-        self.label2 = self.resolver.resolveString(10102)
-        self.steps = self._getCheckStep(ctx, extensions)
+        self._resources = {1: Resource(10101), 2: Resource(10102)}
+        self.steps = self._getSetupSteps(ctx, extensions)
 
     def getHeader(self, **kwargs):
-        return self.resolver.resolveString(10201).format(**kwargs)
+        return self._resolver.resolveString(10201).format(**kwargs)
 
     def setReport(self, reports, success):
         if not success:
@@ -61,7 +62,7 @@ class Extension(Check):
         else:
             self._absent.append((name, version))
 
-    def _getCheckStep(self, ctx, extensions):
+    def _getSetupSteps(self, ctx, extensions):
         for identifier, infos in extensions.items():
             yield self._getStepCheckExtension(ctx, identifier, *infos)
 
@@ -70,10 +71,10 @@ class Extension(Check):
 
     def _getHeader(self, success):
         code = 10401 if success else 10402
-        return self.resolver.resolveString(code)
+        return self._resolver.resolveString(code)
 
     def _getReport(self, success):
-        return self.resolver.resolveString(10501), self._getResult(success), False
+        return self._resolver.resolveString(10501), self._getResult(success), False
 
     def _getResult(self, success):
         extensions =  self._present if success else self._absent

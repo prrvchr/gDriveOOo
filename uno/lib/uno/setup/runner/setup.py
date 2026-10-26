@@ -29,17 +29,10 @@
 
 from ...runner import Task
 
-from ...unotool import getStringResource
-
-from ...configuration import g_identifier
-from ...configuration import g_resource
-
 import traceback
 
 
-class Check(Task):
+class Setup(Task):
     def __init__(self, ctx, callback):
-        super().__init__()
-        self._callback = callback
-        self.resolver = getStringResource(ctx, g_identifier, g_resource, 'SetupRunner')
+        super().__init__(ctx, 'SetupRunner', callback)
 

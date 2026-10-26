@@ -57,11 +57,11 @@ from .wizardhandler import DialogHandler
 from .wizardhandler import ItemListener
 from .wizardhandler import WindowHandler
 
-from ...logger import getLogger
+from ..logger import getLogger
 
-from ...unotool import hasInterface
+from ..unotool import hasInterface
 
-from ...configuration import g_extension
+from ..configuration import g_extension
 
 import traceback
 

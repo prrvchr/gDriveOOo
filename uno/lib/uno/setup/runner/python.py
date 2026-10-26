@@ -29,7 +29,9 @@
 
 import uno
 
-from .check import Check
+from .setup import Setup
+
+from ...unotool import Resource
 
 from ..helper import getInstalledPackages
 from ..helper import getOsLocation
@@ -52,7 +54,7 @@ from ...configuration import g_identifier
 import traceback
 
 
-class Python(Check):
+class Python(Setup):
     def __init__(self, ctx, callback, mode):
         super().__init__(ctx, callback)
         self._packages ={}
@@ -67,12 +69,11 @@ class Python(Check):
         self.mode = mode
         self.packages = {}
         self.total = 2
-        self.label1 = self.resolver.resolveString(30101)
-        self.label2 = self.resolver.resolveString(30102)
-        self.steps = self._getCheckStep(ctx)
+        self._resources = {1: Resource(30101), 2: Resource(30102)}
+        self.steps = self._getSetupSteps(ctx)
 
     def getHeader(self, **kwargs):
-        return self.resolver.resolveString(30201).format(**kwargs)
+        return self._resolver.resolveString(30201).format(**kwargs)
 
     def setReport(self, reports, success):
         result = self._getResult(success)
@@ -108,7 +109,7 @@ class Python(Check):
         self._version, self._url = parsePackageSimpleData(requirement, self.mode, self._data)
         self._data = None
 
-    def _getCheckStep(self, ctx):
+    def _getSetupSteps(self, ctx):
         yield self._getStepGetInstalledPackages(ctx)
         yield self._getStepGetStepCount()
         for requirement, version1, version2 in self._parsePackages():
@@ -180,10 +181,10 @@ class Python(Check):
 
     def _getHeader(self, success):
         code = 31001 if success else 31002 if self._internet is False else 31003
-        return self.resolver.resolveString(code)
+        return self._resolver.resolveString(code)
 
     def _getReport(self):
-        return self.resolver.resolveString(31101)
+        return self._resolver.resolveString(31101)
 
     def _getResult(self, success):
         if success:

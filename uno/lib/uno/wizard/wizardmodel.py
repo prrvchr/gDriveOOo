@@ -27,10 +27,10 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-from ...unotool import getStringResource
-from ...unotool import hasInterface
+from ..unotool import getStringResource
+from ..unotool import hasInterface
 
-from ...configuration import g_identifier
+from ..configuration import g_identifier
 
 import traceback
 

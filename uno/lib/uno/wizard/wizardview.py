@@ -41,13 +41,13 @@ from com.sun.star.ui.dialogs.WizardButton import HELP
 
 from com.sun.star.util.MeasureUnit import APPFONT
 
-from ...unotool import getContainerWindow
-from ...unotool import getDialog
-from ...unotool import getParentWindow
-from ...unotool import setWindowPosition
-from ...unotool import getTopWindow
+from ..unotool import getContainerWindow
+from ..unotool import getDialog
+from ..unotool import getParentWindow
+from ..unotool import setWindowPosition
+from ..unotool import getTopWindow
 
-from ...configuration import g_identifier
+from ..configuration import g_identifier
 
 import traceback
 

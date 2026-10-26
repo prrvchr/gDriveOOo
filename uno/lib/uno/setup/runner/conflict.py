@@ -27,7 +27,9 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-from .check import Check
+from .setup import Setup
+
+from ...unotool import Resource
 
 from ..helper import getExtensionName
 from ..helper import getInstalledPackages
@@ -43,7 +45,7 @@ import os
 import traceback
 
 
-class Conflict(Check):
+class Conflict(Setup):
     def __init__(self, ctx, callback, packages, url):
         super().__init__(ctx, callback)
         self._paths = {}
@@ -54,12 +56,11 @@ class Conflict(Check):
         self._parse = lambda x: x[1]
         dists = list(importlib.metadata.distributions())
         self.total = len(dists) + 1
-        self.label1 = self.resolver.resolveString(50101)
-        self.label2 = self.resolver.resolveString(50102)
-        self.steps = self._getCheckStep(ctx, dists, packages, url)
+        self._resources = {1: Resource(50101), 2: Resource(50102)}
+        self.steps = self._getSetupSteps(ctx, dists, packages, url)
 
     def getHeader(self, **kwargs):
-        return self.resolver.resolveString(50201).format(**kwargs)
+        return self._resolver.resolveString(50201).format(**kwargs)
 
     def setReport(self, reports, success):
         result = self._getResult()
@@ -113,7 +114,7 @@ class Conflict(Check):
             else:
                 self._results[path] = packages
 
-    def _getCheckStep(self, ctx, dists, packages, url):
+    def _getSetupSteps(self, ctx, dists, packages, url):
         yield self._getStepInitialize(ctx, packages, url)
         for dist in dists:
             yield self._getStepGetPackages(dist)
@@ -140,10 +141,10 @@ class Conflict(Check):
         return 50601, (path, ), self.stepGetResults, path, packages
 
     def _getHeader(self):
-        return self.resolver.resolveString(50701)
+        return self._resolver.resolveString(50701)
 
     def _getReport(self):
-        return self.resolver.resolveString(50801)
+        return self._resolver.resolveString(50801)
 
     def _getPackages(self, packages):
         return ', '.join(f'{pkg} version {ver}' for pkg, ver in packages)

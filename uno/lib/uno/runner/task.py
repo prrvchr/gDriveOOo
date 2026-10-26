@@ -27,11 +27,19 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
+from ..unotool import getStringResource
+
+from ..configuration import g_identifier
+from ..configuration import g_resource
+
 import traceback
 
 
 class Task():
-    def __init__(self):
+    def __init__(self, ctx, resource , callback=None):
+        self._resolver = getStringResource(ctx, g_identifier, g_resource, resource)
+        self._resources = {}
+        self._callback = callback
         self.total = 0
         self.delay = 0.1
         self.step = 0
@@ -45,6 +53,26 @@ class Task():
     def callback(self, callback, success=True, error=None):
         pass
 
+    def resolveString(self, resource, *args):
+        return self._resolver.resolveString(resource).format(*args)
+
+    def getClass(self, resource):
+        return self.resolveString(self._getResource(resource, 10000))
+
+    def getMethod(self, resource):
+        return self.resolveString(self._getResource(resource, 100))
+
+    def getMessage(self, code, *args):
+        if code in self._resources:
+            resource = self._resources.get(code)
+            if resource.formatter:
+                args = resource.formatter(self)
+            return self._resolver.resolveString(resource.id).format(*args)
+        return ''
+
     def stepFinalize(self, **kwargs):
         pass
+
+    def _getResource(self, resource, factor):
+        return (resource // factor) * factor
 

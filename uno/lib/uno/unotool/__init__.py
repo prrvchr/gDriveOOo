@@ -29,6 +29,9 @@
 
 from .transferable import Factory as Transferable
 
+from .resource import Resource
+
+from .unotool import canUpdatePackages
 from .unotool import checkInternet
 from .unotool import checkVersion
 from .unotool import createMessageBox

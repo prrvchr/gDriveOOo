@@ -83,9 +83,6 @@ def getRequirementsUrl(url):
 def getSetupUpdateMode(ctx, identifier):
     return getConfiguration(ctx, identifier).getByName('SetupUpdate')
 
-def canUpdatePackages():
-    return sys.version_info >= (3, 10)
-
 def showSetup(ctx, listener=None, /, **kwargs):
     url = f'vnd.sun.star.job:service={g_identifier}.Setup'
     executeDesktopDispatch(ctx, url, listener, **kwargs)

@@ -29,6 +29,9 @@
 
 import unohelper
 
+from com.sun.star.logging.LogLevel import INFO
+from com.sun.star.logging.LogLevel import SEVERE
+
 from com.sun.star.awt import XCallback
 
 from .error import CancelException
@@ -42,16 +45,20 @@ import traceback
 
 class Runner(unohelper.Base,
              XCallback):
-    def __init__(self, ctx, task, progress, cancel):
+    def __init__(self, ctx, task, progress, cancel, logger=None):
         self._task = task
         self._total = task.total
         self._progress = progress
         self._cancel = cancel
+        self._logger = logger
         self._asyncCall = getCallBack(ctx)
 
     def start(self):
         if self._progress:
-            self._progress.start(self._task.label1, self._task.total)
+            msg = self._task.getMessage(1)
+            self._progress.start(msg, self._task.total)
+            if self._logger:
+                self._logger.logp(INFO, 'Runner', 'start', msg)
         Timer(self._task.delay, self._call).start()
 
     def notify(self, data):
@@ -62,21 +69,30 @@ class Runner(unohelper.Base,
             if self._task.isExtended(self._total):
                 self._total = self._task.total
                 if self._progress:
-                    self._progress.start(self._task.label2, self._task.total)
+                    msg = self._task.getMessage(2)
+                    self._progress.start(msg, self._task.total)
                     self._progress.setValue(self._task.step)
+                    if self._logger:
+                        self._logger.logp(INFO, 'Runner', 'extended', msg)
 
-            resource, args, call, *kwargs = next(self._task.steps)
-            call(*kwargs)
+            resource, options, call, *args = next(self._task.steps)
+            call(*args)
             if self._progress:
                 self._task.step += 1
-                self._progress.setText(self._task.resolver.resolveString(resource) % args)
+                msg = self._task.resolveString(resource, *options)
+                self._progress.setText(msg)
                 self._progress.setValue(self._task.step)
+                if self._logger:
+                    self._logger.logp(INFO, *self._getLogInfos(resource, msg))
             Timer(self._task.delay, self._call).start()
 
         except StopIteration:
             try:
                 if self._progress:
                     self._progress.end()
+                    if self._logger:
+                        msg = self._task.getMessage(4)
+                        self._logger.logp(INFO, 'Runner', 'stop', msg)
                 self._task.callback()
             except Exception:
                 print("Runner.notify() StopIteration ERROR: %s" % traceback.format_exc())
@@ -86,6 +102,9 @@ class Runner(unohelper.Base,
                 self._task.stepFinalize()
                 if self._progress:
                     self._progress.end()
+                    if self._logger:
+                        msg = self._task.getMessage(5)
+                        self._logger.logp(SEVERE, 'Runner', 'CancelException', msg)
                 self._task.callback(False)
             except Exception:
                 print("Runner.notify() CancelException ERROR: %s" % traceback.format_exc())
@@ -95,6 +114,9 @@ class Runner(unohelper.Base,
                 self._task.stepFinalize()
                 if self._progress:
                     self._progress.end()
+                    if self._logger:
+                        msg = self._task.getMessage(6, e.cause, e.trace)
+                        self._logger.logp(SEVERE, 'Runner', 'RunnerException', msg)
                 self._task.callback(False, e)
             except Exception:
                 print("Runner.notify() RunnerException ERROR: %s" % e.trace)
@@ -105,18 +127,28 @@ class Runner(unohelper.Base,
                 if skipped > 0:
                     self._task.step += skipped
                     if self._progress:
+                        msg = self._task.getMessage(3)
                         self._progress.setValue(self._task.step)
-                        self._progress.setText(self._task.label3)
+                        self._progress.setText(msg)
+                        if self._logger:
+                            self._logger.logp(SEVERE, 'Runner', 'skipSteps', msg)
                     Timer(self._task.delay, self._call).start()
                 else:
                     self._task.stepFinalize()
+                    trace = traceback.format_exc()
                     if self._progress:
                         self._progress.end()
-                    trace = traceback.format_exc()
+                        if self._logger:
+                            error = e.__class__.__name__
+                            msg = self._task.getMessage(6, error, trace)
+                            self._logger.logp(SEVERE, 'Runner', 'Exception', msg)
                     self._task.callback(False, RunnerException(e, trace))
             except Exception:
                 print("Runner.notify() RunnerException ERROR: %s" % traceback.format_exc())
 
     def _call(self):
         self._asyncCall.addCallback(self, None)
+
+    def _getLogInfos(self, resource, msg):
+        return self._task.getClass(resource), self._task.getMethod(resource), msg
 

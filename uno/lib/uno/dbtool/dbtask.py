@@ -55,6 +55,8 @@ from .dbtool import getDataSourceConnection
 from .dbtool import getDriverInfos
 from .dbtool import getTablePrivileges
 
+from ..unotool import Resource
+
 from ..runner import RunnerException
 from ..runner import Task
 
@@ -74,9 +76,9 @@ from ..configuration import g_resource
 import traceback
 
 
-class DBCheck(Task):
+class DBTask(Task):
     def __init__(self, ctx, path, url):
-        super().__init__()
+        super().__init__(ctx, 'dbtool')
         self._url = url
         self.path = path
         self._exists = getSimpleFile(ctx).exists(self.path)
@@ -87,18 +89,15 @@ class DBCheck(Task):
         self._connection = None
         self._connected = False
         self._statement = None
-        self._callback = None
         self.total = 3
-        self.resolver = getStringResource(ctx, g_identifier, g_resource, 'dbtool')
-        self.label1 = self.resolver.resolveString(10101)
-        self.label2 = self.resolver.resolveString(10102)
+        self._resources = {1: Resource(10101), 2: Resource(10102)}
 
     def withCallback(self, callback):
         self._callback = callback
         return self
 
     def getHeader(self, **kwargs):
-        return self.resolver.resolveString(10201).format(**kwargs)
+        return self._resolver.resolveString(10201).format(**kwargs)
 
     def setReport(self, reports, success):
         result = self._getResult()
@@ -285,7 +284,7 @@ class DBCheck(Task):
             code = 11703 if self._exists else 11704
         else:
             code = 11705
-        return self.resolver.resolveString(code)
+        return self._resolver.resolveString(code)
 
     def _getSuccess(self, success):
         return success and self._success

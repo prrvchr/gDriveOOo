@@ -27,7 +27,9 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-from .check import Check
+from .setup import Setup
+
+from ...unotool import Resource
 
 from ..helper import checkAgent
 from ..helper import getJavaStatus
@@ -36,19 +38,18 @@ from ..helper import getJavaVersion
 import traceback
 
 
-class Java(Check):
+class Java(Setup):
     def __init__(self, ctx, callback, java, agent=None):
         super().__init__(ctx, callback)
         self._code = 6
         self._minimum = ''
         self._version = ''
         self.total = 1
-        self.label1 = self.resolver.resolveString(20101)
-        self.label2 = self.resolver.resolveString(20102)
-        self.steps = self._getCheckStep(ctx, java, agent)
+        self._resources = {1: Resource(20101), 2: Resource(20102)}
+        self.steps = self._getSetupSteps(ctx, java, agent)
 
     def getHeader(self, **kwargs):
-        return self.resolver.resolveString(20201).format(**kwargs)
+        return self._resolver.resolveString(20201).format(**kwargs)
 
     def setReport(self, reports, success):
         if not success:
@@ -68,7 +69,7 @@ class Java(Check):
     def stepCheckJavaAgent(self, ctx, service, url, agent):
         self._code = checkAgent(ctx, service, url, agent)
 
-    def _getCheckStep(self, ctx, java, agent):
+    def _getSetupSteps(self, ctx, java, agent):
         yield self._getStepCheckJavaStatus(ctx, *java)
         if self._hasJava():
             self.total += 1
@@ -94,11 +95,11 @@ class Java(Check):
 
     def _getHeader(self):
         code = 20601 + self._code
-        return self.resolver.resolveString(code).format(version=self._version, minimum=self._minimum)
+        return self._resolver.resolveString(code).format(version=self._version, minimum=self._minimum)
 
     def _getReport(self):
         code = 20701 if self._noAgent() else 20702
-        return self.resolver.resolveString(code), self._getResult(), False
+        return self._resolver.resolveString(code), self._getResult(), False
 
     def _getResult(self):
         if self._hasJava():

@@ -295,7 +295,7 @@ def registerDataSource(dbcontext, dbname, url):
 
 def getDataFromResult(result, provider=None):
     data = {}
-    for i in range(1, result.MetaData.ColumnCount +1):
+    for i in range(1, result.MetaData.ColumnCount + 1):
         name = result.MetaData.getColumnLabel(i)
         value = getResultValue(result, i)
         if provider:
@@ -306,7 +306,7 @@ def getDataFromResult(result, provider=None):
 def getRowDict(result, default=None, count=None):
     row = {}
     if count is None:
-        count = result.MetaData.ColumnCount +1
+        count = result.MetaData.ColumnCount + 1
     for i in range(1, count):
         name = result.MetaData.getColumnLabel(i)
         value = getResultValue(result, i, default)
@@ -315,7 +315,7 @@ def getRowDict(result, default=None, count=None):
 
 def getDictSequenceFromResult(result, default=None):
     sequence = []
-    count = result.MetaData.ColumnCount +1
+    count = result.MetaData.ColumnCount + 1
     while result.next():
         data = getRowDict(result, default, count)
         sequence.append(data)
@@ -324,7 +324,7 @@ def getDictSequenceFromResult(result, default=None):
 def getObjectFromResult(result, default=None, count=None):
     obj = Object()
     if count is None:
-        count = result.MetaData.ColumnCount +1
+        count = result.MetaData.ColumnCount + 1
     for i in range(1, count):
         name = result.MetaData.getColumnLabel(i)
         value = getResultValue(result, i, default)
@@ -333,7 +333,7 @@ def getObjectFromResult(result, default=None, count=None):
 
 def getObjectSequenceFromResult(result, default=None):
     sequence = []
-    count = result.MetaData.ColumnCount +1
+    count = result.MetaData.ColumnCount + 1
     while result.next():
         obj = getObjectFromResult(result, default, count)
         sequence.append(obj)
@@ -352,7 +352,7 @@ def getSequenceFromResult(result, index=1, default=None, transformer=None):
 
 def getDictFromResult(result):
     values = {}
-    index = range(1, result.MetaData.ColumnCount +1)
+    index = range(1, result.MetaData.ColumnCount + 1)
     while result.next():
         for i in index:
             if i == 1:
