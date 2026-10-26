@@ -27,7 +27,7 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-from .dbtool import DBCheck
+from .dbtool import DBTask
 
 from .dbinit import getDataBaseUrl
 from .dbinit import getDataSourceUrl
@@ -44,12 +44,12 @@ from .dbconfig import g_queries
 import traceback
 
 
-class DBSetup(DBCheck):
+class DBSetup(DBTask):
     def __init__(self, ctx, user='', pwd=''):
         super().__init__(ctx, getDataSourceUrl(ctx), getDataBaseUrl(ctx))
-        self.steps = self._getSteps(ctx, user, pwd)
+        self.steps = self._getSetupSteps(ctx, user, pwd)
 
-    def _getSteps(self, ctx, user, pwd):
+    def _getSetupSteps(self, ctx, user, pwd):
         yield self._getStepGetConnection(ctx, user, pwd)
         yield self._getStepCheckConnection(ctx)
         if self._connection:

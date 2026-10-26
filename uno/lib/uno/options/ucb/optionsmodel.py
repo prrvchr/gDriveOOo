@@ -27,8 +27,7 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-from ..setup import canUpdatePackages
-
+from ..unotool import canUpdatePackages
 from ..unotool import getConfiguration
 from ..unotool import getStringResource
 
