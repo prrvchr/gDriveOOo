@@ -37,4 +37,3 @@ from .helper import getSetupUpdateMode
 from .helper import isLinuxDistribution
 from .helper import parseRequirements
 from .helper import showSetup
-

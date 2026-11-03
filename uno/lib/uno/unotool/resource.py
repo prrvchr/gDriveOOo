@@ -27,12 +27,11 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-
 from dataclasses import dataclass
 from typing import Optional, Callable
+
 
 @dataclass
 class Resource:
     id: int
     formatter: Optional[Callable] = None
-

@@ -32,8 +32,6 @@ import unohelper
 
 from com.sun.star.logging import XLogger2
 
-import traceback
-
 
 class Logger(unohelper.Base,
              XLogger2):
@@ -51,6 +49,7 @@ class Logger(unohelper.Base,
     @property
     def Level(self):
         return self._logger.Level
+
     @Level.setter
     def Level(self, value):
         self._logger.Level = value
@@ -117,4 +116,3 @@ class Logger(unohelper.Base,
             event = uno.createUnoStruct('com.sun.star.lang.EventObject', self)
             for listener in self._listeners:
                 listener.modified(event)
-

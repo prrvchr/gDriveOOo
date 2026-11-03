@@ -27,15 +27,12 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-from ...setup import canUpdatePackages
-
+from ...unotool import canUpdatePackages
 from ...unotool import getConfiguration
 from ...unotool import getStringResource
 
 from ...configuration import g_extension
 from ...configuration import g_identifier
-
-import traceback
 
 
 class OptionModel():
@@ -118,4 +115,3 @@ class OptionModel():
     def _getSetupLabel(self):
         resource = self._resources.get('SetupLabel')
         return self._resolver.resolveString(resource).format(extension=g_extension)
-

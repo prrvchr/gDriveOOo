@@ -32,7 +32,6 @@ import unohelper
 from com.sun.star.lang import XServiceInfo
 
 from com.sun.star.logging.LogLevel import INFO
-from com.sun.star.logging.LogLevel import SEVERE
 
 from com.sun.star.sdbc import SQLException
 from com.sun.star.sdbc import XDriver
@@ -46,8 +45,6 @@ from .datasource import DataSource
 from .helper import getLogException
 
 from .dbtool import getDriverPropertyInfos
-
-from .logger import getLogger
 
 from .dbinit import getDataSourceUrl
 
@@ -142,4 +139,3 @@ class Driver(unohelper.Base,
 
     def getSupportedServiceNames(self):
         return self._services
-

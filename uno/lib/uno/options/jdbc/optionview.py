@@ -31,8 +31,6 @@ from ...unotool import getContainerWindow
 
 from ...configuration import g_identifier
 
-import traceback
-
 
 class OptionView():
     def __init__(self, ctx, window, handler, label, update):
@@ -94,4 +92,3 @@ class OptionView():
 
     def _getSetup(self):
         return self._window.getControl('ListBox1')
-

@@ -27,15 +27,17 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-from .logwrapper import LogWrapper
-from .logwrapper import getLogName
+import unohelper
 
-from ..configuration import g_defaultlog
-from ..configuration import g_basename
+from com.sun.star.awt import XCallback
 
-def getLogger(ctx, logger=g_defaultlog, basename=g_basename):
-    return LogWrapper(ctx, logger, basename)
 
-def getLoggerName(name):
-    return getLogName(name)
+class CallBack(unohelper.Base,
+               XCallback):
+    def __init__(self, call, *args, **kwargs):
+        self._call = call
+        self._args = args
+        self._kwargs = kwargs
 
+    def notify(self, _data):
+        self._call(*self._args, **self._kwargs)

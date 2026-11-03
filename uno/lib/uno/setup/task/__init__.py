@@ -27,59 +27,12 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-from .setup import Setup
+from .conflict import Conflict
 
-from ...unotool import Resource
+from .extension import Extension
 
-from ..helper import checkExtension
+from .java import Java
 
-import traceback
+from .pypi import Pypi
 
-
-class Extension(Setup):
-    def __init__(self, ctx, callback, extensions):
-        super().__init__(ctx, callback)
-        self._absent = []
-        self._present = []
-        self.total = len(extensions)
-        self._resources = {1: Resource(10101), 2: Resource(10102)}
-        self.steps = self._getSetupSteps(ctx, extensions)
-
-    def getHeader(self, **kwargs):
-        return self._resolver.resolveString(10201).format(**kwargs)
-
-    def setReport(self, reports, success):
-        if not success:
-            reports.append(self._getReport(success))
-        return self._getHeader(success), self._getResult(success)
-
-    def callback(self, success=True, error=None):
-        self._callback(self._getSuccess(success), error)
-
-    def stepCheckExtension(self, ctx, identifier, name, version):
-        if checkExtension(ctx, identifier, name, version):
-            self._present.append((name, version))
-        else:
-            self._absent.append((name, version))
-
-    def _getSetupSteps(self, ctx, extensions):
-        for identifier, infos in extensions.items():
-            yield self._getStepCheckExtension(ctx, identifier, *infos)
-
-    def _getStepCheckExtension(self, ctx, identifier, name, version):
-        return 10301, (name, version), self.stepCheckExtension, ctx, identifier, name, version
-
-    def _getHeader(self, success):
-        code = 10401 if success else 10402
-        return self._resolver.resolveString(code)
-
-    def _getReport(self, success):
-        return self._resolver.resolveString(10501), self._getResult(success), False
-
-    def _getResult(self, success):
-        extensions =  self._present if success else self._absent
-        return '\n'.join(['%s version %s' % (name, version) for (name, version) in extensions])
-
-    def _getSuccess(self, success):
-        return success and len(self._absent) == 0
-
+from .python import Python

@@ -44,7 +44,7 @@ class DialogHandler(unohelper.Base,
         self._manager = manager
 
 # XDialogEventHandler
-    def callHandlerMethod(self, dialog, event, method):
+    def callHandlerMethod(self, _dialog, _event, method):
         try:
             handled = False
             if method == 'Help':
@@ -62,7 +62,7 @@ class DialogHandler(unohelper.Base,
                 self._manager.doCancel()
                 handled = True
             return handled
-        except:
+        except Exception:
             print("DialogHandler.callHandlerMethod() ERROR: %s" % traceback.format_exc())
 
     def getSupportedMethodNames(self):
@@ -79,7 +79,7 @@ class WindowHandler(unohelper.Base,
         self._manager = manager
 
 # XContainerWindowEventHandler
-    def callHandlerMethod(self, dialog, event, method):
+    def callHandlerMethod(self, _dialog, _event, method):
         try:
             handled = False
             if method == 'Help':
@@ -97,7 +97,7 @@ class WindowHandler(unohelper.Base,
                 self._manager.doCancel()
                 handled = True
             return handled
-        except:
+        except Exception:
             print("WindowHandler.callHandlerMethod() ERROR: %s" % traceback.format_exc())
 
     def getSupportedMethodNames(self):
@@ -117,7 +117,7 @@ class ItemListener(unohelper.Base,
     def itemStateChanged(self, event):
         try:
             self._manager.changeRoadmapStep(event.ItemId)
-        except:
+        except Exception:
             print("ItemListener.itemStateChanged() ERROR: %s" % traceback.format_exc())
 
     def disposing(self, event):
@@ -138,4 +138,3 @@ class CloseListener(unohelper.Base,
 
     def disposing(self, event):
         pass
-

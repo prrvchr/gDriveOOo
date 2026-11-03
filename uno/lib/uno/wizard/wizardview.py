@@ -49,12 +49,9 @@ from ..unotool import getTopWindow
 
 from ..configuration import g_identifier
 
-import traceback
-
 
 class WizardView():
     def __init__(self, ctx, handler, listener, parent, name, title, resize, point):
-        self._name = 'Roadmap1'
         if name:
             # XXX: With a name we use a TOP XWindow
             self._frame = getTopWindow(ctx, name)
@@ -69,8 +66,9 @@ class WizardView():
             self._frame = None
             parent = getParentWindow(ctx, parent)
             self._dialog = getDialog(ctx, g_identifier, 'Wizard', handler, parent)
+        self._name = 'Roadmap1'
         rectangle = uno.createUnoStruct('com.sun.star.awt.Rectangle', 0, 0, 85, 180)
-        roadmap = self._getRoadmap(title, rectangle, 0)
+        self._setRoadmap(title, rectangle, 0)
         self._buttons = {CANCEL: 1, FINISH: 2, NEXT: 3, PREVIOUS: 4, HELP: 5}
         self._spacer = 5
         if not self.isModal() and not resize:
@@ -161,10 +159,9 @@ class WizardView():
             button.DefaultButton = True
 
 # WizardView private methods
-    def _getRoadmap(self, title, rectangle, tabindex):
+    def _setRoadmap(self, title, rectangle, tabindex):
         roadmap = self._getRoadmapModel(title, rectangle, tabindex)
         self._dialog.Model.insertByName(self._name, roadmap)
-        return self._dialog.getControl(self._name)
 
     def _getRoadmapModel(self, title, rectangle, tabindex):
         service = 'com.sun.star.awt.UnoControlRoadmapModel'
@@ -194,4 +191,3 @@ class WizardView():
 
     def _getButtonByIndex(self, index):
         return self._dialog.getControl('CommandButton%s' % index)
-

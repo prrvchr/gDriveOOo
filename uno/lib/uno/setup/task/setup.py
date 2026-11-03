@@ -27,13 +27,9 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-from .conflict import Conflict
+from ...runner import Task
 
-from .extension import Extension
 
-from .java import Java
-
-from .pypi import Pypi
-
-from .python import Python
-
+class Setup(Task):
+    def __init__(self, ctx, callback):
+        super().__init__(ctx, 'SetupRunner', callback)

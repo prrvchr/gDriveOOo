@@ -37,7 +37,6 @@ from .logger import Logger
 from ..unotool import getStringResourceWithLocation
 
 from threading import Lock
-import traceback
 
 
 class LoggerPool(unohelper.Base,
@@ -61,7 +60,7 @@ class LoggerPool(unohelper.Base,
         return Logger(self._ctx, logger, listeners)
 
     def getDefaultLogger(self):
-        return getNamedLogger(self._default)
+        return self.getNamedLogger(self._default)
 
     # XLoggerPool2
     def getLocalizedLogger(self, name, url, basename):
@@ -77,11 +76,11 @@ class LoggerPool(unohelper.Base,
     def getLoggerNames(self):
         return tuple(LoggerPool._loggers.keys())
 
-    def getFilteredLoggerNames(self, filter):
+    def getFilteredLoggerNames(self, fltr):
         names = []
-        start = len(filter) +1
+        start = len(fltr) + 1
         for name in LoggerPool._loggers:
-            if name.startswith(filter):
+            if name.startswith(fltr):
                 names.append(name[start:])
         return tuple(names)
 
@@ -107,4 +106,3 @@ class LoggerPool(unohelper.Base,
         event.Source = self
         for listener in LoggerPool._listeners:
             listener.modified(event)
-

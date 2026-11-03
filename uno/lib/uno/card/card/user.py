@@ -28,7 +28,6 @@
 """
 
 from com.sun.star.logging.LogLevel import INFO
-from com.sun.star.logging.LogLevel import SEVERE
 
 from com.sun.star.ucb.ConnectionMode import OFFLINE
 from com.sun.star.ucb.ConnectionMode import ONLINE
@@ -43,7 +42,6 @@ from ..unotool import getConnectionMode
 
 from ..configuration import g_extension
 
-import traceback
 
 class User(object):
     def __init__(self, ctx, source, logger, database, provider, url, scheme, server, name, pwd=''):
@@ -81,27 +79,35 @@ class User(object):
     @property
     def Id(self):
         return getUserId(self._metadata)
+
     @property
     def Uri(self):
         return self._metadata.get('Uri')
+
     @property
     def Scheme(self):
         return self._metadata.get('Scheme')
+
     @property
     def Server(self):
         return self._metadata.get('Server')
+
     @property
     def Path(self):
         return self._metadata.get('Path')
+
     @property
     def Name(self):
         return self._metadata.get('Name')
+
     @property
     def Password(self):
         return self._password
+
     @property
     def BaseUrl(self):
         return self.Scheme + self.Server + self.Path
+
     @property
     def Request(self):
         return self._request
@@ -155,4 +161,3 @@ class User(object):
 
     def _isOnLine(self, server):
         return getConnectionMode(self._ctx, server) != OFFLINE
-

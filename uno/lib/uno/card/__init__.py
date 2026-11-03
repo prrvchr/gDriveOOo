@@ -30,31 +30,31 @@ import traceback
 
 try:
     from .driver import Driver
-    
+
     from .options import OptionsManager
-    
+
     from .setup import SetupManager
-    
+
     from .dbsetup import DBSetup
-    
+
     from .helper import getExtensions
-    
+
     from .unotool import findFrame
     from .unotool import getJobArguments
     from .unotool import notifyDispatch
-    
+
     from .logger import getLogger
-    
+
     from .jdbcdriver import g_agent
     from .jdbcdriver import g_java
     from .jdbcdriver import g_protocol
     from .jdbcdriver import g_script
     from .jdbcdriver import g_service
-    
+
     from .configuration import g_basename
     from .configuration import g_defaultlog
     from .configuration import g_extension
     from .configuration import g_identifier
     from .configuration import g_setup
-except Excception as e:
+except Exception:
     print("gcontact.__init__() ERROR: %s" % traceback.format_exc())

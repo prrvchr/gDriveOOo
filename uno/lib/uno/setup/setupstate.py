@@ -78,4 +78,3 @@ class SetupState:
         if self.restart:
             return 14
         return 1
-

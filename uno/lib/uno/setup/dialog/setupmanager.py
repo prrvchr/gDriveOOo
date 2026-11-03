@@ -38,8 +38,6 @@ from .setuphandler import WindowHandler
 
 from ..setupcheck import SetupCheck
 
-from ..setupstate import SetupState
-
 from ...configuration import State
 
 from ...runner import Cancel
@@ -49,7 +47,6 @@ from ...unotool import Transferable
 from ...unotool import getSystemClipboard
 from ...unotool import notifyDispatch
 
-import traceback
 
 class SetupManager():
     def __init__(self, ctx, source, /, database=None, java=None, agent=None, python=False, extensions=None, *, dispatch=None, mode=None, parent=None, name=None, state=None):
@@ -115,7 +112,7 @@ class SetupManager():
                 self._dispose()
 
 # XCloseListener
-    def queryClosing(self, source, ownership):
+    def queryClosing(self, _source, ownership):
         self._close()
         if self._running:
             raise CloseVetoException()
@@ -162,27 +159,27 @@ class SetupManager():
         self._running = True
         self._model.setCheckExtension(self.notifyCheck)
         self._setHeader()
-        self._model.startCheck(self._view.getIndicator(), self._cancel)
+        self._model.startCheck(self._cancel, self._view.getIndicator())
 
     def _checkJava(self):
         self._running = True
         self._model.setCheckJava(self.notifyCheck)
         self._setHeader()
-        self._model.startCheck(self._view.getIndicator(), self._cancel)
+        self._model.startCheck(self._cancel, self._view.getIndicator())
 
     def _checkDataBase(self):
         self._running = True
         self._model.setCheckDataBase(self.notifyCheck)
         self._setHeader()
-        self._model.startCheck(self._view.getIndicator(), Cancel())
+        self._model.startCheck(Cancel(), self._view.getIndicator())
 
     def _checkPython(self):
         self._running = True
         self._model.setCheckPython(self.notifyPython)
         self._setHeader()
-        self._model.startCheck(self._view.getIndicator(), self._cancel)
+        self._model.startCheck(self._cancel, self._view.getIndicator())
 
-    def notifyPython(self, success, checked, internet, error):
+    def notifyPython(self, _success, checked, internet, error):
         self._running = False
         if self._cancel.isSet():
             return self._dispose()
@@ -199,7 +196,7 @@ class SetupManager():
         self._running = True
         self._model.setCheckPypi(self.notifyPypi, self._state)
         self._setHeader()
-        self._model.startCheck(self._view.getIndicator(), self._cancel)
+        self._model.startCheck(self._cancel, self._view.getIndicator())
 
     def notifyPypi(self, success, error):
         self._running = False
@@ -217,7 +214,7 @@ class SetupManager():
         self._running = True
         self._model.setCheckConflict(self.notifyCheck)
         self._setHeader()
-        self._model.startCheck(self._view.getIndicator(), self._cancel)
+        self._model.startCheck(self._cancel, self._view.getIndicator())
 
     def _setHeader(self):
         if not self._cancel.isSet():
@@ -237,4 +234,3 @@ class SetupManager():
             self._view.setResult(*result)
             if success:
                 self._step = 7
-

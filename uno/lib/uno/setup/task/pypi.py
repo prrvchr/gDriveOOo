@@ -38,8 +38,6 @@ from ..helper import installPackage
 from ..helper import renamePackageSuffix
 from ..helper import uninstallPackage
 
-import traceback
-
 
 class Pypi(Setup):
     def __init__(self, ctx, callback, packages, url, mode, state):
@@ -116,8 +114,8 @@ class Pypi(Setup):
 
     def _getStepCount(self, packages):
         self._fautly = hasFaultySuffix()
-        for package, data in packages.items():
-            version1, version2, url = data
+        for _, data in packages.items():
+            version1, version2, _ = data
             if version1 != version2:
                 if self._fautly:
                     yield 3 if version1 else 2
@@ -137,4 +135,3 @@ class Pypi(Setup):
 
     def _getSuccess(self, success):
         return success and len(self._aborted) == 0
-

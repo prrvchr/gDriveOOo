@@ -39,12 +39,15 @@ class Group():
     @property
     def Id(self):
         return self._id
+
     @property
     def Uri(self):
         return self._uri
+
     @property
     def Name(self):
         return self._name
+
     @property
     def Token(self):
         return self._token

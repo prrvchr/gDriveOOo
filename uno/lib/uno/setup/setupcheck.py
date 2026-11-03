@@ -50,7 +50,6 @@ from ..configuration import g_identifier
 from ..configuration import g_resource
 
 from threading import Timer
-import traceback
 
 
 class SetupCheck(unohelper.Base,
@@ -72,7 +71,7 @@ class SetupCheck(unohelper.Base,
             self._progress.start(self._resolver.resolveString(10101), self._total)
         Timer(0.1, self._call).start()
 
-    def notify(self, data):
+    def notify(self, _data):
         try:
             resource, args, call, *kwargs = next(self._steps)
             call(*kwargs)
@@ -83,7 +82,7 @@ class SetupCheck(unohelper.Base,
             Timer(0.1, self._call).start()
         except StopIteration:
             self._callback(self._state)
-        except Exception as e:
+        except Exception:
             self._callback(SetupState(False))
 
     def stepCheckExtension(self, ctx, identifier, name, version):
@@ -126,7 +125,7 @@ class SetupCheck(unohelper.Base,
             yield self._getStepCheckPython(ctx, mode)
 
     def _call(self):
-       self._asyncCall.addCallback(self, None)
+        self._asyncCall.addCallback(self, None)
 
     def _getStepCheckExtension(self, ctx, identifier, name, version):
         return 10201, (name, version), self.stepCheckExtension, ctx, identifier, name, version
@@ -170,11 +169,10 @@ class SetupCheck(unohelper.Base,
         if python:
             url = getResourceLocation(ctx, g_identifier)
             requirements = getRequirementsUrl(url)
-            if getSimpleFile(self._ctx).exists(requirements):
+            if getSimpleFile(ctx).exists(requirements):
                 if mode is None:
                     mode = getSetupUpdateMode(ctx, g_identifier)
                 code = checkPython(url, requirements, mode)
                 if code != 0:
                     return False
         return True
-

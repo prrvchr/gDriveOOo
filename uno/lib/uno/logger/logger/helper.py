@@ -27,12 +27,16 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-from ...runner import Task
+from .logwrapper import LogWrapper
+from .logwrapper import getLogName
 
-import traceback
+from ..configuration import g_defaultlog
+from ..configuration import g_basename
 
 
-class Setup(Task):
-    def __init__(self, ctx, callback):
-        super().__init__(ctx, 'SetupRunner', callback)
+def getLogger(ctx, logger=g_defaultlog, basename=g_basename):
+    return LogWrapper(ctx, logger, basename)
 
+
+def getLoggerName(name):
+    return getLogName(name)

@@ -46,15 +46,19 @@ class Book():
     @property
     def Id(self):
         return self._id
+
     @property
     def Uri(self):
         return self._uri
+
     @property
     def Name(self):
         return self._name
+
     @property
     def Tag(self):
         return self._tag
+
     @property
     def Token(self):
         return self._token

@@ -32,8 +32,6 @@ from ..unotool import hasInterface
 
 from ..configuration import g_identifier
 
-import traceback
-
 
 class WizardModel():
     def __init__(self, ctx):
@@ -140,7 +138,7 @@ class WizardModel():
         # TODO: Fixed: Roadmap item will be by default:
         # TODO: - Previous pages will be, if not explicitly disabled, enabled.
         # TODO: - Current page will be enabled, it's mandatory.
-        # TODO: - Subsequent pages will be, if not explicitly disabled, enabled 
+        # TODO: - Subsequent pages will be, if not explicitly disabled, enabled
         # TODO:   if the previous page can advance otherwise disabled.
         advance = True
         previous = -1

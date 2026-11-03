@@ -40,8 +40,6 @@ from ...unotool import setWindowPosition
 
 from ...configuration import g_identifier
 
-import traceback
-
 
 class SetupView():
     def __init__(self, ctx, parent, handler, listener, name, point, title, header, step=1):
@@ -152,4 +150,3 @@ class SetupView():
 
     def _getNextButton(self):
         return self._window.getControl('CommandButton3')
-

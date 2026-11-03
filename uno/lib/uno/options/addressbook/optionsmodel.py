@@ -33,8 +33,6 @@ from ..unotool import getStringResource
 
 from ..configuration import g_identifier
 
-import traceback
-
 
 class OptionsModel():
     def __init__(self, ctx):
@@ -68,4 +66,3 @@ class OptionsModel():
             resource = self._resources.get('Links') % i
             links.append(self._resolver.resolveString(resource))
         return tuple(links)
-

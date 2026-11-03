@@ -27,6 +27,8 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
+from .callback import CallBack
+
 from .transferable import Factory as Transferable
 
 from .resource import Resource
@@ -114,5 +116,6 @@ from .unotool import setDialogPosition
 from .unotool import setProgress
 from .unotool import setWindowHeight
 from .unotool import setWindowPosition
+from .unotool import showMessageBox
 from .unotool import unparseDateTime
 from .unotool import unparseTimeStamp

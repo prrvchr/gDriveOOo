@@ -66,6 +66,7 @@ class RollerHandler(unohelper.Base,
     @property
     def Encoding(self):
         return self._encoding
+
     @Encoding.setter
     def Encoding(self, value):
         self._encoding = value
@@ -74,6 +75,7 @@ class RollerHandler(unohelper.Base,
     @property
     def Formatter(self):
         return self._formatter
+
     @Formatter.setter
     def Formatter(self, value):
         self._formatter = value
@@ -81,6 +83,7 @@ class RollerHandler(unohelper.Base,
     @property
     def Level(self):
         return self._level
+
     @Level.setter
     def Level(self, value):
         self._level = value
@@ -126,4 +129,3 @@ class RollerHandler(unohelper.Base,
         self._out.writeString(msg)
         self._out.getOutputStream().flush()
         self._out.getOutputStream().closeOutput()
-

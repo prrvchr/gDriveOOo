@@ -27,8 +27,6 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-import uno
-
 from .setup import Setup
 
 from ...unotool import Resource
@@ -47,11 +45,8 @@ from ..helper import getSetupUpdateMode
 
 from ...unotool import checkInternet
 from ...unotool import getResourceLocation
-from ...unotool import getSimpleFile
 
 from ...configuration import g_identifier
-
-import traceback
 
 
 class Python(Setup):
@@ -194,4 +189,3 @@ class Python(Setup):
         else:
             modules = ('%s version %s' % (package, data[1]) for package, data in self.packages.items() if data[0] != data[1])
         return ', '.join(modules)
-

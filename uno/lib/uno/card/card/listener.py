@@ -47,7 +47,7 @@ class EventListener(unohelper.Base,
         try:
             print("EventListener.disposing() ******************")
             self._datasource.closeConnection(event.Source)
-        except Exception as e:
+        except Exception:
             msg = "EventListener Error: %s" % traceback.format_exc()
             print(msg)
 
@@ -61,7 +61,7 @@ class TerminateListener(unohelper.Base,
     def queryTermination(self, event):
         try:
             self._replicator.dispose()
-        except Exception as e:
+        except Exception:
             msg = "TerminateListener Error: %s" % traceback.format_exc()
             print(msg)
 
@@ -70,4 +70,3 @@ class TerminateListener(unohelper.Base,
 
     def disposing(self, source):
         pass
-

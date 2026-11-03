@@ -31,83 +31,52 @@ from .setup import Setup
 
 from ...unotool import Resource
 
-from ..helper import checkAgent
-from ..helper import getJavaStatus
-from ..helper import getJavaVersion
-
-import traceback
+from ..helper import checkExtension
 
 
-class Java(Setup):
-    def __init__(self, ctx, callback, java, agent=None):
+class Extension(Setup):
+    def __init__(self, ctx, callback, extensions):
         super().__init__(ctx, callback)
-        self._code = 6
-        self._minimum = ''
-        self._version = ''
-        self.total = 1
-        self._resources = {1: Resource(20101), 2: Resource(20102)}
-        self.steps = self._getSetupSteps(ctx, java, agent)
+        self._absent = []
+        self._present = []
+        self.total = len(extensions)
+        self._resources = {1: Resource(10101), 2: Resource(10102)}
+        self.steps = self._getSetupSteps(ctx, extensions)
 
     def getHeader(self, **kwargs):
-        return self._resolver.resolveString(20201).format(**kwargs)
+        return self._resolver.resolveString(10201).format(**kwargs)
 
     def setReport(self, reports, success):
         if not success:
-            reports.append(self._getReport())
-        return self._getHeader(), self._getResult()
+            reports.append(self._getReport(success))
+        return self._getHeader(success), self._getResult(success)
 
     def callback(self, success=True, error=None):
         self._callback(self._getSuccess(success), error)
 
-    def stepCheckJavaStatus(self, ctx, extension, version, script):
-        self._minimum = version
-        self._code = getJavaStatus(ctx)
+    def stepCheckExtension(self, ctx, identifier, name, version):
+        if checkExtension(ctx, identifier, name, version):
+            self._present.append((name, version))
+        else:
+            self._absent.append((name, version))
 
-    def stepCheckJavaVersion(self, ctx, extension, version, script):
-        self._code, self._version = getJavaVersion(ctx, extension, version, script, True)
+    def _getSetupSteps(self, ctx, extensions):
+        for identifier, infos in extensions.items():
+            yield self._getStepCheckExtension(ctx, identifier, *infos)
 
-    def stepCheckJavaAgent(self, ctx, service, url, agent):
-        self._code = checkAgent(ctx, service, url, agent)
+    def _getStepCheckExtension(self, ctx, identifier, name, version):
+        return 10301, (name, version), self.stepCheckExtension, ctx, identifier, name, version
 
-    def _getSetupSteps(self, ctx, java, agent):
-        yield self._getStepCheckJavaStatus(ctx, *java)
-        if self._hasJava():
-            self.total += 1
-            yield self._getStepCheckJavaVersion(ctx, *java)
-            if self._hasJava() and agent:
-                self.total += 1
-                yield self._getStepCheckJavaAgent(ctx, *agent)
+    def _getHeader(self, success):
+        code = 10401 if success else 10402
+        return self._resolver.resolveString(code)
 
-    def _getStepCheckJavaStatus(self, ctx, extension, version, script):
-        return 20301, (), self.stepCheckJavaStatus, ctx, extension, version, script
+    def _getReport(self, success):
+        return self._resolver.resolveString(10501), self._getResult(success), False
 
-    def _getStepCheckJavaVersion(self, ctx, extension, version, script):
-        return 20401, (version, ), self.stepCheckJavaVersion, ctx, extension, version, script
-
-    def _getStepCheckJavaAgent(self, ctx, service, url, agent):
-        return 20501, (), self.stepCheckJavaAgent, ctx, service, url, agent
-
-    def _hasJava(self):
-        return self._code == 0
-
-    def _noAgent(self):
-        return self._code == 1
-
-    def _getHeader(self):
-        code = 20601 + self._code
-        return self._resolver.resolveString(code).format(version=self._version, minimum=self._minimum)
-
-    def _getReport(self):
-        code = 20701 if self._noAgent() else 20702
-        return self._resolver.resolveString(code), self._getResult(), False
-
-    def _getResult(self):
-        if self._hasJava():
-            return 'Java JDK version %s' % self._version
-        if self._noAgent():
-            return ''
-        return 'Java JDK version %s minimum' % self._minimum
+    def _getResult(self, success):
+        extensions = self._present if success else self._absent
+        return '\n'.join(['%s version %s' % (name, version) for (name, version) in extensions])
 
     def _getSuccess(self, success):
-        return success and self._hasJava()
-
+        return success and len(self._absent) == 0

@@ -28,7 +28,6 @@
 """
 
 from com.sun.star.logging.LogLevel import INFO
-from com.sun.star.logging.LogLevel import SEVERE
 
 from com.sun.star.uno import Exception as UnoException
 
@@ -50,6 +49,7 @@ from .helper import getSqlException
 from .configuration import g_extension
 
 from threading import Event
+
 
 class DataSource():
     def __init__(self, ctx, source, logger, url):
@@ -110,7 +110,7 @@ class DataSource():
                 raise e
         connection = self._database.getConnection(name, user.getPassword())
         # XXX: New users are cached only if the connection is successful.
-        if not uri in self._maps:
+        if uri not in self._maps:
             self._users[name] = user
             self._maps[uri] = name
         user.addSession(self._database.getSessionId(connection))
@@ -119,4 +119,3 @@ class DataSource():
         self._sync.set()
         connection.addEventListener(self._listener)
         return connection
-

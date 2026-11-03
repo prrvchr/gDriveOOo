@@ -32,11 +32,9 @@ from ..unotool import getStringResource
 from ..configuration import g_identifier
 from ..configuration import g_resource
 
-import traceback
-
 
 class Task():
-    def __init__(self, ctx, resource , callback=None):
+    def __init__(self, ctx, resource, callback=None):
         self._resolver = getStringResource(ctx, g_identifier, g_resource, resource)
         self._resources = {}
         self._callback = callback
@@ -50,7 +48,13 @@ class Task():
     def skipSteps(self):
         return 0
 
-    def callback(self, callback, success=True, error=None):
+    def stepGetSkipStep(self):
+        pass
+
+    def getStepFinalize(self):
+        return None
+
+    def callback(self, success=True, error=None):
         pass
 
     def resolveString(self, resource, *args):
@@ -70,9 +74,8 @@ class Task():
             return self._resolver.resolveString(resource.id).format(*args)
         return ''
 
-    def stepFinalize(self, **kwargs):
-        pass
+    def _getStepSkipStep(self, code, *args):
+        return code, args, self.stepGetSkipStep
 
     def _getResource(self, resource, factor):
         return (resource // factor) * factor
-

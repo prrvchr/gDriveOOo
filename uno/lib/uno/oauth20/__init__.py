@@ -49,4 +49,3 @@ from .configuration import g_identifier
 from .configuration import g_service
 from .configuration import g_token
 from .configuration import g_version
-

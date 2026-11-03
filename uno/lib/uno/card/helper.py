@@ -51,13 +51,16 @@ def getExtensions():
     return {g_identifier1: (g_extension1, g_version1),
             g_identifier2: (g_extension2, g_version2)}
 
+
 def getUserId(metadata):
     return metadata.get('User')
+
 
 def getUserSchema(metadata):
     # FIXME: We need to replace the dot for schema name
     # FIXME: g_dotcode is used in database procedure too...
     return metadata.get('Name').replace('.', chr(g_dotcode))
+
 
 def getLogException(logger, source, state, code, cls, mtd, *args):
     status = logger.resolveString(state)
@@ -65,7 +68,7 @@ def getLogException(logger, source, state, code, cls, mtd, *args):
     logger.logp(LogLevel.SEVERE, cls, mtd, msg)
     return getException(status, code, msg, source)
 
+
 def getSqlException(ctx, source, state, code, cls, mtd, *args):
     logger = getLogger(ctx, g_defaultlog, g_basename)
     return getLogException(logger, source, state, code, cls, mtd, *args)
-

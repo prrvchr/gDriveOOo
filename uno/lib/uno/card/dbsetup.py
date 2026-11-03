@@ -36,8 +36,6 @@ from .dbinit import getProcedures
 from .dbinit import getStaticTables
 from .dbinit import getViews
 
-import traceback
-
 
 class DBSetup(DBTask):
     def __init__(self, ctx, user='', pwd=''):
@@ -46,7 +44,7 @@ class DBSetup(DBTask):
 
     def _getSetupSteps(self, ctx, user, pwd):
         yield self._getStepGetConnection(ctx, user, pwd)
-        yield self._getStepCheckConnection(ctx)
+        yield self._getStepCheckConnection()
         if self._connection:
             self.total += 1
             yield self._getStepCreateStaticTables(getStaticTables())
@@ -61,4 +59,3 @@ class DBSetup(DBTask):
                 yield self._getStepCreateProcedures(ctx, getProcedures())
                 yield self._getStepCreateViews(ctx, getViews)
         yield self._getStepFinalize(True)
-

@@ -27,10 +27,6 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-import unohelper
-
-from com.sun.star.sdbcx import CheckOption
-
 from .dbinit import createStaticTables
 from .dbinit import createStaticIndexes
 from .dbinit import createStaticForeignKeys
@@ -53,7 +49,6 @@ from .dbtool import getDataBaseIndexes
 from .dbtool import getDataBaseTables
 from .dbtool import getDataSourceConnection
 from .dbtool import getDriverInfos
-from .dbtool import getTablePrivileges
 
 from ..unotool import Resource
 
@@ -62,16 +57,12 @@ from ..runner import Task
 
 from ..unotool import checkVersion
 from ..unotool import getSimpleFile
-from ..unotool import getStringResource
 
 from ..dbconfig import g_catalog
 from ..dbconfig import g_csv
 from ..dbconfig import g_drvinfos
 from ..dbconfig import g_schema
 from ..dbconfig import g_version
-
-from ..configuration import g_identifier
-from ..configuration import g_resource
 
 import traceback
 
@@ -119,7 +110,7 @@ class DBTask(Task):
             trace = traceback.format_exc()
             raise RunnerException(e, trace)
 
-    def stepCheckConnection(self, ctx):
+    def stepCheckConnection(self):
         new = not self._exists
         if self._connection:
             try:
@@ -238,8 +229,8 @@ class DBTask(Task):
     def _getStepGetConnection(self, ctx, user, pwd):
         return 10301, (), self.stepGetConnection, ctx, user, pwd
 
-    def _getStepCheckConnection(self, ctx):
-        return 10401, (), self.stepCheckConnection, ctx
+    def _getStepCheckConnection(self):
+        return 10401, (), self.stepCheckConnection
 
     def _getStepCreateStaticTables(self, tables=None):
         return 10501, (), self.stepCreateStaticTables, tables
@@ -288,4 +279,3 @@ class DBTask(Task):
 
     def _getSuccess(self, success):
         return success and self._success
-

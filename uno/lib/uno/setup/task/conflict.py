@@ -42,7 +42,6 @@ from ...configuration import g_identifier
 
 import importlib
 import os
-import traceback
 
 
 class Conflict(Setup):
@@ -69,7 +68,7 @@ class Conflict(Setup):
         return self._getHeader(), result
 
     def callback(self, success=True, error=None):
-        success = len(self._paths) == 0
+        success = success and len(self._paths) == 0
         self._callback(success, error)
 
     def stepInitialize(self, ctx, packages, url):
@@ -95,7 +94,7 @@ class Conflict(Setup):
         extensions = {}
         service = '/singletons/com.sun.star.deployment.PackageInformationProvider'
         provider = ctx.getValueByName(service)
-        for identifier, version in provider.getExtensionList():
+        for identifier, _ in provider.getExtensionList():
             location = getOsLocation(provider.getPackageLocation(identifier))
             extensions[getExtensionName(location, identifier)] = location
         self._extensions = extensions
@@ -151,4 +150,3 @@ class Conflict(Setup):
 
     def _getResult(self):
         return '\n'.join(f'{ext}: {self._getPackages(pkgs)}' for ext, pkgs in self._results.items())
-

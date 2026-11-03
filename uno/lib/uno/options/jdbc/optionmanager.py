@@ -33,15 +33,9 @@ from .optionview import OptionView
 
 from .optionhandler import OptionHandler
 
-from ...runner import DispatchListener
-
-from ...setup import SetupCheck
-
 from ..logger import LogManager
 
 from ...setup import showSetup
-
-import traceback
 
 
 class OptionManager():
@@ -98,4 +92,3 @@ class OptionManager():
     def showSetup(self):
         mode = self.getSetupMode()
         showSetup(self._ctx, Dispatch=self._dispatch, Mode=mode)
-

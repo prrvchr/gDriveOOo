@@ -29,8 +29,6 @@
 
 import unohelper
 
-from com.sun.star.view.SelectionType import MULTI
-
 from ...unotool import getContainerWindow
 
 from ...configuration import g_identifier
@@ -200,4 +198,3 @@ class GridView(unohelper.Base):
 
     def _getColumn(self):
         return self._window.getControl('ListBox1')
-

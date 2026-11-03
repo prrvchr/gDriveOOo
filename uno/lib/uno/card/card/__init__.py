@@ -37,4 +37,3 @@ from .listener import EventListener
 from .listener import TerminateListener
 
 from .user import User
-

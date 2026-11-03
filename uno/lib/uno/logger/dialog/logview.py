@@ -134,4 +134,3 @@ class LogDialog():
 # LogDialog private control methods
     def _getLogger(self):
         return self._dialog.getControl('TextField1')
-

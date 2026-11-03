@@ -155,4 +155,3 @@ class Replicator(Thread):
             if user.hasSession():
                 return True
         return False
-

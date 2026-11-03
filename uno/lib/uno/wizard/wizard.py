@@ -63,12 +63,10 @@ from ..unotool import hasInterface
 
 from ..configuration import g_extension
 
-import traceback
-
 
 class Wizard(unohelper.Base,
              XWizard):
-    def __init__(self, ctx, auto=-1, /, name=None, point=None, parent=None, resize=True, **kwargs):
+    def __init__(self, ctx, auto=-1, /, name=None, point=None, parent=None, resize=True, **_):
         self._ctx = ctx
         self._helpUrl = ''
         self._auto = auto
@@ -89,7 +87,7 @@ class Wizard(unohelper.Base,
         self._model.setRoadmapModel(self._view.getRoadmapModel())
 
 # XCloseListener
-    def queryClosing(self, source, ownership):
+    def queryClosing(self, _source, ownership):
         self._queryClosing(ownership)
 
     def notifyClosing(self, source):
@@ -102,6 +100,7 @@ class Wizard(unohelper.Base,
     @property
     def HelpURL(self):
         return self._helpUrl
+
     @HelpURL.setter
     def HelpURL(self, url):
         self._helpUrl = url
@@ -381,7 +380,7 @@ class Wizard(unohelper.Base,
     def _tryToClose(self):
         try:
             self._queryClosing()
-        except CloseVetoException as e:
+        except CloseVetoException:
             pass
         else:
             self._view.close()
