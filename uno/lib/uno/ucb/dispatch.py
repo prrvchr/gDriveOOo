@@ -42,12 +42,11 @@ from com.sun.star.frame.DispatchResultState import FAILURE
 
 from .unotool import createService
 from .unotool import getConfiguration
+from .unotool import getDesktop
 from .unotool import getLastNamedParts
 
 from .configuration import g_identifier
 from .configuration import g_sep
-
-import traceback
 
 
 class Dispatch(unohelper.Base,
@@ -85,11 +84,11 @@ class Dispatch(unohelper.Base,
         state = FeatureStateEvent()
         state.FeatureURL = url
         state.IsEnabled = True
-        #state.State = True
+        # state.State = True
         listener.statusChanged(state)
-        self._listeners.append(listener);
+        self._listeners.append(listener)
 
-    def removeStatusListener(self, listener, url):
+    def removeStatusListener(self, listener, _url):
         if listener in self._listeners:
             self._listeners.remove(listener)
 
@@ -131,4 +130,3 @@ class Dispatch(unohelper.Base,
             self._path = path
         if self._config.hasPendingChanges():
             self._config.commitChanges()
-

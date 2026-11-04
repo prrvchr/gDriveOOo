@@ -52,8 +52,6 @@ from ..jdbcdriver import g_service
 from ..configuration import State
 from ..configuration import g_extension
 
-import traceback
-
 
 class OptionsManager():
     def __init__(self, ctx, source, logger, window):
@@ -101,4 +99,3 @@ class OptionsManager():
         datasource = self._manager.getDataSourceUrl()
         setup = SetupCheck(self._ctx, callback, datasource, java=self._java, agent=self._agent, python=True, extensions=getExtensions(), mode=mode)
         setup.start()
-

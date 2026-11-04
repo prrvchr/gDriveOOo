@@ -41,8 +41,6 @@ from .dbinit import getViewPrivileges
 
 from .dbconfig import g_queries
 
-import traceback
-
 
 class DBSetup(DBTask):
     def __init__(self, ctx, user='', pwd=''):
@@ -51,7 +49,7 @@ class DBSetup(DBTask):
 
     def _getSetupSteps(self, ctx, user, pwd):
         yield self._getStepGetConnection(ctx, user, pwd)
-        yield self._getStepCheckConnection(ctx)
+        yield self._getStepCheckConnection()
         if self._connection:
             self.total += 1
             yield self._getStepCreateStaticTables(getStaticTables())
@@ -69,4 +67,3 @@ class DBSetup(DBTask):
                 yield self._getstepCreateRoleAndPrivileges(getViewPrivileges)
                 yield self._getStepCreateProcedures(ctx, getProcedures(), g_queries)
         yield self._getStepFinalize(True)
-

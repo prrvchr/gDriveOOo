@@ -27,8 +27,6 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-import traceback
-
 
 class OptionsView():
     def __init__(self, window, update, links):
@@ -64,4 +62,3 @@ class OptionsView():
 
     def _getLink(self, index):
         return self._window.getControl(f'Hyperlink{index}')
-

@@ -27,10 +27,6 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-from com.sun.star.ucb.SynchronizePolicy import SERVER_IS_MASTER
-from com.sun.star.ucb.SynchronizePolicy import CLIENT_IS_MASTER
-from com.sun.star.ucb.SynchronizePolicy import NONE_IS_MASTER
-
 from ...setup import SetupState
 
 from ...dbinit import getDataSourceUrl
@@ -44,8 +40,6 @@ from ...ucp import g_ucbseparator
 
 from ...configuration import g_identifier
 from ...configuration import g_scheme
-
-import traceback
 
 
 class OptionModel():
@@ -65,34 +59,43 @@ class OptionModel():
     @property
     def _ResetSync(self):
         return self._config.getByName('ResetSync')
+
     @property
     def _IsShared(self):
         return self._config.getByName('SharedDocuments')
+
     @property
     def _ShareName(self):
         return self._config.getByName('SharedFolderName')
+
     @property
     def _Policy(self):
         policy = self._config.getByName('SynchronizePolicy')
         return self._policies.get(policy)
+
     @property
     def _Timeout(self):
         timeout = self._config.getByName('ReplicateTimeout')
         return timeout // self._factors['Timeout']
+
     @property
     def _Download(self):
         config = self._config.getByHierarchicalName('Settings/Download')
         return self._getSetting(config)
+
     @property
     def _Upload(self):
         config = self._config.getByHierarchicalName('Settings/Upload')
         return self._getSetting(config)
+
     @property
     def _SupportShare(self):
         return self._config.getByName('SupportShare')
+
     @property
     def _Macro(self):
         return self._common.getByHierarchicalName('Misc/UseSystemFileDialog')
+
     @property
     def _Setup(self):
         return self._config.getByName('SetupUpdate')

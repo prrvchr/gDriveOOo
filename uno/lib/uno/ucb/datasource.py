@@ -44,7 +44,6 @@ from .ucp import User
 
 from .oauth20 import getOAuth2UserName
 
-from .dbinit import getDataBaseUrl
 from .dbinit import getDataSourceUrl
 
 from .helper import getExceptionMessage
@@ -80,6 +79,7 @@ class DataSource():
     @property
     def DataBase(self):
         return self._database
+
     @property
     def Replicator(self):
         return self._replicator
@@ -157,7 +157,7 @@ class DataSource():
     def _getUserName(self, source, url):
         try:
             name = getOAuth2UserName(self._ctx, source, self._provider.Scheme)
-        except:
+        except Exception:
             print("DataSource._getUserName() ERROR: %s" % traceback.format_exc())
         if not name:
             title, msg = self._getExceptionMessage(331, url)

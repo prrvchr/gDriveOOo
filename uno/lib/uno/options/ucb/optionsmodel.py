@@ -33,8 +33,6 @@ from ..unotool import getStringResource
 
 from ..configuration import g_identifier
 
-import traceback
-
 
 class OptionsModel():
     def __init__(self, ctx):

@@ -59,4 +59,3 @@ from .configuration import g_defaultlog
 from .configuration import g_extension
 from .configuration import g_scheme
 from .configuration import g_setup
-

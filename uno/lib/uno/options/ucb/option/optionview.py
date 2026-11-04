@@ -86,7 +86,7 @@ class OptionView():
             self._getMacro().State = int(macro)
             self.enableCustomize(macro)
             self.refreshView(state)
-        except Exception as e:
+        except Exception:
             print("OptionView.initView() ERROR: %s" % traceback.format_exc())
 
     def refreshView(self, state):
@@ -128,7 +128,7 @@ class OptionView():
 
 # OptionsView private getter methods
     def _getOptionIndex(self):
-        for index in range(1,4):
+        for index in range(1, 4):
             if self._getOption(index).State:
                 return index
 
@@ -216,4 +216,3 @@ class OptionView():
 
     def _getLink(self, index):
         return self._window.getControl(f'Hyperlink{index}')
-

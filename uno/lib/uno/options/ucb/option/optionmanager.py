@@ -48,8 +48,6 @@ from ...unotool import getFilePicker
 from ...configuration import g_defaultlog
 from ...configuration import g_synclog
 
-import traceback
-
 
 class OptionManager():
     def __init__(self, ctx, source, logger, window, config):
@@ -82,7 +80,7 @@ class OptionManager():
         option = self._model.setViewData(*self._view.getViewData())
         changed = self._logmanager.saveSetting()
         self._logger.logprb(INFO, 'OptionsManager', 'saveSetting', 171, option, changed)
-        return changed 
+        return changed
 
     def enableShare(self, enabled):
         self._view.enableShare(enabled)
@@ -123,4 +121,3 @@ class OptionManager():
 
     def getDataSourceUrl(self):
         return self._model.getDatasourceUrl()
-
