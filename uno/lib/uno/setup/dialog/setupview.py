@@ -27,14 +27,16 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
+from ...unotool import Layout
+
 from ...runner import Progress
 
 from ...unotool import getContainerWindow
 from ...unotool import getDesktop
 from ...unotool import getDialog
-from ...unotool import getDialogPosition
+from ...unotool import getDialogPosSize
 from ...unotool import getTopWindow
-from ...unotool import getWindowPosition
+from ...unotool import getWindowPosSize
 from ...unotool import setDialogPosition
 from ...unotool import setWindowPosition
 
@@ -42,7 +44,8 @@ from ...configuration import g_identifier
 
 
 class SetupView():
-    def __init__(self, ctx, parent, handler, listener, name, point, title, header, step=1):
+    def __init__(self, ctx, parent, handler, listener, name, possize, title, header, step=1):
+        self._ctx = ctx
         if parent:
             self._frame = parent
             self._dialog = getDialog(ctx, g_identifier, 'SetupDialog', parent=parent)
@@ -53,26 +56,30 @@ class SetupView():
             window = self._frame.getContainerWindow()
         self._window = getContainerWindow(ctx, window, handler, g_identifier, 'SetupWindow')
         if parent:
-            setDialogPosition(ctx, self._dialog, parent, point)
+            setDialogPosition(ctx, self._dialog, parent, possize)
             self._dialog.Title = title
-            self._window.setVisible(True)
         else:
             # XXX: setComponent is needed if we want a StatusIndicator at the bottom
             self._frame.setComponent(self._window, None)
             self._frame.addCloseListener(listener)
-            setWindowPosition(ctx, window, self._window, point)
+            setWindowPosition(ctx, window, self._window, possize)
+            controls = self._getResultText(), self._getErrorText()
+            horizontals = self._getHorizontalControls()
+            bottoms = self._getCancelButton(), self._getNextButton()
+            self._window.addWindowListener(Layout(self._window, controls=controls, horizontals=horizontals, bottoms=bottoms))
             self._frame.setTitle(title)
-            self._window.setVisible(True)
-            # FIXME: If the window loads before the desktop, it should not be made visible.
-            if getDesktop(ctx).getCurrentFrame() is not None:
-                window.setVisible(True)
+        self._window.setVisible(True)
+        window.setVisible(True)
         self._getPageHeader(step).Text = header
 
 # SetupView getter methods
-    def getWindowPosition(self):
-        if self._dialog:
-            return getDialogPosition(self._dialog, self._frame)
-        return getWindowPosition(self._frame.getContainerWindow())
+    def isModal(self):
+        return self._dialog is not None
+
+    def getWindowPosSize(self):
+        if self.isModal():
+            return getDialogPosSize(self._dialog, self._frame)
+        return getWindowPosSize(self._frame.getContainerWindow())
 
     def getTraceBack(self):
         return self._getErrorText().Text
@@ -82,19 +89,22 @@ class SetupView():
 
 # SetupView setter methods
     def execute(self):
-        if self._dialog:
+        if self.isModal():
             return self._dialog.execute()
         return 0
 
     def close(self, runnable):
-        if self._dialog:
+        if self.isModal():
             self._dialog.endDialog(runnable)
         else:
             self._frame.close(True)
 
     def dispose(self):
-        if self._dialog:
-            self._dialog.dispose()
+        if not self.isModal():
+            self._frame.setComponent(None, None)
+            self._frame.getContainerWindow().dispose()
+            getDesktop(self._ctx).getFrames().remove(self._frame)
+            self._frame = None
 
     def setHeader(self, header, enabled=False, step=2):
         self._setStep(header, step)
@@ -128,6 +138,12 @@ class SetupView():
     def _setStep(self, header, step):
         self._window.Model.Step = step
         self._getPageHeader(step).Text = header
+
+    def _getHorizontalControls(self):
+        horizontals = [self._getProgressBar(), self._getProgressText()]
+        for sep in range(1, 5):
+            horizontals.append(self._getPageHeader(sep))
+        return horizontals
 
 # SetupView private control methods
     def _getPageHeader(self, step):

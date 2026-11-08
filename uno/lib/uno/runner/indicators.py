@@ -45,6 +45,7 @@ class Indicators():
         while not self._queue.empty():
             added, indicator = self._queue.get_nowait()
             if added:
+                indicator.end()
                 indicator.start(self._text, total)
                 indicator.setValue(value)
                 self._indicators.add(indicator)
@@ -65,19 +66,21 @@ class Indicators():
         if self._cancel.isDisposed():
             return
         for indicator in self._indicators:
+            indicator.end()
             indicator.start(text, total)
+
+    def set(self, text, value):
+        if self._cancel.isDisposed():
+            return
+        for indicator in self._indicators:
+            indicator.setText(text)
+            indicator.setValue(value)
 
     def setValue(self, value):
         if self._cancel.isDisposed():
             return
         for indicator in self._indicators:
             indicator.setValue(value)
-
-    def setText(self, text):
-        if self._cancel.isDisposed():
-            return
-        for indicator in self._indicators:
-            indicator.setText(text)
 
     def end(self):
         if self._cancel.isDisposed():

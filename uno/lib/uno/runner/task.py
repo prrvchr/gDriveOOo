@@ -39,7 +39,7 @@ class Task():
         self._resources = {}
         self._callback = callback
         self.total = 0
-        self.delay = 0.1
+        self.delay = 1
         self.step = 0
 
     def isExtended(self, total):

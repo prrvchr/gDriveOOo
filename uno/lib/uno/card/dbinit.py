@@ -210,7 +210,7 @@ def _getViews(ctx, connection, catalog, schema, name, options, option):
         options['ViewSelect'] = ', '.join(sel2)
         options['ViewTable'] = ' '.join(tab2)
         tab1.append(t1 % options)
-        yield catalog, schema, view, query % format, option
+        yield catalog, schema, view, query % options, option
     sel1.append(s3 % options)
     sel1.append(s4 % options)
     sel1.append(s5 % options)

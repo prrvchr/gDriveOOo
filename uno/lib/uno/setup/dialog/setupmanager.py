@@ -109,27 +109,31 @@ class SetupManager():
                 self._model.deregisterJob()
                 self._running = False
                 self._close()
-                self._dispose()
 
 # XCloseListener
     def queryClosing(self, _source, ownership):
-        self._close()
-        if self._running:
+        self._cancel.set(disposed=True)
+        print("SetupManager.queryClosing() 1")
+        if not ownership and self._running:
+            print("SetupManager.queryClosing() 2")
             raise CloseVetoException()
-        if not ownership:
-            self._dispose()
+        print("SetupManager.queryClosing() 3")
+        self._dispose()
 
     def notifyClosing(self, source):
+        print("SetupManager.notifyClosing() 1")
         source.removeCloseListener(self._listener)
+        self._view.dispose()
 
     def copy(self):
         transferable = Transferable(self._ctx).getByString(self._view.getTraceBack())
         getSystemClipboard(self._ctx).setContents(transferable, None)
 
     def cancel(self):
-        self._close()
+        print("SetupManager.cancel() 1")
+        self._cancel.set(disposed=True)
         if not self._running:
-            self._dispose()
+            self._close()
 
     def setMaxProgress(self, value):
         self._view.setMaxProgress(value)
@@ -138,19 +142,20 @@ class SetupManager():
         self._view.setProgress(text, progress)
 
     def _close(self):
-        self._cancel.set()
-        self._view.enableButtons(False)
-        self._model.savePosition(self._view.getWindowPosition())
+        if self._view.isModal():
+            self._dispose()
+        self._view.close(self._state.runnable)
 
     def _dispose(self):
+        self._view.enableButtons(False)
+        self._model.savePosSize(self._view.getWindowPosSize())
         if self._dispatch:
             notifyDispatch(self._source, self._dispatch)
-        self._view.close(self._state.runnable)
 
     def notifyCheck(self, success, error):
         self._running = False
         if self._cancel.isSet():
-            return self._dispose()
+            return self._close()
         if error:
             return self._setError(error)
         self._setResult(success)
@@ -182,7 +187,7 @@ class SetupManager():
     def notifyPython(self, _success, checked, internet, error):
         self._running = False
         if self._cancel.isSet():
-            return self._dispose()
+            return self._close()
         if error:
             return self._setError(error)
         self._model.setPythonData()
@@ -203,7 +208,7 @@ class SetupManager():
         if success:
             State.restart = True
         if self._cancel.isSet():
-            return self._dispose()
+            return self._close()
         if error:
             return self._setError(error)
         if self._state.pcode == 3:

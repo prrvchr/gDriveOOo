@@ -27,7 +27,7 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-import uno
+from com.sun.star.awt import Rectangle
 
 from ..task import Conflict
 from ..task import Extension
@@ -42,7 +42,7 @@ from ...runner import Runner
 from ...unotool import deregisterStartupJob
 from ...unotool import getConfiguration
 from ...unotool import getStringResource
-from ...unotool import saveWindowPosition
+from ...unotool import saveWindowPosSize
 
 from ...configuration import g_extension
 from ...configuration import g_identifier
@@ -62,14 +62,14 @@ class SetupModel():
         self._url = None
         self._mode = mode
         self._reports = []
-        self._position = 'SetupPosition'
+        self._possize = 'SetupPosSize'
         self._config = getConfiguration(ctx, g_identifier, True)
         self._resolver = getStringResource(ctx, g_identifier, 'dialogs', 'SetupWindow')
         self._resources = {'Title': 'SetupWindow.Title',
                            'Header': 'SetupWindow.Label1.Label.%s'}
 
-    def savePosition(self, position):
-        saveWindowPosition(self._config, position, self._position)
+    def savePosSize(self, possize):
+        saveWindowPosSize(self._config, possize, self._possize)
 
     def getCancel(self):
         return self._cancel
@@ -131,7 +131,7 @@ class SetupModel():
         deregisterStartupJob(self._ctx, self._name)
 
     def _getDialogPosition(self):
-        return uno.createUnoStruct('com.sun.star.awt.Point', *self._config.getByName(self._position))
+        return Rectangle(*self._config.getByName(self._possize))
 
 # SetupModel StringRessoure methods
     def _getTitle(self):

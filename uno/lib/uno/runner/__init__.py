@@ -39,3 +39,5 @@ from .progress import Progress
 from .runner import Runner
 
 from .task import Task
+
+from .worker import Worker

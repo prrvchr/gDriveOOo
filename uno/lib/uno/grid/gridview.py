@@ -29,6 +29,8 @@
 
 import unohelper
 
+from ...unotool import Layout
+
 from ...unotool import getContainerWindow
 
 from ...configuration import g_identifier
@@ -50,6 +52,10 @@ class GridView(unohelper.Base):
 
     def getGrid(self):
         return self._getGrid()
+
+    def getGridLayout(self):
+        horizontals = (self._getColumnLabel(), self._getColumn())
+        return Layout(self._window, controls=(self._getGrid(), ), horizontals=horizontals)
 
     def hasSelectedRows(self):
         return self._getGrid().hasSelectedRows()

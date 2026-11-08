@@ -42,6 +42,7 @@ from .indicators import Indicators
 from ..unotool import getCallBack
 
 from threading import Timer
+import time
 import traceback
 
 
@@ -66,6 +67,8 @@ class Runner(unohelper.Base,
 
     def notify(self, _data):
         try:
+            start = time.perf_counter()
+
             if self._indicators.init(self._total, self._task.step) and self._logger:
                 self._logger.logp(INFO, 'Runner', 'start', self._task.getMessage(1))
 
@@ -77,20 +80,29 @@ class Runner(unohelper.Base,
                 if self._indicators.hasIndicator():
                     msg = self._task.getMessage(2)
                     self._indicators.start(msg, self._task.total)
-                    self._indicators.setValue(self._task.step)
+                    self._indicators.set(msg, self._task.step)
                     if self._logger:
                         self._logger.logp(INFO, 'Runner', 'extended', msg)
 
             resource, options, call, *args = next(self._task.steps)
-            call(*args)
-            self._task.step += 1
+
             if self._indicators.hasIndicator():
                 msg = self._task.resolveString(resource, *options)
-                self._indicators.setText(msg)
-                self._indicators.setValue(self._task.step)
+                self._indicators.set(msg, self._task.step)
                 if self._logger:
                     self._logger.logp(INFO, *self._getLogInfos(resource, msg))
-            Timer(self._task.delay, self._call).start()
+
+            call(*args)
+            self._task.step += 1
+            delay = (time.perf_counter() - start) * self._task.delay
+
+            # FIXME: If we want an indicator that reaches the end, we must update its value separately.
+            # FIXME: If it’s too fast, it might give the impression that the progress bar does not reach the end.
+            if self._indicators.hasIndicator():
+                if self._task.step == self._total:
+                    delay = max(0.1, delay)
+                self._indicators.setValue(self._task.step)
+            Timer(delay, self._call).start()
 
         except StopIteration:
             try:
@@ -115,7 +127,6 @@ class Runner(unohelper.Base,
                 self._task.callback(False)
             except Exception:
                 print("Runner.notify() CancelException ERROR: %s" % traceback.format_exc())
-            print("Runner.notify() CancelException ERROR: %s" % traceback.format_exc())
 
         except RunnerException as e:
             try:
@@ -128,7 +139,6 @@ class Runner(unohelper.Base,
                 self._task.callback(False, e)
             except Exception:
                 print("Runner.notify() RunnerException ERROR: %s" % e.trace)
-            print("Runner.notify() RunnerException ERROR: %s" % traceback.format_exc())
 
         except Exception as e:
             try:
@@ -137,8 +147,7 @@ class Runner(unohelper.Base,
                     self._task.step += skipped
                     if self._indicators.hasIndicator():
                         msg = self._task.getMessage(3)
-                        self._indicators.setValue(self._task.step)
-                        self._indicators.setText(msg)
+                        self._indicators.set(msg, self._task.step)
                         if self._logger:
                             self._logger.logp(SEVERE, 'Runner', 'skipSteps', msg)
                     Timer(self._task.delay, self._call).start()
@@ -154,7 +163,6 @@ class Runner(unohelper.Base,
                     self._task.callback(False, RunnerException(e, trace))
             except Exception:
                 print("Runner.notify() Exception ERROR: %s" % traceback.format_exc())
-            print("Runner.notify() Exception ERROR: %s" % traceback.format_exc())
 
     def _call(self):
         self._asyncCall.addCallback(self, None)
@@ -167,8 +175,7 @@ class Runner(unohelper.Base,
         call(*args)
         if self._indicators.hasIndicator():
             msg = self._task.resolveString(resource, *options)
-            self._indicators.setText(msg)
-            self._indicators.setValue(self._total)
+            self._indicators.set(msg, self._total)
             if self._logger:
                 self._logger.logp(INFO, *self._getLogInfos(resource, msg))
 

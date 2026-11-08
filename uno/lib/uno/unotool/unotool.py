@@ -39,21 +39,14 @@ from com.sun.star.awt.PosSize import SIZE
 from com.sun.star.awt.MessageBoxType import ERRORBOX
 from com.sun.star.awt.MessageBoxType import WARNINGBOX
 
-from com.sun.star.awt.WindowAttribute import SHOW
-from com.sun.star.awt.WindowAttribute import BORDER
-from com.sun.star.awt.WindowAttribute import MOVEABLE
-from com.sun.star.awt.WindowAttribute import CLOSEABLE
-from com.sun.star.awt.WindowAttribute import NODECORATION
-
-from com.sun.star.awt.WindowClass import TOP
-
 from com.sun.star.beans.PropertyState import DIRECT_VALUE
 
 from com.sun.star.connection import NoConnectException
 
-
 from com.sun.star.frame.FrameSearchFlag import GLOBAL
 from com.sun.star.frame.DispatchResultState import SUCCESS
+
+from com.sun.star.system.SystemShellExecuteFlags import DEFAULTS
 
 from com.sun.star.ucb.ConnectionMode import ONLINE
 from com.sun.star.ucb.ConnectionMode import OFFLINE
@@ -135,6 +128,10 @@ def getFilePicker(ctx):
 
 def getUriFactory(ctx):
     return createService(ctx, 'com.sun.star.uri.UriReferenceFactory')
+
+
+def getUriTranslator(ctx):
+    return createService(ctx, 'com.sun.star.uri.ExternalUriReferenceTranslator')
 
 
 def getTempFile(ctx):
@@ -460,7 +457,7 @@ def getParentWindow(ctx, parent=None):
     return parent
 
 
-def getDialogPosSize(ctx, extension, xdl, point=None, unit=APPFONT):
+def getDialogPosSize1(ctx, extension, xdl, point=None, unit=APPFONT):
     dialog = getDialog(ctx, extension, xdl)
     size = dialog.convertSizeToPixel(Size(dialog.Model.Width, dialog.Model.Height), unit)
     dialog.dispose()
@@ -469,66 +466,67 @@ def getDialogPosSize(ctx, extension, xdl, point=None, unit=APPFONT):
     return Rectangle(point.X, point.Y, size.Width, size.Height)
 
 
-def getTopWindow(ctx, name, rectangle=None, parent=None, modal=TOP, attrs=BORDER | MOVEABLE | CLOSEABLE | NODECORATION):
-    descriptor = uno.createUnoStruct('com.sun.star.awt.WindowDescriptor')
-    descriptor.Type = modal
-    descriptor.WindowServiceName = 'window'
-    if parent:
-        descriptor.Parent = parent
-    else:
-        descriptor.ParentIndex = -1
-    if rectangle:
-        attrs |= SHOW
-        descriptor.Bounds = rectangle
-    descriptor.WindowAttributes = attrs
-    # XXX: We use the TaskCreator UNO service instead of Frame
-    # XXX: in order to be able to assign a title to the window.
+def getTopWindow(ctx, name):
     service = 'com.sun.star.frame.TaskCreator'
-    arguments = {'FrameName': name, 'ContainerWindow': getToolKit(ctx).createWindow(descriptor)}
+    arguments = {'FrameName': name}
     frame = createService(ctx, service).createInstanceWithArguments(getNamedValueSet(arguments))
-    getDesktop(ctx).getFrames().append(frame)
+    desktop = getDesktop(ctx)
+    frame.setCreator(desktop)
+    desktop.getFrames().append(frame)
     return frame
 
 
-def getDialogPosition(dialog, window):
-    size = window.getPosSize()
-    pos = dialog.convertPointToLogic(Point(size.X, size.Y), APPFONT)
-    x = dialog.Model.PositionX + pos.X
-    y = dialog.Model.PositionY + pos.Y
-    return Point(x, y)
+def getDialogPosSize(dialog, window):
+    possize = window.getPosSize()
+    point = dialog.convertPointToLogic(Point(possize.X, possize.Y), APPFONT)
+    size = dialog.convertSizeToLogic(Size(possize.Width, possize.Height), APPFONT)
+    x = dialog.Model.PositionX + point.X
+    y = dialog.Model.PositionY + point.Y
+    return Rectangle(x, y, size.Width, size.Height)
 
 
 def setDialogPosition(ctx, dialog, window, point, titlebar=9):
-    x, y = _getPosition(ctx, dialog, point)
+    x, y = _getPosition(ctx, dialog, point, dialog.Model.Width, dialog.Model.Height)
     size = window.getPosSize()
     pos = dialog.convertPointToLogic(Point(size.X, size.Y), APPFONT)
     dialog.Model.PositionX = x - pos.X
     dialog.Model.PositionY = y - pos.Y - titlebar
 
 
-def getWindowPosition(window):
-    size = window.getPosSize()
-    return window.convertPointToLogic(Point(size.X, size.Y), APPFONT)
+def getWindowPosSize(window):
+    possize = window.getPosSize()
+    point = window.convertPointToLogic(Point(possize.X, possize.Y), APPFONT)
+    size = window.convertSizeToLogic(Size(possize.Width, possize.Height), APPFONT)
+    return Rectangle(point.X, point.Y, size.Width, size.Height)
 
 
-def setWindowPosition(ctx, window, dialog, point, mode=POSSIZE):
-    x, y = _getPosition(ctx, dialog, point)
+def setWindowPosition(ctx, window, dialog, possize, mode=POSSIZE):
+    if possize.Width == -1 and possize.Height == -1:
+        width = dialog.Model.Width
+        height = dialog.Model.Height
+    else:
+        width = possize.Width
+        height = possize.Height
+
+    x, y = _getPosition(ctx, dialog, possize, width, height)
+
     point = dialog.convertPointToPixel(Point(x, y), APPFONT)
-    size = dialog.convertSizeToPixel(Size(dialog.Model.Width, dialog.Model.Height), APPFONT)
+    size = dialog.convertSizeToPixel(Size(width, height), APPFONT)
+
     window.setPosSize(point.X, point.Y, size.Width, size.Height, mode)
 
 
-def _getPosition(ctx, dialog, point):
+def _getPosition(ctx, dialog, point, width, height):
     area = getToolKit(ctx).getWorkArea()
     size = dialog.convertSizeToLogic(Size(area.Width, area.Height), APPFONT)
-    width = dialog.Model.Width
-    height = dialog.Model.Height
+
     if 0 <= point.X <= (size.Width - width) and 0 <= point.Y <= (size.Height - height):
         x = point.X
         y = point.Y
     else:
         x = (size.Width - width) // 2
         y = (size.Height - height) // 2
+
     x = max(0, min(x, size.Width - width))
     y = max(0, min(y, size.Height - height))
     return x, y
@@ -543,23 +541,25 @@ def getDialogSize(ctx, extension, xdl, point=None, unit=APPFONT):
     return Rectangle(point.X, point.Y, size.Width, size.Height)
 
 
-def saveWindowPosition(config, position, prop):
+def saveWindowPosSize(config, possize, prop):
     if config.hasByName(prop):
-        value = uno.Any('[]long', (position.X, position.Y))
+        value = uno.Any('[]long', (possize.X, possize.Y, possize.Width, possize.Height))
         uno.invoke(config, 'replaceByName', (prop, value))
         config.commitChanges()
 
 
-def getWindowHeight(window, offset):
-    size = window.getPosSize()
-    point = window.convertPointToPixel(Point(0, offset), APPFONT)
-    return Point(size.Height, size.Height + point.Y)
-
-
-def setWindowHeight(frame, height):
+def getWindowHeight(frame, offset):
     window = frame.getContainerWindow()
     size = window.getPosSize()
-    window.setPosSize(0, 0, size.Width, height, SIZE)
+    point = window.convertPointToPixel(Point(0, offset), APPFONT)
+    return Point(size.Height, point.Y)
+
+
+def setWindowHeight(frame, point, factor=1):
+    window = frame.getContainerWindow()
+    size = window.getPosSize()
+    height = (point.Y * factor) + size.Height
+    window.setPosSize(0, 0, size.Width, max(point.X, height), SIZE)
 
 
 def getContainerWindow(ctx, parent, handler, identifier, xdl):
@@ -593,9 +593,9 @@ def getDialogUrl(identifier, xdl):
     return 'vnd.sun.star.extension://%s/dialogs/%s.xdl' % (identifier, xdl)
 
 
-def executeShell(ctx, url, option=''):
+def executeShell(ctx, url, option='', flag=DEFAULTS):
     shell = createService(ctx, 'com.sun.star.system.SystemShellExecute')
-    shell.execute(url, option, 0)
+    shell.execute(url, option, flag)
 
 
 def executeDispatch(ctx, url, /, **kwargs):

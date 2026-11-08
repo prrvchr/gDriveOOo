@@ -83,6 +83,9 @@ class GridManager():
         return self._view.getGrid().Model.ColumnModel
 
 # GridManager getter methods
+    def getGridLayout(self):
+        return self._view.getGridLayout()
+
     def getGridWidth(self):
         return self._view.getGrid().Model.Width
 

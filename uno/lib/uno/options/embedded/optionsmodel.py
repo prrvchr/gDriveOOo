@@ -40,8 +40,6 @@ from ..jdbcdriver import g_service as jdbc
 from ..configuration import g_identifier
 from ..configuration import g_service as embedded
 
-import traceback
-
 
 class OptionsModel():
     def __init__(self, ctx, logger, url=None):
@@ -60,7 +58,7 @@ class OptionsModel():
         driver = None
         version = 'N/A'
         try:
-            # We must try all the required services 
+            # We must try all the required services
             driver = createService(self._ctx, embedded)
             driver = createService(self._ctx, jdbc)
             if driver and self._url:
@@ -70,7 +68,7 @@ class OptionsModel():
         except UnoException as e:
             # If the driver is None, the error is already logged
             if driver is not None:
-                self._logger.logprb(SEVERE, 'OptionsModel', 'getDriverVersion', 102, g_service, apilevel, e.Message)
+                self._logger.logprb(SEVERE, 'OptionsModel', 'getDriverVersion', 102, embedded, apilevel, e.Message)
         return version
 
     def _getLinks(self):
@@ -79,4 +77,3 @@ class OptionsModel():
             resource = self._resources.get('Links') % i
             links.append(self._resolver.resolveString(resource))
         return tuple(links)
-

@@ -52,8 +52,6 @@ from ..configuration import g_extension
 
 from ..configuration import g_defaultlog
 
-import traceback
-
 
 class OptionsManager():
     def __init__(self, ctx, logger, window, url=None):
@@ -108,4 +106,3 @@ class OptionsManager():
         mode = self._manager.getSetupMode()
         setup = SetupCheck(self._ctx, callback, java=self._java, agent=self._agent, python=True, extensions=self._extensions, mode=mode)
         setup.start()
-

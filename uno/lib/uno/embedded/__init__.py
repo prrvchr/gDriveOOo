@@ -1,5 +1,5 @@
 #!
-# -*- coding: utf_8 -*-
+# -*- coding: utf-8 -*-
 
 """
 ╔════════════════════════════════════════════════════════════════════════════════════╗
@@ -57,4 +57,3 @@ from .configuration import g_extension
 from .configuration import g_identifier
 from .configuration import g_memory
 from .configuration import g_setup
-
