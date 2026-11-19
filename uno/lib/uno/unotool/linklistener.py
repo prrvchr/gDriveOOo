@@ -73,3 +73,4 @@ class LinkListener(unohelper.Base,
 
     def disposing(self, _event):
         self._control = None
+        self._pointer = None
