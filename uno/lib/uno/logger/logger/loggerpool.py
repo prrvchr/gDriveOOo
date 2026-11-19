@@ -47,7 +47,7 @@ class LoggerPool(unohelper.Base,
         self._pool = ctx.getByName('/singletons/com.sun.star.logging.LoggerPool')
 
     # FIXME: for the LoggerPool, the modify listener is global
-    _listeners = []
+    _listeners = set()
     # FIXME: for the Logger, the modify listener is global
     _loggers = {}
     _resolvers = {}
@@ -85,17 +85,16 @@ class LoggerPool(unohelper.Base,
         return tuple(names)
 
     def addModifyListener(self, listener):
-        LoggerPool._listeners.append(listener)
+        LoggerPool._listeners.add(listener)
 
     def removeModifyListener(self, listener):
-        if listener in LoggerPool._listeners:
-            LoggerPool._listeners.remove(listener)
+        LoggerPool._listeners.discard(listener)
 
     def _getNamedLogger(self, name):
         with LoggerPool._lock:
             toadd = name not in LoggerPool._loggers
             if toadd:
-                LoggerPool._loggers[name] = []
+                LoggerPool._loggers[name] = set()
         logger = self._pool.getNamedLogger(name)
         if toadd:
             self._notifyListener()
@@ -104,5 +103,5 @@ class LoggerPool(unohelper.Base,
     def _notifyListener(self):
         event = uno.createUnoStruct('com.sun.star.lang.EventObject')
         event.Source = self
-        for listener in LoggerPool._listeners:
+        for listener in list(LoggerPool._listeners):
             listener.modified(event)

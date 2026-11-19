@@ -51,9 +51,8 @@ class WizardModel():
     def setRoadmapModel(self, model):
         self._roadmap = model
 
-    def setRoadmapSize(self, page):
-        self._roadmap.Height = page.Height
-        self._roadmap.Width = page.PositionX
+    def getRoadmap(self):
+        return self._roadmap
 
     def getRoadmapWidth(self):
         return self._roadmap.Width

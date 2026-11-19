@@ -41,3 +41,4 @@ from .logger import Logger
 from .loggerpool import LoggerPool
 
 from .loghandler import RollerHandler
+from .loghandler import ViewHandler

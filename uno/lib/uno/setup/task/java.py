@@ -57,7 +57,7 @@ class Java(Setup):
     def callback(self, success=True, error=None):
         self._callback(self._getSuccess(success), error)
 
-    def stepCheckJavaStatus(self, ctx, _extension, version, _script):
+    def stepCheckJavaStatus(self, ctx, version):
         self._minimum = version
         self._code = getJavaStatus(ctx)
 
@@ -76,8 +76,8 @@ class Java(Setup):
                 self.total += 1
                 yield self._getStepCheckJavaAgent(ctx, *agent)
 
-    def _getStepCheckJavaStatus(self, ctx, extension, version, script):
-        return 20301, (), self.stepCheckJavaStatus, ctx, extension, version, script
+    def _getStepCheckJavaStatus(self, ctx, _extension, version, _script):
+        return 20301, (), self.stepCheckJavaStatus, ctx, version
 
     def _getStepCheckJavaVersion(self, ctx, extension, version, script):
         return 20401, (version, ), self.stepCheckJavaVersion, ctx, extension, version, script

@@ -29,7 +29,7 @@
 
 import uno
 
-from ..helper import getSqlException
+from .helper import getSqlException
 
 from ..oauth20 import getRequest
 
@@ -38,7 +38,7 @@ from dateutil import tz
 
 
 class Provider():
-    def __init__(self, ctx, src):
+    def __init__(self, ctx, src=None):
         self._cls = 'Provider'
         self._ctx = ctx
         self._src = src
@@ -153,5 +153,5 @@ class Provider():
         return ['Provider', mtd, 201, parameter.Name, status, user, parameter.Url, msg]
 
     # Can be overwritten method
-    def syncGroups(self, database, user, book, pages, count):
+    def syncGroups(self, _database, _user, _book, pages, count):
         return pages, count, None

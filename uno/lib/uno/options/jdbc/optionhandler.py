@@ -67,9 +67,6 @@ class OptionHandler(unohelper.Base,
             elif method == 'SystemTable':
                 self._manager.setSystemTable(event.Source.State)
                 handled = True
-            elif method == 'ShowSetup':
-                self._manager.showSetup()
-                handled = True
             return handled
         except Exception:
             print("WindowHandler.callHandlerMethod() ERROR: %s" % traceback.format_exc())
@@ -82,5 +79,4 @@ class OptionHandler(unohelper.Base,
                 'RowSet1',
                 'RowSet2',
                 "UseCache",
-                'SystemTable',
-                'ShowSetup')
+                'SystemTable')

@@ -500,7 +500,7 @@ def getWindowPosSize(window):
     return Rectangle(point.X, point.Y, size.Width, size.Height)
 
 
-def setWindowPosition(ctx, window, dialog, possize, mode=POSSIZE):
+def setWindowPosSize(ctx, window, dialog, possize, mode=POSSIZE):
     if possize.Width == -1 and possize.Height == -1:
         width = dialog.Model.Width
         height = dialog.Model.Height

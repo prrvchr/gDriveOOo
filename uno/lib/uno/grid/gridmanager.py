@@ -48,7 +48,7 @@ from collections import OrderedDict
 
 
 class GridManager():
-    def __init__(self, ctx, url, model, window, setting, selection, resources=None, maxi=None, multi=False, factor=5):
+    def __init__(self, ctx, url, model, window, size, setting, selection, resources=None, maxi=None, multi=False, factor=5):
         self._factor = factor
         self._datasource = None
         self._table = None
@@ -72,7 +72,7 @@ class GridManager():
         grid = createService(ctx, 'com.sun.star.awt.grid.SortableGridDataModel')
         grid.initialize((model, ))
         self._model = model
-        self._view = GridView(ctx, window, WindowHandler(self), grid, selection)
+        self._view = GridView(ctx, window, WindowHandler(self), grid, size, selection)
 
     @property
     def Model(self):
@@ -83,8 +83,8 @@ class GridManager():
         return self._view.getGrid().Model.ColumnModel
 
 # GridManager getter methods
-    def getGridLayout(self):
-        return self._view.getGridLayout()
+    def getLayout(self):
+        return self._view.getLayout()
 
     def getGridWidth(self):
         return self._view.getGrid().Model.Width

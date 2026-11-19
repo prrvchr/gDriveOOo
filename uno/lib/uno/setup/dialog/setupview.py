@@ -38,7 +38,7 @@ from ...unotool import getDialogPosSize
 from ...unotool import getTopWindow
 from ...unotool import getWindowPosSize
 from ...unotool import setDialogPosition
-from ...unotool import setWindowPosition
+from ...unotool import setWindowPosSize
 
 from ...configuration import g_identifier
 
@@ -62,7 +62,7 @@ class SetupView():
             # XXX: setComponent is needed if we want a StatusIndicator at the bottom
             self._frame.setComponent(self._window, None)
             self._frame.addCloseListener(listener)
-            setWindowPosition(ctx, window, self._window, possize)
+            setWindowPosSize(ctx, window, self._window, possize)
             controls = self._getResultText(), self._getErrorText()
             horizontals = self._getHorizontalControls()
             bottoms = self._getCancelButton(), self._getNextButton()

@@ -29,7 +29,6 @@
 
 import unohelper
 
-from com.sun.star.awt import Size
 from com.sun.star.awt.PosSize import POSSIZE
 
 from com.sun.star.awt import WindowEvent
@@ -39,25 +38,62 @@ from com.sun.star.awt import XWindowListener
 
 class SubLayout(unohelper.Base,
                 XWindowListener):
-    def __init__(self, layout, parent=None):
+    """Composite layout manager enabling recursive nesting and deferred loading of sub-layouts.
+
+    Wraps a primary `Layout` (or another `SubLayout`) and propagates size deltas from the
+    host window down to dynamically registered child layouts. Exposes the same `.window`
+    and `.size` interface as `Layout` for seamless polymorphism.
+
+    Args:
+        layout (Layout | SubLayout): The root layout instance managed at this level.
+    """
+    def __init__(self, layout):
         self._layout = layout
         self._subs = []
-        possize = parent.getPosSize() if parent else layout.window.getPosSize()
-        self._size = Size(possize.Width, possize.Height)
 
-    def addSubLayout(self, layout):
-        possize = layout.window.getPosSize()
-        size = Size(possize.Width, possize.Height)
-        self._subs.append((layout, size))
+    @property
+    def window(self):
+        """XWindow: The underlying UNO container window of the root layout."""
+        return self._layout.window
+
+    @property
+    def size(self):
+        """Rectangle: The factory dimensions of the root layout."""
+        return self._layout.size
+
+    def addLayout(self, layout):
+        """Registers a child layout and immediately synchronizes it with current window deltas.
+
+        Supports deferred instantiation: if the host window was already resized prior to
+        registration, the child layout automatically catches up to the current dimensions.
+
+        Args:
+            layout (Layout | SubLayout): The child layout instance to attach.
+
+        Returns:
+            SubLayout: Returns `self` to enable method chaining.
+        """
+        if layout not in self._subs:
+            self._subs.append(layout)
+            event = WindowEvent()
+            event.Source = self.window
+            self.windowResized(event)
+        return self
 
     def windowResized(self, event):
+        """Propagates resize events to the root layout and cascades size deltas to all children.
+
+        Args:
+            event (WindowEvent): The UNO window resize event.
+        """
         self._layout.windowResized(event)
 
-        possize = event.Source.getPosSize()
-        width = possize.Width - self._size.Width
-        height = possize.Height - self._size.Height
+        possize = self.window.getPosSize()
+        width = possize.Width - self.size.Width
+        height = possize.Height - self.size.Height
 
-        for layout, size in self._subs:
+        for layout in self._subs:
+            size = layout.size
             layout.window.setPosSize(0, 0, size.Width + width, size.Height + height, POSSIZE)
             event = WindowEvent()
             event.Source = layout.window

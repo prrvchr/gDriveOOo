@@ -30,47 +30,11 @@
 import unohelper
 
 from com.sun.star.awt import XContainerWindowEventHandler
-from com.sun.star.awt import XDialogEventHandler
 from com.sun.star.awt import XItemListener
 
 from com.sun.star.util import XCloseListener
 
 import traceback
-
-
-class DialogHandler(unohelper.Base,
-                    XDialogEventHandler):
-    def __init__(self, manager):
-        self._manager = manager
-
-# XDialogEventHandler
-    def callHandlerMethod(self, _dialog, _event, method):
-        try:
-            handled = False
-            if method == 'Help':
-                handled = True
-            elif method == 'Previous':
-                self._manager.travelPrevious()
-                handled = True
-            elif method == 'Next':
-                self._manager.travelNext()
-                handled = True
-            elif method == 'Finish':
-                self._manager.doFinish()
-                handled = True
-            elif method == 'Cancel':
-                self._manager.doCancel()
-                handled = True
-            return handled
-        except Exception:
-            print("DialogHandler.callHandlerMethod() ERROR: %s" % traceback.format_exc())
-
-    def getSupportedMethodNames(self):
-        return ('Help',
-                'Previous',
-                'Next',
-                'Finish',
-                'Cancel')
 
 
 class WindowHandler(unohelper.Base,

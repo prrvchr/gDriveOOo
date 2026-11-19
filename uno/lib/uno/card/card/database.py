@@ -44,7 +44,6 @@ from ..dbtool import getDataSourceConnection
 from ..dbtool import getSequenceFromResult
 from ..dbtool import getValueFromResult
 
-from ..unotool import checkVersion
 from ..unotool import getConfiguration
 
 from ..configuration import g_identifier
@@ -52,9 +51,10 @@ from ..configuration import g_host
 
 from ..dbqueries import getSqlQuery
 
+from ..dbinit import getDataSourceUrl
+
 from ..dbconfig import g_catalog
 from ..dbconfig import g_schema
-from ..dbconfig import g_version
 
 from collections import OrderedDict
 import json
@@ -62,13 +62,13 @@ import traceback
 
 
 class DataBase():
-    def __init__(self, ctx, logger, url, user='', pwd=''):
+    def __init__(self, ctx, _user='', _pwd=''):
         self._cls = 'DataBase'
         self._ctx = ctx
         self._statement = None
         self._fieldsMap = {}
         self._batchedCalls = OrderedDict()
-        self._url = url
+        self._url = getDataSourceUrl(ctx)
 
     @property
     def Connection(self):
@@ -80,13 +80,6 @@ class DataBase():
     @property
     def Url(self):
         return self._url
-
-    @property
-    def Version(self):
-        return self._version
-
-    def isUptoDate(self):
-        return checkVersion(self._version, g_version)
 
     def getConnection(self, user='', password=''):
         return getDataSourceConnection(self._ctx, self._url, user, password)

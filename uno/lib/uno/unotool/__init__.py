@@ -31,6 +31,8 @@ from .callback import CallBack
 
 from .layout import Layout
 
+from .linklistener import LinkListener
+
 from .sublayout import SubLayout
 
 from .transferable import Factory as Transferable
@@ -121,7 +123,7 @@ from .unotool import saveWindowPosSize
 from .unotool import setDialogPosition
 from .unotool import setProgress
 from .unotool import setWindowHeight
-from .unotool import setWindowPosition
+from .unotool import setWindowPosSize
 from .unotool import showMessageBox
 from .unotool import unparseDateTime
 from .unotool import unparseTimeStamp

@@ -34,4 +34,4 @@ from typing import Optional, Callable
 @dataclass
 class Resource:
     id: int
-    formatter: Optional[Callable] = None
+    formatter: Optional[Callable] = None  # noqa: E701

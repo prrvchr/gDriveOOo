@@ -131,7 +131,7 @@ def getJavaVersion(ctx, extension, java, script, error=False):
         service = 'com.sun.star.script.provider.MasterScriptProviderFactory'
         factory = createService(ctx, service)
         provider = factory.createScriptProvider('')
-        url = f'vnd.sun.star.script:{script}?language=Java&location=user:uno_packages/{extension}.oxt'
+        url = f'vnd.sun.star.script:{script}?language=Java&location=user:uno_packages/{extension}'
         macro = provider.getScript(url)
         if macro:
             result = macro.invoke((), (), ())[0]
@@ -144,7 +144,7 @@ def getJavaVersion(ctx, extension, java, script, error=False):
         if error:
             trace = traceback.format_exc()
             raise RunnerException(e, trace)
-        result = 4, java
+        results = 4, java
     return results
 
 

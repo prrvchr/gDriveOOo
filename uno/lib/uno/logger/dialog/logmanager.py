@@ -52,6 +52,10 @@ class LogManager():
         self._model.addPoolListener(LoggerListener(self.updateLoggers))
         self._update = True
 
+# LogManager getter methods
+    def getLayout(self):
+        return self._view.getLayout()
+
 # LogManager setter methods
     def initView(self):
         # FIXME: If we want to load data using handlers,
