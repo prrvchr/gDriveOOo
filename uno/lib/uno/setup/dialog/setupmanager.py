@@ -113,15 +113,11 @@ class SetupManager():
 # XCloseListener
     def queryClosing(self, _source, ownership):
         self._cancel.set(disposed=True)
-        print("SetupManager.queryClosing() 1")
         if not ownership and self._running:
-            print("SetupManager.queryClosing() 2")
             raise CloseVetoException()
-        print("SetupManager.queryClosing() 3")
         self._dispose()
 
     def notifyClosing(self, source):
-        print("SetupManager.notifyClosing() 1")
         source.removeCloseListener(self._listener)
         self._view.dispose()
 
@@ -130,7 +126,6 @@ class SetupManager():
         getSystemClipboard(self._ctx).setContents(transferable, None)
 
     def cancel(self):
-        print("SetupManager.cancel() 1")
         self._cancel.set(disposed=True)
         if not self._running:
             self._close()
