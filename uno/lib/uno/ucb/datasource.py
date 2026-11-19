@@ -38,7 +38,7 @@ from .listener import CloseListener
 
 from .provider import Provider
 
-from .replicator import Replicator
+# from .replicator import Replicator
 
 from .ucp import User
 
@@ -71,7 +71,7 @@ class DataSource():
         url = getDataSourceUrl(ctx)
         self._database = DataBase(ctx, url)
         self._provider = Provider(ctx, logger)
-        self._replicator = Replicator(ctx, url, self._provider, self._users, self._sync, self._lock)
+        # self._replicator = Replicator(ctx, url, self._provider, self._users, self._sync, self._lock)
         self._logger = logger
         self._database.addCloseListener(CloseListener(self))
         logger.logprb(INFO, cls, mtd, 302)

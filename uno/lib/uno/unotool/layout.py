@@ -66,6 +66,11 @@ class Layout(unohelper.Base,
         columns (tuple[tuple[XControl, XControl, bool], ...], optional): Pairs of side-by-side
             controls sharing horizontal growth equally, with a boolean flag indicating whether
             they also stretch vertically.
+        rows (tuple[tuple[XControl, ...], ...], optional): Rows of controls distributed
+            proportionally across horizontal window growth (`delta_w * (i + 1) // n`) while
+            keeping their original dimensions and vertical coordinates. A single-element row
+            behaves identically to `tops` (anchored to the top-right corner) while also
+            allowing dependent `links` to track its updated position.
         links (tuple[tuple[XControl, XControl], ...], optional): Tuples of `(control, parent)`
             where `control` maintains a fixed horizontal offset from the right edge of `parent`.
         horizontals (tuple[XControl, ...], optional): Controls anchored to left and right edges
@@ -80,11 +85,12 @@ class Layout(unohelper.Base,
             (fixed size).
     """
 
-    def __init__(self, window, /, size=None, controls=(), columns=(), links=(), horizontals=(), verticals=(), tops=(), lefts=(), bottoms=()):
+    def __init__(self, window, /, size=None, controls=(), columns=(), rows=(), links=(), horizontals=(), verticals=(), tops=(), lefts=(), bottoms=()):
         self.window = window
         self.size = window.convertSizeToPixel(size, APPFONT) if size else window.getPosSize()
         controls = list(controls)
         columns = list(columns)
+        rows = list(rows)
         links = list(links)
         horizontals = list(horizontals)
         verticals = list(verticals)
@@ -110,6 +116,14 @@ class Layout(unohelper.Base,
                 col2, pos2.X, pos2.Width, pos2.Y, pos2.Height, bottom2,
                 grow_y
             ))
+
+        self._rows = []
+        for row in rows:
+            items = []
+            for ctrl in row:
+                pos = ctrl.getPosSize()
+                items.append((ctrl, pos.X, pos.Y, pos.Width, pos.Height))
+            self._rows.append(items)
 
         self._links = []
         for ctrl, parent in links:
@@ -150,8 +164,9 @@ class Layout(unohelper.Base,
         flat_columns = []
         for item in columns:
             flat_columns.extend([item[0], item[1]])
-
-        handled = set(controls + flat_columns + horizontals + verticals + tops + lefts + bottoms + [item[0] for item in links])
+        flat_rows = [ctrl for row in rows for ctrl in row]
+        flat_links = [item[0] for item in links]
+        handled = set(controls + flat_columns + flat_rows + horizontals + verticals + tops + lefts + bottoms + flat_links)
         for ctrl in window.getControls():
             if ctrl not in handled:
                 pos = ctrl.getPosSize()
@@ -237,6 +252,14 @@ class Layout(unohelper.Base,
                 if new_w2 > 0 and new_h2 > 0:
                     c2.setPosSize(new_x2, y2, new_w2, new_h2, POSSIZE)
                     updated_parents[c2] = (new_x2, new_w2)
+
+        delta_w = max(0, W - self.size.Width)
+        for items in self._rows:
+            n = len(items)
+            for i, (ctrl, orig_x, y, w, h) in enumerate(items):
+                new_x = orig_x + (delta_w * (i + 1)) // n
+                ctrl.setPosSize(new_x, y, w, h, POSSIZE)
+                updated_parents[ctrl] = (new_x, w)
 
         for ctrl, parent, x, y, width, height in self._links:
             if parent in updated_parents:

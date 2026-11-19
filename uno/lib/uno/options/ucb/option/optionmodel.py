@@ -38,6 +38,7 @@ from ...unotool import getStringResource
 
 from ...ucp import g_ucbseparator
 
+from ...configuration import g_extension
 from ...configuration import g_identifier
 from ...configuration import g_scheme
 
@@ -54,7 +55,8 @@ class OptionModel():
         self._state = SetupState(False)
         self._hasfile = sf.exists(self.getFileUrl())
         self._resolver = getStringResource(ctx, g_identifier, 'dialogs', 'OptionDialog')
-        self._resources = {'Links': 'OptionDialog.Hyperlink%s.Url'}
+        self._resources = {'Title': 'OptionDialog.FixedLine1.Label',
+                           'Link':  'OptionDialog.Label8.Url'}
 
     @property
     def _ResetSync(self):
@@ -103,11 +105,10 @@ class OptionModel():
 # OptionsModel getter methods
     def getViewData(self):
         resumable = self._config.getByName('ResumableUpload')
-        return self._hasfile, resumable, self._getLinks()
+        return self._getTitle(), self._getLink(), self._hasfile, resumable
 
     def getInitData(self, state):
-        self._state = state
-        return *self._getViewData(), state
+        return *self._getViewData(), self.getRefreshData(state)
 
     def getRefreshData(self, state):
         self._state = state
@@ -205,9 +206,10 @@ class OptionModel():
         if enabled != self._Macro:
             self._common.replaceByHierarchicalName('Misc/UseSystemFileDialog', enabled)
 
-    def _getLinks(self):
-        links = []
-        for i in range(1, 2):
-            resource = self._resources.get('Links') % i
-            links.append(self._resolver.resolveString(resource))
-        return tuple(links)
+    def _getTitle(self):
+        resource = self._resources.get('Title')
+        return self._resolver.resolveString(resource).format(extension=g_extension)
+
+    def _getLink(self):
+        resource = self._resources.get('Link')
+        return self._resolver.resolveString(resource).format(extension=g_extension)
