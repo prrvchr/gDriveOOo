@@ -73,6 +73,7 @@ class Driver(unohelper.Base,
     @property
     def DataSource(self):
         if self._datasource is None:
+            DataSource.checkSetup(self._ctx, self)
             self._datasource = DataSource(self._ctx, self._logger, self)
         return self._datasource
 
@@ -90,7 +91,6 @@ class Driver(unohelper.Base,
 # XDriver
     def connect(self, url, _infos):
         try:
-            print("Driver.connect() 1")
             mtd = 'connect'
             self._logger.logprb(INFO, self._cls, mtd, 1111, url)
             protocols = url.strip().split(':')
@@ -99,9 +99,7 @@ class Driver(unohelper.Base,
             username = protocols[3]
             if not validators.email(username):
                 raise getLogException(self._logger, self, 1001, 1114, self._cls, mtd, username)
-            print("Driver.connect() 2")
             connection = self.DataSource.getConnection(self, self._logger, g_scope, g_scheme, g_host, username)
-            print("Driver.connect() 3")
             metadata = connection.getMetaData()
             self._logger.logprb(INFO, self._cls, mtd, 1115, metadata.getDriverVersion(), metadata.getUserName())
             return connection

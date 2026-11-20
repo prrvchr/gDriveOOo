@@ -39,12 +39,14 @@ from com.sun.star.sdbc import SQLException
 
 from .documenthandler import DocumentHandler
 
+from .helper import checkSetup
+from .helper import isSetupValid
+from .helper import getException
+
 from .unotool import createService
 from .unotool import getConfiguration
 from .unotool import getPropertyValueSet
 from .unotool import getResourceLocation
-
-from .helper import getException
 
 from .configuration import g_dbname
 from .configuration import g_identifier
@@ -63,7 +65,8 @@ class Driver(unohelper.Base,
     def __init__(self, ctx, lock, logger, service, implementation, services):
         self._ctx = ctx
         self._lock = lock
-        self._driver = createService(ctx, service)
+        self._driver = None
+        self._service = service
         self._config = getConfiguration(ctx, g_identifier)
         self._implementation = implementation
         self._services = services
@@ -79,16 +82,19 @@ class Driver(unohelper.Base,
         if storage is None or location is None:
             self._logException(112, url, ' ')
             raise self._getException(1001, None, 111, 112, url, '\n')
-        handler = self._getDocumentHandler(location)
-        # XXX: Getting path from handler unpacks the database files
-        path = handler.getConnectionUrl(storage)
-        self._logger.logprb(INFO, 'Driver', 'connect()', 113, location)
+        handler = None
+        driver = self._getDriver()
         try:
-            connection = self._driver.connect(path, newinfos)
+            handler = self._getDocumentHandler(driver, location)
+            # XXX: Getting path from handler unpacks the database files
+            path = handler.getConnectionUrl(storage)
+            self._logger.logprb(INFO, 'Driver', 'connect()', 113, location)
+            connection = driver.connect(path, newinfos)
         except Exception as e:
             self._logger.logprb(SEVERE, 'Driver', 'connect()', 115, str(e), traceback.format_exc())
             # XXX: Database files will only be deleted if they have been unpacked
-            handler.removeFolder()
+            if handler:
+                handler.removeFolder()
             raise e
         # XXX: Connection has been done we can add close and change listener to document
         self._setDocumentHandler(document, handler)
@@ -103,9 +109,11 @@ class Driver(unohelper.Base,
 
     def getPropertyInfo(self, url, infos):
         try:
-            # XXX: We need to test first if configuration is OK...
             self._logger.logprb(INFO, 'Driver', 'getPropertyInfo()', 141, url)
-            drvinfo = self._driver.getPropertyInfo(g_protocol, infos)
+            # XXX: We need to test first if configuration is OK...
+            if self._driver is None and not isSetupValid(self._ctx):
+                return ()
+            drvinfo = self._getDriver().getPropertyInfo(g_protocol, infos)
             for info in drvinfo:
                 self._logger.logprb(INFO, 'Driver', 'getPropertyInfo()', 142, info.Name, info.Value)
             return drvinfo
@@ -133,6 +141,13 @@ class Driver(unohelper.Base,
         return self._services
 
     # Driver private getter methods
+    def _getDriver(self):
+        with self._lock:
+            if self._driver is None:
+                checkSetup(self._ctx, self)
+                self._driver = createService(self._ctx, self._service)
+            return self._driver
+
     def _getConnectionInfo(self, infos):
         document = storage = url = None
         crs = self._config.getByName('UseCachedRowSet')
@@ -167,11 +182,11 @@ class Driver(unohelper.Base,
                 document = handler
         return document
 
-    def _getDocumentHandler(self, location):
+    def _getDocumentHandler(self, driver, location):
         with self._lock:
             handler = self._getHandler(location)
             if handler is None:
-                handler = DocumentHandler(self._ctx, self._lock, self._logger, self._driver, location)
+                handler = DocumentHandler(self._ctx, self._lock, self._logger, driver, location)
             return handler
 
     def _setDocumentHandler(self, document, handler):

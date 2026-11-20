@@ -76,7 +76,6 @@ class DataSource():
         self._database = database
         self._provider = provider
         self._listener = EventListener(self)
-        self._checked = False
         logger.logprb(INFO, self._cls, mtd, 1202)
 
     @property
@@ -96,19 +95,14 @@ class DataSource():
 
 # Procedures called by Driver
     def getConnection(self, source, logger, url, scheme, server, username, token=''):
-        print("DataSource.getConnection() 1")
-        if not self._checked:
-            self._checkSetup()
         mtd = 'getConnection'
         uri = self._provider.getUserUri(server, username)
         if uri in self._maps:
-            print("DataSource.getConnection() 2")
             name = self._maps.get(uri)
             user = self._users.get(name)
             if not user.Request.isAuthorized():
                 raise getSqlException(self._ctx, source, 1002, 1401, self._cls, mtd, name, g_extension)
         else:
-            print("DataSource.getConnection() 3")
             user = User(self._ctx, source, logger, self._database, self._provider, scheme, url, server, username, token)
             name = user.getName()
         if user.isOnLine():
@@ -127,10 +121,8 @@ class DataSource():
         # User and/or AddressBooks has been initialized and the connection to the database is done...
         # We can start the database replication in a background task.
         connection.addEventListener(self._listener)
-        print("DataSource.getConnection() 4")
         # showSetup(self._ctx, Dispatch=DispatchListener(self), Mode=0)
         startReplication(self._ctx, Dispatch=DispatchListener(self), Args=self._getUserSessions())
-        print("DataSource.getConnection() 5")
         return connection
 
     def _getUserSessions(self):
@@ -139,11 +131,11 @@ class DataSource():
             users.append({'url': user.Url, 'server': user.Server, 'name': user.Name, 'token': user.Token, 'new': user.New})
         return json.dumps(users)
 
-    def _checkSetup(self):
+    @classmethod
+    def checkSetup(cls, ctx, source):
         java = g_extension, g_java, g_script
         agent = g_service, g_protocol, g_agent
-        database = getDataSourceUrl(self._ctx)
-        state = SetupCheck.getState(self._ctx, database=database, java=java, agent=agent, python=True, extensions=getExtensions())
+        database = getDataSourceUrl(ctx)
+        state = SetupCheck.getState(ctx, database=database, java=java, agent=agent, python=True, extensions=getExtensions())
         if not state.runnable:
-            raise SQLException(state.getMessage(self._ctx), self, '08001', state.step, None)
-        self._checked = True
+            raise SQLException(state.getMessage(ctx), source, '08001', state.code, None)

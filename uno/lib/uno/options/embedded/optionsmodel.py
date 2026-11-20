@@ -72,23 +72,20 @@ class OptionsModel():
             self._config.commitChanges()
 
     def getDriverVersion(self, apilevel):
-        driver = None
         version = 'N/A'
-        try:
-            # We must try all the required services
-            driver = createService(self._ctx, embedded)
-            driver = createService(self._ctx, jdbc)
-            if driver and self._url:
-                connection = driver.connect(self._url, ())
-                version = connection.getMetaData().getDriverVersion()
-                connection.close()
-        except UnoException as e:
-            # If the driver is None, the error is already logged
-            if driver is not None:
+        if self._url:
+            driver = None
+            try:
+                driver = createService(self._ctx, jdbc)
+                if driver:
+                    connection = driver.connect(self._url, ())
+                    version = connection.getMetaData().getDriverVersion()
+                    connection.close()
+                else:
+                    self._logger.logprb(SEVERE, 'OptionsModel', 'getDriverVersion', 103, jdbc, apilevel)
+            except UnoException as e:
                 self._logger.logprb(SEVERE, 'OptionsModel', 'getDriverVersion', 102, embedded, apilevel, e.Message)
-        except Exception as ex:
-            # If the driver is None, the error is already logged
-            if driver is not None:
+            except Exception as ex:
                 self._logger.logprb(SEVERE, 'OptionsModel', 'getDriverVersion', 102, embedded, apilevel, str(ex))
         return version
 

@@ -29,13 +29,33 @@
 
 from com.sun.star.sdbc import SQLException
 
-from .jdbcdriver import g_extension as g_extension1
-from .jdbcdriver import g_identifier as g_identifier1
-from .jdbcdriver import g_version as g_version1
+from .setup import SetupCheck
+
+from .jdbcdriver import g_agent
+from .jdbcdriver import g_extension
+from .jdbcdriver import g_identifier
+from .jdbcdriver import g_java
+from .jdbcdriver import g_protocol
+from .jdbcdriver import g_script
+from .jdbcdriver import g_service
+from .jdbcdriver import g_version
 
 
 def getExtensions():
-    return {g_identifier1: (g_extension1, g_version1)}
+    return {g_identifier: (g_extension, g_version)}
+
+
+def isSetupValid(ctx):
+    java = g_extension, g_java, g_script
+    return SetupCheck.isValid(ctx, java, extensions=getExtensions())
+
+
+def checkSetup(ctx, source):
+    java = g_extension, g_java, g_script
+    agent = g_service, g_protocol, g_agent
+    state = SetupCheck.getState(ctx, java=java, agent=agent, python=True, extensions=getExtensions())
+    if not state.runnable:
+        raise SQLException(state.getMessage(ctx), source, '08001', state.code, None)
 
 
 def getException(logger, source, code, exc, state, resource, *args):
