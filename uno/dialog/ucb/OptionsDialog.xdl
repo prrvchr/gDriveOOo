@@ -30,22 +30,13 @@
     <dlg:style dlg:style-id="0" dlg:font-weight="150"/>
   </dlg:styles>
   <dlg:bulletinboard>
-    <dlg:titledbox dlg:id="FrameControl1" dlg:page="1" dlg:tab-index="0" dlg:left="0" dlg:top="0" dlg:width="279" dlg:height="220" dlg:help-text="&amp;OptionsDialog.FrameControl1.HelpText">
+    <dlg:titledbox dlg:id="FrameControl1" dlg:tab-index="0" dlg:left="0" dlg:top="0" dlg:width="279" dlg:height="220" dlg:help-text="&amp;OptionsDialog.FrameControl1.HelpText">
       <dlg:title dlg:value="&amp;OptionsDialog.FrameControl1.Label"/>
     </dlg:titledbox>
-    <dlg:fixedline dlg:style-id="0" dlg:id="FixedLine1" dlg:tab-index="1" dlg:left="5" dlg:top="220" dlg:width="268" dlg:height="15" dlg:help-text="&amp;OptionsDialog.FixedLine1.HelpText" dlg:value="&amp;OptionsDialog.FixedLine1.Label"/>
-    <dlg:text dlg:id="Label1" dlg:tab-index="2" dlg:left="10" dlg:top="240" dlg:width="60" dlg:height="15" dlg:help-text="&amp;OptionsDialog.Label1.HelpText" dlg:value="&amp;OptionsDialog.Label1.Label" dlg:valign="center" dlg:tabstop="false"/>
-    <dlg:menulist dlg:id="ListBox1" dlg:tab-index="3" dlg:disabled="true" dlg:left="84" dlg:top="240" dlg:width="90" dlg:height="15" dlg:help-text="&amp;OptionsDialog.ListBox1.HelpText" dlg:spin="true">
-      <dlg:menupopup>
-        <dlg:menuitem dlg:value="&amp;OptionsDialog.ListBox1.StringItemList.0" dlg:selected="true"/>
-        <dlg:menuitem dlg:value="&amp;OptionsDialog.ListBox1.StringItemList.1"/>
-        <dlg:menuitem dlg:value="&amp;OptionsDialog.ListBox1.StringItemList.2"/>
-      </dlg:menupopup>
-    </dlg:menulist>
-    <dlg:button dlg:id="CommandButton1" dlg:tab-index="4" dlg:left="184" dlg:top="240" dlg:width="90" dlg:height="15" dlg:help-text="&amp;OptionsDialog.CommandButton1.HelpText" dlg:value="&amp;OptionsDialog.CommandButton1.Label">
-      <script:event script:event-name="on-performaction" script:macro-name="vnd.sun.star.UNO:ShowSetup" script:language="UNO"/>
-    </dlg:button>
-    <dlg:text dlg:style-id="0" dlg:id="Label2" dlg:tab-index="5" dlg:left="10" dlg:top="265" dlg:width="259" dlg:height="25" dlg:help-text="&amp;OptionsDialog.Label2.HelpText" dlg:value="&amp;OptionsDialog.Label2.Label" dlg:align="center" dlg:valign="center" dlg:multiline="true"/>
+    <dlg:titledbox dlg:id="FrameControl2" dlg:tab-index="1" dlg:left="0" dlg:top="220" dlg:width="279" dlg:height="40" dlg:help-text="&amp;OptionsDialog.FrameControl2.HelpText">
+      <dlg:title dlg:value="&amp;OptionsDialog.FrameControl2.Label"/>
+    </dlg:titledbox>
+    <dlg:text dlg:style-id="0" dlg:id="Label1" dlg:tab-index="2" dlg:left="10" dlg:top="265" dlg:width="259" dlg:height="25" dlg:help-text="&amp;OptionsDialog.Label1.HelpText" dlg:value="&amp;OptionsDialog.Label1.Label" dlg:align="center" dlg:valign="center" dlg:multiline="true"/>
   </dlg:bulletinboard>
 </dlg:window>
 

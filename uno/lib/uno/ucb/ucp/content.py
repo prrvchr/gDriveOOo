@@ -252,7 +252,7 @@ class Content(unohelper.Base,
     def createCommandIdentifier(self):
         return 1
 
-    def execute(self, command, cmdid, environment):
+    def execute(self, command, _cmdid, environment):
         self._logger.logprb(INFO, 'Content', 'execute', 621, command.Name, self._identifier)
         if command.Name == 'getCommandInfo':
             return CommandInfo(self._getCommandInfo())
@@ -463,7 +463,7 @@ class Content(unohelper.Base,
             result = uno.Any('com.sun.star.lang.IllegalAccessException', error)
         return result, level, msg
 
-    def _setTitle(self, environment, newtitle):
+    def _setTitle(self, _environment, newtitle):
         if len(newtitle) == 0:
             msg = "ERROR: Requested property: Title value is EMPTY"
             level = SEVERE

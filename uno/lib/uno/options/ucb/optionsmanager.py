@@ -35,6 +35,9 @@ from .optionshandler import OptionsListener
 
 from .option import OptionManager
 
+from .setup import SetupHandler
+from .setup import SetupManager
+
 from ..runner import DispatchListener
 
 from ..setup import SetupCheck
@@ -54,22 +57,24 @@ from ..configuration import g_extension
 
 
 class OptionsManager():
-    def __init__(self, ctx, source, logger, window):
+    def __init__(self, ctx, window, logger):
         self._ctx = ctx
         self._disposed = False
         self._java = g_extension, g_java, g_script
         self._agent = g_service, g_protocol, g_agent
         self._model = OptionsModel(ctx)
-        self._view = OptionsView(ctx, window, self._model.getViewData())
-        self._manager = OptionManager(ctx, source, logger, self._view.getFrame(), self._model.getConfig())
+        self._view = OptionsView(ctx, window)
+        self._manager = OptionManager(ctx, self._view.getFrame(), logger, self._model.getConfig())
+        self._setup = SetupManager(ctx, self._view.getSetup(), SetupHandler(self), self._model.getConfig())
         window.addEventListener(OptionsListener(self))
         self._loadView(self.init)
-        self._view.getLayout().addLayout(self._manager.getLayout())
+        self._view.getLayout().addLayout(self._manager.getLayout()).addLayout(self._setup.getLayout())
 
     def init(self, state):
         if not self._disposed:
+            self._setup.init()
             self._manager.init(state)
-            self._view.initView(*self._model.getInitData(state))
+            self._view.initView(*self._model.getRefreshData(state))
 
     def refresh(self, state):
         if not self._disposed:
@@ -80,6 +85,7 @@ class OptionsManager():
         self._loadView(self.init)
 
     def saveSetting(self):
+        self._setup.saveSetting()
         if self._manager.saveSetting():
             State.restart = True
             self._loadView(self.refresh)
@@ -88,7 +94,7 @@ class OptionsManager():
         self._disposed = True
 
     def showSetup(self):
-        mode = self._view.getSetupMode()
+        mode = self._setup.getSetupMode()
         showSetup(self._ctx, Dispatch=DispatchListener(self), Mode=mode)
 
     def dispatchFinished(self, _notification):
@@ -96,7 +102,7 @@ class OptionsManager():
             self._loadView(self.refresh)
 
     def _loadView(self, callback):
-        mode = self._view.getSetupMode()
+        mode = self._setup.getSetupMode()
         datasource = self._manager.getDataSourceUrl()
         setup = SetupCheck(self._ctx, callback, datasource, java=self._java, agent=self._agent, python=True, extensions=getExtensions(), mode=mode)
         setup.start()

@@ -42,14 +42,23 @@ from .provider import Provider
 
 from .ucp import User
 
+from .setup import SetupCheck
+
 from .oauth20 import getOAuth2UserName
 
 from .dbinit import getDataSourceUrl
 
 from .helper import getExceptionMessage
+from .helper import getExtensions
 from .helper import showWarning
 
 from .unotool import getUriFactory
+
+from .jdbcdriver import g_agent
+from .jdbcdriver import g_java
+from .jdbcdriver import g_protocol
+from .jdbcdriver import g_script
+from .jdbcdriver import g_service
 
 from .configuration import g_extension
 
@@ -167,3 +176,10 @@ class DataSource():
 
     def _getExceptionMessage(self, code, *args):
         return getExceptionMessage(self._logger, code, g_extension, *args)
+
+    @classmethod
+    def checkSetup(cls, ctx):
+        java = g_extension, g_java, g_script
+        agent = g_service, g_protocol, g_agent
+        database = getDataSourceUrl(ctx)
+        return SetupCheck.getState(ctx, database=database, java=java, agent=agent, python=True, extensions=getExtensions())

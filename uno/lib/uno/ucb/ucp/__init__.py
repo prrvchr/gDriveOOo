@@ -39,3 +39,5 @@ from .identifier import Identifier
 from .provider import Provider
 
 from .user import User
+
+from .errorcontent import ErrorContent

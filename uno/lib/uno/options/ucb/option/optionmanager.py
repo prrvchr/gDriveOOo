@@ -50,9 +50,8 @@ from ...configuration import g_synclog
 
 
 class OptionManager():
-    def __init__(self, ctx, source, logger, window, config):
+    def __init__(self, ctx, window, logger, config):
         self._ctx = ctx
-        self._source = source
         self._logger = logger
         self._model = OptionModel(ctx, config)
         self._view = OptionView(ctx, window, OptionHandler(self), *self._model.getViewData())

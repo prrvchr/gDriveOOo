@@ -68,8 +68,12 @@ class SetupState:
         return State.restart
 
     @property
+    def valid(self) -> bool:
+        return all([self.extension, self.java, self.python])
+
+    @property
     def runnable(self) -> bool:
-        return all([self.extension, self.java, self.python]) and not self.restart
+        return self.valid and not self.restart
 
     @property
     def code(self) -> int:

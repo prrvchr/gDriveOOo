@@ -27,6 +27,7 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
+from .setupcheck import Check
 from .setupcheck import SetupCheck
 
 from .setupstate import SetupState

@@ -27,7 +27,6 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-from ..unotool import canUpdatePackages
 from ..unotool import getConfiguration
 from ..unotool import getStringResource
 
@@ -38,43 +37,18 @@ from ..configuration import g_identifier
 class OptionsModel():
     def __init__(self, ctx):
         self._ctx = ctx
-        self._update = canUpdatePackages()
         self._config = getConfiguration(ctx, g_identifier, True)
         self._resolver = getStringResource(ctx, g_identifier, 'dialogs', 'OptionsDialog')
-        self._resources = {'Title': 'OptionsDialog.FixedLine1.Label',
-                           'Link':  'OptionsDialog.Label2.Url.%s'}
-
-    @property
-    def _Setup(self):
-        return self._config.getByName('SetupUpdate')
+        self._resources = {'Link':  'OptionsDialog.Label1.Url.%s'}
 
 # OptionsModel getter methods
-    def getViewData(self):
-        return self._getTitle()
-
     def getConfig(self):
         return self._config
-
-    def getInitData(self, state):
-        return self._Setup, self._update, *self.getRefreshData(state)
 
     def getRefreshData(self, state):
         return state.getMessage(self._ctx), self._getLink(state.code)
 
-# OptionsModel setter methods
-    def setViewData(self, setup):
-        if self._update and setup != self._Setup:
-            self._config.replaceByName('SetupUpdate', setup)
-        if self._common.hasPendingChanges():
-            self._common.commitChanges()
-            return True
-        return False
-
 # OptionsModel private getter methods
-    def _getTitle(self):
-        resource = self._resources.get('Title')
-        return self._resolver.resolveString(resource).format(extension=g_extension)
-
     def _getLink(self, code):
         resource = self._resources.get('Link') % code
-        return self._resolver.resolveString(resource)
+        return self._resolver.resolveString(resource).format(extension=g_extension)
