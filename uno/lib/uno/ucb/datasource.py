@@ -42,7 +42,7 @@ from .provider import Provider
 
 from .ucp import User
 
-from .setup import SetupCheck
+from .setup import Check
 
 from .oauth20 import getOAuth2UserName
 
@@ -80,7 +80,7 @@ class DataSource():
         url = getDataSourceUrl(ctx)
         self._database = DataBase(ctx, url)
         self._provider = Provider(ctx, logger)
-        # self._replicator = Replicator(ctx, url, self._provider, self._users, self._sync, self._lock)
+        self._replicator = None
         self._logger = logger
         self._database.addCloseListener(CloseListener(self))
         logger.logprb(INFO, cls, mtd, 302)
@@ -91,16 +91,16 @@ class DataSource():
 
     @property
     def Replicator(self):
-        return self._replicator
+        return None
 
     # called from XCloseListener
     def dispose(self):
         try:
-            if self.Replicator.is_alive():
-                self.Replicator.cancel()
+            # if self.Replicator.is_alive():
+            #    self.Replicator.cancel()
             for user in self._users.values():
                 user.dispose()
-            self.DataBase.shutdownDataBase(self.Replicator.fullPull())
+            self.DataBase.shutdownDataBase()
             self._logger.logprb(INFO, 'DataSource', 'dispose', 341, self._provider.Scheme)
         except Exception as e:
             self._logger.logprb(SEVERE, 'DataSource', 'dispose', 342, e, traceback.format_exc())
@@ -182,4 +182,4 @@ class DataSource():
         java = g_extension, g_java, g_script
         agent = g_service, g_protocol, g_agent
         database = getDataSourceUrl(ctx)
-        return SetupCheck.getState(ctx, database=database, java=java, agent=agent, python=True, extensions=getExtensions())
+        return Check.getState(ctx, database=database, java=java, agent=agent, python=True, extensions=getExtensions())

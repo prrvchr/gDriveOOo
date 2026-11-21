@@ -44,7 +44,7 @@ from .ucp import Identifier
 
 from .datasource import DataSource
 
-from .ucp import ErrorContent
+# from .ucp import ErrorContent
 
 from .unotool import getUrlTransformer
 
@@ -87,10 +87,10 @@ class ContentProvider(unohelper.Base,
         try:
             content = None
             url = self._getPresentationUrl(identifier.getContentIdentifier())
-            if ContentProvider.__datasource is None:
-                state = DataSource.checkSetup(self._ctx)
-                if not state.runnable:
-                    return ErrorContent(self._ctx, identifier, state)
+            # if ContentProvider.__datasource is None:
+            #    state = DataSource.checkSetup(self._ctx)
+            #    if not state.runnable:
+            #        return ErrorContent(self._ctx, identifier, state)
             content = self._datasource.queryContent(self, self._authority, url)
             self._logger.logprb(INFO, self._cls, 'queryContent', 221, url)
             return content

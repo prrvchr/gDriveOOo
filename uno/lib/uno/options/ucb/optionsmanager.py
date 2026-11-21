@@ -103,6 +103,6 @@ class OptionsManager():
 
     def _loadView(self, callback):
         mode = self._setup.getSetupMode()
-        datasource = self._manager.getDataSourceUrl()
-        setup = SetupCheck(self._ctx, callback, datasource, java=self._java, agent=self._agent, python=True, extensions=getExtensions(), mode=mode)
+        database = self._manager.getDataSourceUrl()
+        setup = SetupCheck(self._ctx, callback, database=database, java=self._java, agent=self._agent, python=True, extensions=getExtensions(), mode=mode)
         setup.start()
